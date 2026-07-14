@@ -164,16 +164,66 @@ class PersistenceMixin:
     def save_game(self):
         SAVE_DIR.mkdir(parents=True, exist_ok=True)
         data = self.serialize_world()
+        data["_save_meta"] = self.save_metadata("Quick Save")
         backup_path = SAVE_FILE.with_name("savegame.previous.json")
         try:
             if SAVE_FILE.exists():
                 shutil.copy2(SAVE_FILE, backup_path)
+                self.backup_save_file(SAVE_FILE, "before_quick_save")
             atomic_write_json(SAVE_FILE, data)
+            self.prune_save_backups()
         except Exception as exc:
             LOGGER.exception("Quick save failed: %s", exc)
             messagebox.showerror("Save failed", f"The existing save was left untouched.\n\n{type(exc).__name__}: {exc}")
             return
         messagebox.showinfo("Saved", f"Quick saved to {SAVE_FILE.resolve()}\n\nPrevious quick save: {backup_path.name}")
+
+    def save_metadata(self, slot_name=""):
+        return {
+            "schema": 1,
+            "slot_name": slot_name,
+            "saved_at": datetime.now().isoformat(timespec="seconds"),
+            "company": getattr(self, "player_company_name", PLAYER_PROMOTION_NAME),
+            "month": getattr(self, "month", 1),
+            "week": getattr(self, "week", 1),
+            "cash": getattr(self, "cash", 0),
+            "active_universe": self.active_universe_database_path().name if hasattr(self, "active_universe_database_path") else "",
+        }
+
+    def save_backup_dir(self):
+        path = SAVE_DIR / "Backups"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def backup_save_file(self, path, reason="manual"):
+        path = Path(path)
+        if not path.exists():
+            return None
+        backup_dir = self.save_backup_dir()
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        target = backup_dir / f"{path.stem}_{reason}_{stamp}.json"
+        shutil.copy2(path, target)
+        manifest = target.with_suffix(".manifest.json")
+        manifest.write_text(json.dumps({
+            "created_at": datetime.now().isoformat(timespec="seconds"),
+            "source": str(path),
+            "backup": str(target),
+            "reason": reason,
+        }, indent=2), encoding="utf-8")
+        return target
+
+    def prune_save_backups(self, keep=30):
+        backup_dir = self.save_backup_dir()
+        backups = sorted(backup_dir.glob("*.json"), key=lambda item: item.stat().st_mtime, reverse=True)
+        data_backups = [item for item in backups if not item.name.endswith(".manifest.json")]
+        for old in data_backups[keep:]:
+            try:
+                manifest = old.with_suffix(".manifest.json")
+                old.unlink()
+                if manifest.exists():
+                    manifest.unlink()
+            except Exception:
+                LOGGER.exception("Could not prune old save backup: %s", old)
 
     def serialize_world(self):
         self.ensure_all_company_champions()
@@ -546,8 +596,27 @@ class PersistenceMixin:
         current_save = self.save_slot_list.curselection()
         current_db = self.database_list.curselection()
         self.save_slot_list.delete(0, "end")
+        self.save_slot_files = []
         for file in sorted(SAVE_DIR.glob("*.json")):
-            self.save_slot_list.insert("end", file.stem)
+            if file.name == SAVE_FILE.name:
+                label = f"{file.stem} | Quick Save"
+            else:
+                label = file.stem
+            try:
+                data = json.loads(file.read_text(encoding="utf-8"))
+                meta = data.get("_save_meta", {}) if isinstance(data, dict) else {}
+                if meta:
+                    company = meta.get("company", "Unknown")
+                    month = meta.get("month", "?")
+                    week = meta.get("week", "?")
+                    saved_at = str(meta.get("saved_at", ""))[:16].replace("T", " ")
+                    universe = meta.get("active_universe", "")
+                    universe_note = f" | {universe}" if universe else ""
+                    label = f"{file.stem} | {company} | M{month} W{week} | {saved_at}{universe_note}"
+            except Exception:
+                pass
+            self.save_slot_files.append(file)
+            self.save_slot_list.insert("end", label)
         self.database_list.delete(0, "end")
         self.database_files = []
         if hasattr(self, "ensure_default_universe_database"):
@@ -881,7 +950,12 @@ class PersistenceMixin:
         name = self.safe_filename(self.save_slot_name.get())
         path = SAVE_DIR / f"{name}.json"
         try:
-            atomic_write_json(path, self.serialize_world())
+            if path.exists():
+                self.backup_save_file(path, "before_slot_save")
+            data = self.serialize_world()
+            data["_save_meta"] = self.save_metadata(name)
+            atomic_write_json(path, data)
+            self.prune_save_backups()
         except Exception as exc:
             LOGGER.exception("Save slot failed: %s", exc)
             messagebox.showerror("Save failed", f"The slot was not changed.\n\n{type(exc).__name__}: {exc}")
@@ -891,10 +965,10 @@ class PersistenceMixin:
 
     def selected_save_path(self):
         selected = self.save_slot_list.curselection()
-        if not selected:
-            name = self.safe_filename(self.save_slot_name.get())
-        else:
-            name = self.save_slot_list.get(selected[0])
+        files = getattr(self, "save_slot_files", [])
+        if selected and selected[0] < len(files):
+            return files[selected[0]]
+        name = self.safe_filename(self.save_slot_name.get())
         return SAVE_DIR / f"{name}.json"
 
     def load_selected_slot(self):
@@ -903,6 +977,7 @@ class PersistenceMixin:
             messagebox.showinfo("No save", "Select an existing save slot.")
             return
         try:
+            self.backup_save_file(path, "before_slot_load")
             self.apply_world_data(json.loads(path.read_text(encoding="utf-8")))
         except Exception as exc:
             LOGGER.exception("Save slot failed to load: %s", exc)
@@ -916,8 +991,86 @@ class PersistenceMixin:
     def delete_selected_slot(self):
         path = self.selected_save_path()
         if path.exists():
+            if not messagebox.askyesno("Delete Save Slot", f"Delete {path.stem}? A backup will be kept."):
+                return
+            self.backup_save_file(path, "before_slot_delete")
             path.unlink()
             self.refresh_game_menu()
+
+    def backup_selected_slot(self):
+        path = self.selected_save_path()
+        if not path.exists():
+            messagebox.showinfo("No save", "Select an existing save slot first.")
+            return
+        backup = self.backup_save_file(path, "manual")
+        self.prune_save_backups()
+        messagebox.showinfo("Backup Created", f"Backed up {path.name}:\n{backup}")
+
+    def open_saves_folder(self):
+        SAVE_DIR.mkdir(parents=True, exist_ok=True)
+        try:
+            os.startfile(SAVE_DIR)
+        except Exception:
+            messagebox.showinfo("Saves Folder", str(SAVE_DIR))
+
+    def open_save_backup_manager(self):
+        backup_dir = self.save_backup_dir()
+        backups = sorted([item for item in backup_dir.glob("*.json") if not item.name.endswith(".manifest.json")], key=lambda item: item.stat().st_mtime, reverse=True)
+        window = tk.Toplevel(self.root)
+        window.title("Save Backup Manager")
+        window.geometry("860x520")
+        window.configure(bg=self.colors["chrome"])
+        ttk.Label(window, text="SAVE BACKUP MANAGER", style="ScreenTitle.TLabel").pack(anchor="w", padx=10, pady=(10, 4))
+        ttk.Label(window, text="Restore creates a backup of the destination first. Backups live in Saves/Backups.", style="Inset.TLabel").pack(fill="x", padx=10, pady=(0, 8))
+        body = ttk.Frame(window, style="Chrome.TFrame")
+        body.pack(fill="both", expand=True, padx=10, pady=(0, 8))
+        backup_list = tk.Listbox(body, font=("Consolas", 9), bg=self.colors["tree"], fg=self.colors["text"], selectbackground=self.colors["red"], selectforeground="#ffffff")
+        backup_list.pack(side="left", fill="both", expand=True, padx=(0, 8))
+        detail = tk.Text(body, width=38, wrap="word", bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 9), padx=10, pady=8)
+        detail.pack(side="left", fill="both")
+        for item in backups:
+            backup_list.insert("end", f"{item.name} | {datetime.fromtimestamp(item.stat().st_mtime).strftime('%Y-%m-%d %H:%M')}")
+
+        def selected_backup():
+            sel = backup_list.curselection()
+            return backups[sel[0]] if sel else None
+
+        def show_detail(_event=None):
+            item = selected_backup()
+            detail.config(state="normal")
+            detail.delete("1.0", "end")
+            if item:
+                manifest = item.with_suffix(".manifest.json")
+                text = f"Backup: {item.name}\nSize: {item.stat().st_size:,} bytes\nModified: {datetime.fromtimestamp(item.stat().st_mtime)}\n\n"
+                if manifest.exists():
+                    text += manifest.read_text(encoding="utf-8")
+                detail.insert("end", text)
+            detail.config(state="disabled")
+
+        def restore_backup():
+            item = selected_backup()
+            if not item:
+                messagebox.showinfo("Restore Backup", "Select a backup first.")
+                return
+            target_name = self.safe_filename(self.save_slot_name.get() or item.name.split("_before_")[0].split("_manual_")[0])
+            target = SAVE_DIR / f"{target_name}.json"
+            if not messagebox.askyesno("Restore Backup", f"Restore this backup to slot '{target.stem}'?\n\n{item.name}"):
+                return
+            if target.exists():
+                self.backup_save_file(target, "before_restore")
+            shutil.copy2(item, target)
+            self.refresh_game_menu()
+            messagebox.showinfo("Backup Restored", f"Restored to {target.name}.")
+
+        backup_list.bind("<<ListboxSelect>>", show_detail)
+        buttons = ttk.Frame(window, style="Chrome.TFrame")
+        buttons.pack(fill="x", padx=10, pady=(0, 10))
+        ttk.Button(buttons, text="Restore To Slot Name", style="Accent.TButton", command=restore_backup).pack(side="left")
+        ttk.Button(buttons, text="Open Saves Folder", command=self.open_saves_folder).pack(side="left", padx=6)
+        ttk.Button(buttons, text="Close", command=window.destroy).pack(side="right")
+        if backups:
+            backup_list.selection_set(0)
+            show_detail()
 
     def export_database(self):
         DATABASE_DIR.mkdir(parents=True, exist_ok=True)
