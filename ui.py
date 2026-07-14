@@ -404,20 +404,33 @@ class UIMixin:
         self.database_list = tk.Listbox(db_inner, font=("Tahoma", 9), bg="#c9c9c9")
         self.database_list.pack(fill="both", expand=True)
         dbrow = ttk.Frame(db_inner, style="Inset.TFrame")
-        dbrow.pack(fill="x", pady=6)
+        dbrow.pack(fill="x", pady=(6, 2))
         self.database_name = tk.StringVar(value="Default Database")
-        ttk.Entry(dbrow, textvariable=self.database_name, width=24).pack(side="left", padx=4)
-        ttk.Button(dbrow, text="Export Database", command=self.export_database).pack(side="left", padx=4)
-        ttk.Button(dbrow, text="Import Quick Save", command=self.import_quick_save_as_database).pack(side="left", padx=4)
-        ttk.Button(dbrow, text="Load Database", command=self.load_selected_database).pack(side="left", padx=4)
-        ttk.Button(dbrow, text="New Game", style="Accent.TButton", command=self.new_game).pack(side="left", padx=4)
-        ttk.Button(dbrow, text="Refresh", command=self.refresh_game_menu).pack(side="left", padx=4)
+        ttk.Entry(dbrow, textvariable=self.database_name, width=20).pack(side="left", fill="x", expand=True, padx=4)
+        db_actions = ttk.Frame(db_inner, style="Inset.TFrame")
+        db_actions.pack(fill="x", pady=(0, 4))
+        for col, (text, command, style) in enumerate((
+            ("Export", self.export_database, None),
+            ("Import Quick", self.import_quick_save_as_database, None),
+            ("Load DB", self.load_selected_database, None),
+            ("Refresh", self.refresh_game_menu, None),
+        )):
+            button = ttk.Button(db_actions, text=text, command=command, style=style) if style else ttk.Button(db_actions, text=text, command=command)
+            button.grid(row=col // 2, column=col % 2, sticky="ew", padx=3, pady=2)
+        db_actions.columnconfigure(0, weight=1)
+        db_actions.columnconfigure(1, weight=1)
         universe_row = ttk.Frame(db_inner, style="Inset.TFrame")
         universe_row.pack(fill="x", pady=(0, 6))
-        ttk.Button(universe_row, text="Use Selected Universe", style="Accent.TButton", command=self.use_selected_universe_database).pack(side="left", padx=4, pady=3)
-        ttk.Button(universe_row, text="Clone Universe", command=self.clone_selected_universe_database).pack(side="left", padx=4, pady=3)
-        ttk.Button(universe_row, text="Reset Default Universe", command=self.reset_default_universe_database).pack(side="left", padx=4, pady=3)
-        ttk.Button(universe_row, text="Open Database Folder", command=self.open_database_folder).pack(side="right", padx=4, pady=3)
+        for col, (text, command, style) in enumerate((
+            ("Use Selected Universe", self.use_selected_universe_database, "Accent.TButton"),
+            ("Clone Universe", self.clone_selected_universe_database, None),
+            ("Reset Default", self.reset_default_universe_database, None),
+            ("Open Folder", self.open_database_folder, None),
+        )):
+            button = ttk.Button(universe_row, text=text, command=command, style=style) if style else ttk.Button(universe_row, text=text, command=command)
+            button.grid(row=col // 2, column=col % 2, sticky="ew", padx=3, pady=2)
+        universe_row.columnconfigure(0, weight=1)
+        universe_row.columnconfigure(1, weight=1)
         start_panel, start_inner = self.section(db_inner, "STARTING PROMOTION")
         start_panel.pack(fill="x", pady=(8, 0))
         self.start_company_choice = tk.StringVar(value=PLAYER_PROMOTION_NAME)
@@ -432,25 +445,33 @@ class UIMixin:
 
         self.spectator_sim_panel, spectator = self.section(db_inner, "SPECTATOR WORLD SIMULATION")
         self.spectator_sim_panel.pack(fill="x", pady=(8, 0))
-        self.spectator_sim_status = ttk.Label(spectator, text="Observer controls are available in Spectator Mode.", style="Inset.TLabel")
-        self.spectator_sim_status.pack(anchor="w", padx=6, pady=(4, 2))
+        self.spectator_sim_status = ttk.Label(spectator, text="Observer controls are available in Spectator Mode.", style="Inset.TLabel", wraplength=260)
+        self.spectator_sim_status.pack(fill="x", padx=6, pady=(4, 2))
         spectator_actions = ttk.Frame(spectator, style="Inset.TFrame")
         spectator_actions.pack(fill="x", padx=4, pady=4)
-        ttk.Button(spectator_actions, text="Sim Week", command=lambda: self.spectator_advance_weeks(1)).pack(side="left", padx=3)
-        ttk.Button(spectator_actions, text="Sim Month", command=self.spectator_sim_month).pack(side="left", padx=3)
-        ttk.Button(spectator_actions, text="Sim Year", command=self.spectator_sim_year).pack(side="left", padx=3)
-        ttk.Button(spectator_actions, text="Watch Next Hosted Event", style="Accent.TButton", command=self.spectator_watch_next_event).pack(side="left", padx=8)
-        ttk.Button(spectator_actions, text="Watch Latest Event", command=self.watch_latest_world_event).pack(side="left", padx=3)
+        for col, (text, command, style) in enumerate((
+            ("Sim Week", lambda: self.spectator_advance_weeks(1), None),
+            ("Sim Month", self.spectator_sim_month, None),
+            ("Sim Year", self.spectator_sim_year, None),
+            ("Watch Next Event", self.spectator_watch_next_event, "Accent.TButton"),
+            ("Watch Latest", self.watch_latest_world_event, None),
+        )):
+            button = ttk.Button(spectator_actions, text=text, command=command, style=style) if style else ttk.Button(spectator_actions, text=text, command=command)
+            button.grid(row=col // 2, column=col % 2, sticky="ew", padx=3, pady=2)
+        spectator_actions.columnconfigure(0, weight=1)
+        spectator_actions.columnconfigure(1, weight=1)
         date_row = ttk.Frame(spectator, style="Inset.TFrame")
         date_row.pack(fill="x", padx=4, pady=(0, 4))
-        ttk.Label(date_row, text="Sim to", style="Inset.TLabel").pack(side="left", padx=(4, 2))
+        ttk.Label(date_row, text="Sim to date", style="Inset.TLabel").grid(row=0, column=0, columnspan=4, sticky="w", padx=4, pady=(2, 0))
         self.spectator_target_month = tk.IntVar(value=12)
         self.spectator_target_week = tk.IntVar(value=4)
-        ttk.Label(date_row, text="Month", style="Inset.TLabel").pack(side="left", padx=(4, 2))
-        ttk.Spinbox(date_row, from_=1, to=240, textvariable=self.spectator_target_month, width=5).pack(side="left")
-        ttk.Label(date_row, text="Week", style="Inset.TLabel").pack(side="left", padx=(8, 2))
-        ttk.Spinbox(date_row, from_=1, to=4, textvariable=self.spectator_target_week, width=4).pack(side="left")
-        ttk.Button(date_row, text="Sim To Date", command=self.spectator_sim_to_date).pack(side="left", padx=6)
+        ttk.Label(date_row, text="Month", style="Inset.TLabel").grid(row=1, column=0, sticky="w", padx=(4, 2), pady=2)
+        ttk.Spinbox(date_row, from_=1, to=240, textvariable=self.spectator_target_month, width=5).grid(row=1, column=1, sticky="ew", padx=(0, 4), pady=2)
+        ttk.Label(date_row, text="Week", style="Inset.TLabel").grid(row=1, column=2, sticky="w", padx=(4, 2), pady=2)
+        ttk.Spinbox(date_row, from_=1, to=4, textvariable=self.spectator_target_week, width=4).grid(row=1, column=3, sticky="ew", padx=(0, 4), pady=2)
+        ttk.Button(date_row, text="Sim To Date", command=self.spectator_sim_to_date).grid(row=2, column=0, columnspan=4, sticky="ew", padx=4, pady=(2, 4))
+        date_row.columnconfigure(1, weight=1)
+        date_row.columnconfigure(3, weight=1)
 
     def build_website_tab(self):
         self.screen_header(self.website_tab, "MEDIA DESK", "Manage narrative, press activity, rivalries, and public interest")
