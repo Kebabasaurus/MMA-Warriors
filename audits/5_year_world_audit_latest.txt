@@ -1,0 +1,96 @@
+MMA WARRIORS - 5 YEAR WORLD AUDIT
+Simulation: 60 accelerated monthly world cycles in Spectator Mode; BAMMA was AI-managed and no save changed.
+
+WORLD HEALTH
+Starting active fighters: 2293
+Ending active fighters: 2287
+Retirements: 57 | Hall of Fame inductions: 0
+Promotions: start 21, end 21 | Defunct: 0 | Active champions: 176
+Awards years recorded: 5 | Chronicle entries retained: 772
+Average active age: 29.5
+Average active overall: 71.1
+Age bands: under 25 459 | 25-34 1318 | 35-39 350 | 40+ 160
+Women in active pool: 659 (28.8%)
+Free agents: 252 | Duplicate active names: 0
+Division depth: min 3 | median 7 | buckets below 3 fighters 0
+Champion coverage: 176/176 across 11 competitive promotions; 10 feeder circuits carry no belts | Fighters with a defense: 46 | Average defenses among them: 1.6
+AI financial concentration: largest company holds 20.1% of non-feeder cash | companies below $0: 0
+
+COMPANY OUTCOMES
+Company                              Rep Size Stability       Cash Roster Events Executive                    Security Legacy
+------------------------------------------------------------------------------------------------------------------------
+Ultimate Fighting Championship     100  100        94 $85,503,525    255      4 Mason Rourke                      73    191
+ONE Championship                    86   86        88 $124,344,812    150      9 Arun Vichai                       75    182
+Oktagon MMA                         79   79        87 $155,169,756    143     10 Alex Silva                        72    168
+Professional Fighters League        78   78        40 $36,771,605    144      2 Elena Ward                        58    144
+RIZIN Fighting Federation           78   78        81 $120,312,786    146      6 Kenji Mori                        69    161
+KSW                                 70   70        36 $ 1,698,200    131      0 Santiago Vargas                   43    126
+Absolute Championship Akhmat        70   70        68 $53,395,680    126      4 Mikael Reyes                      82    137
+Cage Warriors                       69   69        42 $54,158,198    139      3 Claire Hargreaves                 17    130
+Legacy Fighting Alliance            69   69        73 $59,354,311    127      8 Omar Kowalski                     77    146
+BRAVE Combat Federation             68   68        44 $70,408,527    124      4 Khalil Grasso                     40    133
+BAMMA                               40   40        40 $12,744,406     91      2 Viktor Volkov                     40     76
+Japan Fight Circuit                 24   24        70 $         0     44     60 Yuri Santos                       76     67
+UK Regional MMA                     24   24        70 $         0     44     60 Mateo Weili                       86     67
+North American Fighting League      24   24        70 $         0     44     60 Hector Silva                      74     67
+European Challenge MMA              24   24        70 $         0     45     60 Omar Lima                         79     67
+Asia Rising Championship            24   24        70 $         0     50     60 Thiago Archer                     92     67
+Brazilian Combat Circuit            24   24        70 $         0     42     60 Jonas Garcia                      69     67
+Latin American MMA League           24   24        70 $         0     50     60 Cesar Garcia                      78     67
+Canadian Fight Alliance             24   24        70 $         0     50     60 Dorian Dawson                     83     67
+Oceania Combat League               24   24        70 $         0     52     60 Leon Kowalski                     65     67
+African MMA Championship            24   24        70 $         0     38     60 Adam Shevchenko                   86     67
+
+RETIRED LEGENDS
+Fighter                         Record       Legacy Titles/Def Awards
+Alexander Volkov               40-11          573  1/0     0
+Mamed Khalidov                 37-8           546  1/0     0
+Gegard Mousasi                 49-9           524  0/0     0
+Alistair Overeem               47-19          518  0/0     0
+Eddie Alvarez                  30-8           484  1/0     0
+Benson Henderson               30-12          473  1/0     0
+Jorge Masvidal                 35-17          447  0/0     0
+Donald Cerrone                 36-17          447  0/0     0
+Josh Barnett                   35-8           424  0/0     0
+Anatoly Malykhin               15-0           420  1/0     0
+Juan Archuleta                 29-8           415  0/0     0
+Hector Lombard                 34-10          413  0/0     0
+Carlos Condit                  32-14          410  0/0     0
+Ryan Bader                     31-8           406  0/0     0
+Liz Carmouche                  26-8           403  0/0     0
+Chael Sonnen                   31-17          402  0/0     0
+Michael Chandler               23-9           396  0/0     0
+Nick Diaz                      26-10          392  0/0     0
+Aung La Nsang                  30-15          391  0/0     0
+Johnny Case                    28-10          387  0/0     0
+Jeremy Stephens                29-21          383  0/0     0
+Diego Sanchez                  30-14          383  0/0     0
+Gilbert Burns                  22-8           382  0/0     0
+Tony Ferguson                  25-11          382  0/0     0
+Frankie Edgar                  24-11          374  0/0     0
+
+FIGHT METHODS - FULL AUDIT RUN
+TKO                          110   25.4%
+Decision                     110   25.4%
+KO                            96   22.2%
+Submission                    93   21.5%
+Doctor Stoppage               13    3.0%
+Corner Stoppage                8    1.8%
+Technical Submission           3    0.7%
+
+ANNUAL WORLD HEALTH (every simulated year)
+Year Active Avg Age Median AI Cash     Max AI Cash        Companies 99+ Rep Executive Era Notes
+2026   2282    25.9 $    11,648,904 $      46,320,824                 0                   2
+2027   2283    26.8 $    13,733,848 $      66,176,815                 0                   5
+2028   2286    27.7 $    34,240,512 $     131,952,132                 1                   8
+2029   2284    28.6 $    56,832,780 $     127,989,852                 1                  10
+2030   2287    29.5 $    59,354,311 $     155,169,756                 1                  13
+
+EXECUTIVE / ERA NOTES
+Ultimate Fighting Championship: 2027 - Mason Rourke led an award-winning year: Fight of the Year, Knockout of the Year, Submission of the Year.
+ONE Championship: 2029 - Arun Vichai led an award-winning year: Fight of the Year, Knockout of the Year.
+Oktagon MMA: 2030 - Alex Silva led an award-winning year: Submission of the Year, Veteran of the Year.
+RIZIN Fighting Federation: 2030 - Kenji Mori led an award-winning year: Fight of the Year, Knockout of the Year.
+Absolute Championship Akhmat: 2028 - Mikael Reyes led an award-winning year: Submission of the Year, Veteran of the Year.
+Legacy Fighting Alliance: 2030 - Omar Kowalski led an award-winning year: Fighter of the Year, Prospect of the Year, Promotion of the Year.
+BRAVE Combat Federation: 2029 - Khalil Grasso led an award-winning year: Fighter of the Year, Submission of the Year, Veteran of the Year, Promotion of the Year.

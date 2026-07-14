@@ -1,0 +1,35 @@
+MMA WARRIORS - NEXT TO DO
+Updated: 2026-07-12 (Companies + O'Malley/Merab audit completed)
+
+UI SWEEP
+
+Goal: replace remaining static, text-heavy screens with readable interactive game surfaces.
+
+Completed this session
+   - Companies screen: company profile sections now link to roster, rankings, belts, events, finance, staff, and results.
+   - Companies screen: each promotion has a detailed, linked company hub; roster and rankings are sortable and fighter rows open profiles.
+   - Companies screen: retained direct actions to read/watch the selected promotion's latest archived card and take control.
+
+Completed this session
+   - Regions: added a selectable Region Hub with overview, local fighters, gyms, scheduled events, and market effects. Fighter and gym rows open their profiles/viewers.
+   - Personal Assistant: notices are now actionable rows, with urgent styling and direct navigation to Booking, Contracts, Roster, or Market.
+   - Staff and Scouting: staff and candidates are selectable tables; double-click or use the profile action to inspect role, skill, morale, pay, specialty, and reputation.
+   - World Chronicle: stories remain filterable by type and are now selectable with a detail pane and context links to named fighters, companies, or results.
+
+Future UI refinements, not unfinished requirements
+   - Add richer event-specific context from the Region Hub when more non-player event schedules are persisted.
+   - Expand scouting assignments from historical reports into a persistent assignment queue when optional scouting mode is introduced.
+   - Add title-history deep links to Chronicle stories when a story carries a belt identifier.
+
+General UI rules
+   - Avoid white panels with white text.
+   - Prefer sortable/filterable tables for dense data.
+   - Add a double-click profile/viewer action wherever a fighter, company, event, gym, or region is named.
+   - Keep navigation short: important static information should lead somewhere useful.
+
+COMPLETED FIGHT-ENGINE INVESTIGATION: SEAN O'MALLEY VS. MERAB DVALISHVILI
+
+- Dedicated 480-fight, seeded matchup audit is available at `audits\\omalley_dvalishvili_matchup_audit_latest.txt`.
+- Equal eight-week camps produced a mechanics-led Merab edge: high takedown/control output and decision/submission routes, while O'Malley retained meaningful KO/TKO counter-striking upside.
+- Added a bounded (-2 to +2) camp-form variance based on professionalism, motivation, and gym morale. It applies to player, AI, and Simulation Lab camps.
+- Follow-up if further tuning is desired: a two-week versus eight-week camp remains an intentionally severe mismatch. Audit it across a representative fighter pool before reducing its effect; do not tune this single matchup to a target winner.

@@ -1,0 +1,512 @@
+MMA WARRIORS - SEAN O'MALLEY VS MERAB DVALISHVILI MATCHUP AUDIT
+================================================================================================
+Seed: 20260712
+Format: 5-round title/main-event simulator bouts; 160 fights per camp condition.
+Method: cloned fighters only. Results, careers, save data, and the live world are untouched.
+
+PROFILE INPUTS
+------------------------------------------------------------------------------------------------
+Sean O'Malley: OVR 88; Kickboxer/Counter; trait Showman.
+Broad: striking 97, wrestling 83, grappling 82, cardio 90, chin 89, power 95, TDD 83.
+Detailed: reach 96, footwork 95, hand_speed 96, punch_technique 99, punch_power 97, creative_kicks 99, high_kick_technique 99, head_movement 99, guard_defence 95, takedown_defence_detail 84, takedowns 82, takedown_setup 85, chain_wrestling 82, cage_wrestling 85, top_control 81, ride_control 81, conditioning 87, recovery 50
+Merab Dvalishvili: OVR 90; Wrestler/Control; trait Cardio Machine.
+Broad: striking 81, wrestling 97, grappling 92, cardio 91, chin 89, power 85, TDD 97.
+Detailed: reach 91, footwork 82, hand_speed 83, punch_technique 80, punch_power 84, creative_kicks 79, high_kick_technique 82, head_movement 81, guard_defence 82, takedown_defence_detail 97, takedowns 97, takedown_setup 97, chain_wrestling 97, cage_wrestling 97, top_control 93, ride_control 97, conditioning 97, recovery 50
+
+Equal eight-week camps
+------------------------------------------------------------------------------------------------
+Sean O'Malley            55/160 (34.4%) | KO 30, TKO 20, Decision 3, Doctor Stoppage 2
+Merab Dvalishvili       105/160 (65.6%) | Decision 49, TKO 25, Submission 12, KO 10, Corner Stoppage 7, Technical Submission 1, Doctor Stoppage 1
+Draw                      0/160 (0.0%) | none
+Average fight metrics (per fighter):
+  Sean O'Malley          sig 15.5/19.4; TD 0.30/1.56; control 143s; subs 1.48; KD 0.17; head damage taken 30.3.
+  Merab Dvalishvili      sig 21.0/29.9; TD 3.71/3.86; control 559s; subs 3.36; KD 0.28; head damage taken 34.2.
+Camp / weight-cut diagnostics:
+  Sean O'Malley          camp boost 3.9; cut penalty 0.0; missed weight 0/160.
+  Merab Dvalishvili      camp boost 4.1; cut penalty 0.0; missed weight 0/160.
+Commentary/action indicators across the condition: takedown attempts 266; stuffed/defended shots 52; cage/clinch mentions 711; range/counter mentions 761.
+Decision-card samples: Judge 1 [Damage-first]: Sean O'Malley 45, Merab Dvalishvili 50 (Merab Dvalishvili) | Judge 2 [Balanced]: Sean O'Malley 45, Merab Dvalishvili 50 (Merab Dvalishvili) | Judge 3 [Control-sensitive]: Sean O'Malley 45, Merab Dvalishvili 50 (Merab Dvalishvili) | Judges' vote: Sean O'Malley 0, Merab Dvalishvili 3 | Judge 1 [Balanced]: Sean O'Malley 47, Merab Dvalishvili 48 (Merab Dvalishvili) | Judge 2 [Damage-first]: Sean O'Malley 47, Merab Dvalishvili 48 (Merab Dvalishvili) | Judge 3 [Control-sensitive]: Sean O'Malley 47, Merab Dvalishvili 48 (Merab Dvalishvili) | Judges' vote: Sean O'Malley 0, Merab Dvalishvili 3 | Judge 1 [Control-sensitive]: Sean O'Malley 45, Merab Dvalishvili 50 (Merab Dvalishvili) | Judge 2 [Damage-first]: Sean O'Malley 45, Merab Dvalishvili 50 (Merab Dvalishvili) | Judge 3 [Balanced]: Sean O'Malley 45, Merab Dvalishvili 50 (Merab Dvalishvili) | Judges' vote: Sean O'Malley 0, Merab Dvalishvili 3
+
+O'Malley short camp / Merab full camp
+------------------------------------------------------------------------------------------------
+Sean O'Malley            18/160 (11.2%) | KO 12, TKO 4, Doctor Stoppage 1, Decision 1
+Merab Dvalishvili       142/160 (88.8%) | Decision 44, TKO 44, Submission 30, KO 12, Corner Stoppage 9, Doctor Stoppage 2, Technical Submission 1
+Draw                      0/160 (0.0%) | none
+Average fight metrics (per fighter):
+  Sean O'Malley          sig 9.2/11.5; TD 0.09/0.94; control 76s; subs 1.21; KD 0.28; head damage taken 43.4.
+  Merab Dvalishvili      sig 28.7/39.6; TD 3.95/4.03; control 681s; subs 4.95; KD 0.12; head damage taken 16.5.
+Camp / weight-cut diagnostics:
+  Sean O'Malley          camp boost 1.1; cut penalty 1.0; missed weight 0/160.
+  Merab Dvalishvili      camp boost 3.9; cut penalty 0.0; missed weight 0/160.
+Commentary/action indicators across the condition: takedown attempts 246; stuffed/defended shots 64; cage/clinch mentions 610; range/counter mentions 758.
+Decision-card samples: Judge 1 [Damage-first]: Sean O'Malley 45, Merab Dvalishvili 50 (Merab Dvalishvili) | Judge 2 [Balanced]: Sean O'Malley 45, Merab Dvalishvili 50 (Merab Dvalishvili) | Judge 3 [Control-sensitive]: Sean O'Malley 45, Merab Dvalishvili 50 (Merab Dvalishvili) | Judges' vote: Sean O'Malley 0, Merab Dvalishvili 3 | Judge 1 [Damage-first]: Sean O'Malley 46, Merab Dvalishvili 49 (Merab Dvalishvili) | Judge 2 [Control-sensitive]: Sean O'Malley 45, Merab Dvalishvili 50 (Merab Dvalishvili) | Judge 3 [Balanced]: Sean O'Malley 45, Merab Dvalishvili 50 (Merab Dvalishvili) | Judges' vote: Sean O'Malley 0, Merab Dvalishvili 3 | Judge 1 [Balanced]: Sean O'Malley 46, Merab Dvalishvili 49 (Merab Dvalishvili) | Judge 2 [Control-sensitive]: Sean O'Malley 45, Merab Dvalishvili 50 (Merab Dvalishvili) | Judge 3 [Damage-first]: Sean O'Malley 45, Merab Dvalishvili 50 (Merab Dvalishvili) | Judges' vote: Sean O'Malley 0, Merab Dvalishvili 3
+
+O'Malley full camp / Merab short camp
+------------------------------------------------------------------------------------------------
+Sean O'Malley           113/160 (70.6%) | TKO 71, KO 27, Decision 8, Doctor Stoppage 6, Submission 1
+Merab Dvalishvili        47/160 (29.4%) | Decision 27, KO 8, TKO 5, Submission 4, Corner Stoppage 3
+Draw                      0/160 (0.0%) | none
+Average fight metrics (per fighter):
+  Sean O'Malley          sig 27.9/33.3; TD 0.59/2.18; control 241s; subs 1.66; KD 0.17; head damage taken 17.3.
+  Merab Dvalishvili      sig 11.7/18.3; TD 2.60/2.87; control 336s; subs 1.69; KD 0.36; head damage taken 63.7.
+Camp / weight-cut diagnostics:
+  Sean O'Malley          camp boost 4.0; cut penalty 0.0; missed weight 0/160.
+  Merab Dvalishvili      camp boost 1.2; cut penalty 1.0; missed weight 0/160.
+Commentary/action indicators across the condition: takedown attempts 220; stuffed/defended shots 55; cage/clinch mentions 991; range/counter mentions 865.
+Decision-card samples: Judge 1 [Balanced]: Sean O'Malley 47, Merab Dvalishvili 48 (Merab Dvalishvili) | Judge 2 [Damage-first]: Sean O'Malley 47, Merab Dvalishvili 48 (Merab Dvalishvili) | Judge 3 [Control-sensitive]: Sean O'Malley 47, Merab Dvalishvili 48 (Merab Dvalishvili) | Judges' vote: Sean O'Malley 0, Merab Dvalishvili 3 | Judge 1 [Balanced]: Sean O'Malley 46, Merab Dvalishvili 49 (Merab Dvalishvili) | Judge 2 [Control-sensitive]: Sean O'Malley 45, Merab Dvalishvili 50 (Merab Dvalishvili) | Judge 3 [Damage-first]: Sean O'Malley 45, Merab Dvalishvili 50 (Merab Dvalishvili) | Judges' vote: Sean O'Malley 0, Merab Dvalishvili 3 | Judge 1 [Damage-first]: Sean O'Malley 45, Merab Dvalishvili 50 (Merab Dvalishvili) | Judge 2 [Balanced]: Sean O'Malley 45, Merab Dvalishvili 50 (Merab Dvalishvili) | Judge 3 [Control-sensitive]: Sean O'Malley 45, Merab Dvalishvili 50 (Merab Dvalishvili) | Judges' vote: Sean O'Malley 0, Merab Dvalishvili 3
+
+WATCHED LOG EXCERPTS
+================================================================================================
+
+Equal eight-week camps: Merab Dvalishvili def. Sean O'Malley by TKO, round 4.
+Weigh-ins: O'Malley 134.7 lb (penalty 0); Merab 134.9 lb (penalty 0).
+Tale of the tape: Kickboxer / Orthodox / Counter / Showman vs Wrestler / Orthodox / Control / Cardio Machine. Rules: 5x5. Scale: 134.7 lb vs 134.9 lb.
+Round 1: Sean O'Malley circles at long range while Merab Dvalishvili looks for the first opening.
+  [4:43] Merab Dvalishvili drives through the hips and lands on top in half guard.
+  [4:27] Merab Dvalishvili posts out and kills the sweep attempt.
+  [4:10] Sean O'Malley ties up wrists from bottom and slows the damage.
+  [4:10] Sean O'Malley showboats for a beat, soaking up the reaction.
+  [3:53] Sean O'Malley tries to sweep, but Merab Dvalishvili stays heavy.
+  [3:37] Merab Dvalishvili wins the transition and settles in side control.
+  [3:20] Merab Dvalishvili controls the wrists and smothers Sean O'Malley's hips.
+  [3:03] Sean O'Malley posts on the mat and escapes to open space.
+  [2:47] Merab Dvalishvili chains the shot beautifully and settles in half guard.
+  [2:30] Merab Dvalishvili keeps balance and shuts down the reversal.
+  [2:30] Sean O'Malley's cornerman calls for more feints before committing.
+  [2:13] Sean O'Malley builds up and gets back to the feet.
+  [1:57] Merab Dvalishvili lifts, turns the corner, and dumps Sean O'Malley into half guard.
+  [1:40] Merab Dvalishvili posts out and kills the sweep attempt.
+  [1:23] Merab Dvalishvili loads up and misses wide.
+  [1:07] Sean O'Malley posts on the mat and escapes to open space.
+  [0:50] Merab Dvalishvili drives through the hips and lands on top in half guard.
+  [0:33] Merab Dvalishvili lands short punches from top control.
+  [0:17] Merab Dvalishvili clears the knee shield and moves to side control.
+  [0:17] Sean O'Malley hip-escapes just enough to make Merab Dvalishvili reset position.
+  [0:00] Sean O'Malley elevates the hips and comes up on top.
+  [0:00] "Circle out, don't sit on the fence!" comes the shout from Sean O'Malley's corner.
+Round 1 summary: judge cards 9-10 | 9-10 | 9-10. Metrics - Sean O'Malley: impact 0, control 5, danger 0; Merab Dvalishvili: impact 5, control 36, danger 4. Live score Sean O'Malley 9, Merab Dvalishvili 10. Gas: Sean O'Malley 55, Merab Dvalishvili 57. Momentum: Merab Dvalishvili.
+Round 2: Sean O'Malley switches stance while Merab Dvalishvili hovers at boxing range.
+  [4:43] Sean O'Malley lands a heavy hook that turns Merab Dvalishvili's head.
+  [4:43] Sean O'Malley flashes a grin and taps their own chin at Merab Dvalishvili.
+  [4:27] Merab Dvalishvili lands an uppercut through the middle.
+  [4:10] Sean O'Malley lands a heavy hook that turns Merab Dvalishvili's head.
+  [3:53] Merab Dvalishvili changes levels and completes the takedown into half guard.
+  [3:37] Merab Dvalishvili rides the hips and keeps Sean O'Malley pinned.
+  [3:37] "Circle out, don't sit on the fence!" comes the shout from Sean O'Malley's corner.
+  [3:20] Merab Dvalishvili locks on a dangerous submission, but Sean O'Malley survives.
+  [3:03] Merab Dvalishvili controls the wrists and smothers Sean O'Malley's hips.
+  [2:47] Sean O'Malley wall-walks back to standing.
+  [2:47] Sean O'Malley's cornerman calls for more feints before committing.
+  [2:30] Sean O'Malley doubles the jab and disrupts Merab Dvalishvili's stance.
+  [2:13] Merab Dvalishvili lands an uppercut through the middle.
+  [1:57] Merab Dvalishvili drives through the hips and lands on top in half guard.
+  [1:40] Sean O'Malley holds on and buys recovery time.
+  [1:23] Merab Dvalishvili keeps balance and shuts down the reversal.
+  [1:23] Sean O'Malley's corner wants the leg kick set up behind the hands.
+  [1:07] Merab Dvalishvili attacks, but Sean O'Malley stays calm and clears the danger.
+  [0:50] Merab Dvalishvili advances to side control.
+  [0:33] Merab Dvalishvili chips away with ground-and-pound.
+  [0:17] Sean O'Malley gets the legs back in play and slows the attack.
+  [0:00] Merab Dvalishvili clears the knee shield and moves to half guard.
+Round 2 summary: judge cards 9-10 | 9-10 | 9-10. Metrics - Sean O'Malley: impact 22, control 3, danger 0; Merab Dvalishvili: impact 22, control 25, danger 18. Live score Sean O'Malley 18, Merab Dvalishvili 20. Gas: Sean O'Malley 20, Merab Dvalishvili 29. Momentum: Merab Dvalishvili.
+Round 3: the fighters exchange feints without fully committing.
+  [4:43] Merab Dvalishvili steps in with a powerful straight right.
+  [4:43] Merab Dvalishvili pumps a couple of feints, fishing for a reaction.
+  [4:27] Merab Dvalishvili lands a long straight at maximum range.
+  [4:10] Merab Dvalishvili catches Sean O'Malley cleanly with a compact hook.
+  [4:10] Sean O'Malley shows a counter and keeps Merab Dvalishvili honest.
+  [3:53] Sean O'Malley snaps Merab Dvalishvili's head back with a stiff jab.
+  [3:37] Merab Dvalishvili crowds Sean O'Malley and denies striking space.
+  [3:20] Merab Dvalishvili drives a knee into Sean O'Malley's body and makes them fold their elbows in.
+  [3:20] Heads pressed together, they fight for wrist control in the tie-up.
+  [3:03] Sean O'Malley lands short punches while controlling the inside position.
+  [2:47] Merab Dvalishvili lands short punches while controlling the inside position.
+  [2:30] Merab Dvalishvili drives a knee into Sean O'Malley's body and makes them fold their elbows in.
+  [2:13] Sean O'Malley leans into the clinch and uses the tie-up to recover.
+  [1:57] Merab Dvalishvili blasts through with a slam takedown into half guard.
+  [1:40] Merab Dvalishvili settles their weight and takes a breath without giving up top position.
+  [1:23] Merab Dvalishvili keeps heavy top pressure and limits Sean O'Malley's options.
+  [1:23] The referee calls for more activity from the grounded fighters.
+  [1:07] Merab Dvalishvili settles their weight and takes a breath without giving up top position.
+  [0:50] Merab Dvalishvili looks for a submission, but the defence is ready.
+  [0:33] Sean O'Malley frames and hip-escapes just enough to stay in the fight.
+  [0:17] Merab Dvalishvili lands short punches from top control.
+  [0:00] Merab Dvalishvili postures and drops elbows from the top.
+Round 3 summary: judge cards 9-10 | 9-10 | 9-10. Metrics - Sean O'Malley: impact 10, control 0, danger 0; Merab Dvalishvili: impact 47, control 11, danger 0. Live score Sean O'Malley 27, Merab Dvalishvili 30. Gas: Sean O'Malley 7, Merab Dvalishvili 11. Momentum: Merab Dvalishvili.
+Round 4: Sean O'Malley inches forward behind a high guard as Merab Dvalishvili gives ground.
+  [4:43] Merab Dvalishvili closes distance and locks Sean O'Malley into the tie-up.
+  [4:43] Sean O'Malley turns away blinking after a finger to the eye; the referee calls a brief timeout.
+  [4:27] Sean O'Malley leans into the clinch and uses the tie-up to recover.
+  [4:10] Merab Dvalishvili lifts, turns the corner, and dumps Sean O'Malley into half guard.
+  [3:53] Sean O'Malley reads the setup and keeps the submission from locking in.
+  [3:37] Merab Dvalishvili stays heavy on top and steadies the pace for a moment.
+  [3:20] Sean O'Malley ties up the hands from underneath and slows the exchange down.
+  [3:03] Merab Dvalishvili keeps heavy top pressure and limits Sean O'Malley's options.
+  [3:03] "Let's go, work!" - the referee wants more from the ground exchange.
+  [2:47] Merab Dvalishvili settles their weight and takes a breath without giving up top position.
+  [2:30] Merab Dvalishvili chips away with ground-and-pound.
+  [2:13] Sean O'Malley keeps a tight guard from the bottom and rides out the pressure.
+  [1:57] Merab Dvalishvili settles their weight and takes a breath without giving up top position.
+  [1:40] Merab Dvalishvili rides the position, catching a breather while staying busy enough to hold it.
+  [1:40] The referee circles the action and warns both fighters to work.
+  [1:23] Sean O'Malley closes space from bottom, controls the wrists, and waits for a chance to improve.
+  [1:07] Merab Dvalishvili lands short punches from top control.
+  [0:50] Merab Dvalishvili postures just enough to keep control while recovering.
+  ...later exchanges are summarized by the judges and fight report.
+  [0:00] Merab Dvalishvili settles their weight and takes a breath without giving up top position.
+  [0:00] Merab Dvalishvili's corner wants the leg kick set up behind the hands.
+  [0:00] Merab Dvalishvili traps one wrist and strikes until Sean O'Malley stops improving position. The referee pulls Merab Dvalishvili away after the final strike. The official time is 5:00 of round 4; Merab Dvalishvili wins by TKO.
+FIGHT METRICS
+Fighter            Sig. Str.   TD     Subs  Control   KD   Damage (Head/Body/Leg/Cuts)
+------------------------------------------------------------------------------------
+Sean O'Malley       11/13    0/0    0    0:17     0   79/ 7/ 0/0
+Merab Dvalishvili   43/62    8/8    4    16:07     0   23/ 0/ 0/0
+
+Equal eight-week camps: Merab Dvalishvili def. Sean O'Malley by Submission, round 2.
+Weigh-ins: O'Malley 134.9 lb (penalty 0); Merab 134.7 lb (penalty 0).
+Tale of the tape: Kickboxer / Orthodox / Counter / Showman vs Wrestler / Orthodox / Control / Cardio Machine. Rules: 5x5. Scale: 134.9 lb vs 134.7 lb.
+Round 1: Sean O'Malley switches stance while Merab Dvalishvili hovers at boxing range.
+  [4:43] Merab Dvalishvili gets chest-to-chest before Sean O'Malley can circle away.
+  [4:27] Merab Dvalishvili lands short clinch punches and drops Sean O'Malley!
+  [4:27] Merab Dvalishvili's coach is barking for the body-head combination.
+  [4:10] Sean O'Malley lands short punches while controlling the inside position.
+  [3:53] Merab Dvalishvili stays upright, but Sean O'Malley has them pinned on the cage.
+  [3:37] Merab Dvalishvili changes levels and completes the takedown into half guard.
+  [3:20] Merab Dvalishvili clears the knee shield and moves to side control.
+  [3:03] Sean O'Malley tries to sweep, but Merab Dvalishvili stays heavy.
+  [2:47] Merab Dvalishvili looks for a submission, but the defence is ready.
+  [2:30] Merab Dvalishvili postures and drops elbows from the top.
+  [2:13] Sean O'Malley wall-walks back to standing.
+  [1:57] Merab Dvalishvili doubles the jab and disrupts Sean O'Malley's stance.
+  [1:40] Merab Dvalishvili catches Sean O'Malley cleanly with a compact hook.
+  [1:23] Sean O'Malley lands a clean one-two and exits before Merab Dvalishvili can answer.
+  [1:07] Merab Dvalishvili drives through the hips and lands on top in half guard.
+  [0:50] Merab Dvalishvili wins the transition and settles in side control.
+  [0:33] Sean O'Malley ties up wrists from bottom and slows the damage.
+  [0:17] Merab Dvalishvili mat-returns Sean O'Malley before the escape is complete.
+  [0:00] Merab Dvalishvili keeps heavy top pressure and limits Sean O'Malley's options.
+Round 1 summary: judge cards 9-10 | 9-10 | 9-10. Metrics - Sean O'Malley: impact 7, control 3, danger 0; Merab Dvalishvili: impact 19, control 26, danger 12. Live score Sean O'Malley 9, Merab Dvalishvili 10. Gas: Sean O'Malley 66, Merab Dvalishvili 61. Momentum: Merab Dvalishvili.
+Round 2: Sean O'Malley inches forward behind a high guard as Merab Dvalishvili gives ground.
+  [4:43] Merab Dvalishvili catches Sean O'Malley clean with a crisp jab-cross; Sean O'Malley hits the mat!
+  [4:27] Sean O'Malley lands a calf kick; Merab Dvalishvili's movement is starting to slow.
+  [4:10] Merab Dvalishvili drives through the hips and lands on top in half guard.
+  [3:53] Merab Dvalishvili advances to side control.
+  [3:37] Merab Dvalishvili looks for a submission, but the defence is ready.
+  [3:37] Sean O'Malley hip-escapes just enough to make Merab Dvalishvili reset position.
+  [3:20] Merab Dvalishvili rides the hips and keeps Sean O'Malley pinned.
+  [3:03] Merab Dvalishvili rides the hips and keeps Sean O'Malley pinned.
+  [2:47] Merab Dvalishvili locks on a dangerous submission, but Sean O'Malley survives.
+  [2:30] Merab Dvalishvili attacks the neck and forces Sean O'Malley into emergency defence.
+  [2:13] Merab Dvalishvili mat-returns Sean O'Malley before the escape is complete.
+  [1:57] Merab Dvalishvili advances to mount.
+  [1:40] Merab Dvalishvili creates the opening for the armbar and starts the attack. Merab Dvalishvili secures the armbar and improves the angle. Sean O'Malley fights the hands and tries to change the position. Merab Dvalishvili tightens the finish as Sean O'Malley's defence breaks down. Sean O'Malley taps to the armbar. The official time is 3:20 of round 2; Merab Dvalishvili wins by Submission.
+FIGHT METRICS
+Fighter            Sig. Str.   TD     Subs  Control   KD   Damage (Head/Body/Leg/Cuts)
+------------------------------------------------------------------------------------
+Sean O'Malley        5/8     0/1    0    0:17     2   40/ 0/ 0/0
+Merab Dvalishvili   11/16    3/3    5    6:23     0   10/ 0/ 3/0
+
+O'Malley short camp / Merab full camp: Merab Dvalishvili def. Sean O'Malley by Corner Stoppage, round 4.
+Weigh-ins: O'Malley 134.7 lb (penalty 1); Merab 134.3 lb (penalty 0).
+Tale of the tape: Kickboxer / Orthodox / Counter / Showman vs Wrestler / Orthodox / Control / Cardio Machine. Rules: 5x5. Scale: 134.7 lb vs 134.3 lb.
+Round 1: the fighters exchange feints without fully committing.
+  [4:43] Sean O'Malley lands a clean one-two and exits before Merab Dvalishvili can answer.
+  [4:27] Sean O'Malley snaps Merab Dvalishvili's head back with a stiff jab.
+  [4:10] Merab Dvalishvili lands an uppercut through the middle.
+  [3:53] Merab Dvalishvili crowds Sean O'Malley and denies striking space.
+  [3:37] Merab Dvalishvili walks Sean O'Malley to the fence, settles head position, and locks the hands.
+  [3:37] Sean O'Malley answers with movement and makes Merab Dvalishvili start again.
+  [3:20] Sean O'Malley cannot finish the shot but drives Merab Dvalishvili to the cage.
+  [3:03] Merab Dvalishvili blasts through with a slam takedown into half guard.
+  [2:47] Merab Dvalishvili looks for a submission, but the defence is ready.
+  [2:30] Merab Dvalishvili stays patient from top and makes Sean O'Malley carry the weight.
+  [2:30] Sean O'Malley stays defensively responsible and keeps talking to the referee.
+  [2:13] Sean O'Malley gets the legs back in play and slows the attack.
+  [1:57] Merab Dvalishvili attacks the neck and forces Sean O'Malley into emergency defence.
+  [1:40] Merab Dvalishvili advances to half guard.
+  [1:23] Merab Dvalishvili controls the wrists and smothers Sean O'Malley's hips.
+  [1:23] Sean O'Malley controls a wrist and slows the ground attack for a moment.
+  [1:23] "Double the jab, then move!" - Merab Dvalishvili's coach is dialed in.
+  [1:07] Merab Dvalishvili posts out and kills the sweep attempt.
+  [1:07] Sean O'Malley drops the hands and beckons Merab Dvalishvili forward, playing to the crowd.
+  [0:50] Merab Dvalishvili controls the wrists and smothers Sean O'Malley's hips.
+  [0:33] Sean O'Malley uses the scramble to reverse the position.
+  [0:17] Sean O'Malley advances to half guard.
+  [0:00] Sean O'Malley attacks, but Merab Dvalishvili stays calm and clears the danger.
+  [0:00] Merab Dvalishvili hip-escapes just enough to make Sean O'Malley reset position.
+Round 1 summary: judge cards 9-10 | 9-10 | 9-10. Metrics - Sean O'Malley: impact 11, control 12, danger 2; Merab Dvalishvili: impact 8, control 23, danger 16. Live score Sean O'Malley 9, Merab Dvalishvili 10. Gas: Sean O'Malley 52, Merab Dvalishvili 62. Momentum: Merab Dvalishvili.
+Round 2: Sean O'Malley inches forward behind a high guard as Merab Dvalishvili gives ground.
+  [4:43] Merab Dvalishvili gets chest-to-chest before Sean O'Malley can circle away.
+  [4:43] You can hear Merab Dvalishvili's corner between beats: "Hands up, back behind the jab!"
+  [4:27] Merab Dvalishvili lands short punches while controlling the inside position.
+  [4:10] Merab Dvalishvili walks Sean O'Malley to the fence, settles head position, and locks the hands.
+  [4:10] Sean O'Malley circles off the center line before the next exchange.
+  [3:53] Sean O'Malley cannot finish the shot but drives Merab Dvalishvili to the cage.
+  [3:37] Merab Dvalishvili drives a knee into Sean O'Malley's body and makes them fold their elbows in.
+  [3:20] Merab Dvalishvili circles off before Sean O'Malley can keep the tie-up.
+  [3:03] Merab Dvalishvili sprawls hard and denies the takedown.
+  [2:47] Merab Dvalishvili catches Sean O'Malley cleanly with a compact hook.
+  [2:30] Sean O'Malley snaps Merab Dvalishvili's head back with a stiff jab.
+  [2:13] Merab Dvalishvili changes levels and completes the takedown into half guard.
+  [1:57] Merab Dvalishvili advances to side control.
+  [1:57] Merab Dvalishvili's coach is barking for the body-head combination.
+  [1:40] Merab Dvalishvili looks for a submission, but the defence is ready.
+  [1:40] Merab Dvalishvili's coach is barking for the body-head combination.
+  [1:23] Sean O'Malley ties up wrists from bottom and slows the damage.
+  [1:07] Merab Dvalishvili keeps heavy top pressure and limits Sean O'Malley's options.
+  [0:50] Merab Dvalishvili locks on a dangerous submission, but Sean O'Malley survives.
+  [0:33] Merab Dvalishvili traps a wrist and lands heavy shots on the mat.
+  [0:33] Sean O'Malley stays defensively responsible and keeps talking to the referee.
+  [0:33] Merab Dvalishvili's corner wants the leg kick set up behind the hands.
+  [0:17] Sean O'Malley holds on and buys recovery time.
+  [0:17] "Double the jab, then move!" - Sean O'Malley's coach is dialed in.
+  [0:00] Merab Dvalishvili wins the transition and settles in mount.
+Round 2 summary: judge cards 8-10 | 8-10 | 8-10. Metrics - Sean O'Malley: impact 2, control 4, danger 0; Merab Dvalishvili: impact 22, control 23, danger 18. Live score Sean O'Malley 17, Merab Dvalishvili 20. Gas: Sean O'Malley 22, Merab Dvalishvili 33. Momentum: Merab Dvalishvili.
+Round 3: Sean O'Malley circles at long range while Merab Dvalishvili looks for the first opening.
+  [4:43] Merab Dvalishvili closes distance and locks Sean O'Malley into the tie-up.
+  [4:27] Sean O'Malley drives a knee into Merab Dvalishvili's body and makes them fold their elbows in.
+  [4:10] Merab Dvalishvili walks Sean O'Malley to the fence, settles head position, and locks the hands.
+  [3:53] Merab Dvalishvili changes levels against the fence, forcing Sean O'Malley to defend the hips.
+  [3:37] Merab Dvalishvili keeps Sean O'Malley on the fence with shoulder pressure and inside control.
+  [3:37] Sean O'Malley circles off the center line before the next exchange.
+  [3:20] Merab Dvalishvili sprawls hard and denies the takedown.
+  [3:03] Merab Dvalishvili closes distance and locks Sean O'Malley into the tie-up.
+  [2:47] Merab Dvalishvili keeps Sean O'Malley pinned and wins the hand fight.
+  [2:30] Sean O'Malley buries their head on the chest in the clinch and catches a breath.
+  [2:13] Merab Dvalishvili keeps the tie-up and makes Sean O'Malley work.
+  [1:57] Merab Dvalishvili chains the shot beautifully and settles in half guard.
+  [1:57] Sean O'Malley is sucking wind between exchanges, mouth wide open.
+  [1:40] Merab Dvalishvili stays patient from top and makes Sean O'Malley carry the weight.
+  [1:40] "Circle out, don't sit on the fence!" comes the shout from Merab Dvalishvili's corner.
+  [1:23] Sean O'Malley ties up the hands from underneath and slows the exchange down.
+  [1:23] The crowd murmurs as the referee urges the fighters to improve position or stand.
+  [1:07] Merab Dvalishvili lands short punches from top control.
+  [0:50] Sean O'Malley frames and hip-escapes just enough to stay in the fight.
+  [0:50] "Circle out, don't sit on the fence!" comes the shout from Sean O'Malley's corner.
+  [0:33] Merab Dvalishvili attacks, but Sean O'Malley stays calm and clears the danger.
+  [0:17] Merab Dvalishvili rides the position, catching a breather while staying busy enough to hold it.
+  [0:00] Merab Dvalishvili rides the hips and keeps Sean O'Malley pinned.
+Round 3 summary: judge cards 9-10 | 9-10 | 9-10. Metrics - Sean O'Malley: impact 6, control 0, danger 0; Merab Dvalishvili: impact 2, control 25, danger 0. Live score Sean O'Malley 26, Merab Dvalishvili 30. Gas: Sean O'Malley 6, Merab Dvalishvili 10. Momentum: Sean O'Malley.
+Round 4: the fighters exchange feints without fully committing.
+  [4:43] Sean O'Malley lands a clean one-two and exits before Merab Dvalishvili can answer.
+  [4:27] Merab Dvalishvili doubles the jab and disrupts Sean O'Malley's stance.
+  [4:10] Merab Dvalishvili snaps Sean O'Malley's head back with a stiff jab.
+  [4:10] Sean O'Malley is sucking wind between exchanges, mouth wide open.
+  [3:53] Sean O'Malley clinches defensively to buy time.
+  [3:37] Merab Dvalishvili closes distance and locks Sean O'Malley into the tie-up.
+  [3:20] Merab Dvalishvili lands short punches while controlling the inside position.
+  [3:03] Merab Dvalishvili walks Sean O'Malley to the fence, settles head position, and locks the hands.
+  [2:47] Merab Dvalishvili clings on in the clinch, slowing everything down to recover.
+  [2:30] Merab Dvalishvili circles off before Sean O'Malley can keep the tie-up.
+  [2:30] Merab Dvalishvili feints the level change, testing Sean O'Malley's reactions.
+  [2:13] Sean O'Malley closes distance and locks Merab Dvalishvili into the tie-up.
+  ...later exchanges are summarized by the judges and fight report.
+Round 4 summary: judge cards 9-10 | 9-10 | 9-10. Metrics - Sean O'Malley: impact 4, control 1, danger 0; Merab Dvalishvili: impact 10, control 10, danger 0. Live score Sean O'Malley 35, Merab Dvalishvili 40. Gas: Sean O'Malley 6, Merab Dvalishvili 4. Momentum: Merab Dvalishvili.
+the corner has seen enough and tells the referee Sean O'Malley cannot continue. Official result: Merab Dvalishvili wins by Corner Stoppage at 5:00 of round 4. Merab Dvalishvili checks on Sean O'Malley before celebrating.
+FIGHT METRICS
+Fighter            Sig. Str.   TD     Subs  Control   KD   Damage (Head/Body/Leg/Cuts)
+------------------------------------------------------------------------------------
+Sean O'Malley       17/21    0/4    1    1:57     0   34/ 3/ 0/0
+Merab Dvalishvili   20/32    4/4    5    14:27     0   19/ 3/ 0/0
+
+O'Malley short camp / Merab full camp: Merab Dvalishvili def. Sean O'Malley by Decision, round 5.
+Weigh-ins: O'Malley 134.6 lb (penalty 1); Merab 134.2 lb (penalty 0).
+Tale of the tape: Kickboxer / Orthodox / Counter / Showman vs Wrestler / Orthodox / Control / Cardio Machine. Rules: 5x5. Scale: 134.6 lb vs 134.2 lb.
+Round 1: the fighters exchange feints without fully committing.
+  [4:43] Merab Dvalishvili splits the guard with a straight punch.
+  [4:27] Sean O'Malley lands an uppercut through the middle.
+  [4:27] A brief lull as Sean O'Malley circles and studies Merab Dvalishvili.
+  [4:10] Merab Dvalishvili crowds Sean O'Malley and denies striking space.
+  [3:53] Sean O'Malley lands short punches while controlling the inside position.
+  [3:37] Sean O'Malley drives a knee into Merab Dvalishvili's body and makes them fold their elbows in.
+  [3:20] Merab Dvalishvili walks Sean O'Malley to the fence, settles head position, and locks the hands.
+  [3:03] Merab Dvalishvili pins one wrist and uses the cage to keep Sean O'Malley from circling out.
+  [3:03] Heads pressed together, they fight for wrist control in the tie-up.
+  [2:47] Sean O'Malley digs for double underhooks and turns Merab Dvalishvili onto the fence.
+  [2:30] Merab Dvalishvili sprawls hard and denies the takedown.
+  [2:13] Merab Dvalishvili changes levels and completes the takedown into half guard.
+  [1:57] Merab Dvalishvili wins the transition and settles in side control.
+  [1:40] Sean O'Malley builds up and gets back to the feet.
+  [1:23] Merab Dvalishvili chains the shot beautifully and settles in half guard.
+  [1:07] Merab Dvalishvili attacks the neck and forces Sean O'Malley into emergency defence.
+  [0:50] Sean O'Malley gets the legs back in play and slows the attack.
+  [0:33] Merab Dvalishvili traps a wrist and lands heavy shots on the mat.
+  [0:17] Merab Dvalishvili chips away with ground-and-pound.
+  [0:17] "Double the jab, then move!" - Merab Dvalishvili's coach is dialed in.
+  [0:00] Sean O'Malley ties up wrists from bottom and slows the damage.
+Round 1 summary: judge cards 9-10 | 9-10 | 9-10. Metrics - Sean O'Malley: impact 18, control 6, danger 0; Merab Dvalishvili: impact 8, control 25, danger 16. Live score Sean O'Malley 9, Merab Dvalishvili 10. Gas: Sean O'Malley 53, Merab Dvalishvili 58. Momentum: Merab Dvalishvili.
+Round 2: the fighters exchange feints without fully committing.
+  [4:43] Merab Dvalishvili catches Sean O'Malley with a loaded overhand.
+  [4:27] Sean O'Malley lands a hard kick to the thigh; Merab Dvalishvili's movement is starting to slow.
+  [4:10] Sean O'Malley closes distance and locks Merab Dvalishvili into the tie-up.
+  [3:53] Merab Dvalishvili peels the hands away and exits the clinch.
+  [3:37] Merab Dvalishvili doubles the jab and disrupts Sean O'Malley's stance.
+  [3:20] Sean O'Malley sends a high round kick crashing into the guard and head.
+  [3:03] Merab Dvalishvili gets chest-to-chest before Sean O'Malley can circle away.
+  [2:47] Merab Dvalishvili walks Sean O'Malley to the fence, settles head position, and locks the hands.
+  [2:30] Merab Dvalishvili stays upright, but Sean O'Malley has them pinned on the cage.
+  [2:30] You can hear Sean O'Malley's corner between beats: "Hands up, back behind the jab!"
+  [2:13] Merab Dvalishvili circles off before Sean O'Malley can keep the tie-up.
+  [1:57] Merab Dvalishvili lands a long straight at maximum range.
+  [1:40] Sean O'Malley gets chest-to-chest before Merab Dvalishvili can circle away.
+  [1:23] Merab Dvalishvili drives a knee into Sean O'Malley's body and makes them fold their elbows in.
+  [1:07] Merab Dvalishvili digs for double underhooks and turns Sean O'Malley onto the fence.
+  [1:07] Merab Dvalishvili's cornerman calls for more feints before committing.
+  [0:50] Merab Dvalishvili gets the hips back before Sean O'Malley can connect the hands.
+  [0:33] Merab Dvalishvili changes levels and completes the takedown into half guard.
+  [0:17] Merab Dvalishvili locks on a dangerous submission, but Sean O'Malley survives.
+  [0:00] Merab Dvalishvili chips away with ground-and-pound.
+  [0:00] Sean O'Malley is visibly tired and takes an extra second before resetting.
+Round 2 summary: judge cards 9-10 | 9-10 | 9-10. Metrics - Sean O'Malley: impact 11, control 4, danger 0; Merab Dvalishvili: impact 21, control 15, danger 14. Live score Sean O'Malley 18, Merab Dvalishvili 20. Gas: Sean O'Malley 18, Merab Dvalishvili 34. Momentum: Merab Dvalishvili.
+Round 3: Sean O'Malley switches stance while Merab Dvalishvili hovers at boxing range.
+  [4:43] Sean O'Malley splits the guard with a straight punch.
+  [4:43] Sean O'Malley's coach is barking for the body-head combination.
+  [4:27] Sean O'Malley lands a long straight at maximum range.
+  [4:10] Merab Dvalishvili lands a thudding kick to the midsection and forces Sean O'Malley to protect the body.
+  [3:53] Merab Dvalishvili sprawls hard and denies the takedown.
+  [3:37] Merab Dvalishvili drives through the hips and lands on top in half guard.
+  [3:20] Merab Dvalishvili traps a wrist and lands heavy shots on the mat.
+  [3:03] Sean O'Malley reads the setup and keeps the submission from locking in.
+  [2:47] Merab Dvalishvili shrugs off the submission attempt and settles back on top.
+  [2:30] Sean O'Malley keeps a tight guard from the bottom and rides out the pressure.
+  [2:13] Merab Dvalishvili keeps heavy top pressure and limits Sean O'Malley's options.
+  [1:57] Merab Dvalishvili attacks the neck and forces Sean O'Malley into emergency defence.
+  [1:40] Merab Dvalishvili traps a wrist and lands heavy shots on the mat.
+  [1:23] Merab Dvalishvili postures just enough to keep control while recovering.
+  [1:23] Sean O'Malley's guard is sagging as the pace starts to bite.
+  [1:07] Merab Dvalishvili stays patient from top and makes Sean O'Malley carry the weight.
+  [0:50] Sean O'Malley keeps a tight guard from the bottom and rides out the pressure.
+  [0:50] The referee calls for more activity from the grounded fighters.
+  [0:33] Merab Dvalishvili controls the wrists and smothers Sean O'Malley's hips.
+  [0:33] The referee has seen enough of the lull and brings them back to the feet.
+  [0:17] Merab Dvalishvili crowds Sean O'Malley and denies striking space.
+  [0:00] Merab Dvalishvili lifts, turns the corner, and dumps Sean O'Malley into half guard.
+Round 3 summary: judge cards 9-10 | 9-10 | 9-10. Metrics - Sean O'Malley: impact 11, control 0, danger 0; Merab Dvalishvili: impact 18, control 26, danger 14. Live score Sean O'Malley 27, Merab Dvalishvili 30. Gas: Sean O'Malley 3, Merab Dvalishvili 9. Momentum: Merab Dvalishvili.
+Round 4: Sean O'Malley inches forward behind a high guard as Merab Dvalishvili gives ground.
+  [4:43] Sean O'Malley clinches defensively to buy time.
+  [4:43] Merab Dvalishvili's corner screams at them to breathe and reset.
+  [4:27] Merab Dvalishvili shells up, breathes, and tries to recover.
+  [4:27] The pace has cratered; whoever finds a second wind takes over.
+  [4:10] Merab Dvalishvili crowds Sean O'Malley and denies striking space.
+  [3:53] Sean O'Malley pins the tie-up against the fence to steal a moment of rest.
+  [3:37] Merab Dvalishvili walks Sean O'Malley to the fence, settles head position, and locks the hands.
+  [3:37] Sean O'Malley is sucking wind between exchanges, mouth wide open.
+  [3:20] Merab Dvalishvili keeps Sean O'Malley on the fence with shoulder pressure and inside control.
+  [3:03] Sean O'Malley clings on in the clinch, slowing everything down to recover.
+  [2:47] Sean O'Malley breaks free and resets at range.
+  [2:30] Merab Dvalishvili clinches defensively to buy time.
+  [2:13] Merab Dvalishvili closes distance and locks Sean O'Malley into the tie-up.
+  [1:57] Merab Dvalishvili clings on in the clinch, slowing everything down to recover.
+  [1:40] Sean O'Malley pins the tie-up against the fence to steal a moment of rest.
+  [1:23] Sean O'Malley buries their head on the chest in the clinch and catches a breath.
+  [1:07] Merab Dvalishvili clings on in the clinch, slowing everything down to recover.
+  [0:50] Merab Dvalishvili walks Sean O'Malley to the fence, settles head position, and locks the hands.
+  [0:33] Merab Dvalishvili stuffs the shot and circles back to space.
+  [0:17] Merab Dvalishvili shells up, breathes, and tries to recover.
+  ...later exchanges are summarized by the judges and fight report.
+  [0:00] Merab Dvalishvili clinches defensively to buy time.
+  [0:00] Sean O'Malley is visibly tired and takes an extra second before resetting.
+Round 5 summary: judge cards 9-10 | 9-10 | 9-10. Metrics - Sean O'Malley: impact 0, control 1, danger 0; Merab Dvalishvili: impact 3, control 14, danger 0. Live score Sean O'Malley 45, Merab Dvalishvili 50. Gas: Sean O'Malley 3, Merab Dvalishvili 6. Momentum: Merab Dvalishvili.
+Official scorecards:
+  Judge 1 [Damage-first]: Sean O'Malley 45, Merab Dvalishvili 50 (Merab Dvalishvili)
+  Judge 2 [Balanced]: Sean O'Malley 45, Merab Dvalishvili 50 (Merab Dvalishvili)
+  Judge 3 [Control-sensitive]: Sean O'Malley 45, Merab Dvalishvili 50 (Merab Dvalishvili)
+  Judges' vote: Sean O'Malley 0, Merab Dvalishvili 3
+After the scorecards are read, Merab Dvalishvili takes the decision over Sean O'Malley (45-50, 45-50, 45-50).
+FIGHT METRICS
+Fighter            Sig. Str.   TD     Subs  Control   KD   Damage (Head/Body/Leg/Cuts)
+------------------------------------------------------------------------------------
+Sean O'Malley       19/22    0/5    1    1:23     0   39/ 7/ 0/0
+Merab Dvalishvili   31/41    7/7    5    15:50     0   32/ 3/ 3/0
+
+O'Malley full camp / Merab short camp: Sean O'Malley def. Merab Dvalishvili by KO, round 1.
+Weigh-ins: O'Malley 134.7 lb (penalty 0); Merab 134.3 lb (penalty 1).
+Tale of the tape: Kickboxer / Orthodox / Counter / Showman vs Wrestler / Orthodox / Control / Cardio Machine. Rules: 5x5. Scale: 134.7 lb vs 134.3 lb.
+Round 1: Sean O'Malley inches forward behind a high guard as Merab Dvalishvili gives ground.
+  [4:43] Sean O'Malley lands a hard counter and drops Merab Dvalishvili!
+  [4:43] Sean O'Malley threads a straight punch through the guard and ends the fight. The referee pulls Sean O'Malley away after the final strike. The official time is 0:17 of round 1; Sean O'Malley wins by KO. Sean O'Malley checks on Merab Dvalishvili before celebrating.
+FIGHT METRICS
+Fighter            Sig. Str.   TD     Subs  Control   KD   Damage (Head/Body/Leg/Cuts)
+------------------------------------------------------------------------------------
+Sean O'Malley        2/2     0/0    0    0:00     0    0/ 0/ 0/0
+Merab Dvalishvili    0/0     0/0    0    0:00     1   19/ 0/ 0/0
+
+O'Malley full camp / Merab short camp: Merab Dvalishvili def. Sean O'Malley by Corner Stoppage, round 3.
+Weigh-ins: O'Malley 134.7 lb (penalty 0); Merab 134.2 lb (penalty 1).
+Tale of the tape: Kickboxer / Orthodox / Counter / Showman vs Wrestler / Orthodox / Control / Cardio Machine. Rules: 5x5. Scale: 134.7 lb vs 134.2 lb.
+Round 1: the fighters exchange feints without fully committing.
+  [4:43] Sean O'Malley steps in with a powerful straight right.
+  [4:43] Sean O'Malley steps in and out of range, baiting a counter.
+  [4:27] Sean O'Malley cannot finish the shot but drives Merab Dvalishvili to the cage.
+  [4:10] Merab Dvalishvili circles off before Sean O'Malley can keep the tie-up.
+  [3:53] Sean O'Malley splits the guard with a straight punch.
+  [3:53] Sean O'Malley drops the hands and beckons Merab Dvalishvili forward, playing to the crowd.
+  [3:37] Sean O'Malley splits the guard with a straight punch.
+  [3:20] Sean O'Malley gets chest-to-chest before Merab Dvalishvili can circle away.
+  [3:03] Merab Dvalishvili circles off before Sean O'Malley can keep the tie-up.
+  [2:47] Sean O'Malley changes levels and completes the takedown into guard.
+  [2:30] Sean O'Malley wins the transition and settles in half guard.
+  [2:13] Merab Dvalishvili wall-walks back to standing.
+  [1:57] Sean O'Malley lands an uppercut through the middle.
+  [1:57] Sean O'Malley's cornerman calls for more feints before committing.
+  [1:40] Merab Dvalishvili lifts, turns the corner, and dumps Sean O'Malley into half guard.
+  [1:23] Merab Dvalishvili shrugs off the submission attempt and settles back on top.
+  [1:07] Sean O'Malley holds on and buys recovery time.
+  [1:07] "Circle out, don't sit on the fence!" comes the shout from Sean O'Malley's corner.
+  [0:50] Merab Dvalishvili clears the knee shield and moves to side control.
+  [0:33] Sean O'Malley holds on and buys recovery time.
+  [0:17] Merab Dvalishvili keeps balance and shuts down the reversal.
+  [0:00] Merab Dvalishvili keeps balance and shuts down the reversal.
+Round 1 summary: judge cards 10-9 | 10-9 | 10-9. Metrics - Sean O'Malley: impact 29, control 14, danger 2; Merab Dvalishvili: impact 3, control 13, danger 2. Live score Sean O'Malley 10, Merab Dvalishvili 9. Gas: Sean O'Malley 57, Merab Dvalishvili 68. Momentum: Sean O'Malley.
+Round 2: both fighters take the centre and begin reading range.
+  [4:43] Merab Dvalishvili gets the hips back before Sean O'Malley can connect the hands.
+  [4:27] Sean O'Malley snaps Merab Dvalishvili's head back with a stiff jab.
+  [4:10] Merab Dvalishvili blasts through with a slam takedown into half guard.
+  [3:53] Sean O'Malley holds on and buys recovery time.
+  [3:37] Merab Dvalishvili mat-returns Sean O'Malley before the escape is complete.
+  [3:20] Merab Dvalishvili controls the wrists and smothers Sean O'Malley's hips.
+  [3:03] Sean O'Malley clamps down from guard and forces a slower pace.
+  [2:47] Sean O'Malley wall-walks back to standing.
+  [2:30] Sean O'Malley snaps Merab Dvalishvili's head back with a stiff jab.
+  [2:13] Merab Dvalishvili changes levels and completes the takedown into half guard.
+  [1:57] Sean O'Malley gets the legs back in play and slows the attack.
+  [1:40] Sean O'Malley ties up wrists from bottom and slows the damage.
+  [1:23] Sean O'Malley ties up wrists from bottom and slows the damage.
+  [1:07] Sean O'Malley elevates the hips and comes up on top.
+  [0:50] Merab Dvalishvili posts on the mat and escapes to open space.
+  [0:33] Sean O'Malley gets chest-to-chest before Merab Dvalishvili can circle away.
+  [0:33] Sean O'Malley digs for double underhooks and turns Merab Dvalishvili along the cage.
+  [0:17] Sean O'Malley drives a knee into Merab Dvalishvili's body and makes them fold their elbows in.
+  [0:00] Merab Dvalishvili drives a knee into Sean O'Malley's body and makes them fold their elbows in.
+Round 2 summary: judge cards 10-9 | 10-9 | 9-10. Metrics - Sean O'Malley: impact 16, control 11, danger 0; Merab Dvalishvili: impact 9, control 17, danger 0. Live score Sean O'Malley 20, Merab Dvalishvili 18. Gas: Sean O'Malley 30, Merab Dvalishvili 48. Momentum: Sean O'Malley.
+Round 3: the fighters exchange feints without fully committing.
+  [4:43] Sean O'Malley changes levels and completes the takedown into guard.
+  [4:43] Sean O'Malley flashes a grin and taps their own chin at Merab Dvalishvili.
+  [4:27] Sean O'Malley traps a wrist and lands heavy shots on the mat.
+  [4:27] You can hear Sean O'Malley's corner between beats: "Hands up, back behind the jab!"
+  [4:10] Merab Dvalishvili wall-walks back to standing.
+  [3:53] Merab Dvalishvili chains the shot beautifully and settles in half guard.
+  [3:37] Sean O'Malley ties up wrists from bottom and slows the damage.
+  [3:20] Sean O'Malley clamps down from guard and forces a slower pace.
+  [3:20] "Let's go, work!" - the referee wants more from the ground exchange.
+  [3:03] Merab Dvalishvili looks for a submission, but the defence is ready.
+  [2:47] Merab Dvalishvili rides the hips and keeps Sean O'Malley pinned.
+  [2:30] Sean O'Malley clamps down from guard and forces a slower pace.
+  [2:13] Sean O'Malley stays composed through a deep submission threat.
+  [1:57] Merab Dvalishvili traps a wrist and lands heavy shots on the mat.
+  [1:57] "Circle out, don't sit on the fence!" comes the shout from Merab Dvalishvili's corner.
+  [1:40] Merab Dvalishvili keeps the dominant position.
+  [1:23] Merab Dvalishvili keeps heavy top pressure and limits Sean O'Malley's options.
+  [1:07] Sean O'Malley closes space from bottom, controls the wrists, and waits for a chance to improve.
+  [1:07] Sean O'Malley showboats for a beat, soaking up the reaction.
+  [0:50] Merab Dvalishvili attacks, but Sean O'Malley stays calm and clears the danger.
+  [0:33] Sean O'Malley closes space from bottom, controls the wrists, and waits for a chance to improve.
+  [0:17] Sean O'Malley clamps down from guard and forces a slower pace.
+  [0:00] Merab Dvalishvili locks on a dangerous submission, but Sean O'Malley survives.
+Round 3 summary: judge cards 9-10 | 9-10 | 9-10. Metrics - Sean O'Malley: impact 5, control 10, danger 0; Merab Dvalishvili: impact 3, control 13, danger 28. Live score Sean O'Malley 29, Merab Dvalishvili 28. Gas: Sean O'Malley 3, Merab Dvalishvili 21. Momentum: Merab Dvalishvili.
+Sean O'Malley's corner refuses to send them out for the next round. The official time is 5:00 of round 3; Merab Dvalishvili wins by Corner Stoppage.
+FIGHT METRICS
+Fighter            Sig. Str.   TD     Subs  Control   KD   Damage (Head/Body/Leg/Cuts)
+------------------------------------------------------------------------------------
+Sean O'Malley       29/33    2/4    1    2:47     0   13/ 3/ 0/0
+Merab Dvalishvili    6/8     4/4    4    8:37     0   50/ 3/ 0/0

@@ -1,0 +1,783 @@
+MMA WARRIORS - 500 FIGHT TEXT / METRIC AUDIT
+================================================================================================
+Seed: 20260711
+Fights: 500
+Matchmaking: same gender/division, overall gap <= 6 where available.
+
+METHOD MIX
+------------------------------------------------------------------------------------------------
+Decision                 222  44.4%
+TKO                      134  26.8%
+KO                        71  14.2%
+Submission                45   9.0%
+Doctor Stoppage           12   2.4%
+Corner Stoppage            9   1.8%
+Technical Submission       5   1.0%
+Draw                       2   0.4%
+
+AVERAGE PER-FIGHT FIGHTER METRICS
+------------------------------------------------------------------------------------------------
+Significant strikes: 14.2/19.6
+Takedowns:          1.0/1.9
+Submission attempts: 1.6
+Control time:        232 sec
+Knockdowns:          0.20
+
+TEXT / STATE CHECKS
+------------------------------------------------------------------------------------------------
+Instant stand-up phrase occurrences: 0
+Empty scale fields: 0
+
+MOST REPEATED COMMENTARY LINES
+------------------------------------------------------------------------------------------------
+ 422  The referee calls for more activity from the grounded fighters.
+ 102  After a prolonged stalemate on the mat, the referee stands them up.
+  31  ...later exchanges are summarized by the judges and fight report.
+  28  Pavel Petrov leans into the clinch and uses the tie-up to recover.
+  27  Chloe OConnor leans into the clinch and uses the tie-up to recover.
+  21  Imogen Murray leans into the clinch and uses the tie-up to recover.
+  17  Cory Grasso shells up, breathes, and tries to recover.
+  17  Molly Namajunas closes space from bottom, controls the wrists, and waits for a chance to improve.
+  16  Bai Han leans into the clinch and uses the tie-up to recover.
+  16  Silas Foster leans into the clinch and uses the tie-up to recover.
+  16  Bruna Ward settles their weight and takes a breath without giving up top position.
+  16  Callum Patterson leans into the clinch and uses the tie-up to recover.
+  16  Joanne Andrade settles their weight and takes a breath without giving up top position.
+  15  Cory Grasso leans into the clinch and uses the tie-up to recover.
+  15  Bai Tan leans into the clinch and uses the tie-up to recover.
+  14  Silas Lima closes space from bottom, controls the wrists, and waits for a chance to improve.
+  14  Nathaniel Wood closes space from bottom, controls the wrists, and waits for a chance to improve.
+  14  Pavel Quinn leans into the clinch and uses the tie-up to recover.
+  14  Cesar Silva leans into the clinch and uses the tie-up to recover.
+  14  Bai Han shells up, breathes, and tries to recover.
+
+EXCERPTED FIGHT LOGS
+================================================================================================
+
+================================================================================================
+FIGHT 001: Ok Rae Yoon def. Alfie Davis by Submission R3
+------------------------------------------------------------------------------------------------
+Tale of the tape: Kickboxer / Orthodox / Dynamic Attacker / Big Finisher vs Boxer / Orthodox / Counter / Counter Specialist. Rules: 3x5. Scale: 154.2 lb vs 154.5 lb.
+Round 1: Alfie Davis switches stance while Ok Rae Yoon hovers at boxing range.
+  [4:43] Alfie Davis changes levels and completes the takedown into guard.
+  [4:27] Ok Rae Yoon blocks the pass and keeps Alfie Davis from improving.
+  [4:10] Ok Rae Yoon recovers guard and reduces the danger.
+  [3:53] Alfie Davis stays patient from top and makes Ok Rae Yoon carry the weight.
+  [3:37] Ok Rae Yoon elevates the hips and comes up on top.
+  [3:20] Ok Rae Yoon stays patient from top and makes Alfie Davis carry the weight.
+  [3:03] Ok Rae Yoon keeps balance and shuts down the reversal.
+  [2:47] Alfie Davis elevates the hips and comes up on top.
+  [2:30] Ok Rae Yoon holds on and buys recovery time.
+  [2:13] Ok Rae Yoon traps a leg and denies the advance.
+  [1:57] Ok Rae Yoon clamps down from guard and forces a slower pace.
+  [1:40] Alfie Davis lands short punches from top control.
+  [1:23] Ok Rae Yoon holds on and buys recovery time.
+  [1:07] Ok Rae Yoon builds up and gets back to the feet.
+  [0:50] Alfie Davis chops the lead leg with a low kick.
+  [0:33] Alfie Davis cannot finish the shot but drives Ok Rae Yoon to the cage.
+  [0:17] Ok Rae Yoon digs for double underhooks and turns Alfie Davis onto the fence.
+  [0:00] Alfie Davis circles off before Ok Rae Yoon can keep the tie-up.
+Round 1 summary: Alfie Davis edges it 10-9. Metrics - Alfie Davis: impact 7, control 17, danger 0; Ok Rae Yoon: impact 0, control 16, danger 0. Live score Alfie Davis 10, Ok Rae Yoon 9. Gas: Alfie Davis 52, Ok Rae Yoon 62. Momentum: Alfie Davis.
+Round 2: Alfie Davis inches forward behind a high guard as Ok Rae Yoon gives ground.
+  [4:43] Alfie Davis lands a clean one-two and exits before Ok Rae Yoon can answer.
+  [4:27] Alfie Davis steps in with a powerful straight right.
+  [4:27] Ok Rae Yoon circles off the center line before the next exchange.
+  [4:10] Ok Rae Yoon uses a jab feint to enter the clinch.
+  [3:53] Alfie Davis scores with shoulder-pressure boxing.
+  [3:37] Ok Rae Yoon digs inside punches while leaning on Alfie Davis.
+  [3:20] Alfie Davis changes levels and completes the takedown into guard.
+  [3:03] Alfie Davis advances to half guard.
+  [2:47] Alfie Davis's overhand sails over Ok Rae Yoon's shoulder.
+  [2:30] Alfie Davis wins the transition and settles in side control.
+  [2:13] Ok Rae Yoon shrimps back to guard before Alfie Davis can settle.
+  [1:57] Alfie Davis attacks, but Ok Rae Yoon stays calm and clears the danger.
+  [1:40] Ok Rae Yoon reads the setup and keeps the submission from locking in.
+  [1:23] Ok Rae Yoon blocks the power shot on the forearms.
+  [1:23] Ok Rae Yoon controls a wrist and slows the ground attack for a moment.
+  [1:07] Alfie Davis attacks, but Ok Rae Yoon stays calm and clears the danger.
+  [0:50] Ok Rae Yoon clamps down from guard and forces a slower pace.
+  [0:33] Alfie Davis settles their weight and takes a breath without giving up top position.
+  [0:17] Ok Rae Yoon times a sweep and reverses to top position.
+  [0:00] Ok Rae Yoon rides the hips and keeps Alfie Davis pinned.
+Round 2 summary: Alfie Davis edges it 10-9. Metrics - Alfie Davis: impact 10, control 13, danger 4; Ok Rae Yoon: impact 5, control 10, danger 0. Live score Alfie Davis 20, Ok Rae Yoon 18. Gas: Alfie Davis 8, Ok Rae Yoon 36. Momentum: Alfie Davis.
+Round 3: Alfie Davis circles at long range while Ok Rae Yoon looks for the first opening.
+  [4:43] Alfie Davis shells up, breathes, and tries to recover.
+  [4:27] Ok Rae Yoon drives through the hips and lands on top in half guard.
+  [4:10] Alfie Davis closes space from bottom, controls the wrists, and waits for a chance to improve.
+  [3:53] Alfie Davis closes space from bottom, controls the wrists, and waits for a chance to improve.
+  [3:53] The referee calls for more activity from the grounded fighters.
+  [3:37] Ok Rae Yoon rides the hips and keeps Alfie Davis pinned.
+  [3:37] Ok Rae Yoon stays defensively responsible and keeps talking to the referee.
+  [3:20] Alfie Davis reads the setup and keeps the submission from locking in.
+  [3:03] Alfie Davis closes space from bottom, controls the wrists, and waits for a chance to improve.
+  [2:47] Ok Rae Yoon keeps balance and shuts down the reversal.
+  [2:30] Ok Rae Yoon creates the opening for the armbar and starts the attack. Ok Rae Yoon secures the armbar and improves the angle. Alfie Davis fights the hands and tries to change the position. Ok Rae Yoon tightens the finish as Alfie Davis's defence breaks down. Alfie Davis taps to the armbar. Official result: Ok Rae Yoon wins by Submission at 2:30 of round 3.
+FIGHT METRICS
+Fighter           Sig. Str.   TD     Subs  Control   KD
+------------------------------------------------------
+Alfie Davis        11/31    2/3    3    6:07     0
+Ok Rae Yoon         2/4     1/1    2    4:43     0
+
+================================================================================================
+FIGHT 002: Ariane Madsen def. Rin Nakai by Decision R3
+------------------------------------------------------------------------------------------------
+Tale of the tape: Sambo / Orthodox / Control / Fan Favourite vs Wrestler / Orthodox / Control / Gym Rat. Rules: 3x5. Scale: 135.4 lb vs 135.1 lb.
+Round 1: Ariane Madsen switches stance while Rin Nakai hovers at boxing range.
+  [4:43] Ariane Madsen changes levels and completes the takedown into half guard.
+  [4:27] Ariane Madsen locks on a dangerous submission, but Rin Nakai survives.
+  [4:10] Ariane Madsen shrugs off the submission attempt and settles back on top.
+  [3:53] Ariane Madsen clears the knee shield and moves to side control.
+  [3:37] Rin Nakai ties up wrists from bottom and slows the damage.
+  [3:20] Ariane Madsen keeps heavy top pressure and limits Rin Nakai's options.
+  [3:03] Ariane Madsen postures and drops elbows from the top.
+  [2:47] Ariane Madsen clears the knee shield and moves to mount.
+  [2:30] Ariane Madsen wins the transition and settles in back control.
+  [2:30] Rin Nakai hip-escapes just enough to make Ariane Madsen reset position.
+  [2:13] Ariane Madsen keeps balance and shuts down the reversal.
+  [1:57] Ariane Madsen catches Rin Nakai clean with ground-and-pound; Rin Nakai hits the mat!
+  [1:40] Ariane Madsen clears the knee shield and moves to side control.
+  [1:23] Rin Nakai recovers guard and reduces the danger.
+  [1:07] Ariane Madsen stays patient from top and makes Rin Nakai carry the weight.
+  [0:50] Ariane Madsen clears the knee shield and moves to half guard.
+  [0:33] Ariane Madsen wins the transition and settles in side control.
+  [0:17] Rin Nakai ties up wrists from bottom and slows the damage.
+  [0:00] Ariane Madsen keeps heavy top pressure and limits Rin Nakai's options.
+Round 1 summary: Ariane Madsen edges it 10-8. Metrics - Ariane Madsen: impact 2, control 43, danger 34; Rin Nakai: impact 0, control 4, danger 0. Live score Ariane Madsen 10, Rin Nakai 8. Gas: Ariane Madsen 46, Rin Nakai 53. Momentum: Ariane Madsen.
+Round 2: Ariane Madsen switches stance while Rin Nakai hovers at boxing range.
+  [4:43] Ariane Madsen lands a clean one-two and exits before Rin Nakai can answer.
+  [4:27] Ariane Madsen catches Rin Nakai with a loaded overhand.
+  [4:10] Ariane Madsen crowds Rin Nakai and denies striking space.
+  [3:53] Ariane Madsen pins Rin Nakai to the fence and drains the clock.
+  [3:37] Rin Nakai digs inside punches while leaning on Ariane Madsen.
+  [3:20] Rin Nakai lands short punches in the tie-up.
+  [3:03] Ariane Madsen peels the hands away and exits the clinch.
+  [2:47] Ariane Madsen drives through the hips and lands on top in half guard.
+  [2:30] Rin Nakai builds up and gets back to the feet.
+  [2:13] Rin Nakai stays upright, but Ariane Madsen has them pinned on the cage.
+  [1:57] Ariane Madsen keeps Rin Nakai pinned and wins the hand fight.
+  [1:40] Ariane Madsen digs inside punches while leaning on Rin Nakai.
+  [1:23] Rin Nakai gets the hips back before Ariane Madsen can connect the hands.
+  [1:07] Rin Nakai chains the shot beautifully and settles in guard.
+  [0:50] Ariane Madsen holds on and buys recovery time.
+  [0:33] Rin Nakai shrugs off the submission attempt and settles back on top.
+  [0:17] Ariane Madsen tries to sweep, but Rin Nakai stays heavy.
+  [0:17] Rin Nakai's guard is sagging as the pace starts to bite.
+  [0:00] Rin Nakai keeps heavy top pressure and limits Ariane Madsen's options.
+Round 2 summary: Ariane Madsen edges it 10-9. Metrics - Ariane Madsen: impact 12, control 12, danger 0; Rin Nakai: impact 7, control 13, danger 0. Live score Ariane Madsen 20, Rin Nakai 17. Gas: Ariane Madsen 6, Rin Nakai 21. Momentum: Ariane Madsen.
+Round 3: the fighters exchange feints without fully committing.
+  [4:43] Ariane Madsen gets chest-to-chest before Rin Nakai can circle away.
+  [4:27] Ariane Madsen breaks free and resets at range.
+  [4:10] Rin Nakai changes levels and completes the takedown into half guard.
+  [3:53] Rin Nakai shrugs off the submission attempt and settles back on top.
+  [3:37] Ariane Madsen closes space from bottom, controls the wrists, and waits for a chance to improve.
+  [3:20] Ariane Madsen closes space from bottom, controls the wrists, and waits for a chance to improve.
+  [3:03] Rin Nakai settles their weight and takes a breath without giving up top position.
+  [3:03] The referee calls for more activity from the grounded fighters.
+  [2:47] Ariane Madsen closes space from bottom, controls the wrists, and waits for a chance to improve.
+  [2:30] Ariane Madsen closes space from bottom, controls the wrists, and waits for a chance to improve.
+  [2:30] After a prolonged stalemate on the mat, the referee stands them up.
+  [2:13] Ariane Madsen shells up, breathes, and tries to recover.
+  [2:13] Rin Nakai circles away with heavy legs and tries to slow the fight down.
+  [1:57] Ariane Madsen stays upright, but Rin Nakai has them pinned on the cage.
+  [1:40] Rin Nakai peels the hands away and exits the clinch.
+  [1:23] Ariane Madsen shells up, breathes, and tries to recover.
+  [1:07] Ariane Madsen covers up and focuses on surviving the moment.
+  [0:50] Rin Nakai shells up, breathes, and tries to recover.
+  [0:33] Ariane Madsen covers up and focuses on surviving the moment.
+  [0:17] Ariane Madsen shells up, breathes, and tries to recover.
+  [0:00] Rin Nakai covers up and focuses on surviving the moment.
+Round 3 summary: Rin Nakai edges it 10-9. Metrics - Ariane Madsen: impact 0, control 1, danger 0; Rin Nakai: impact 0, control 9, danger 0. Live score Ariane Madsen 29, Rin Nakai 27. Gas: Ariane Madsen 7, Rin Nakai 6. Momentum: Rin Nakai.
+Official scorecard:
+  Round 1: Ariane Madsen 10, Rin Nakai 8 (Ariane Madsen)
+  Round 2: Ariane Madsen 10, Rin Nakai 9 (Ariane Madsen)
+  Round 3: Ariane Madsen 9, Rin Nakai 10 (Rin Nakai)
+  Total: Ariane Madsen 29, Rin Nakai 27
+Judges score it 29-27. Ariane Madsen wins by decision.
+FIGHT METRICS
+Fighter           Sig. Str.   TD     Subs  Control   KD
+------------------------------------------------------
+Ariane Madsen      12/18    2/4    3    7:30     0
+Rin Nakai           2/9     2/3    1    3:37     1
+
+================================================================================================
+FIGHT 003: Minji Han def. Holly Barrera by TKO R1
+------------------------------------------------------------------------------------------------
+Tale of the tape: Well-Rounded / Orthodox / Volume / Bad Weight Cut vs Catch Wrestler / Switch / Dynamic Attacker / Trash Talker. Rules: 3x5. Scale: 170.1 lb vs 170.1 lb.
+Round 1: the fighters exchange feints without fully committing.
+  [4:43] Minji Han doubles the jab and disrupts Holly Barrera's stance.
+  [4:27] Minji Han uses a jab feint to enter the clinch.
+  [4:10] Holly Barrera circles off before Minji Han can keep the tie-up.
+  [3:53] Minji Han catches Holly Barrera with a loaded overhand.
+  [3:37] Minji Han cannot finish the shot but drives Holly Barrera to the cage.
+  [3:20] Minji Han sneaks an uppercut through the clinch.
+  [3:03] Minji Han pins Holly Barrera to the fence and drains the clock.
+  [2:47] Minji Han controls the wrists against the fence.
+  [2:47] Holly Barrera shows a counter and keeps Minji Han honest.
+  [2:30] Minji Han drives through the hips and lands on top in guard.
+  [2:13] Minji Han mat-returns Holly Barrera before the escape is complete.
+  [1:57] Minji Han controls the wrists and smothers Holly Barrera's hips.
+  [1:40] Minji Han chips away with ground-and-pound.
+  [1:23] Holly Barrera posts on the mat and escapes to open space.
+  [1:07] Minji Han whips a high kick around the guard.
+  [0:50] Minji Han opens visible damage on Holly Barrera.
+  [0:33] Minji Han cannot finish the shot but drives Holly Barrera to the cage.
+  [0:17] Minji Han sneaks an uppercut through the clinch.
+  [0:17] Minji Han overwhelms Holly Barrera against the fence and forces the stoppage. The referee has seen enough and stops the contest. The commentary team will question how long that was allowed to continue. The official time is 4:43 of round 1; Minji Han wins by TKO. Minji Han checks on Holly Barrera before celebrating.
+FIGHT METRICS
+Fighter           Sig. Str.   TD     Subs  Control   KD
+------------------------------------------------------
+Holly Barrera       0/0     0/0    0    0:00     0
+Minji Han          20/23    1/3    0    3:03     0
+
+================================================================================================
+FIGHT 004: Morgan Charriere def. Daniel Rutkowski by Technical Submission R1
+------------------------------------------------------------------------------------------------
+Tale of the tape: Kickboxer / Switch / Dynamic Attacker / Big Finisher vs Boxer / Orthodox / Counter / Counter Specialist. Rules: 3x5. Scale: 145.3 lb vs 144.7 lb.
+Round 1: Morgan Charriere circles at long range while Daniel Rutkowski looks for the first opening.
+  [4:43] Daniel Rutkowski catches Morgan Charriere with a loaded overhand.
+  [4:27] Morgan Charriere chops the lead leg with a low kick.
+  [4:10] Morgan Charriere runs Daniel Rutkowski to the fence and keeps working for the legs.
+  [3:53] Daniel Rutkowski lands short punches in the tie-up.
+  [3:37] Morgan Charriere chains the shot beautifully and settles in half guard.
+  [3:20] Morgan Charriere locks the triangle choke and Daniel Rutkowski refuses to tap. The referee checks Daniel Rutkowski's arm and receives no response. Morgan Charriere releases immediately as the referee stops it. Technical submission. The referee pulls Morgan Charriere away after the final strike. The official time is 1:40 of round 1; Morgan Charriere wins by Technical Submission. Morgan Charriere checks on Daniel Rutkowski before celebrating.
+FIGHT METRICS
+Fighter           Sig. Str.   TD     Subs  Control   KD
+------------------------------------------------------
+Morgan Charriere    3/1     1/2    1    1:07     0
+Daniel Rutkowski    4/4     0/0    0    0:00     0
+
+================================================================================================
+FIGHT 005: Zane Santos def. Santiago Vargas by Decision R3
+------------------------------------------------------------------------------------------------
+Tale of the tape: Muay Thai / Orthodox / Counter / Coach Favourite vs Grappler / Orthodox / Cautious / Title Mentality. Rules: 3x5. Scale: 135.2 lb vs 135.8 lb.
+Round 1: Zane Santos inches forward behind a high guard as Santiago Vargas gives ground.
+  [4:43] Zane Santos catches the body kick and runs Santiago Vargas down to the canvas.
+  [4:27] Zane Santos looks for a submission, but the defence is ready.
+  [4:10] Santiago Vargas shrimps back to guard before Zane Santos can settle.
+  [3:53] Zane Santos chips away with ground-and-pound.
+  [3:37] Santiago Vargas frames hard and recovers enough space to stop the pass.
+  [3:20] Santiago Vargas clamps down from guard and forces a slower pace.
+  [3:03] Zane Santos attacks, but Santiago Vargas stays calm and clears the danger.
+  [2:47] Santiago Vargas holds on and buys recovery time.
+  [2:30] Santiago Vargas clamps down from guard and forces a slower pace.
+  [2:13] Zane Santos controls the wrists and smothers Santiago Vargas's hips.
+  [2:13] The referee calls for more activity from the grounded fighters.
+  [1:57] Zane Santos keeps balance and shuts down the reversal.
+  [1:40] Zane Santos attacks, but Santiago Vargas stays calm and clears the danger.
+  [1:23] Santiago Vargas reads the setup and keeps the submission from locking in.
+  [1:07] Santiago Vargas reads the setup and keeps the submission from locking in.
+  [0:50] Zane Santos attacks, but Santiago Vargas stays calm and clears the danger.
+  [0:33] Zane Santos reads the setup and keeps the submission from locking in.
+  [0:17] Zane Santos traps a wrist and lands heavy shots on the mat.
+  [0:00] Zane Santos stays patient from top and makes Santiago Vargas carry the weight.
+Round 1 summary: Zane Santos edges it 10-9. Metrics - Zane Santos: impact 6, control 14, danger 0; Santiago Vargas: impact 0, control 5, danger 0. Live score Zane Santos 10, Santiago Vargas 9. Gas: Zane Santos 23, Santiago Vargas 39. Momentum: Zane Santos.
+Round 2: Zane Santos inches forward behind a high guard as Santiago Vargas gives ground.
+  [4:43] Zane Santos times the kick, scoops the leg, and turns it into a takedown.
+  [4:27] Zane Santos mat-returns Santiago Vargas before the escape is complete.
+  [4:10] Zane Santos looks for a submission, but the defence is ready.
+  [3:53] Santiago Vargas blocks the pass and keeps Zane Santos from improving.
+  [3:37] Santiago Vargas ties up wrists from bottom and slows the damage.
+  [3:20] Santiago Vargas elevates the hips and comes up on top.
+  [3:03] Zane Santos closes space from bottom, controls the wrists, and waits for a chance to improve.
+  [2:47] Zane Santos closes space from bottom, controls the wrists, and waits for a chance to improve.
+  [2:30] Zane Santos closes space from bottom, controls the wrists, and waits for a chance to improve.
+  [2:30] The referee calls for more activity from the grounded fighters.
+  [2:13] Santiago Vargas's overhand sails over Zane Santos's shoulder.
+  [1:57] Zane Santos closes space from bottom, controls the wrists, and waits for a chance to improve.
+  [1:40] Santiago Vargas posts out and kills the sweep attempt.
+  [1:23] Zane Santos closes space from bottom, controls the wrists, and waits for a chance to improve.
+  [1:07] Santiago Vargas stays heavy and denies the guard recovery.
+  [0:50] Santiago Vargas settles their weight and takes a breath without giving up top position.
+  [0:33] Zane Santos closes space from bottom, controls the wrists, and waits for a chance to improve.
+  [0:17] Santiago Vargas controls the wrists and smothers Zane Santos's hips.
+  [0:17] The referee calls for more activity from the grounded fighters.
+  [0:00] Zane Santos closes space from bottom, controls the wrists, and waits for a chance to improve.
+Round 2 summary: Santiago Vargas edges it 10-9. Metrics - Zane Santos: impact 0, control 7, danger 0; Santiago Vargas: impact 0, control 11, danger 0. Live score Zane Santos 19, Santiago Vargas 19. Gas: Zane Santos 4, Santiago Vargas 8. Momentum: Santiago Vargas.
+Round 3: Zane Santos circles at long range while Santiago Vargas looks for the first opening.
+  [4:43] Santiago Vargas shells up, breathes, and tries to recover.
+  [4:27] Zane Santos slips outside the straight punch.
+  [4:10] Santiago Vargas shells up, breathes, and tries to recover.
+  [3:53] Zane Santos doubles the jab and disrupts Santiago Vargas's stance.
+  [3:37] Santiago Vargas lands a long straight at maximum range.
+  [3:20] Zane Santos closes distance and locks Santiago Vargas into the tie-up.
+  [3:03] Zane Santos lands short punches in the tie-up.
+  [2:47] Santiago Vargas leans into the clinch and uses the tie-up to recover.
+  [2:30] Zane Santos leans into the clinch and uses the tie-up to recover.
+  [2:13] Zane Santos leans into the clinch and uses the tie-up to recover.
+  [1:57] Zane Santos leans into the clinch and uses the tie-up to recover.
+  [1:57] Santiago Vargas is visibly tired and takes an extra second before resetting.
+  [1:40] Santiago Vargas leans into the clinch and uses the tie-up to recover.
+  [1:23] Zane Santos keeps Santiago Vargas pinned and wins the hand fight.
+  [1:07] Zane Santos leans into the clinch and uses the tie-up to recover.
+  [0:50] Santiago Vargas leans into the clinch and uses the tie-up to recover.
+  [0:33] Zane Santos leans into the clinch and uses the tie-up to recover.
+  [0:17] Zane Santos leans into the clinch and uses the tie-up to recover.
+  [0:00] Zane Santos leans into the clinch and uses the tie-up to recover.
+Round 3 summary: Zane Santos edges it 10-9. Metrics - Zane Santos: impact 8, control 1, danger 0; Santiago Vargas: impact 1, control 0, danger 0. Live score Zane Santos 29, Santiago Vargas 28. Gas: Zane Santos 5, Santiago Vargas 3. Momentum: Zane Santos.
+Official scorecard:
+  Round 1: Zane Santos 10, Santiago Vargas 9 (Zane Santos)
+  Round 2: Zane Santos 9, Santiago Vargas 10 (Santiago Vargas)
+  Round 3: Zane Santos 10, Santiago Vargas 9 (Zane Santos)
+  Total: Zane Santos 29, Santiago Vargas 28
+The judges prefer Zane Santos's work. Official score before variance: 29-28.
+FIGHT METRICS
+Fighter           Sig. Str.   TD     Subs  Control   KD
+------------------------------------------------------
+Zane Santos        10/20    0/0    7    10:00     0
+Santiago Vargas     1/18    0/0    1    3:37     0
+
+================================================================================================
+FIGHT 006: Mei Lim def. Norma Weili by Decision R3
+------------------------------------------------------------------------------------------------
+Tale of the tape: Catch Wrestler / Switch / Cautious / Media Natural vs Well-Rounded / Orthodox / Control / Cardio Machine. Rules: 3x5. Scale: 264.4 lb vs 270.4 lb.
+Round 1: both fighters take the centre and begin reading range.
+  [4:43] Mei Lim lands an uppercut through the middle.
+  [4:27] Norma Weili lands an uppercut through the middle.
+  [4:10] Norma Weili opens visible damage on Mei Lim.
+  [3:53] Mei Lim lands an uppercut through the middle.
+  [3:37] Mei Lim lands a clean one-two and exits before Norma Weili can answer.
+  [3:20] Norma Weili feints high and attacks the lead leg.
+  [3:03] Mei Lim lands a clean one-two and exits before Norma Weili can answer.
+  [2:47] Mei Lim drives through the hips and lands on top in half guard.
+  [2:30] Mei Lim drags Norma Weili back down and keeps top control.
+  [2:13] Norma Weili holds on and buys recovery time.
+  [1:57] Mei Lim keeps heavy top pressure and limits Norma Weili's options.
+  [1:40] Mei Lim looks for a submission, but the defence is ready.
+  [1:23] Mei Lim keeps the dominant position.
+  [1:07] Norma Weili holds on and buys recovery time.
+  [0:50] Norma Weili reads the setup and keeps the submission from locking in.
+  [0:33] Mei Lim drags Norma Weili back down and keeps top control.
+  [0:17] Mei Lim posts out and kills the sweep attempt.
+  [0:00] Norma Weili clamps down from guard and forces a slower pace.
+  [0:00] Mei Lim hip-escapes just enough to make Norma Weili reset position.
+Round 1 summary: Norma Weili edges it 10-9. Metrics - Mei Lim: impact 8, control 15, danger 0; Norma Weili: impact 15, control 3, danger 0. Live score Mei Lim 9, Norma Weili 10. Gas: Mei Lim 54, Norma Weili 34. Momentum: Norma Weili.
+Round 2: the fighters exchange feints without fully committing.
+  [4:43] Mei Lim drives through the hips and lands on top in half guard.
+  [4:27] Mei Lim advances to side control.
+  [4:10] Norma Weili clamps down from guard and forces a slower pace.
+  [3:53] Mei Lim lands short punches from top control.
+  [3:37] Norma Weili builds up and gets back to the feet.
+  [3:20] Norma Weili lands an uppercut through the middle.
+  [3:03] Norma Weili crowds Mei Lim and denies striking space.
+  [2:47] Mei Lim sneaks an uppercut through the clinch.
+  [2:30] Norma Weili circles off before Mei Lim can keep the tie-up.
+  [2:13] Mei Lim chains the shot beautifully and settles in half guard.
+  [1:57] Norma Weili reads the setup and keeps the submission from locking in.
+  [1:40] Norma Weili closes space from bottom, controls the wrists, and waits for a chance to improve.
+  [1:23] Norma Weili stays composed through a deep submission threat.
+  [1:07] Norma Weili clamps down from guard and forces a slower pace.
+  [0:50] Mei Lim attacks, but Norma Weili stays calm and clears the danger.
+  [0:33] Mei Lim settles their weight and takes a breath without giving up top position.
+  [0:17] Norma Weili closes space from bottom, controls the wrists, and waits for a chance to improve.
+  [0:00] Mei Lim settles their weight and takes a breath without giving up top position.
+  [0:00] The referee calls for more activity from the grounded fighters.
+Round 2 summary: Mei Lim edges it 10-9. Metrics - Mei Lim: impact 10, control 15, danger 16; Norma Weili: impact 5, control 3, danger 0. Live score Mei Lim 19, Norma Weili 19. Gas: Mei Lim 19, Norma Weili 4. Momentum: Mei Lim.
+Round 3: the fighters exchange feints without fully committing.
+  [4:43] Mei Lim uses a jab feint to enter the clinch.
+  [4:27] Mei Lim pins Norma Weili to the fence and drains the clock.
+  [4:27] Norma Weili is visibly tired and takes an extra second before resetting.
+  [4:10] Norma Weili digs for double underhooks and turns Mei Lim onto the fence.
+  [3:53] Norma Weili leans into the clinch and uses the tie-up to recover.
+  [3:37] Mei Lim peels the hands away and exits the clinch.
+  [3:20] Norma Weili shells up, breathes, and tries to recover.
+  [3:03] Mei Lim doubles the jab and disrupts Norma Weili's stance.
+  [2:47] Norma Weili shells up, breathes, and tries to recover.
+  [2:30] Norma Weili covers up and focuses on surviving the moment.
+  [2:13] Mei Lim covers up and focuses on surviving the moment.
+  [1:57] Norma Weili uses a jab feint to enter the clinch.
+  [1:40] Norma Weili leans into the clinch and uses the tie-up to recover.
+  [1:23] Mei Lim leans into the clinch and uses the tie-up to recover.
+  [1:07] Mei Lim leans into the clinch and uses the tie-up to recover.
+  [0:50] Mei Lim keeps the tie-up and makes Norma Weili work.
+  [0:33] Mei Lim leans into the clinch and uses the tie-up to recover.
+  [0:17] Mei Lim leans into the clinch and uses the tie-up to recover.
+  [0:00] Norma Weili leans into the clinch and uses the tie-up to recover.
+Round 3 summary: Mei Lim edges it 10-9. Metrics - Mei Lim: impact 3, control 5, danger 0; Norma Weili: impact 0, control 4, danger 0. Live score Mei Lim 29, Norma Weili 28. Gas: Mei Lim 15, Norma Weili 4. Momentum: Mei Lim.
+Official scorecard:
+  Round 1: Mei Lim 9, Norma Weili 10 (Norma Weili)
+  Round 2: Mei Lim 10, Norma Weili 9 (Mei Lim)
+  Round 3: Mei Lim 10, Norma Weili 9 (Mei Lim)
+  Total: Mei Lim 29, Norma Weili 28
+After the scorecards are read, Mei Lim takes the decision over Norma Weili (29-28).
+FIGHT METRICS
+Fighter           Sig. Str.   TD     Subs  Control   KD
+------------------------------------------------------
+Mei Lim            22/27    3/3    5    7:13     0
+Norma Weili         8/8     0/0    0    3:20     0
+
+================================================================================================
+FIGHT 007: Ivan Almeida def. Declan McLeod by Submission R1
+------------------------------------------------------------------------------------------------
+Tale of the tape: Dutch Kickboxer / Orthodox / Dynamic Attacker / Title Mentality vs Judo / Orthodox / Dynamic Attacker / Showman. Rules: 3x5. Scale: 265.8 lb vs 265.9 lb.
+Round 1: both fighters take the centre and begin reading range.
+  [4:43] Ivan Almeida catches Declan McLeod cleanly with a compact hook.
+  [4:27] Ivan Almeida lands a clean one-two and exits before Declan McLeod can answer.
+  [4:10] Ivan Almeida lands a clean one-two and exits before Declan McLeod can answer.
+  [3:53] Ivan Almeida drives through the hips and lands on top in half guard.
+  [3:37] Ivan Almeida attacks the neck and forces Declan McLeod into emergency defence.
+  [3:20] Ivan Almeida clears the knee shield and moves to side control.
+  [3:20] Declan McLeod stays defensively responsible and keeps talking to the referee.
+  [3:03] Ivan Almeida traps a wrist and lands heavy shots on the mat.
+  [2:47] Ivan Almeida advances to mount.
+  [2:30] Ivan Almeida controls the wrists and smothers Declan McLeod's hips.
+  [2:13] Declan McLeod clamps down from guard and forces a slower pace.
+  [1:57] Ivan Almeida clears the knee shield and moves to back control.
+  [1:40] Ivan Almeida stays patient from top and makes Declan McLeod carry the weight.
+  [1:23] Ivan Almeida shrugs off the submission attempt and settles back on top.
+  [1:07] Ivan Almeida creates the opening for the rear-naked choke and starts the attack. Ivan Almeida secures the rear-naked choke and improves the angle. Declan McLeod fights the hands and tries to change the position. Ivan Almeida tightens the finish as Declan McLeod's defence breaks down. Declan McLeod taps to the rear-naked choke. The official time is 3:53 of round 1; Ivan Almeida wins by Submission.
+FIGHT METRICS
+Fighter           Sig. Str.   TD     Subs  Control   KD
+------------------------------------------------------
+Declan McLeod       0/0     0/0    1    0:00     0
+Ivan Almeida       11/12    1/1    2    3:03     0
+
+================================================================================================
+FIGHT 008: Yana Santos def. Gina Carano by Submission R2
+------------------------------------------------------------------------------------------------
+Tale of the tape: Muay Thai / Switch / Pressure / Pressure Fighter vs Grappler / Southpaw / Submission Hunter / Submission Ace. Rules: 3x5. Scale: 135.4 lb vs 135.1 lb.
+Round 1: both fighters take the centre and begin reading range.
+  [4:43] Gina Carano lands a clean one-two and exits before Yana Santos can answer.
+  [4:27] Gina Carano uses a jab feint to enter the clinch.
+  [4:10] Gina Carano chains the shot beautifully and settles in guard.
+  [4:10] Yana Santos stays defensively responsible and keeps talking to the referee.
+  [3:53] Gina Carano wins the transition and settles in half guard.
+  [3:37] Gina Carano stays composed through a deep submission threat.
+  [3:20] Gina Carano loads up and misses wide.
+  [3:03] Gina Carano stays composed through a deep submission threat.
+  [2:47] Gina Carano loads up and misses wide.
+  [2:30] Gina Carano keeps heavy top pressure and limits Yana Santos's options.
+  [2:13] Gina Carano stays composed through a deep submission threat.
+  [1:57] Gina Carano loads up and misses wide.
+  [1:40] Gina Carano wins the transition and settles in side control.
+  [1:23] Yana Santos builds up and gets back to the feet.
+  [1:07] Yana Santos opens visible damage on Gina Carano.
+  [0:50] Yana Santos chains the shot beautifully and settles in half guard.
+  [0:33] Yana Santos mat-returns Gina Carano before the escape is complete.
+  [0:17] Yana Santos lands short punches from top control.
+  [0:00] Gina Carano reads the setup and keeps the submission from locking in.
+Round 1 summary: Yana Santos edges it 10-8. Metrics - Gina Carano: impact 6, control 17, danger 4; Yana Santos: impact 13, control 8, danger 42. Live score Gina Carano 8, Yana Santos 10. Gas: Gina Carano 23, Yana Santos 53. Momentum: Yana Santos.
+Round 2: Gina Carano switches stance while Yana Santos hovers at boxing range.
+  [4:43] Yana Santos chains the shot beautifully and settles in half guard.
+  [4:27] Yana Santos mat-returns Gina Carano before the escape is complete.
+  [4:10] Yana Santos shrugs off the submission attempt and settles back on top.
+  [3:53] Yana Santos creates the opening for the armbar and starts the attack. Yana Santos secures the armbar and improves the angle. Gina Carano fights the hands and tries to change the position. Yana Santos tightens the finish as Gina Carano's defence breaks down. Gina Carano taps to the armbar. Official result: Yana Santos wins by Submission at 1:07 of round 2.
+FIGHT METRICS
+Fighter           Sig. Str.   TD     Subs  Control   KD
+------------------------------------------------------
+Gina Carano         3/20    1/1    1    3:03     0
+Yana Santos         6/10    2/2    5    2:13     0
+
+================================================================================================
+FIGHT 009: Shintaro Ishiwatari def. Caolan Loughran by Decision R3
+------------------------------------------------------------------------------------------------
+Tale of the tape: Wrestler / Southpaw / Control / Gym Rat vs Wrestler / Orthodox / Control / Gym Rat. Rules: 3x5. Scale: 134.4 lb vs 135.7 lb.
+Round 1: both fighters take the centre and begin reading range.
+  [4:43] Caolan Loughran stays upright, but Shintaro Ishiwatari has them pinned on the cage.
+  [4:27] Shintaro Ishiwatari controls the wrists against the fence.
+  [4:10] Shintaro Ishiwatari keeps Caolan Loughran pinned and wins the hand fight.
+  [3:53] Shintaro Ishiwatari chains the shot beautifully and settles in half guard.
+  [3:37] Shintaro Ishiwatari looks for a submission, but the defence is ready.
+  [3:20] Caolan Loughran wall-walks back to standing.
+  [3:03] Shintaro Ishiwatari drives through the hips and lands on top in half guard.
+  [2:47] Shintaro Ishiwatari clears the knee shield and moves to side control.
+  [2:30] Shintaro Ishiwatari controls the wrists and smothers Caolan Loughran's hips.
+  [2:13] Shintaro Ishiwatari drags Caolan Loughran back down and keeps top control.
+  [1:57] Caolan Loughran rolls beneath the return punch.
+  [1:40] Caolan Loughran reads the setup and keeps the submission from locking in.
+  [1:23] Caolan Loughran posts on the mat and escapes to open space.
+  [1:07] Caolan Loughran gets chest-to-chest before Shintaro Ishiwatari can circle away.
+  [0:50] Shintaro Ishiwatari breaks free and resets at range.
+  [0:33] Shintaro Ishiwatari gets chest-to-chest before Caolan Loughran can circle away.
+  [0:17] Shintaro Ishiwatari gets the hips back before Caolan Loughran can connect the hands.
+  [0:00] Shintaro Ishiwatari lands a heavy hook that turns Caolan Loughran's head.
+Round 1 summary: Shintaro Ishiwatari edges it 10-9. Metrics - Shintaro Ishiwatari: impact 6, control 27, danger 2; Caolan Loughran: impact 0, control 1, danger 0. Live score Shintaro Ishiwatari 10, Caolan Loughran 9. Gas: Shintaro Ishiwatari 42, Caolan Loughran 54. Momentum: Shintaro Ishiwatari.
+Round 2: both fighters take the centre and begin reading range.
+  [4:43] Shintaro Ishiwatari drives through the hips and lands on top in half guard.
+  [4:27] Caolan Loughran ties up wrists from bottom and slows the damage.
+  [4:10] Caolan Loughran tries to sweep, but Shintaro Ishiwatari stays heavy.
+  [3:53] Shintaro Ishiwatari looks for a submission, but the defence is ready.
+  [3:37] Shintaro Ishiwatari stays heavy and denies the guard recovery.
+  [3:20] Shintaro Ishiwatari stays heavy and denies the guard recovery.
+  [3:03] Shintaro Ishiwatari advances to side control.
+  [2:47] Caolan Loughran posts on the mat and escapes to open space.
+  [2:30] Caolan Loughran lands a long straight at maximum range.
+  [2:13] Shintaro Ishiwatari lands a clean one-two and exits before Caolan Loughran can answer.
+  [1:57] Shintaro Ishiwatari snaps Caolan Loughran's head back with a stiff jab.
+  [1:40] Shintaro Ishiwatari changes levels and completes the takedown into half guard.
+  [1:23] Caolan Loughran ties up wrists from bottom and slows the damage.
+  [1:07] Shintaro Ishiwatari clears the knee shield and moves to side control.
+  [0:50] Shintaro Ishiwatari settles their weight and takes a breath without giving up top position.
+  [0:33] Shintaro Ishiwatari settles their weight and takes a breath without giving up top position.
+  [0:17] Caolan Loughran ties up wrists from bottom and slows the damage.
+  [0:17] The referee calls for more activity from the grounded fighters.
+  [0:00] Shintaro Ishiwatari stays patient from top and makes Caolan Loughran carry the weight.
+Round 2 summary: Shintaro Ishiwatari edges it 10-9. Metrics - Shintaro Ishiwatari: impact 3, control 26, danger 4; Caolan Loughran: impact 1, control 3, danger 0. Live score Shintaro Ishiwatari 20, Caolan Loughran 18. Gas: Shintaro Ishiwatari 15, Caolan Loughran 29. Momentum: Shintaro Ishiwatari.
+Round 3: Shintaro Ishiwatari circles at long range while Caolan Loughran looks for the first opening.
+  [4:43] Shintaro Ishiwatari crowds Caolan Loughran and denies striking space.
+  [4:27] Shintaro Ishiwatari leans into the clinch and uses the tie-up to recover.
+  [4:27] Caolan Loughran circles off the center line before the next exchange.
+  [4:10] Shintaro Ishiwatari turns Caolan Loughran toward the cage and leans heavy.
+  [3:53] Caolan Loughran sneaks an uppercut through the clinch.
+  [3:37] Shintaro Ishiwatari turns Caolan Loughran toward the cage and leans heavy.
+  [3:20] Shintaro Ishiwatari leans into the clinch and uses the tie-up to recover.
+  [3:03] Caolan Loughran digs for double underhooks and turns Shintaro Ishiwatari onto the fence.
+  [2:47] Shintaro Ishiwatari leans into the clinch and uses the tie-up to recover.
+  [2:30] Shintaro Ishiwatari leans into the clinch and uses the tie-up to recover.
+  [2:13] Shintaro Ishiwatari leans into the clinch and uses the tie-up to recover.
+  [1:57] Shintaro Ishiwatari sprawls hard and denies the takedown.
+  [1:40] Shintaro Ishiwatari changes levels and completes the takedown into half guard.
+  [1:23] Shintaro Ishiwatari settles their weight and takes a breath without giving up top position.
+  [1:07] Shintaro Ishiwatari settles their weight and takes a breath without giving up top position.
+  [1:07] The referee calls for more activity from the grounded fighters.
+  [0:50] Shintaro Ishiwatari settles their weight and takes a breath without giving up top position.
+  [0:33] Shintaro Ishiwatari settles their weight and takes a breath without giving up top position.
+  [0:17] Shintaro Ishiwatari wins the transition and settles in side control.
+  [0:17] Caolan Loughran's guard is sagging as the pace starts to bite.
+  [0:00] Caolan Loughran holds on and buys recovery time.
+Round 3 summary: Shintaro Ishiwatari edges it 10-9. Metrics - Shintaro Ishiwatari: impact 0, control 18, danger 2; Caolan Loughran: impact 6, control 4, danger 0. Live score Shintaro Ishiwatari 30, Caolan Loughran 27. Gas: Shintaro Ishiwatari 5, Caolan Loughran 10. Momentum: Caolan Loughran.
+Official scorecard:
+  Round 1: Shintaro Ishiwatari 10, Caolan Loughran 9 (Shintaro Ishiwatari)
+  Round 2: Shintaro Ishiwatari 10, Caolan Loughran 9 (Shintaro Ishiwatari)
+  Round 3: Shintaro Ishiwatari 10, Caolan Loughran 9 (Shintaro Ishiwatari)
+  Total: Shintaro Ishiwatari 30, Caolan Loughran 27
+After the scorecards are read, Shintaro Ishiwatari takes the decision over Caolan Loughran (30-27).
+FIGHT METRICS
+Fighter              Sig. Str.   TD     Subs  Control   KD
+---------------------------------------------------------
+Shintaro Ishiwatari    8/13    5/6    3    10:50     0
+Caolan Loughran        4/5     0/2    0    1:23     0
+
+================================================================================================
+FIGHT 010: Rose Quinn def. Jacqueline Cavalcanti by Decision R3
+------------------------------------------------------------------------------------------------
+Tale of the tape: Wrestler / Orthodox / Pressure / Coach Favourite vs Kickboxer / Switch / Dynamic Attacker / Big Finisher. Rules: 3x5. Scale: 135.4 lb vs 135.9 lb.
+Round 1: both fighters take the centre and begin reading range.
+  [4:43] Rose Quinn lands a long straight at maximum range.
+  [4:27] Rose Quinn drives through the hips and lands on top in half guard.
+  [4:10] Rose Quinn clears the knee shield and moves to side control.
+  [3:53] Jacqueline Cavalcanti holds on and buys recovery time.
+  [3:37] Rose Quinn advances to mount.
+  [3:20] Jacqueline Cavalcanti frames hard and recovers enough space to stop the pass.
+  [3:03] Rose Quinn posts out and kills the sweep attempt.
+  [2:47] Jacqueline Cavalcanti ties up wrists from bottom and slows the damage.
+  [2:30] Rose Quinn controls the wrists and smothers Jacqueline Cavalcanti's hips.
+  [2:13] Jacqueline Cavalcanti shrimps back to guard before Rose Quinn can settle.
+  [1:57] Jacqueline Cavalcanti ties up wrists from bottom and slows the damage.
+  [1:40] Rose Quinn wins the transition and settles in half guard.
+  [1:23] Jacqueline Cavalcanti builds up and gets back to the feet.
+  [1:07] Rose Quinn lands a heavy hook that turns Jacqueline Cavalcanti's head.
+  [0:50] Rose Quinn sends a high round kick crashing into the guard and head.
+  [0:33] Rose Quinn lands a long straight at maximum range.
+  [0:17] Rose Quinn uses a jab feint to enter the clinch.
+  [0:00] Rose Quinn cannot finish the shot but drives Jacqueline Cavalcanti to the cage.
+Round 1 summary: Rose Quinn edges it 10-8. Metrics - Rose Quinn: impact 25, control 25, danger 6; Jacqueline Cavalcanti: impact 0, control 5, danger 0. Live score Rose Quinn 10, Jacqueline Cavalcanti 8. Gas: Rose Quinn 55, Jacqueline Cavalcanti 69. Momentum: Rose Quinn.
+Round 2: Rose Quinn inches forward behind a high guard as Jacqueline Cavalcanti gives ground.
+  [4:43] Rose Quinn catches Jacqueline Cavalcanti with a loaded overhand.
+  [4:27] Jacqueline Cavalcanti gets chest-to-chest before Rose Quinn can circle away.
+  [4:10] Rose Quinn digs for double underhooks and turns Jacqueline Cavalcanti onto the fence.
+  [3:53] Rose Quinn changes levels and completes the takedown into half guard.
+  [3:37] Rose Quinn clears the knee shield and moves to side control.
+  [3:20] Rose Quinn rides the hips and keeps Jacqueline Cavalcanti pinned.
+  [3:03] Rose Quinn chips away with ground-and-pound.
+  [2:47] Rose Quinn stays patient from top and makes Jacqueline Cavalcanti carry the weight.
+  [2:30] Jacqueline Cavalcanti shrimps back to guard before Rose Quinn can settle.
+  [2:13] Rose Quinn traps a wrist and lands heavy shots on the mat.
+  [1:57] Rose Quinn lands short punches from top control.
+  [1:40] Jacqueline Cavalcanti clamps down from guard and forces a slower pace.
+  [1:23] Rose Quinn looks for a submission, but the defence is ready.
+  [1:07] Rose Quinn chips away with ground-and-pound.
+  [0:50] Jacqueline Cavalcanti clamps down from guard and forces a slower pace.
+  [0:33] Rose Quinn controls the wrists and smothers Jacqueline Cavalcanti's hips.
+  [0:17] Rose Quinn chips away with ground-and-pound.
+  [0:00] Jacqueline Cavalcanti gets the legs back in play and slows the attack.
+Round 2 summary: Rose Quinn edges it 10-9. Metrics - Rose Quinn: impact 23, control 25, danger 2; Jacqueline Cavalcanti: impact 0, control 7, danger 0. Live score Rose Quinn 20, Jacqueline Cavalcanti 17. Gas: Rose Quinn 19, Jacqueline Cavalcanti 47. Momentum: Rose Quinn.
+Round 3: Rose Quinn circles at long range while Jacqueline Cavalcanti looks for the first opening.
+  [4:43] Jacqueline Cavalcanti splits the guard with a straight punch.
+  [4:27] Rose Quinn crowds Jacqueline Cavalcanti and denies striking space.
+  [4:10] Rose Quinn runs Jacqueline Cavalcanti to the fence and keeps working for the legs.
+  [3:53] Rose Quinn controls the wrists against the fence.
+  [3:37] Jacqueline Cavalcanti digs for double underhooks and turns Rose Quinn onto the fence.
+  [3:20] Jacqueline Cavalcanti keeps Rose Quinn pinned and wins the hand fight.
+  [3:03] Rose Quinn leans into the clinch and uses the tie-up to recover.
+  [2:47] Jacqueline Cavalcanti controls the wrists against the fence.
+  [2:30] Rose Quinn leans into the clinch and uses the tie-up to recover.
+  [2:13] Jacqueline Cavalcanti digs inside punches while leaning on Rose Quinn.
+  [1:57] Jacqueline Cavalcanti keeps Rose Quinn pinned and wins the hand fight.
+  [1:40] Rose Quinn circles off before Jacqueline Cavalcanti can keep the tie-up.
+  [1:23] Jacqueline Cavalcanti snaps Rose Quinn's head back with a stiff jab.
+  [1:07] Jacqueline Cavalcanti lands a long straight at maximum range.
+  [0:50] Rose Quinn uses a jab feint to enter the clinch.
+  [0:33] Rose Quinn leans into the clinch and uses the tie-up to recover.
+  [0:17] Rose Quinn leans into the clinch and uses the tie-up to recover.
+  [0:00] Jacqueline Cavalcanti stays upright, but Rose Quinn has them pinned on the cage.
+Round 3 summary: Jacqueline Cavalcanti edges it 10-9. Metrics - Rose Quinn: impact 0, control 9, danger 0; Jacqueline Cavalcanti: impact 16, control 6, danger 0. Live score Rose Quinn 29, Jacqueline Cavalcanti 27. Gas: Rose Quinn 3, Jacqueline Cavalcanti 29. Momentum: Jacqueline Cavalcanti.
+Official scorecard:
+  Round 1: Rose Quinn 10, Jacqueline Cavalcanti 8 (Rose Quinn)
+  Round 2: Rose Quinn 10, Jacqueline Cavalcanti 9 (Rose Quinn)
+  Round 3: Rose Quinn 9, Jacqueline Cavalcanti 10 (Jacqueline Cavalcanti)
+  Total: Rose Quinn 29, Jacqueline Cavalcanti 27
+Judges score it 29-27. Rose Quinn wins by decision.
+FIGHT METRICS
+Fighter                Sig. Str.   TD     Subs  Control   KD
+-----------------------------------------------------------
+Rose Quinn              33/40    2/5    1    10:00     0
+Jacqueline Cavalcanti   10/18    0/0    0    2:13     0
+
+================================================================================================
+FIGHT 011: Yuri Weili def. Jordan Vucenic by Decision R3
+------------------------------------------------------------------------------------------------
+Tale of the tape: Freestyle Wrestler / Orthodox / Sprawl And Brawl / Coach Favourite vs Well-Rounded / Orthodox / Dynamic Attacker / Gym Rat. Rules: 3x5. Scale: 144.3 lb vs 145.5 lb.
+Round 1: the fighters exchange feints without fully committing.
+  [4:43] Yuri Weili stays upright, but Jordan Vucenic has them pinned on the cage.
+  [4:27] Jordan Vucenic lands short punches in the tie-up.
+  [4:10] Yuri Weili chains the shot beautifully and settles in half guard.
+  [3:53] Yuri Weili advances to side control.
+  [3:37] Jordan Vucenic gets the legs back in play and slows the attack.
+  [3:20] Jordan Vucenic holds on and buys recovery time.
+  [3:03] Yuri Weili keeps heavy top pressure and limits Jordan Vucenic's options.
+  [2:47] Jordan Vucenic posts on the mat and escapes to open space.
+  [2:30] Yuri Weili catches Jordan Vucenic cleanly with a compact hook.
+  [2:13] Yuri Weili parries the jab and keeps the range.
+  [1:57] Yuri Weili splits the guard with a straight punch.
+  [1:40] Yuri Weili uses a jab feint to enter the clinch.
+  [1:23] Jordan Vucenic runs Yuri Weili to the fence and keeps working for the legs.
+  [1:07] Jordan Vucenic breaks free and resets at range.
+  [0:50] Jordan Vucenic whips a high kick around the guard.
+  [0:50] Yuri Weili shows a counter and keeps Jordan Vucenic honest.
+  [0:33] Jordan Vucenic catches Yuri Weili with a loaded overhand.
+  [0:17] Yuri Weili slips outside the straight punch.
+  [0:00] Yuri Weili uses a jab feint to enter the clinch.
+Round 1 summary: Yuri Weili edges it 10-9. Metrics - Yuri Weili: impact 8, control 14, danger 2; Jordan Vucenic: impact 12, control 7, danger 0. Live score Yuri Weili 10, Jordan Vucenic 9. Gas: Yuri Weili 64, Jordan Vucenic 59. Momentum: Jordan Vucenic.
+Round 2: the fighters exchange feints without fully committing.
+  [4:43] Jordan Vucenic lands a heavy hook that turns Yuri Weili's head.
+  [4:27] Yuri Weili slams a hard kick into the body and leg.
+  [4:10] Jordan Vucenic reaches with the jab and is left out of position.
+  [3:53] Jordan Vucenic closes distance and locks Yuri Weili into the tie-up.
+  [3:37] Yuri Weili drives through the hips and lands on top in half guard.
+  [3:20] Yuri Weili clears the knee shield and moves to side control.
+  [3:03] Jordan Vucenic holds on and buys recovery time.
+  [2:47] Yuri Weili drags Jordan Vucenic back down and keeps top control.
+  [2:30] Jordan Vucenic shrimps back to guard before Yuri Weili can settle.
+  [2:13] Jordan Vucenic gets the legs back in play and slows the attack.
+  [1:57] Yuri Weili clears the knee shield and moves to half guard.
+  [1:40] Jordan Vucenic clamps down from guard and forces a slower pace.
+  [1:23] Jordan Vucenic shrimps back to guard before Yuri Weili can settle.
+  [1:07] Jordan Vucenic clamps down from guard and forces a slower pace.
+  [0:50] Jordan Vucenic blocks the power shot on the forearms.
+  [0:33] Jordan Vucenic times a sweep and reverses to top position.
+  [0:17] Yuri Weili frames hard and recovers enough space to stop the pass.
+  [0:00] Jordan Vucenic loads up and misses wide.
+  [0:00] Yuri Weili controls a wrist and slows the ground attack for a moment.
+Round 2 summary: Yuri Weili edges it 10-9. Metrics - Yuri Weili: impact 2, control 15, danger 4; Jordan Vucenic: impact 5, control 15, danger 0. Live score Yuri Weili 20, Jordan Vucenic 18. Gas: Yuri Weili 37, Jordan Vucenic 23. Momentum: Yuri Weili.
+Round 3: the fighters exchange feints without fully committing.
+  [4:43] Yuri Weili doubles the jab and disrupts Jordan Vucenic's stance.
+  [4:27] Jordan Vucenic crowds Yuri Weili and denies striking space.
+  [4:10] Yuri Weili peels the hands away and exits the clinch.
+  [3:53] Yuri Weili parries the jab and keeps the range.
+  [3:37] Jordan Vucenic closes distance and locks Yuri Weili into the tie-up.
+  [3:20] Jordan Vucenic sneaks an uppercut through the clinch.
+  [3:03] Yuri Weili blocks the power shot on the forearms.
+  [2:47] Yuri Weili digs for double underhooks and turns Jordan Vucenic onto the fence.
+  [2:30] Jordan Vucenic peels the hands away and exits the clinch.
+  [2:13] Yuri Weili doubles the jab and disrupts Jordan Vucenic's stance.
+  [1:57] Yuri Weili snaps Jordan Vucenic's head back with a stiff jab.
+  [1:40] Jordan Vucenic clinches defensively to buy time.
+  [1:23] Yuri Weili splits the guard with a straight punch.
+  [1:07] Yuri Weili splits the guard with a straight punch.
+  [0:50] Jordan Vucenic covers up and focuses on surviving the moment.
+  [0:33] Yuri Weili crowds Jordan Vucenic and denies striking space.
+  [0:17] Jordan Vucenic leans into the clinch and uses the tie-up to recover.
+  [0:00] Jordan Vucenic leans into the clinch and uses the tie-up to recover.
+Round 3 summary: Yuri Weili edges it 10-9. Metrics - Yuri Weili: impact 23, control 4, danger 0; Jordan Vucenic: impact 3, control 2, danger 0. Live score Yuri Weili 30, Jordan Vucenic 27. Gas: Yuri Weili 25, Jordan Vucenic 16. Momentum: Yuri Weili.
+Official scorecard:
+  Round 1: Yuri Weili 10, Jordan Vucenic 9 (Yuri Weili)
+  Round 2: Yuri Weili 10, Jordan Vucenic 9 (Yuri Weili)
+  Round 3: Yuri Weili 10, Jordan Vucenic 9 (Yuri Weili)
+  Total: Yuri Weili 30, Jordan Vucenic 27
+Judges score it 30-27. Yuri Weili wins by decision.
+FIGHT METRICS
+Fighter           Sig. Str.   TD     Subs  Control   KD
+------------------------------------------------------
+Yuri Weili         24/33    2/2    0    6:07     0
+Jordan Vucenic      9/44    0/2    0    3:03     0
+
+================================================================================================
+FIGHT 012: Damon Madsen def. Khalil Silva by Decision R3
+------------------------------------------------------------------------------------------------
+Tale of the tape: Dutch Kickboxer / Orthodox / Sprawl And Brawl / Knockout Artist vs Freestyle Wrestler / Orthodox / Control / Clutch. Rules: 3x5. Scale: 145.3 lb vs 144.9 lb.
+Round 1: Khalil Silva switches stance while Damon Madsen hovers at boxing range.
+  [4:43] Khalil Silva catches Damon Madsen with a loaded overhand.
+  [4:27] Khalil Silva snaps Damon Madsen's head back with a stiff jab.
+  [4:10] swelling starts to show around Damon Madsen's eye after Khalil Silva's shot lands.
+  [4:10] Damon Madsen answers with movement and makes Khalil Silva start again.
+  [3:53] Damon Madsen cannot finish the shot but drives Khalil Silva to the cage.
+  [3:37] Khalil Silva lands short punches in the tie-up.
+  [3:20] Damon Madsen runs Khalil Silva to the fence and keeps working for the legs.
+  [3:03] Khalil Silva digs inside punches while leaning on Damon Madsen.
+  [2:47] Khalil Silva drives through the hips and lands on top in half guard.
+  [2:30] Damon Madsen locks on a dangerous submission, but Khalil Silva survives.
+  [2:13] Damon Madsen traps a leg and denies the advance.
+  [1:57] Damon Madsen shrimps back to guard before Khalil Silva can settle.
+  [1:40] Damon Madsen elevates the hips and comes up on top.
+  [1:23] Khalil Silva ties up wrists from bottom and slows the damage.
+  [1:07] Damon Madsen keeps heavy top pressure and limits Khalil Silva's options.
+  [0:50] Damon Madsen chips away with ground-and-pound.
+  [0:33] Damon Madsen mat-returns Khalil Silva before the escape is complete.
+  [0:17] Khalil Silva ties up wrists from bottom and slows the damage.
+  [0:00] Khalil Silva ties up wrists from bottom and slows the damage.
+  [0:00] Damon Madsen controls a wrist and slows the ground attack for a moment.
+Round 1 summary: Damon Madsen edges it 10-9. Metrics - Khalil Silva: impact 18, control 9, danger 0; Damon Madsen: impact 5, control 16, danger 14. Live score Khalil Silva 9, Damon Madsen 10. Gas: Khalil Silva 33, Damon Madsen 48. Momentum: Damon Madsen.
+Round 2: both fighters take the centre and begin reading range.
+  [4:43] Damon Madsen catches Khalil Silva with a loaded overhand.
+  [4:27] Khalil Silva lands a long straight at maximum range.
+  [4:10] Khalil Silva chains the shot beautifully and settles in half guard.
+  [3:53] Khalil Silva drags Damon Madsen back down and keeps top control.
+  [3:37] Khalil Silva looks for a submission, but the defence is ready.
+  [3:20] Damon Madsen blocks the power shot on the forearms.
+  [3:03] Khalil Silva shrugs off the submission attempt and settles back on top.
+  [2:47] Khalil Silva settles their weight and takes a breath without giving up top position.
+  [2:30] Damon Madsen ties up wrists from bottom and slows the damage.
+  [2:13] Khalil Silva settles their weight and takes a breath without giving up top position.
+  [2:13] The referee calls for more activity from the grounded fighters.
+  [1:57] Khalil Silva settles their weight and takes a breath without giving up top position.
+  [1:57] After a prolonged stalemate on the mat, the referee stands them up.
+  [1:40] Damon Madsen uses a jab feint to enter the clinch.
+  [1:23] swelling starts to show around Khalil Silva's eye after Damon Madsen's shot lands.
+  [1:07] Damon Madsen stays upright, but Khalil Silva has them pinned on the cage.
+  [0:50] Khalil Silva leans into the clinch and uses the tie-up to recover.
+  [0:33] Damon Madsen chains the shot beautifully and settles in half guard.
+  [0:17] Khalil Silva closes space from bottom, controls the wrists, and waits for a chance to improve.
+  [0:00] Damon Madsen settles their weight and takes a breath without giving up top position.
+  [0:00] The referee calls for more activity from the grounded fighters.
+Round 2 summary: Damon Madsen edges it 10-9. Metrics - Khalil Silva: impact 2, control 11, danger 0; Damon Madsen: impact 6, control 7, danger 0. Live score Khalil Silva 18, Damon Madsen 20. Gas: Khalil Silva 6, Damon Madsen 14. Momentum: Damon Madsen.
+Round 3: Khalil Silva inches forward behind a high guard as Damon Madsen gives ground.
+  [4:43] Khalil Silva doubles the jab and disrupts Damon Madsen's stance.
+  [4:27] Damon Madsen doubles the jab and disrupts Khalil Silva's stance.
+  [4:10] Khalil Silva steps in with a powerful straight right.
+  [3:53] Khalil Silva lands a long straight at maximum range.
+  [3:37] Damon Madsen lands a clean one-two and exits before Khalil Silva can answer.
+  [3:20] Khalil Silva snaps Damon Madsen's head back with a stiff jab.
+  [3:03] Khalil Silva clinches defensively to buy time.
+  [2:47] Damon Madsen lands a clean one-two and exits before Khalil Silva can answer.
+  [2:30] Damon Madsen gets chest-to-chest before Khalil Silva can circle away.
+  [2:13] Khalil Silva leans into the clinch and uses the tie-up to recover.
+  [1:57] Khalil Silva leans into the clinch and uses the tie-up to recover.
+  [1:40] Damon Madsen peels the hands away and exits the clinch.
+  [1:23] Damon Madsen shells up, breathes, and tries to recover.
+  [1:07] Khalil Silva clinches defensively to buy time.
+  [0:50] Damon Madsen shells up, breathes, and tries to recover.
+  [0:33] Khalil Silva covers up and focuses on surviving the moment.
+  [0:17] Khalil Silva shells up, breathes, and tries to recover.
+  [0:00] Damon Madsen clinches defensively to buy time.
+Round 3 summary: Khalil Silva edges it 10-9. Metrics - Khalil Silva: impact 15, control 0, danger 0; Damon Madsen: impact 7, control 1, danger 0. Live score Khalil Silva 28, Damon Madsen 29. Gas: Khalil Silva 4, Damon Madsen 7. Momentum: Khalil Silva.
+Official scorecard:
+  Round 1: Khalil Silva 9, Damon Madsen 10 (Damon Madsen)
+  Round 2: Khalil Silva 9, Damon Madsen 10 (Damon Madsen)
+  Round 3: Khalil Silva 10, Damon Madsen 9 (Khalil Silva)
+  Total: Khalil Silva 28, Damon Madsen 29
+The judges prefer Damon Madsen's work. Official score before variance: 28-29.
+FIGHT METRICS
+Fighter           Sig. Str.   TD     Subs  Control   KD
+------------------------------------------------------
+Khalil Silva       22/42    2/3    1    4:10     0
+Damon Madsen       11/23    1/3    2    5:17     0

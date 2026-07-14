@@ -1,0 +1,147 @@
+========================================================== MMA GAME
+IDEAS Staff, Scouting, Academy & AI Improvements
+==========================================================
+
+  ---------------------------
+  1. OPTIONAL SCOUTING MODE
+  ---------------------------
+
+Scouting should be an optional gameplay feature.
+
+Game Option - OFF - All fighter attributes visible immediately. -
+Classic management mode.
+
+-   ON
+    -   Fighter information must be discovered.
+    -   Unknown stats remain hidden or estimated.
+    -   Scouts reveal information over time.
+
+Basic Scout (2 weeks) - Reveals a partial profile. - Amount revealed
+depends on scout quality. - Provides enough information for an initial
+signing decision.
+
+Full Scout (6 weeks) - Reveals the complete fighter profile. - Removes
+all uncertainty. - Unlocks hidden strengths, weaknesses and detailed
+notes.
+
+Fight Observation Bonus - If a fighter competes while being scouted: -
+Their profile immediately becomes fully revealed. - The live fight gives
+enough information to complete the scouting report.
+
+  ---------------------------------
+  2. RECRUITMENT & SCOUTING STAFF
+  ---------------------------------
+
+Recruitment staff should function similarly to Football Manager.
+
+Staff Attributes - Fighter Judging - Potential Judging - Efficiency -
+Regional Knowledge - Networking - Reliability - Negotiation -
+Professionalism
+
+Scout Quality - Elite Scout: Reveals 70–90% of useful information after
+2 weeks. - Average Scout: Reveals around 40–60%. - Poor Scout: Reveals
+only 20–35%.
+
+Hidden Information Better Scouts Reveal Earlier - Fight IQ - Chin -
+Cardio - Mental Toughness - Injury Proneness - Work Ethic -
+Coachability - Potential - Personality - Consistency
+
+Long-Term Benefits - Discover better prospects. - Find talent earlier. -
+Build regional knowledge. - Develop gym contacts. - Produce higher
+quality reports. - Reduce expensive signing mistakes.
+
+  ---------------------
+  3. FIGHTING ACADEMY
+  ---------------------
+
+Purpose Create a long-term youth development pathway similar to Football
+Manager’s youth academy.
+
+Purchase & Running Costs - Initial purchase cost. - Weekly operating
+costs. - Upgradeable facilities.
+
+Academy Capacity - Limited fighter slots. - Additional slots must be
+purchased. - Expanding capacity increases weekly costs.
+
+Academy Scouts - Search for young prospects instead of existing
+fighters. - Assign to world regions. - Approximately 2 months before
+prospects appear. - Better scouts find better talent.
+
+Generated Prospects - Ages 12–15. - Hidden potential and traits.
+
+Academy Talent List - Sign prospects before rivals do.
+
+Academy Fighters - Train. - Develop. - Fight amateur bouts. - Eventually
+earn promotion.
+
+Training Plans - Wrestling - Boxing - Muay Thai - BJJ - Judo - Sambo -
+Clinch - Cardio - Strength - Fight IQ
+
+Automatic Development - AI manages development if the player chooses.
+
+Simplified Academy Weight Classes - Broad amateur divisions for easier
+matchmaking.
+
+Professional Promotion - Assigned their proper adult weight class. -
+Academy history remains intact.
+
+  --------------------
+  4. AMATEUR RECORDS
+  --------------------
+
+-   Separate Amateur and Professional records.
+-   Every amateur bout remains permanently in career history.
+
+  -------------------------------
+  5. FIGHTER PROFILE RESULTS UI
+  -------------------------------
+
+Replace the text list with proper fight cards.
+
+Display: - Result colour - Opponent - Event - Date - Method - Round -
+Time - Championship indicators - Bonuses - Weight Class - Amateur /
+Professional badge
+
+Career filters, summaries, timelines and detailed fight pages.
+
+  -------------------------------
+  6. PROMOTION AI CARD BUILDING
+  -------------------------------
+
+Rebuild AI card construction.
+
+Goals: - Use stars correctly. - Keep the roster active. - Respect
+injuries and layoffs. - Avoid repeatedly booking the same fighters. -
+Build realistic event hierarchies.
+
+Include activity tracking, inactivity logic, headliner scoring,
+matchmaking pools, and AI booking reasons for debugging.
+
+  ------------------------------------
+  7. MISSED WEIGHT & CANCELLED BOUTS
+  ------------------------------------
+
+Missing weight should trigger multiple possible outcomes instead of
+automatically cancelling fights.
+
+Possible outcomes: - Catchweight - Purse fine - Title implications -
+Replacement fighter - Postponement - Cancellation
+
+Automatic Rebooking - Search future scheduled events. - Confirm both
+fighters are available. - Preserve original card position (Main Event,
+Co-Main, Main Card, Prelims, Early Prelims). - If no suitable slot
+exists, keep the bout awaiting rebooking.
+
+  ------------------------------
+  8. FIGHTER DEVELOPMENT AUDIT
+  ------------------------------
+
+Audit the current development system.
+
+Ensure fighters continue improving through: - Training - Coaching - Gym
+quality - Age - Potential - Work ethic
+
+Fights should accelerate development rather than being the only source.
+
+Important: If the current system already satisfies these requirements,
+do not change it. Only modify areas that fail the audit.

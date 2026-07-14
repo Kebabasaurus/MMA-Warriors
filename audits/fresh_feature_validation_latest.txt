@@ -1,0 +1,9 @@
+MMA WARRIORS - FRESH FEATURE VALIDATION
+========================================================================
+PASS  Basic scouting
+PASS  Academy talent generation
+PASS  Academy weekly development
+PASS  AI event hierarchy
+PASS  Automatic rebooking
+
+This harness uses a new in-memory world only; no user save was opened or written.

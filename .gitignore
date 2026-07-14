@@ -1,0 +1,32 @@
+# Python/cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Build/package output
+build/
+dist/
+*.spec
+
+# Runtime data
+Saves/
+savegame.json
+Logs/
+
+# Manual/project backups
+Backups/
+backup/
+
+# Temporary/editor files
+*.tmp
+*.bak
+*.old
+*.log
+
+# Database automatic safety copies
+Databases/*.backup_*.json
+Databases/*.broken_*.json
+
+# OS noise
+Thumbs.db
+Desktop.ini

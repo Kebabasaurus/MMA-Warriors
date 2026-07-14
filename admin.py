@@ -1,0 +1,953 @@
+import json
+import random
+import sys
+import traceback
+from datetime import datetime
+import tkinter as tk
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from tkinter import messagebox, ttk
+
+from constants import *
+from models import Fighter, Gym, Promotion
+
+
+class AdminMixin:
+    def apply_engine_settings(self):
+        for key, var in self.engine_vars.items():
+            self.engine_settings[key] = round(max(0.5, min(2.0, var.get())), 2)
+        self.inbox.append({"subject": "Engine Settings Updated", "body": f"Simulation engine settings updated: {self.engine_settings}", "type": "Rules", "resolved": False})
+        self.refresh_all()
+
+    def reset_engine_settings(self):
+        self.engine_settings = self.seed_engine_settings()
+        for key, var in self.engine_vars.items():
+            var.set(self.engine_settings[key])
+        self.refresh_all()
+
+    def all_database_fighters(self, include_retired=False):
+        fighters = {}
+        for fighter in self.roster:
+            fighters.setdefault(fighter.name, fighter)
+        for fighter in self.free_agents:
+            fighters.setdefault(fighter.name, fighter)
+        for promo in self.promotions:
+            for fighter in promo.roster:
+                fighters.setdefault(fighter.name, fighter)
+        if include_retired:
+            for fighter in self.retired_fighters:
+                fighters.setdefault(fighter.name, fighter)
+        return sorted(fighters.values(), key=lambda fighter: (fighter.weight, fighter.gender, fighter.name))
+
+    def refresh_sim_fighter_choices(self):
+        if not hasattr(self, "sim_combo_a"):
+            return
+        fighters = self.sim_filtered_fighters()
+        choices = [fighter.name for fighter in fighters]
+        self.sim_combo_a.configure(values=choices)
+        self.sim_combo_b.configure(values=choices)
+        if choices and self.sim_fighter_a.get() not in choices:
+            self.sim_fighter_a.set(choices[0])
+        if len(choices) > 1 and self.sim_fighter_b.get() not in choices:
+            self.sim_fighter_b.set(next((name for name in choices if name != self.sim_fighter_a.get()), choices[0]))
+        if hasattr(self, "sim_tournament_list"):
+            selected_names = {self.sim_tournament_list.get(index) for index in self.sim_tournament_list.curselection()}
+            self.sim_tournament_list.delete(0, "end")
+            for fighter in fighters:
+                self.sim_tournament_list.insert("end", fighter.name)
+            for index, fighter in enumerate(fighters):
+                if fighter.name in selected_names:
+                    self.sim_tournament_list.selection_set(index)
+        self.update_sim_fighter_cards()
+
+    def sim_filtered_fighters(self):
+        gender = getattr(self, "sim_gender_filter", tk.StringVar(value="All")).get()
+        weight = getattr(self, "sim_weight_filter", tk.StringVar(value="All")).get()
+        fighters = [
+            fighter for fighter in self.all_database_fighters()
+            if (gender == "All" or fighter.gender == gender)
+            and (weight == "All" or fighter.weight == weight)
+        ]
+        return sorted(fighters, key=lambda fighter: (-fighter.overall, -fighter.elo_rating, fighter.name))
+
+    def sim_fighter_scout_text(self, fighter):
+        if not fighter:
+            return "Select a fighter from the filtered database."
+        self.ensure_detailed_skills(fighter)
+        self.ensure_fighter_business_stats(fighter)
+        company = next((name for name, candidate in self.all_database_fighters_with_companies() if candidate.name == fighter.name), "Unknown")
+        return (
+            f"{fighter.name}  |  OVR {fighter.overall}  |  ELO {fighter.elo_rating}\n"
+            f"{fighter.gender} {fighter.weight}  |  {fighter.record}  |  Age {fighter.age}  |  {fighter.nationality}\n"
+            f"{company}  |  {fighter.style} / {fighter.stance}  |  {fighter.trait}\n"
+            f"Strike {fighter.striking}  Wrestle {fighter.wrestling}  Ground {fighter.grappling}  Cardio {fighter.cardio}  Chin {fighter.chin}\n"
+            f"Power {fighter.power}  TD Def {fighter.takedown_defence}  Control {fighter.ground_control}  Subs {fighter.submissions}/{fighter.submission_defence}\n"
+            f"Walk {fighter.walk_weight or self.default_walk_weight(fighter)} lb  Cut skill {self.ds(fighter, 'weight_cutting', fighter.cardio)}  Last cut penalty {fighter.weight_cut_penalty}\n"
+            f"Pop {fighter.popularity}  Momentum {fighter.momentum:+d}  Morale {fighter.morale}  Camp {fighter.camp} (+{fighter.camp_boost})  Status {fighter.status}"
+        )
+
+    def update_sim_fighter_cards(self):
+        if not hasattr(self, "sim_profile_a"):
+            return
+        self.sim_profile_a.config(text=self.sim_fighter_scout_text(self.find_fighter_anywhere(self.sim_fighter_a.get())))
+        self.sim_profile_b.config(text=self.sim_fighter_scout_text(self.find_fighter_anywhere(self.sim_fighter_b.get())))
+
+    def open_sim_fighter_profile(self, corner):
+        name = self.sim_fighter_a.get() if corner == "red" else self.sim_fighter_b.get()
+        fighter = self.find_fighter_anywhere(name)
+        if fighter:
+            self.open_fighter_profile_window(fighter)
+        else:
+            messagebox.showinfo("Simulator", "Select a fighter first.")
+
+    def auto_seed_sim_tournament(self):
+        if not hasattr(self, "sim_tournament_list"):
+            return
+        size = int(self.sim_tournament_size.get())
+        fighters = self.sim_filtered_fighters()
+        if len(fighters) < size:
+            messagebox.showwarning("Tournament", f"This filter has only {len(fighters)} eligible fighters; {size} are needed.")
+            return
+        # This is intentionally a draw, not a deterministic top-N pick. Stronger
+        # fighters remain more likely to enter, then the selected field is seeded by merit.
+        remaining = list(fighters)
+        drawn = []
+        while remaining and len(drawn) < size:
+            def draw_score(fighter):
+                rank_signal = max(0, fighter.elo_rating - 1400) / 26
+                record_signal = max(-8, min(16, fighter.record_w - fighter.record_l))
+                star_signal = fighter.popularity * 0.08
+                return fighter.overall * 0.65 + rank_signal + record_signal + star_signal + random.uniform(-22, 22)
+            selected = max(remaining, key=draw_score)
+            drawn.append(selected)
+            remaining.remove(selected)
+        seeded = sorted(drawn, key=lambda fighter: (-fighter.overall, -fighter.elo_rating, -(fighter.record_w - fighter.record_l), fighter.name))
+        selected_names = {fighter.name for fighter in seeded}
+        self.sim_tournament_list.selection_clear(0, "end")
+        for index in range(self.sim_tournament_list.size()):
+            if self.sim_tournament_list.get(index) in selected_names:
+                self.sim_tournament_list.selection_set(index)
+        self.write_sim_tournament_report(
+            f"{size}-fighter field drawn from the current filter, then seeded on overall and Elo.\n"
+            + "\n".join(f"#{index + 1} {fighter.name} (OVR {fighter.overall}, ELO {fighter.elo_rating}, {fighter.record})" for index, fighter in enumerate(seeded))
+        )
+
+    def write_sim_tournament_report(self, text):
+        if not hasattr(self, "sim_tournament_report"):
+            return
+        self.sim_tournament_report.config(state="normal")
+        self.sim_tournament_report.delete("1.0", "end")
+        self.sim_tournament_report.insert("end", text)
+        self.sim_tournament_report.config(state="disabled")
+
+    def simulate_tournament_bout(self, a, b, round_label):
+        fight = {"fighters": [a.name, b.name], "title": False, "interim": False, "main": False, "tier": "Main Card", "region": "Simulation Lab"}
+        winner, loser, method, round_no, commentary = self.simulate_fight(a, b, fight)
+        heading = f"{round_label}: {a.name} vs {b.name}"
+        lines = [heading, f"Odds: {self.matchup_odds(a, b)}"] + commentary
+        if method != "Draw":
+            summary = f"{winner.name} def. {loser.name} by {method}, R{round_no}"
+            lines.append(f"Result: {summary}")
+            return winner, loser, summary, {
+                "heading": heading, "lines": lines, "a": a.name, "b": b.name,
+                "a_record": a.record, "b_record": b.record, "weight": a.weight,
+                "label": round_label, "result": summary,
+            }
+        # A tournament needs an advancing fighter. Replaying a drawn sandbox bout keeps the fight engine in charge of the result.
+        for replay in range(1, 4):
+            lines.append(f"Initial bout ended in a draw. Tournament replay {replay} begins.")
+            winner, loser, method, round_no, replay_commentary = self.simulate_fight(a, b, fight)
+            if method != "Draw":
+                summary = f"{winner.name} def. {loser.name} by {method}, R{round_no} (after drawn bout replay {replay})"
+                lines.extend(replay_commentary)
+                lines.append(f"Result: {summary}")
+                return winner, loser, summary, {
+                    "heading": heading, "lines": lines, "a": a.name, "b": b.name,
+                    "a_record": a.record, "b_record": b.record, "weight": a.weight,
+                    "label": round_label, "result": summary,
+                }
+        winner, loser = (a, b) if (a.elo_rating, a.overall, a.name) >= (b.elo_rating, b.overall, b.name) else (b, a)
+        summary = f"{a.name} vs {b.name} remained drawn after replays; {winner.name} advances on tournament seeding"
+        lines.append(f"Result: {summary}")
+        return winner, loser, summary, {
+            "heading": heading, "lines": lines, "a": a.name, "b": b.name,
+            "a_record": a.record, "b_record": b.record, "weight": a.weight,
+            "label": round_label, "result": summary,
+        }
+
+    def run_simulation_tournament(self):
+        if not hasattr(self, "sim_tournament_list"):
+            return
+        size = int(self.sim_tournament_size.get())
+        selected_names = [self.sim_tournament_list.get(index) for index in self.sim_tournament_list.curselection()]
+        if len(selected_names) != size:
+            messagebox.showinfo("Tournament", f"Select exactly {size} fighters, or use Auto-Seed Division.")
+            return
+        originals = [self.find_fighter_anywhere(name) for name in selected_names]
+        if any(fighter is None for fighter in originals):
+            messagebox.showwarning("Tournament", "A selected fighter is no longer in the database. Refresh the field and try again.")
+            return
+        genders = {fighter.gender for fighter in originals}
+        weights = {fighter.weight for fighter in originals}
+        if len(genders) != 1 or len(weights) != 1:
+            messagebox.showwarning("Tournament", "Tournament entrants must all be in the same gender and weight division. Use the filters to build a valid field.")
+            return
+        entrants = sorted((self.clone_fighter_for_sim(fighter) for fighter in originals), key=lambda fighter: (-fighter.overall, -fighter.elo_rating, fighter.name))
+        gender = next(iter(genders))
+        weight = next(iter(weights))
+        report = [f"{size}-FIGHTER {gender.upper()} {weight.upper()} TOURNAMENT", "Sandbox results only: careers, records, and saves are unchanged.", "", "Seeds:"]
+        report.extend(f"#{index + 1} {fighter.name} | OVR {fighter.overall} | ELO {fighter.elo_rating} | {fighter.record}" for index, fighter in enumerate(entrants))
+        current = entrants
+        round_number = 1
+        stages = []
+        fight_logs = []
+        while len(current) > 1:
+            stage = {2: "FINAL", 4: "SEMIFINALS", 8: "QUARTERFINALS", 16: "ROUND OF 16"}.get(len(current), f"ROUND {round_number}")
+            report.extend(["", stage])
+            pairings = list(zip(current[:len(current) // 2], reversed(current[len(current) // 2:])))
+            winners = []
+            stage_matches = []
+            for a, b in pairings:
+                winner, _loser, summary, fight_log = self.simulate_tournament_bout(a, b, stage)
+                winner.fatigue = min(70, winner.fatigue + 7)
+                winners.append(winner)
+                report.append(summary)
+                fight_logs.append(fight_log)
+                stage_matches.append({"a": a.name, "b": b.name, "winner": winner.name, "summary": summary})
+            stages.append({"name": stage, "matches": stage_matches})
+            current = winners
+            round_number += 1
+        champion = current[0]
+        report.extend(["", f"CHAMPION: {champion.name} | OVR {champion.overall} | {champion.record}"])
+        self.write_sim_tournament_report("\n".join(report[:3] + ["", "Seeds:"] + report[4:4 + len(entrants)] + ["", "Tournament results are hidden until you watch the card."]))
+        tournament_name = f"Simulation Lab {size}-Fighter {gender} {weight} Tournament"
+        self.sim_tournament_bracket = {"title": tournament_name, "champion": champion.name, "stages": stages, "revealed": False}
+        self.sim_tournament_event = {"name": tournament_name, "venue": "Simulation Lab Arena", "region": self.player_region, "city": "Sandbox", "month": self.month, "week": self.week, "fights": []}
+        self.sim_tournament_package = {
+            "log": report, "fight_logs": fight_logs, "results": [],
+            "summary": f"{champion.name} wins the {size}-fighter tournament.",
+        }
+        self.open_sim_tournament_bracket()
+
+    def watch_simulation_tournament(self):
+        package = getattr(self, "sim_tournament_package", None)
+        event = getattr(self, "sim_tournament_event", None)
+        if not package or not event:
+            messagebox.showinfo("Tournament Night", "Run a tournament first, then its complete card can be watched like a fight night.")
+            return
+        def reveal_tournament():
+            self.sim_tournament_bracket["revealed"] = True
+            self.write_sim_tournament_report("\n".join(package["log"]))
+            self.open_sim_tournament_bracket()
+        self.open_live_fight_window(event, package, apply_results=False, on_complete=reveal_tournament)
+
+    def open_sim_tournament_bracket(self):
+        bracket = getattr(self, "sim_tournament_bracket", None)
+        if not bracket:
+            messagebox.showinfo("Tournament Bracket", "Run a tournament first to create its visual bracket.")
+            return
+        window = tk.Toplevel(self.root)
+        window.title(f"Tournament Bracket - {bracket['title']}")
+        window.geometry("1180x720")
+        window.minsize(900, 560)
+        window.configure(bg=self.colors["chrome"])
+        header = ttk.Frame(window, style="Header.TFrame")
+        header.pack(fill="x", padx=8, pady=(8, 0))
+        ttk.Label(header, text="TOURNAMENT BRACKET", style="ScreenTitle.TLabel").pack(side="left", padx=10, pady=5)
+        revealed = bool(bracket.get("revealed", False))
+        ttk.Label(header, text=f"CHAMPION: {bracket['champion']}" if revealed else "RESULTS HIDDEN UNTIL WATCHED", style="ScreenTitle.TLabel").pack(side="right", padx=10, pady=5)
+        subtitle = tk.Label(window, text=bracket["title"], bg=self.colors["chrome"], fg=self.colors["gold"], font=("Tahoma", 10, "bold"))
+        subtitle.pack(fill="x", padx=10, pady=7)
+        canvas = tk.Canvas(window, bg=self.colors["tree"], highlightthickness=1, highlightbackground=self.colors["line"])
+        canvas.pack(fill="both", expand=True, padx=10, pady=(0, 8))
+
+        def draw(_event=None):
+            canvas.delete("all")
+            width = max(850, canvas.winfo_width())
+            height = max(480, canvas.winfo_height())
+            stages = bracket["stages"]
+            columns = max(1, len(stages))
+            left_margin, right_margin, top_margin = 22, 22, 48
+            column_width = (width - left_margin - right_margin) / columns
+            card_width = max(150, min(235, column_width - 28))
+            positions = []
+            for column, stage in enumerate(stages):
+                x = left_margin + column * column_width + 8
+                canvas.create_text(x, 22, text=stage["name"], anchor="w", fill=self.colors["gold"], font=("Impact", 14))
+                count = max(1, len(stage["matches"]))
+                step = (height - top_margin - 20) / count
+                column_positions = []
+                for index, match in enumerate(stage["matches"]):
+                    y = top_margin + index * step + max(0, (step - 46) / 2)
+                    column_positions.append((x, y, step))
+                positions.append(column_positions)
+            for column in range(len(stages) - 1):
+                for index, (x, y, _step) in enumerate(positions[column]):
+                    nx, ny, _next_step = positions[column + 1][index // 2]
+                    start_x, start_y = x + card_width, y + 23
+                    mid_x = start_x + max(8, (nx - start_x) / 2)
+                    canvas.create_line(start_x, start_y, mid_x, start_y, mid_x, ny + 23, nx, ny + 23, fill=self.colors["line"], width=2)
+            for column, stage in enumerate(stages):
+                for index, match in enumerate(stage["matches"]):
+                    x, y, _step = positions[column][index]
+                    canvas.create_rectangle(x, y, x + card_width, y + 46, fill=self.colors["panel"], outline=self.colors["gold"] if stage["name"] == "FINAL" else self.colors["line"], width=2 if stage["name"] == "FINAL" else 1)
+                    a_color = self.colors["gold"] if revealed and match["winner"] == match["a"] else self.colors["text"]
+                    b_color = self.colors["gold"] if revealed and match["winner"] == match["b"] else self.colors["text"]
+                    canvas.create_text(x + 8, y + 12, text=match["a"], anchor="w", fill=a_color, font=("Tahoma", 8, "bold"))
+                    canvas.create_text(x + 8, y + 32, text=match["b"], anchor="w", fill=b_color, font=("Tahoma", 8, "bold"))
+                    if revealed:
+                        canvas.create_text(x + card_width - 7, y + 23, text="W", anchor="e", fill=self.colors["muted"], font=("Tahoma", 7, "bold"))
+        canvas.bind("<Configure>", draw)
+        draw()
+        footer = ttk.Frame(window, style="Chrome.TFrame")
+        footer.pack(fill="x", padx=8, pady=(0, 8))
+        ttk.Button(footer, text="Watch Tournament Night", style="Accent.TButton", command=self.watch_simulation_tournament).pack(side="left", padx=4)
+        ttk.Button(footer, text="Close", command=window.destroy).pack(side="right", padx=4)
+
+    def find_fighter_anywhere(self, name):
+        for fighter in self.all_database_fighters(include_retired=True):
+            if fighter.name == name:
+                return fighter
+        return None
+
+    def clone_fighter_for_sim(self, fighter):
+        clone = Fighter(**asdict(fighter))
+        self.ensure_detailed_skills(clone)
+        self.ensure_fighter_business_stats(clone)
+        clone.weight_cut_penalty = 0
+        clone.camp_boost = getattr(fighter, "camp_boost", 0)
+        return clone
+
+    def prepare_sim_fighter(self, fighter, camp_weeks, title_fight=False):
+        """Apply a sandbox camp and weigh-in to a disposable fighter clone."""
+        fighter.camp_weeks = max(0, min(16, int(camp_weeks)))
+        gym = self.gym_by_name(fighter.camp)
+        quality = self.gym_quality(fighter.camp)
+        specialty = self.gym_specialty_bonus(fighter, gym)
+        fighter.camp_quality = quality
+        base_boost = round(fighter.camp_weeks * (quality + specialty) / 135 * (0.65 + fighter.professionalism / 300))
+        fighter.camp_boost = min(12, max(0, base_boost + self.camp_form_variance(fighter, gym)))
+        outcome = self.perform_weigh_in(fighter, title_fight=title_fight, camp_weeks=fighter.camp_weeks, persist=True)
+        return outcome
+
+    def run_quick_fight_sim(self, watch=False):
+        a_name = self.sim_fighter_a.get()
+        b_name = self.sim_fighter_b.get()
+        if not a_name or not b_name or a_name == b_name:
+            messagebox.showinfo("Simulator", "Pick two different fighters.")
+            return
+        original_a = self.find_fighter_anywhere(a_name)
+        original_b = self.find_fighter_anywhere(b_name)
+        if not original_a or not original_b:
+            messagebox.showwarning("Simulator", "One of those fighters could not be found in the database.")
+            return
+        if original_a.gender != original_b.gender and not self.rules.get("allow_mixed_gender", False):
+            messagebox.showwarning("Rules blocked", "Mixed-gender fights are not allowed under this promotion's current rules.")
+            return
+        if original_a.weight != original_b.weight:
+            if not messagebox.askyesno("Weight mismatch", "These fighters are in different weight classes. Run this as an openweight simulator bout?"):
+                return
+        a = self.clone_fighter_for_sim(original_a)
+        b = self.clone_fighter_for_sim(original_b)
+        a_weigh = self.prepare_sim_fighter(a, self.sim_camp_weeks_a.get(), self.sim_title_fight.get())
+        b_weigh = self.prepare_sim_fighter(b, self.sim_camp_weeks_b.get(), self.sim_title_fight.get())
+        fight = {"fighters": [a.name, b.name], "title": self.sim_title_fight.get(), "interim": False, "main": self.sim_main_event.get(), "tier": "Main Card"}
+        winner, loser, method, round_no, commentary = self.simulate_fight(a, b, fight)
+        hype = self.fight_hype(a, b, fight)
+        excitement = self.fight_excitement(a, b, winner, loser, method, round_no, fight, hype)
+        label = "TITLE SIM" if fight["title"] else ("MAIN EVENT SIM" if fight["main"] else "SIM BOUT")
+        a_weight_note = "made" if a_weigh["made"] else f"missed by {a_weigh['miss_by']}"
+        b_weight_note = "made" if b_weigh["made"] else f"missed by {b_weigh['miss_by']}"
+        lines = [
+            f"{label}: {a.name} vs {b.name} ({a.weight})", f"Odds: {self.matchup_odds(a, b)}",
+            f"Sandbox camps: {a.name} {a.camp_weeks} wk (+{a.camp_boost}) | {b.name} {b.camp_weeks} wk (+{b.camp_boost})",
+            f"Sandbox weigh-ins: {a.name} {a_weigh['scale_weight']} lb ({a_weight_note}, cut penalty {a_weigh['penalty']}) | {b.name} {b_weigh['scale_weight']} lb ({b_weight_note}, cut penalty {b_weigh['penalty']})",
+        ]
+        lines.extend(commentary)
+        if method == "Draw":
+            lines.append(f"Result: {a.name} vs {b.name} ends in a draw, R{round_no} | Fight excitement {excitement}")
+        else:
+            lines.append(f"Result: {winner.name} def. {loser.name} by {method}, R{round_no} | Fight excitement {excitement}")
+        package = {
+            "log": [f"Quick Fight Simulator - {a.name} vs {b.name}", "=" * 72] + lines,
+            "fight_logs": [{"heading": lines[0], "lines": lines}],
+            "results": [],
+            "summary": lines[-1],
+        }
+        if hasattr(self, "sim_result"):
+            self.sim_result.config(text="Fight prepared. Watch it to reveal the result." if watch else lines[-1])
+        if watch:
+            event = {"name": "Quick Fight Simulator", "venue": "Simulation Lab", "region": self.player_region, "city": "Sandbox", "month": self.month, "week": self.week, "fights": [fight]}
+            self.open_live_fight_window(event, package, apply_results=False, on_complete=lambda: self.sim_result.config(text=lines[-1]))
+
+    def run_simulation_audit(self):
+        self.apply_engine_settings()
+        runs = max(10, min(1000, self.audit_runs.get()))
+        methods = {}
+        gates = []
+        profits = []
+        hypes = []
+        builds = []
+        upsets = 0
+        original_state = random.getstate()
+        for index in range(runs):
+            fights = []
+            for _ in range(random.randint(7, 11)):
+                a = self.create_generated_fighter(12, 80, 42, 92)
+                b = self.create_generated_fighter(12, 80, 42, 92)
+                b.weight = a.weight
+                b.gender = a.gender
+                fight = {"fighters": [a.name, b.name], "title": False, "main": False, "tier": random.choice(CARD_TIERS)}
+                hype = self.fight_hype(a, b, fight)
+                build = self.match_build_score(a, b, fight)
+                winner, loser, method, _round, _lines = self.simulate_fight(a, b, fight)
+                methods[method] = methods.get(method, 0) + 1
+                if loser.overall > winner.overall + 5:
+                    upsets += 1
+                fights.append((winner, loser, fight, method, hype, build))
+            total_hype = sum(row[4] for row in fights)
+            total_build = sum(row[5] for row in fights) / max(1, len(fights))
+            total_pay = sum(row[0].purse + row[1].purse for row in fights)
+            venue_capacity = random.choice([900, 4200, 7500, 14500])
+            regional_pull = random.uniform(0.8, 1.35)
+            attendance = min(venue_capacity, max(120, round(total_hype * random.uniform(8, 24) * regional_pull)))
+            ticket_price = random.randint(32, 92)
+            gate = round(attendance * ticket_price * self.engine_settings.get("gate_multiplier", 1.0))
+            rights = round(total_hype * random.randint(550, 1700) * (0.65 + total_build / 210))
+            production = len(fights) * random.randint(19000, 45000) + venue_capacity * 16
+            sponsorship = round(total_hype * random.randint(380, 1100) * (0.6 + total_build / 220))
+            profit = gate + rights - total_pay - production
+            profit += sponsorship
+            gates.append(gate)
+            profits.append(profit)
+            hypes.append(total_hype / max(1, len(fights)))
+            builds.append(total_build)
+        random.setstate(original_state)
+        def avg(values):
+            return round(sum(values) / max(1, len(values)))
+        report = [
+            f"Audit events: {runs}",
+            f"Average gate: ${avg(gates):,}",
+            f"Average profit: ${avg(profits):,}",
+            f"Average matchup hype: {avg(hypes)}",
+            f"Average fight build: {avg(builds)}",
+            f"Upsets: {upsets} ({round(upsets / max(1, sum(methods.values())) * 100, 1)}% of fights)",
+            "",
+            "Methods:",
+        ]
+        for method, count in sorted(methods.items(), key=lambda item: -item[1]):
+            report.append(f"- {method}: {count} ({round(count / max(1, sum(methods.values())) * 100, 1)}%)")
+        self.audit_text.config(state="normal")
+        self.audit_text.delete("1.0", "end")
+        self.audit_text.insert("end", "\n".join(report))
+        self.audit_text.config(state="disabled")
+
+    def run_play_level_audit(self):
+        """Run a fresh observer world for 30 years without touching this save."""
+        years = max(1, min(100, self.play_audit_years.get()))
+        weeks = years * 48
+        if hasattr(self, "play_audit_progress"):
+            self.play_audit_progress.configure(maximum=weeks, value=0)
+            self.play_audit_status.config(text=f"{years}-year play audit: starting fresh observer world...")
+        self.audit_text.config(state="normal")
+        self.audit_text.delete("1.0", "end")
+        self.audit_text.insert("end", "Running fresh 30-year observer audit...\nThis uses the full weekly world loop and may take a short while.")
+        self.audit_text.config(state="disabled")
+        self.root.update_idletasks()
+        audit_root = tk.Tk()
+        audit_root.withdraw()
+        methods, snapshots = {}, []
+        original_state = random.getstate()
+        try:
+            random.seed(260712)
+            audit = self.__class__(audit_root)
+            audit.enter_spectator_mode()
+            audit.suppress_award_popups = True
+            real_simulate = audit.simulate_fight
+            def count_fight(a, b, fight):
+                winner, loser, method, round_no, lines = real_simulate(a, b, fight)
+                methods[method] = methods.get(method, 0) + 1
+                return winner, loser, method, round_no, lines
+            audit.simulate_fight = count_fight
+            for index in range(weeks):
+                audit.advance_month()
+                if (index + 1) % 4 == 0 or index + 1 == weeks:
+                    if hasattr(self, "play_audit_progress"):
+                        completed = index + 1
+                        audit_year = 2026 + completed // 48
+                        audit_week = completed % 48
+                        self.play_audit_progress.configure(value=completed)
+                        self.play_audit_status.config(text=f"30-year play audit: Year {audit_year} | week {audit_week or 48}/48 ({completed / weeks * 100:.1f}%)")
+                    self.root.update_idletasks()
+                if (index + 1) % 48 == 0:
+                    active = [fighter for fighter in audit.all_fighter_objects() if not fighter.retired]
+                    viable = [promo for promo in audit.promotions if promo.cash > 0 and promo.stability >= 20]
+                    snapshots.append((2026 + (index + 1) // 48, len(audit.promotions), len(viable), len(active), len(audit.free_agents), len(audit.retired_fighters), sum(1 for fighter in active if fighter.overall >= 80)))
+                if (index + 1) % 96 == 0:
+                    self.root.update_idletasks()
+            total = sum(methods.values())
+            finish_count = sum(count for method, count in methods.items() if method not in ("Decision", "Draw"))
+            last = snapshots[-1]
+            report = [
+                f"{years}-YEAR PLAY-LEVEL AUDIT (fresh spectator world)",
+                f"Weeks simulated: {weeks:,} | Fights: {total:,}",
+                f"Finish rate: {finish_count / max(1, total) * 100:.1f}% | Decision rate: {methods.get('Decision', 0) / max(1, total) * 100:.1f}%",
+                "", "METHOD DISTRIBUTION:",
+            ]
+            report.extend(f"- {method}: {count:,} ({count / max(1, total) * 100:.1f}%)" for method, count in sorted(methods.items(), key=lambda item: -item[1]))
+            report.extend(["", "YEARLY WORLD HEALTH (year | promotions | viable | active | FAs | retired | 80+ OVR):"])
+            report.extend("- " + " | ".join(map(str, row)) for row in snapshots)
+            report.extend(["", f"FINAL: {last[1]} promotions ({last[2]} viable), {last[3]} active fighters, {last[4]} free agents, {last[5]} retired, {last[6]} elite fighters."])
+        except Exception as exc:
+            report = ["30-year audit failed:", f"{type(exc).__name__}: {exc}", traceback.format_exc()]
+        finally:
+            random.setstate(original_state)
+            audit_root.destroy()
+        self.audit_text.config(state="normal")
+        self.audit_text.delete("1.0", "end")
+        self.audit_text.insert("end", "\n".join(report))
+        self.audit_text.config(state="disabled")
+        self.play_audit_report = "\n".join(report)
+        if hasattr(self, "play_audit_progress"):
+            if report and report[0].startswith("30-YEAR"):
+                self.play_audit_progress.configure(value=weeks)
+                self.play_audit_status.config(text=f"{years}-year play audit: complete — results shown below")
+                if hasattr(self, "view_play_audit_button"):
+                    self.view_play_audit_button.configure(state="normal")
+            else:
+                self.play_audit_status.config(text=f"{years}-year play audit: failed — see report below")
+
+    def open_play_level_audit_results(self):
+        report = getattr(self, "play_audit_report", "")
+        if not report:
+            messagebox.showinfo("30-Year Play Audit", "Run the 30-year play audit first.")
+            return
+        window = tk.Toplevel(self.root)
+        window.title("30-Year Play Audit Results")
+        window.geometry("940x680")
+        window.minsize(720, 480)
+        window.configure(bg=self.colors["chrome"])
+        ttk.Label(window, text="30-YEAR PLAY AUDIT RESULTS", style="ScreenTitle.TLabel").pack(anchor="w", padx=12, pady=(10, 4))
+        text = tk.Text(window, wrap="none", font=("Courier New", 10), bg=self.colors["cream"], fg=self.colors["text"], padx=12, pady=12)
+        text.pack(fill="both", expand=True, padx=10, pady=(0, 8))
+        text.insert("end", report)
+        text.config(state="disabled")
+        ttk.Button(window, text="Close", style="Accent.TButton", command=window.destroy).pack(anchor="e", padx=10, pady=(0, 10))
+
+    def run_play_level_audit(self):
+        """Run a fresh observer world for a long-run balance audit without touching this save."""
+        years = max(1, min(100, self.play_audit_years.get()))
+        weeks = years * 48
+        if hasattr(self, "play_audit_progress"):
+            self.play_audit_progress.configure(maximum=weeks, value=0)
+            self.play_audit_status.config(text=f"{years}-year play audit: starting fresh observer world...")
+        self.audit_text.config(state="normal")
+        self.audit_text.delete("1.0", "end")
+        self.audit_text.insert("end", f"Running fresh {years}-year observer audit...\nThis uses the full weekly world loop and may take a short while.")
+        self.audit_text.config(state="disabled")
+        self.root.update_idletasks()
+        audit_root = tk.Tk()
+        audit_root.withdraw()
+        methods, snapshots = {}, []
+        original_state = random.getstate()
+        try:
+            random.seed(260712)
+            audit = self.__class__(audit_root)
+            audit.enter_spectator_mode()
+            audit.suppress_award_popups = True
+            real_simulate = audit.simulate_fight
+
+            def count_fight(a, b, fight):
+                winner, loser, method, round_no, lines = real_simulate(a, b, fight)
+                methods[method] = methods.get(method, 0) + 1
+                return winner, loser, method, round_no, lines
+
+            audit.simulate_fight = count_fight
+            for index in range(weeks):
+                audit.advance_month()
+                if (index + 1) % 4 == 0 or index + 1 == weeks:
+                    if hasattr(self, "play_audit_progress"):
+                        completed = index + 1
+                        audit_year = 2026 + completed // 48
+                        audit_week = completed % 48
+                        self.play_audit_progress.configure(value=completed)
+                        self.play_audit_status.config(text=f"{years}-year play audit: Year {audit_year} | week {audit_week or 48}/48 ({completed / weeks * 100:.1f}%)")
+                    self.root.update_idletasks()
+                if (index + 1) % 48 == 0:
+                    active = [fighter for fighter in audit.all_fighter_objects() if not fighter.retired]
+                    viable = [promo for promo in audit.promotions if promo.cash > 0 and promo.stability >= 20]
+                    promo_cash = [promo.cash for promo in audit.promotions]
+                    sport_events = sum(len(world.get("events", [])) for world in getattr(audit, "combat_sport_worlds", {}).values())
+                    academy = getattr(audit, "academy", {}) or {}
+                    snapshots.append({
+                        "year": 2026 + (index + 1) // 48,
+                        "promotions": len(audit.promotions),
+                        "viable": len(viable),
+                        "distressed": sum(1 for promo in audit.promotions if promo.cash < 0 or promo.stability < 20),
+                        "active": len(active),
+                        "free_agents": len(audit.free_agents),
+                        "retired": len(audit.retired_fighters),
+                        "elite": sum(1 for fighter in active if fighter.overall >= 80),
+                        "avg_cash": round(sum(promo_cash) / max(1, len(promo_cash))),
+                        "min_cash": min(promo_cash) if promo_cash else 0,
+                        "sport_events": sport_events,
+                        "academy_size": len(academy.get("prospects", [])),
+                    })
+                if (index + 1) % 96 == 0:
+                    self.root.update_idletasks()
+            total = sum(methods.values())
+            finish_count = sum(count for method, count in methods.items() if method not in ("Decision", "Draw"))
+            last = snapshots[-1]
+            active = [fighter for fighter in audit.all_fighter_objects() if not fighter.retired]
+            by_gender, by_weight_gender = {}, {}
+            for fighter in active:
+                by_gender[fighter.gender] = by_gender.get(fighter.gender, 0) + 1
+                key = (fighter.gender, fighter.weight)
+                by_weight_gender[key] = by_weight_gender.get(key, 0) + 1
+            promotion_rows = sorted(
+                [(promo.name, promo.cash, promo.stability, promo.popularity, len(promo.roster), getattr(promo, "strategy", "")) for promo in audit.promotions],
+                key=lambda row: row[1],
+            )
+            sport_rows = []
+            for sport, world in getattr(audit, "combat_sport_worlds", {}).items():
+                roster = world.get("roster", [])
+                sport_rows.append((sport, len(roster), world.get("promotion", ""), world.get("champion", ""), len(world.get("events", [])), round(sum(a.overall for a in roster) / max(1, len(roster)), 1)))
+            warnings = []
+            if last["active"] < 350:
+                warnings.append(f"Active fighter pool is thin late-era ({last['active']} active). Replenishment may need a boost.")
+            if last["free_agents"] < 45:
+                warnings.append(f"Free-agent pool is low ({last['free_agents']}). AI/player signings may feel starved.")
+            if last["distressed"] >= max(2, last["promotions"] // 4):
+                warnings.append(f"Promotion finance pressure is high ({last['distressed']} distressed companies).")
+            if last["elite"] < 25:
+                warnings.append(f"Elite population is low ({last['elite']} at 80+ OVR). Development/regen may be too stingy.")
+            if methods.get("Decision", 0) / max(1, total) > 0.62:
+                warnings.append("Decision rate is high for the full world. Check fight-engine/card matchmaking by tier.")
+            if not warnings:
+                warnings.append("No major red flags detected from headline balance metrics.")
+            report = [
+                f"{years}-YEAR PLAY-LEVEL AUDIT (fresh spectator world)",
+                f"Weeks simulated: {weeks:,} | Fights: {total:,}",
+                f"Finish rate: {finish_count / max(1, total) * 100:.1f}% | Decision rate: {methods.get('Decision', 0) / max(1, total) * 100:.1f}%",
+                "",
+                "BALANCE WARNINGS:",
+            ]
+            report.extend(f"- {warning}" for warning in warnings)
+            report.extend(["", "METHOD DISTRIBUTION:"])
+            report.extend(f"- {method}: {count:,} ({count / max(1, total) * 100:.1f}%)" for method, count in sorted(methods.items(), key=lambda item: -item[1]))
+            report.extend(["", "YEARLY WORLD HEALTH:", "Year | Promotions | Viable | Distressed | Active | FAs | Retired | 80+ | Avg Cash | Min Cash | Sport Cards | Academy"])
+            for row in snapshots:
+                report.append(f"{row['year']} | {row['promotions']} | {row['viable']} | {row['distressed']} | {row['active']} | {row['free_agents']} | {row['retired']} | {row['elite']} | ${row['avg_cash']:,} | ${row['min_cash']:,} | {row['sport_events']} | {row['academy_size']}")
+            report.extend(["", "ROSTER POPULATION BY GENDER:"])
+            report.extend(f"- {gender}: {count}" for gender, count in sorted(by_gender.items()))
+            report.extend(["", "ROSTER POPULATION BY WEIGHT/GENDER:"])
+            for (gender, weight), count in sorted(by_weight_gender.items(), key=lambda item: (item[0][0], WEIGHTS.index(item[0][1]) if item[0][1] in WEIGHTS else 99)):
+                report.append(f"- {gender} {weight}: {count}")
+            report.extend(["", "COMPANY FINANCIAL HEALTH (poorest first):", "Company | Cash | Stability | Popularity | Roster | Strategy"])
+            for row in promotion_rows[:18]:
+                report.append(f"{row[0]} | ${row[1]:,} | {row[2]} | {row[3]} | {row[4]} | {row[5] or 'Balanced'}")
+            report.extend(["", "COMBAT SPORT IMPACT:", "Sport | Roster | AI Promotion | Champion | Cards | Avg OVR"])
+            report.extend(f"{sport} | {size} | {promotion} | {champion or 'Vacant'} | {events} | {avg_ovr}" for sport, size, promotion, champion, events, avg_ovr in sport_rows)
+            report.extend(["", f"FINAL: {last['promotions']} promotions ({last['viable']} viable), {last['active']} active fighters, {last['free_agents']} free agents, {last['retired']} retired, {last['elite']} elite fighters."])
+        except Exception as exc:
+            report = [f"{years}-year audit failed:", f"{type(exc).__name__}: {exc}", traceback.format_exc()]
+        finally:
+            random.setstate(original_state)
+            audit_root.destroy()
+        self.audit_text.config(state="normal")
+        self.audit_text.delete("1.0", "end")
+        self.audit_text.insert("end", "\n".join(report))
+        self.audit_text.config(state="disabled")
+        self.play_audit_report = "\n".join(report)
+        if hasattr(self, "play_audit_progress"):
+            if report and "PLAY-LEVEL AUDIT" in report[0]:
+                self.play_audit_progress.configure(value=weeks)
+                self.play_audit_status.config(text=f"{years}-year play audit: complete - results shown below")
+                if hasattr(self, "view_play_audit_button"):
+                    self.view_play_audit_button.configure(state="normal")
+            else:
+                self.play_audit_status.config(text=f"{years}-year play audit: failed - see report below")
+
+    def open_play_level_audit_results(self):
+        report = getattr(self, "play_audit_report", "")
+        if not report:
+            messagebox.showinfo("30-Year Play Audit", "Run the 30-year play audit first.")
+            return
+        window = tk.Toplevel(self.root)
+        window.title("30-Year Play Audit Results")
+        window.geometry("940x680")
+        window.minsize(720, 480)
+        window.configure(bg=self.colors["chrome"])
+        ttk.Label(window, text="30-YEAR PLAY AUDIT RESULTS", style="ScreenTitle.TLabel").pack(anchor="w", padx=12, pady=(10, 4))
+        frame = ttk.Frame(window, style="Panel.TFrame")
+        frame.pack(fill="both", expand=True, padx=10, pady=(0, 8))
+        text = tk.Text(frame, wrap="none", font=("Courier New", 10), bg=self.colors["cream"], fg=self.colors["text"], padx=12, pady=12)
+        yscroll = ttk.Scrollbar(frame, orient="vertical", command=text.yview)
+        xscroll = ttk.Scrollbar(frame, orient="horizontal", command=text.xview)
+        text.configure(yscrollcommand=yscroll.set, xscrollcommand=xscroll.set)
+        text.grid(row=0, column=0, sticky="nsew")
+        yscroll.grid(row=0, column=1, sticky="ns")
+        xscroll.grid(row=1, column=0, sticky="ew")
+        frame.columnconfigure(0, weight=1)
+        frame.rowconfigure(0, weight=1)
+        text.insert("end", report)
+        text.config(state="disabled")
+        buttons = ttk.Frame(window, style="Panel.TFrame")
+        buttons.pack(fill="x", padx=10, pady=(0, 10))
+
+        def export_report():
+            LOG_DIR.mkdir(parents=True, exist_ok=True)
+            path = LOG_DIR / f"play_audit_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            path.write_text(report, encoding="utf-8")
+            messagebox.showinfo("Export Results", f"Exported audit report:\n{path}")
+
+        ttk.Button(buttons, text="Export Results", command=export_report).pack(side="left")
+        ttk.Button(buttons, text="Close", style="Accent.TButton", command=window.destroy).pack(side="right")
+
+    def unique_fighter_rows(self, rows):
+        unique = []
+        seen = set()
+        for row in rows:
+            if row[0] in seen:
+                continue
+            unique.append(row)
+            seen.add(row[0])
+        return unique
+
+    def belt_key(self, gender, weight):
+        return f"{gender} {weight}"
+
+    def blank_belts(self):
+        return {self.belt_key(gender, weight): "" for gender in ("Male", "Female") for weight in WEIGHTS}
+
+    def blank_belt_history(self):
+        return {self.belt_key(gender, weight): [] for gender in ("Male", "Female") for weight in WEIGHTS}
+
+    def normalize_belts(self, belts):
+        normalized = self.blank_belts()
+        for key, value in (belts or {}).items():
+            if key in normalized:
+                normalized[key] = value
+            elif key in WEIGHTS:
+                normalized[self.belt_key("Male", key)] = value
+        return normalized
+
+    def normalize_belt_history(self, history):
+        normalized = self.blank_belt_history()
+        for key, entries in (history or {}).items():
+            if key in normalized:
+                normalized[key] = list(entries or [])
+            elif key in WEIGHTS:
+                normalized[self.belt_key("Male", key)] = list(entries or [])
+        return normalized
+
+    def belt_history_entry(self, action, key, fighter_name="", note=""):
+        return {
+            "date": f"Month {getattr(self, 'month', 1)} Week {getattr(self, 'week', 1)}",
+            "action": action,
+            "division": key,
+            "fighter": fighter_name,
+            "note": note,
+        }
+
+    def record_belt_history(self, history, key, action, fighter_name="", note=""):
+        history = self.normalize_belt_history(history)
+        history[key].insert(0, self.belt_history_entry(action, key, fighter_name, note))
+        history[key] = history[key][:80]
+        return history
+
+    def set_primary_champion(self, roster, belts, belt_history, champion, note, defense=False):
+        key = self.belt_key(champion.gender, champion.weight)
+        belts = self.normalize_belts(belts)
+        belt_history = self.normalize_belt_history(belt_history)
+        previous = belts.get(key, "")
+        for fighter in roster:
+            if fighter.gender == champion.gender and fighter.weight == champion.weight:
+                fighter.champion = fighter.name == champion.name
+                if fighter.name == champion.name:
+                    fighter.interim_champion = False
+        belts[key] = champion.name
+        if previous != champion.name:
+            action = "Champion Crowned" if previous else "Inaugural Champion"
+            belt_history = self.record_belt_history(belt_history, key, action, champion.name, note)
+            champion.title_wins = getattr(champion, "title_wins", 0) + 1
+        elif defense:
+            champion.title_defenses = getattr(champion, "title_defenses", 0) + 1
+            belt_history = self.record_belt_history(belt_history, key, "Title Defense", champion.name, note)
+        return belts, belt_history
+
+    def set_interim_champion(self, roster, interim_belts, belt_history, champion, note):
+        key = self.belt_key(champion.gender, champion.weight)
+        interim_belts = self.normalize_belts(interim_belts)
+        belt_history = self.normalize_belt_history(belt_history)
+        previous = interim_belts.get(key, "")
+        for fighter in roster:
+            if fighter.gender == champion.gender and fighter.weight == champion.weight:
+                fighter.interim_champion = fighter.name == champion.name
+        interim_belts[key] = champion.name
+        if previous != champion.name:
+            belt_history = self.record_belt_history(belt_history, key, "Interim Champion Crowned", champion.name, note)
+        return interim_belts, belt_history
+
+    def clear_interim_belt(self, roster, interim_belts, belt_history, key, note):
+        interim_belts = self.normalize_belts(interim_belts)
+        holder = interim_belts.get(key, "")
+        if holder:
+            for fighter in roster:
+                if fighter.name == holder:
+                    fighter.interim_champion = False
+            interim_belts[key] = ""
+            belt_history = self.record_belt_history(belt_history, key, "Interim Belt Cleared", holder, note)
+        return interim_belts, belt_history
+
+    def vacate_fighter_belts(self, fighter, roster, belts, interim_belts, belt_history, reason):
+        key = self.belt_key(fighter.gender, fighter.weight)
+        belts = self.normalize_belts(belts)
+        interim_belts = self.normalize_belts(interim_belts)
+        belt_history = self.normalize_belt_history(belt_history)
+        if belts.get(key) == fighter.name:
+            belts[key] = ""
+            fighter.champion = False
+            belt_history = self.record_belt_history(belt_history, key, "Vacated", fighter.name, reason)
+        if interim_belts.get(key) == fighter.name:
+            interim_belts[key] = ""
+            fighter.interim_champion = False
+            belt_history = self.record_belt_history(belt_history, key, "Interim Vacated", fighter.name, reason)
+        return belts, interim_belts, belt_history
+
+    def champion_sort_value(self, fighter):
+        return fighter.overall * 1.35 + fighter.popularity * 0.62 + fighter.momentum * 8 + fighter.record_w * 1.4 - fighter.record_l * 2
+
+    def ensure_company_champions(self, roster, belts, company_name, region, size, player_owned=False, min_per_division=3, interim_belts=None, belt_history=None):
+        belts = self.normalize_belts(belts)
+        interim_belts = self.normalize_belts(interim_belts)
+        belt_history = self.normalize_belt_history(belt_history)
+        existing_names = self.active_fighter_names()
+        existing_names.update(fighter.name for fighter in roster)
+        for weight in WEIGHTS:
+            for gender in ("Male", "Female"):
+                division = [fighter for fighter in roster if fighter.weight == weight and fighter.gender == gender]
+                while len(division) < min_per_division:
+                    fighter = self.create_generated_fighter(8, min(72, max(32, size)), 42, min(90, 50 + max(20, size) // 2), weight=weight, gender=gender)
+                    self.avoid_name_collision(fighter, existing_names)
+                    roster.append(self.prepare_company_generated_fighter(fighter, region, company_name, player_owned=player_owned))
+                    division.append(fighter)
+                key = self.belt_key(gender, weight)
+                current = next((fighter for fighter in division if fighter.name == belts.get(key)), None)
+                champion = current or max(division, key=self.champion_sort_value)
+                belts, belt_history = self.set_primary_champion(roster, belts, belt_history, champion, f"{company_name} title status normalized.")
+                interim_holder = next((fighter for fighter in division if fighter.name == interim_belts.get(key) and fighter.name != champion.name), None)
+                for fighter in division:
+                    fighter.interim_champion = bool(interim_holder and fighter.name == interim_holder.name)
+                if not interim_holder:
+                    interim_belts[key] = ""
+        return belts, interim_belts, belt_history
+
+    def ensure_all_company_champions(self):
+        if not getattr(self, "spectator_mode", False):
+            self.belts, self.interim_belts, self.belt_history = self.ensure_company_champions(self.roster, self.belts, self.player_company_name, self.player_region, self.company_pop, player_owned=True, interim_belts=self.interim_belts, belt_history=self.belt_history)
+        for promo in self.promotions:
+            # Development circuits create records and prospects, not parallel
+            # world-title ecosystems. Keeping their belts empty also prevents
+            # feeder champions leaking into company and world rankings.
+            if getattr(promo, "is_regional_feeder", False):
+                for fighter in promo.roster:
+                    fighter.champion = False
+                    fighter.interim_champion = False
+                promo.belts = self.blank_belts()
+                promo.interim_belts = self.blank_belts()
+                promo.belt_history = self.blank_belt_history()
+                continue
+            promo.belts, promo.interim_belts, promo.belt_history = self.ensure_company_champions(promo.roster, promo.belts or {}, promo.name, promo.region, promo.reputation_score, player_owned=False, interim_belts=promo.interim_belts or {}, belt_history=promo.belt_history or {})
+
+    def avoid_name_collision(self, fighter, existing_names):
+        parts = fighter.name.rsplit(" ", 1)
+        if len(parts) == 2 and parts[1].isdigit():
+            fighter.name = parts[0]
+        if fighter.name in existing_names:
+            fighter.name = self.generate_clean_unique_name(fighter.gender, existing_names)
+        existing_names.add(fighter.name)
+        return fighter
+
+    def generate_clean_unique_name(self, gender="Male", existing_names=None):
+        existing_names = existing_names or set()
+        first_names = FEMALE_FIRST_NAMES if gender == "Female" else FIRST_NAMES
+        for _ in range(200):
+            name = f"{random.choice(first_names)} {random.choice(LAST_NAMES)}"
+            if name not in existing_names and name not in self.name_counts:
+                self.name_counts[name] = 1
+                return name
+        middle_names = ["Kai", "Lee", "Ray", "Jae", "Noel", "Rio", "Taj", "Vale", "Sage", "Dean"]
+        for middle in middle_names:
+            for _ in range(40):
+                name = f"{random.choice(first_names)} {middle} {random.choice(LAST_NAMES)}"
+                if name not in existing_names and name not in self.name_counts:
+                    self.name_counts[name] = 1
+                    return name
+        name = f"{random.choice(first_names)} {random.choice(middle_names)} {random.choice(LAST_NAMES)}"
+        self.name_counts[name] = self.name_counts.get(name, 0) + 1
+        return name
+
+    def active_fighter_names(self):
+        names = {fighter.name for fighter in getattr(self, "roster", [])}
+        names.update(fighter.name for fighter in getattr(self, "free_agents", []))
+        for promo in getattr(self, "promotions", []):
+            names.update(fighter.name for fighter in promo.roster)
+        names.update(fighter.name for fighter in getattr(self, "retired_fighters", []))
+        return names
+
+    def all_fighter_objects(self):
+        fighters = []
+        fighters.extend(getattr(self, "roster", []))
+        fighters.extend(getattr(self, "free_agents", []))
+        for promo in getattr(self, "promotions", []):
+            fighters.extend(promo.roster)
+        fighters.extend(getattr(self, "retired_fighters", []))
+        return fighters
+
+    def clean_numbered_fighter_names(self):
+        existing = set()
+        renames = {}
+        self.name_counts = {}
+        for fighter in self.all_fighter_objects():
+            old_name = fighter.name
+            parts = fighter.name.rsplit(" ", 1)
+            preferred = parts[0] if len(parts) == 2 and parts[1].isdigit() else fighter.name
+            if preferred in existing:
+                fighter.name = self.generate_clean_unique_name(fighter.gender, existing)
+            else:
+                fighter.name = preferred
+                self.name_counts[fighter.name] = 1
+            existing.add(fighter.name)
+            if old_name != fighter.name:
+                renames[old_name] = fighter.name
+        if renames:
+            self.apply_fighter_renames(renames)
+
+    def apply_fighter_renames(self, renames):
+        for fight in getattr(self, "booked", []):
+            fight["fighters"] = [renames.get(name, name) for name in fight.get("fighters", [])]
+        for event in getattr(self, "scheduled_events", []):
+            for fight in event.get("fights", []):
+                fight["fighters"] = [renames.get(name, name) for name in fight.get("fighters", [])]
+        for weight, champion in list(getattr(self, "belts", {}).items()):
+            self.belts[weight] = renames.get(champion, champion)
+        self.interim_belts = {key: renames.get(champion, champion) for key, champion in self.normalize_belts(getattr(self, "interim_belts", {})).items()}
+        self.belt_history = self.rename_belt_history(getattr(self, "belt_history", {}), renames)
+        for promo in getattr(self, "promotions", []):
+            promo.belts = {key: renames.get(champion, champion) for key, champion in self.normalize_belts(promo.belts).items()}
+            promo.interim_belts = {key: renames.get(champion, champion) for key, champion in self.normalize_belts(promo.interim_belts).items()}
+            promo.belt_history = self.rename_belt_history(promo.belt_history, renames)
+        for fighter in self.all_fighter_objects():
+            if fighter.rival in renames:
+                fighter.rival = renames[fighter.rival]
+            if fighter.friend in renames:
+                fighter.friend = renames[fighter.friend]
+
+    def rename_belt_history(self, history, renames):
+        history = self.normalize_belt_history(history)
+        for entries in history.values():
+            for entry in entries:
+                if entry.get("fighter") in renames:
+                    entry["fighter"] = renames[entry["fighter"]]
+        return history
