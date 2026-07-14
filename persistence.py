@@ -586,6 +586,9 @@ class PersistenceMixin:
         fighter.fight_history = fighter.fight_history or []
         fighter.annual_overalls = fighter.annual_overalls or {"2026": fighter.overall}
         fighter.motivation = getattr(fighter, "motivation", 65) or 65
+        fighter.retirement_pending = bool(getattr(fighter, "retirement_pending", False))
+        fighter.retirement_requested_month = max(0, getattr(fighter, "retirement_requested_month", 0) or 0)
+        fighter.retirement_fight_completed = bool(getattr(fighter, "retirement_fight_completed", False))
         fighter.camp_quality = getattr(fighter, "camp_quality", 0) or self.gym_quality(fighter.camp)
         fighter.walk_weight = getattr(fighter, "walk_weight", 0) or self.default_walk_weight(fighter)
         fighter.scale_weight = getattr(fighter, "scale_weight", 0.0) or 0.0

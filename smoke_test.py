@@ -93,7 +93,7 @@ def main():
         washed_out.age, washed_out.record_w, washed_out.record_l, washed_out.potential = 22, 0, 14, 60
         feeder_probe.roster.append(washed_out)
         app.regional_review_underperformers(feeder_probe)
-        assert_true(washed_out.retired and washed_out not in feeder_probe.roster, "Regional career review did not stop an unsustainable losing record")
+        assert_true(washed_out.retirement_pending and washed_out in feeder_probe.roster and not washed_out.retired, "Regional career review should require a final retirement fight")
         assert_true(all(app.promotion_strategy(promotion).get("identity") and app.promotion_strategy(promotion).get("current_mode") for promotion in app.promotions), "Promotion strategy profiles missing")
         assert_true(all(getattr(promotion, "executive", {}).get("name") and getattr(promotion, "executive", {}).get("archetype") for promotion in app.promotions), "Promotion executive profiles missing")
         assert_true(all(getattr(fighter, "negotiation_persona", "") and getattr(fighter, "agent_name", "") for fighter in app.roster[:25]), "Fighter negotiation profiles missing")

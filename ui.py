@@ -379,26 +379,34 @@ class UIMixin:
         row = ttk.Frame(save_inner, style="Inset.TFrame")
         row.pack(fill="x", pady=6)
         self.save_slot_name = tk.StringVar(value="Game 1")
-        ttk.Entry(row, textvariable=self.save_slot_name, width=24).pack(side="left", padx=4)
-        ttk.Button(row, text="Save Slot", command=self.save_selected_slot).pack(side="left", padx=4)
-        ttk.Button(row, text="Load Slot", command=self.load_selected_slot).pack(side="left", padx=4)
-        ttk.Button(row, text="Delete Slot", command=self.delete_selected_slot).pack(side="left", padx=4)
+        ttk.Entry(row, textvariable=self.save_slot_name, width=18).grid(row=0, column=0, columnspan=3, sticky="ew", padx=4, pady=2)
+        ttk.Button(row, text="Save Slot", command=self.save_selected_slot).grid(row=1, column=0, sticky="ew", padx=3, pady=2)
+        ttk.Button(row, text="Load Slot", command=self.load_selected_slot).grid(row=1, column=1, sticky="ew", padx=3, pady=2)
+        ttk.Button(row, text="Delete Slot", command=self.delete_selected_slot).grid(row=1, column=2, sticky="ew", padx=3, pady=2)
+        for col in range(3):
+            row.columnconfigure(col, weight=1)
         save_tools = ttk.Frame(save_inner, style="Inset.TFrame")
         save_tools.pack(fill="x", pady=(0, 6))
-        ttk.Button(save_tools, text="Backup Slot", command=self.backup_selected_slot).pack(side="left", padx=4)
-        ttk.Button(save_tools, text="Restore Backup", command=self.open_save_backup_manager).pack(side="left", padx=4)
-        ttk.Button(save_tools, text="Open Saves Folder", command=self.open_saves_folder).pack(side="left", padx=4)
+        ttk.Button(save_tools, text="Backup Slot", command=self.backup_selected_slot).grid(row=0, column=0, sticky="ew", padx=3, pady=2)
+        ttk.Button(save_tools, text="Restore Backup", command=self.open_save_backup_manager).grid(row=0, column=1, sticky="ew", padx=3, pady=2)
+        ttk.Button(save_tools, text="Open Saves Folder", command=self.open_saves_folder).grid(row=0, column=2, sticky="ew", padx=3, pady=2)
+        for col in range(3):
+            save_tools.columnconfigure(col, weight=1)
         autosave_row = ttk.Frame(save_inner, style="Inset.TFrame")
         autosave_row.pack(fill="x", pady=(0, 6))
         self.autosave_status_label = ttk.Label(autosave_row, text="Autosaves loading...", style="Inset.TLabel")
-        self.autosave_status_label.pack(side="left", fill="x", expand=True, padx=4)
-        ttk.Button(autosave_row, text="Toggle Auto", command=self.toggle_autosaves).pack(side="left", padx=3)
-        ttk.Button(autosave_row, text="W-", command=lambda: self.change_autosave_keep("autosave_weekly_keep", -1)).pack(side="left", padx=2)
-        ttk.Button(autosave_row, text="W+", command=lambda: self.change_autosave_keep("autosave_weekly_keep", 1)).pack(side="left", padx=2)
-        ttk.Button(autosave_row, text="M-", command=lambda: self.change_autosave_keep("autosave_monthly_keep", -1)).pack(side="left", padx=2)
-        ttk.Button(autosave_row, text="M+", command=lambda: self.change_autosave_keep("autosave_monthly_keep", 1)).pack(side="left", padx=2)
-        ttk.Button(autosave_row, text="B-", command=lambda: self.change_autosave_keep("save_backup_keep", -5)).pack(side="left", padx=2)
-        ttk.Button(autosave_row, text="B+", command=lambda: self.change_autosave_keep("save_backup_keep", 5)).pack(side="left", padx=2)
+        self.autosave_status_label.grid(row=0, column=0, columnspan=7, sticky="ew", padx=4, pady=2)
+        for col, (text, command) in enumerate((
+            ("Auto", self.toggle_autosaves),
+            ("W-", lambda: self.change_autosave_keep("autosave_weekly_keep", -1)),
+            ("W+", lambda: self.change_autosave_keep("autosave_weekly_keep", 1)),
+            ("M-", lambda: self.change_autosave_keep("autosave_monthly_keep", -1)),
+            ("M+", lambda: self.change_autosave_keep("autosave_monthly_keep", 1)),
+            ("B-", lambda: self.change_autosave_keep("save_backup_keep", -5)),
+            ("B+", lambda: self.change_autosave_keep("save_backup_keep", 5)),
+        )):
+            ttk.Button(autosave_row, text=text, command=command).grid(row=1, column=col, sticky="ew", padx=2, pady=2)
+            autosave_row.columnconfigure(col, weight=1)
         db_panel, db_inner = self.section(body, "DATABASE / WORLD")
         db_panel.pack(side="left", fill="both", expand=True)
         self.database_list = tk.Listbox(db_inner, font=("Tahoma", 9), bg="#c9c9c9")
@@ -580,15 +588,23 @@ class UIMixin:
         controls.pack(fill="x", pady=(0, 6))
         ttk.Label(controls, text="Search", style="Inset.TLabel").pack(side="left", padx=(4, 2))
         search_entry = ttk.Entry(controls, textvariable=self.result_search, width=34)
-        search_entry.pack(side="left", padx=4)
+        search_entry.pack(side="left", fill="x", expand=True, padx=4)
         search_entry.bind("<KeyRelease>", lambda _e: self.refresh_results())
-        ttk.Button(controls, text="Open Selected", command=self.open_selected_result).pack(side="left", padx=6)
-        ttk.Button(controls, text="\U0001F3C6 Awards History", command=self.open_awards_history_window).pack(side="left", padx=6)
-        ttk.Button(controls, text="\U0001F396 Hall of Fame", command=self.open_hall_of_fame_window).pack(side="left", padx=6)
-        ttk.Button(controls, text="Achievements", style="Accent.TButton", command=self.open_achievements_window).pack(side="left", padx=6)
-        ttk.Button(controls, text="Historical Records", command=self.open_records_ledger_window).pack(side="left", padx=6)
-        ttk.Button(controls, text="Record Book", command=self.open_record_book_window).pack(side="left", padx=6)
-        ttk.Button(controls, text="Legacy Ledger", command=self.open_legacy_ledger).pack(side="left", padx=6)
+        result_buttons = ttk.Frame(self.results_tab, style="Inset.TFrame")
+        result_buttons.pack(fill="x", pady=(0, 6))
+        for col, (text, command, style) in enumerate((
+            ("Open Selected", self.open_selected_result, None),
+            ("Awards", self.open_awards_history_window, None),
+            ("Hall of Fame", self.open_hall_of_fame_window, None),
+            ("Achievements", self.open_achievements_window, "Accent.TButton"),
+            ("Historical Records", self.open_records_ledger_window, None),
+            ("Record Book", self.open_record_book_window, None),
+            ("Legacy Ledger", self.open_legacy_ledger, None),
+        )):
+            button = ttk.Button(result_buttons, text=text, command=command, style=style) if style else ttk.Button(result_buttons, text=text, command=command)
+            button.grid(row=col // 4, column=col % 4, sticky="ew", padx=3, pady=2)
+        for col in range(4):
+            result_buttons.columnconfigure(col, weight=1)
         body = ttk.Frame(self.results_tab)
         body.pack(fill="both", expand=True)
         panel, inner = self.section(body, "EVENT RESULTS")
@@ -640,17 +656,22 @@ class UIMixin:
         self.rules_text.pack(fill="both", expand=True)
         buttons = ttk.Frame(rules, style="Inset.TFrame")
         buttons.pack(fill="x", pady=4)
-        ttk.Button(buttons, text="Cycle Drug Testing", command=self.cycle_drug_testing).pack(side="left", padx=4)
-        ttk.Button(buttons, text="Toggle Mixed-Gender Rule", command=self.toggle_mixed_gender_rule).pack(side="left", padx=4)
-        ttk.Button(buttons, text="+ Round Minute", command=lambda: self.adjust_round_length(1)).pack(side="left", padx=4)
-        ttk.Button(buttons, text="- Round Minute", command=lambda: self.adjust_round_length(-1)).pack(side="left", padx=4)
-        ttk.Button(buttons, text="+ Reg Round", command=lambda: self.adjust_regular_rounds(1)).pack(side="left", padx=4)
-        ttk.Button(buttons, text="- Reg Round", command=lambda: self.adjust_regular_rounds(-1)).pack(side="left", padx=4)
-        ttk.Button(buttons, text="+ Title Round", command=lambda: self.adjust_title_rounds(1)).pack(side="left", padx=4)
-        ttk.Button(buttons, text="- Title Round", command=lambda: self.adjust_title_rounds(-1)).pack(side="left", padx=4)
-        ttk.Button(buttons, text="+ Fighter Target", command=lambda: self.adjust_active_fighter_target(50)).pack(side="left", padx=4)
-        ttk.Button(buttons, text="- Fighter Target", command=lambda: self.adjust_active_fighter_target(-50)).pack(side="left", padx=4)
-        ttk.Button(buttons, text="Add Broadcaster", command=self.add_broadcaster).pack(side="left", padx=4)
+        for col, (text, command) in enumerate((
+            ("Drug Testing", self.cycle_drug_testing),
+            ("Mixed Gender", self.toggle_mixed_gender_rule),
+            ("+ Round Min", lambda: self.adjust_round_length(1)),
+            ("- Round Min", lambda: self.adjust_round_length(-1)),
+            ("+ Reg Round", lambda: self.adjust_regular_rounds(1)),
+            ("- Reg Round", lambda: self.adjust_regular_rounds(-1)),
+            ("+ Title Round", lambda: self.adjust_title_rounds(1)),
+            ("- Title Round", lambda: self.adjust_title_rounds(-1)),
+            ("+ Fighter Target", lambda: self.adjust_active_fighter_target(50)),
+            ("- Fighter Target", lambda: self.adjust_active_fighter_target(-50)),
+            ("Add Broadcaster", self.add_broadcaster),
+        )):
+            ttk.Button(buttons, text=text, command=command).grid(row=col // 3, column=col % 3, sticky="ew", padx=3, pady=2)
+        for col in range(3):
+            buttons.columnconfigure(col, weight=1)
 
     def build_inbox_tab(self):
         self.screen_header(self.inbox_tab, "MAIL / DECISIONS", "Owner goals, decisions, contract alerts, suspensions, and business mail")
@@ -681,12 +702,18 @@ class UIMixin:
         self.inbox_tree.bind("<Double-1>", lambda _event: self.open_inbox_context())
         inbox_actions = ttk.Frame(inbox, style="Inset.TFrame")
         inbox_actions.pack(fill="x", pady=(6, 0))
-        ttk.Button(inbox_actions, text="Open Context", style="Accent.TButton", command=self.open_inbox_context).pack(side="left", padx=4, pady=4)
-        ttk.Button(inbox_actions, text="Medical Decision", command=self.resolve_serious_injury_inbox).pack(side="left", padx=4, pady=4)
-        ttk.Button(inbox_actions, text="Mark Read", command=self.mark_inbox_read).pack(side="left", padx=4, pady=4)
-        ttk.Button(inbox_actions, text="Hide This Type", command=self.hide_selected_inbox_type).pack(side="left", padx=4, pady=4)
-        ttk.Button(inbox_actions, text="Show Hidden Types", command=self.show_all_inbox_types).pack(side="left", padx=4, pady=4)
-        ttk.Button(inbox_actions, text="Resolve / Archive", command=self.resolve_inbox_item).pack(side="right", padx=4, pady=4)
+        for col, (text, command, style) in enumerate((
+            ("Open Context", self.open_inbox_context, "Accent.TButton"),
+            ("Medical Decision", self.resolve_serious_injury_inbox, None),
+            ("Mark Read", self.mark_inbox_read, None),
+            ("Hide Type", self.hide_selected_inbox_type, None),
+            ("Show Hidden", self.show_all_inbox_types, None),
+            ("Resolve / Archive", self.resolve_inbox_item, None),
+        )):
+            button = ttk.Button(inbox_actions, text=text, command=command, style=style) if style else ttk.Button(inbox_actions, text=text, command=command)
+            button.grid(row=col // 3, column=col % 3, sticky="ew", padx=3, pady=2)
+        for col in range(3):
+            inbox_actions.columnconfigure(col, weight=1)
         goals_panel, goals = self.section(body, "OWNER GOALS")
         goals_panel.pack(side="left", fill="both", expand=True)
         self.goals_tree = ttk.Treeview(goals, columns=("goal", "progress", "deadline", "status"), show="headings", height=14)
@@ -722,12 +749,17 @@ class UIMixin:
         self.staff_candidate_tree.bind("<Double-1>", lambda _event: self.open_selected_staff_profile(candidate=True))
         staff_buttons = ttk.Frame(staff, style="Inset.TFrame")
         staff_buttons.pack(fill="x", pady=4)
-        ttk.Button(staff_buttons, text="Hire Selected Candidate", command=self.hire_staff).pack(side="left", padx=4)
-        ttk.Button(staff_buttons, text="Assign Scout", command=self.assign_scouting).pack(side="left", padx=4)
-        ttk.Button(staff_buttons, text="Run Drug Tests", command=self.run_drug_tests).pack(side="left", padx=4)
-        ttk.Button(staff_buttons, text="Hire Commentator", command=self.hire_commentator).pack(side="left", padx=4)
-        ttk.Button(staff_buttons, text="View Staff Profile", command=self.open_selected_staff_profile).pack(side="right", padx=4)
-        ttk.Button(staff_buttons, text="Fighting Academy", command=self.open_academy_window).pack(side="right", padx=4)
+        for col, (text, command) in enumerate((
+            ("Hire Candidate", self.hire_staff),
+            ("Assign Scout", self.assign_scouting),
+            ("Run Drug Tests", self.run_drug_tests),
+            ("Hire Commentator", self.hire_commentator),
+            ("View Staff Profile", self.open_selected_staff_profile),
+            ("Fighting Academy", self.open_academy_window),
+        )):
+            ttk.Button(staff_buttons, text=text, command=command).grid(row=col // 3, column=col % 3, sticky="ew", padx=3, pady=2)
+        for col in range(3):
+            staff_buttons.columnconfigure(col, weight=1)
         bonus_panel, bonus = self.section(self.staff_tab, "POST-SHOW BONUSES / SCOUTING")
         bonus_panel.pack(fill="both", expand=True)
         self.staff_text = tk.Text(bonus, wrap="word", font=("Tahoma", 9), bg=self.colors["cream"], fg=self.colors["text"], insertbackground=self.colors["text"])
@@ -817,9 +849,9 @@ class UIMixin:
         self.portrait_canvas.pack(anchor="w", padx=8, pady=(0, 6))
         self.detail_lines = ttk.Label(detail, text="", justify="left", style="Inset.TLabel")
         self.detail_lines.pack(anchor="w", padx=8, pady=4)
-        ttk.Button(detail, text="Detailed Skills", command=self.open_detailed_skills_selected).pack(anchor="w", padx=8, pady=4)
-        ttk.Button(detail, text="Camp Plan", command=self.choose_camp_focus_selected).pack(anchor="w", padx=8, pady=4)
-        ttk.Button(detail, text="Media Callout", command=self.media_callout_selected).pack(anchor="w", padx=8, pady=4)
+        ttk.Button(detail, text="Detailed Skills", command=self.open_detailed_skills_selected).pack(fill="x", padx=8, pady=4)
+        ttk.Button(detail, text="Camp Plan", command=self.choose_camp_focus_selected).pack(fill="x", padx=8, pady=4)
+        ttk.Button(detail, text="Media Callout", command=self.media_callout_selected).pack(fill="x", padx=8, pady=4)
         self.skill_rows = {}
         profile_stats = (
             ("Standing", "striking"),
@@ -1124,22 +1156,30 @@ class UIMixin:
         self.editor_company_filter = tk.StringVar(value="All")
         self.editor_weight_filter = tk.StringVar(value="All")
         self.editor_gender_filter = tk.StringVar(value="All")
-        ttk.Label(controls, text="Search", style="Chrome.TLabel").pack(side="left", padx=(4, 2))
-        search = ttk.Entry(controls, textvariable=self.editor_search, width=24)
-        search.pack(side="left", padx=(0, 8))
-        ttk.Label(controls, text="Employer", style="Chrome.TLabel").pack(side="left", padx=(0, 2))
-        self.editor_company_combo = ttk.Combobox(controls, textvariable=self.editor_company_filter, width=26, state="readonly")
-        self.editor_company_combo.pack(side="left", padx=(0, 8))
-        ttk.Label(controls, text="Division", style="Chrome.TLabel").pack(side="left", padx=(0, 2))
-        ttk.Combobox(controls, textvariable=self.editor_weight_filter, values=["All"] + WEIGHTS, width=16, state="readonly").pack(side="left", padx=(0, 8))
-        ttk.Label(controls, text="Gender", style="Chrome.TLabel").pack(side="left", padx=(0, 2))
-        ttk.Combobox(controls, textvariable=self.editor_gender_filter, values=["All", "Male", "Female"], width=9, state="readonly").pack(side="left", padx=(0, 8))
+        filter_row = ttk.Frame(controls, style="Chrome.TFrame")
+        filter_row.pack(fill="x", pady=(0, 3))
+        ttk.Label(filter_row, text="Search", style="Chrome.TLabel").grid(row=0, column=0, sticky="w", padx=(4, 2))
+        search = ttk.Entry(filter_row, textvariable=self.editor_search, width=20)
+        search.grid(row=0, column=1, sticky="ew", padx=(0, 8))
+        ttk.Label(filter_row, text="Employer", style="Chrome.TLabel").grid(row=0, column=2, sticky="w", padx=(0, 2))
+        self.editor_company_combo = ttk.Combobox(filter_row, textvariable=self.editor_company_filter, width=20, state="readonly")
+        self.editor_company_combo.grid(row=0, column=3, sticky="ew", padx=(0, 8))
+        ttk.Label(filter_row, text="Division", style="Chrome.TLabel").grid(row=0, column=4, sticky="w", padx=(0, 2))
+        ttk.Combobox(filter_row, textvariable=self.editor_weight_filter, values=["All"] + WEIGHTS, width=14, state="readonly").grid(row=0, column=5, sticky="ew", padx=(0, 8))
+        ttk.Label(filter_row, text="Gender", style="Chrome.TLabel").grid(row=0, column=6, sticky="w", padx=(0, 2))
+        ttk.Combobox(filter_row, textvariable=self.editor_gender_filter, values=["All", "Male", "Female"], width=9, state="readonly").grid(row=0, column=7, sticky="ew", padx=(0, 4))
+        for col in (1, 3, 5, 7):
+            filter_row.columnconfigure(col, weight=1)
+        action_row = ttk.Frame(controls, style="Chrome.TFrame")
+        action_row.pack(fill="x")
         self.universe_section_choice = tk.StringVar(value="fighters")
-        ttk.Label(controls, text="Universe Section", style="Chrome.TLabel").pack(side="left", padx=(0, 2))
-        ttk.Combobox(controls, textvariable=self.universe_section_choice, values=["fighters", "companies", "combat_sports", "media", "regions"], width=14, state="readonly").pack(side="left", padx=(0, 4))
-        ttk.Button(controls, text="Edit Section JSON", command=self.open_universe_section_editor).pack(side="left", padx=2)
-        ttk.Button(controls, text="Validate Universe", command=self.validate_active_universe_database).pack(side="left", padx=2)
-        ttk.Button(controls, text="Refresh", command=self.refresh_database_editor).pack(side="right", padx=4)
+        ttk.Label(action_row, text="Universe Section", style="Chrome.TLabel").grid(row=0, column=0, sticky="w", padx=(4, 2))
+        ttk.Combobox(action_row, textvariable=self.universe_section_choice, values=["fighters", "companies", "combat_sports", "media", "regions"], width=14, state="readonly").grid(row=0, column=1, sticky="ew", padx=(0, 4))
+        ttk.Button(action_row, text="Edit Section JSON", command=self.open_universe_section_editor).grid(row=0, column=2, sticky="ew", padx=2)
+        ttk.Button(action_row, text="Validate Universe", command=self.validate_active_universe_database).grid(row=0, column=3, sticky="ew", padx=2)
+        ttk.Button(action_row, text="Refresh", command=self.refresh_database_editor).grid(row=0, column=4, sticky="ew", padx=2)
+        for col in range(1, 5):
+            action_row.columnconfigure(col, weight=1)
         for variable in (self.editor_search, self.editor_company_filter, self.editor_weight_filter, self.editor_gender_filter):
             variable.trace_add("write", lambda *_args: self.refresh_database_editor())
 

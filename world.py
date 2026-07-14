@@ -522,12 +522,10 @@ class WorldMixin:
             return False
         injury = fighter.serious_injury
         if choice == "retire":
-            fighter.retired = True
-            fighter.retirement_reason = f"Retired after {injury.lower()}."
-            fighter.retirement_pending = False
+            self.mark_retirement_fight_required(fighter, f"Medical retirement after {injury.lower()}")
             fighter.injured = 0
             fighter.serious_injury_pending = False
-            outcome = "chose retirement"
+            outcome = "chose retirement after one final fight"
         elif choice == "rehab":
             fighter.injured = max(2, fighter.injured - random.randint(1, 3))
             fighter.serious_injury_recurrence += random.randint(5, 10)
@@ -550,6 +548,54 @@ class WorldMixin:
     def retirement_review_month(self, fighter):
         """Stable pseudo-birthday month for old saves that do not store a birth date."""
         return sum(ord(char) for char in fighter.name) % 12 + 1
+
+    def mark_retirement_fight_required(self, fighter, reason="Career review"):
+        if getattr(fighter, "retired", False):
+            return
+        fighter.retirement_pending = True
+        fighter.retirement_fight_completed = False
+        fighter.retirement_requested_month = getattr(fighter, "retirement_requested_month", 0) or self.month
+        fighter.retirement_reason = f"{reason}; final fight required."
+        # A retirement fight should be bookable soon; avoid permanent limbo from
+        # high accumulated fatigue while still respecting serious injuries.
+        if fighter.fatigue > 58:
+            fighter.fatigue = 58
+        if fighter.injured and fighter.age >= 48:
+            fighter.injured = max(0, fighter.injured - 1)
+
+    def retire_after_final_fight_if_due(self, fighter, company_name=""):
+        if not getattr(fighter, "retirement_pending", False) or getattr(fighter, "retired", False):
+            return False
+        fighter.retirement_fight_completed = True
+        fighter.retirement_pending = False
+        fighter.retired = True
+        fighter.retirement_reason = f"Retired after final fight at age {fighter.age}."
+        if fighter in self.roster:
+            self.belts, self.interim_belts, self.belt_history = self.vacate_fighter_belts(
+                fighter, self.roster, self.belts, self.interim_belts, self.belt_history, "Retired after final fight."
+            )
+            self.roster.remove(fighter)
+            company_name = company_name or self.player_company_name
+        if fighter in self.free_agents:
+            self.free_agents.remove(fighter)
+            company_name = company_name or "Independent Circuit"
+        for promo in getattr(self, "promotions", []):
+            if fighter in promo.roster:
+                promo.belts, promo.interim_belts, promo.belt_history = self.vacate_fighter_belts(
+                    fighter, promo.roster, promo.belts or {}, promo.interim_belts or {}, promo.belt_history or {}, "Retired after final fight."
+                )
+                promo.roster.remove(fighter)
+                company_name = company_name or promo.name
+                break
+        fighter.champion = False
+        fighter.interim_champion = False
+        if fighter not in self.retired_fighters:
+            self.retired_fighters.insert(0, fighter)
+        headline = f"{fighter.name} retired after a final fight" + (f" with {company_name}" if company_name else "") + f" ({fighter.record})."
+        self.news.insert(0, headline)
+        self.record_world_story("Retirement", f"{fighter.name} completes final fight.", f"Final record: {fighter.record}. {fighter.retirement_reason}", [company_name] if company_name else [], [fighter.name], 3)
+        self.consider_hall_of_fame(fighter)
+        return True
 
     def set_post_fight_recovery(self, fighter, method, lost=False):
         # Realistic layoffs: fighters compete a few times a year, not monthly, so
@@ -730,6 +776,8 @@ class WorldMixin:
                     "type": "Contract", "resolved": False,
                 })
         self.evaluate_fight_achievements(winner, loser, fight, method, self.fighter_company_name(winner))
+        self.retire_after_final_fight_if_due(winner, self.fighter_company_name(winner))
+        self.retire_after_final_fight_if_due(loser, self.fighter_company_name(loser))
 
     def apply_draw_result(self, a, b, fight):
         self.commit_career_stats(a)
@@ -765,6 +813,8 @@ class WorldMixin:
                 fighter.rivalry_history = (fighter.rivalry_history or [])[-39:] + [f"Month {self.month}: Draw with {b.name if fighter is a else a.name}; rematch demand intensifies. Heat now {next_heat}/100."]
         if fight.get("title"):
             self.news.insert(0, f"The {a.gender} {a.weight} title fight between {a.name} and {b.name} ended in a draw; title status remains unchanged.")
+        self.retire_after_final_fight_if_due(a, self.fighter_company_name(a))
+        self.retire_after_final_fight_if_due(b, self.fighter_company_name(b))
 
     def update_elo(self, winner, loser, fight, method):
         winner_elo = getattr(winner, "elo_rating", 1500)
@@ -2364,22 +2414,19 @@ class WorldMixin:
                     should_retire = fighter.age >= 49 or random.random() < retirement_chance
                 if should_retire:
                     player_booked = player_owned and fighter.name in self.scheduled_fighter_names(include_booked=True)
-                    if player_booked:
-                        if not getattr(fighter, "retirement_pending", False):
-                            fighter.retirement_pending = True
-                            fighter.retirement_reason = "Plans to retire after their booked fight."
-                            self.inbox.append({"subject": f"Retirement Planned - {fighter.name}", "body": f"{fighter.name} intends to retire after their currently booked bout. They will remain available until that commitment is complete.", "type": "Roster", "resolved": False})
-                            self.news.insert(0, f"Retirement watch: {fighter.name} plans to retire after their scheduled fight.")
+                    if not getattr(fighter, "retirement_pending", False):
+                        self.mark_retirement_fight_required(fighter, "Career retirement review")
+                        if player_owned:
+                            body = f"{fighter.name} intends to retire, but must take one final fight first. Book them soon; they will retire immediately after that bout."
+                            if player_booked:
+                                body = f"{fighter.name} intends to retire after their currently booked bout. They will remain available until that commitment is complete."
+                            self.inbox.append({"subject": f"Retirement Fight Needed - {fighter.name}", "body": body, "type": "Roster", "resolved": False})
+                        self.news.insert(0, f"Retirement watch: {fighter.name} wants one final fight before retiring.")
+                    if not player_owned:
+                        fighter.available_week = min(getattr(fighter, "available_week", 0), self.week)
+                        fighter.fatigue = min(fighter.fatigue, 45)
                         continue
-                    belts, interim_belts, belt_history = self.vacate_fighter_belts(fighter, roster, belts, interim_belts, belt_history, "Retired from MMA.")
-                    fighter.retired = True
-                    fighter.retirement_pending = False
-                    fighter.retirement_reason = f"Retired at age {fighter.age} with motivation {fighter.motivation}."
-                    roster.remove(fighter)
-                    self.retired_fighters.insert(0, fighter)
-                    self.news.insert(0, f"{fighter.name} retired from MMA with a {fighter.record} record.")
-                    self.record_world_story("Retirement", f"{fighter.name} retires at {fighter.age}.", f"Final record: {fighter.record}. {fighter.retirement_reason}", fighters=[fighter.name], importance=3)
-                    self.consider_hall_of_fame(fighter)
+                    continue
             if promo and getattr(promo, "is_regional_feeder", False):
                 for fighter in roster:
                     fighter.champion = False
@@ -2391,6 +2438,73 @@ class WorldMixin:
                 promo.belts, promo.interim_belts, promo.belt_history = belts, interim_belts, belt_history
             else:
                 self.belts, self.interim_belts, self.belt_history = belts, interim_belts, belt_history
+        self.process_overdue_retirement_fights()
+
+    def retirement_fight_wait_months(self, fighter):
+        requested = getattr(fighter, "retirement_requested_month", 0) or self.month
+        return max(0, self.month - requested)
+
+    def retirement_fight_roster_for(self, fighter):
+        if fighter in self.roster:
+            return self.roster, self.player_company_name, self.player_region
+        if fighter in self.free_agents:
+            return self.free_agents, "Independent Circuit", fighter.region
+        for promo in getattr(self, "promotions", []):
+            if fighter in promo.roster:
+                return promo.roster, promo.name, promo.region
+        return [], "", fighter.region
+
+    def process_overdue_retirement_fights(self):
+        pending = [
+            fighter for fighter in self.all_fighter_objects()
+            if not getattr(fighter, "retired", False) and getattr(fighter, "retirement_pending", False)
+        ]
+        pending.sort(key=lambda fighter: (self.retirement_fight_wait_months(fighter), fighter.age), reverse=True)
+        booked = set()
+        for fighter in pending[:10]:
+            wait = self.retirement_fight_wait_months(fighter)
+            threshold = 6 if fighter in self.free_agents else 12
+            if wait < threshold or fighter.name in booked or fighter.injured:
+                continue
+            roster, company_name, region = self.retirement_fight_roster_for(fighter)
+            if not roster:
+                continue
+            opponents = [
+                candidate for candidate in roster
+                if candidate is not fighter and not getattr(candidate, "retired", False) and not getattr(candidate, "retirement_pending", False)
+                and not candidate.injured and candidate.fatigue < 70 and candidate.gender == fighter.gender
+            ]
+            same_weight = [candidate for candidate in opponents if candidate.weight == fighter.weight]
+            opponents = same_weight or opponents
+            if not opponents:
+                continue
+            opponent = min(opponents, key=lambda candidate: abs(candidate.overall - fighter.overall) + abs(candidate.age - fighter.age) * 0.25)
+            booked.update({fighter.name, opponent.name})
+            fighter.fatigue = min(fighter.fatigue, 35)
+            opponent.fatigue = min(opponent.fatigue, 45)
+            bout = {"main": False, "title": False, "tier": "Retirement Showcase", "region": region}
+            winner, loser, method, round_no, lines = self.simulate_fight(fighter, opponent, bout)
+            if method == "Draw":
+                self.apply_draw_result(fighter, opponent, bout)
+                result = f"{fighter.name} vs {opponent.name} - Draw (R{round_no})"
+            else:
+                self.apply_result(winner, loser, bout, method)
+                result = f"{winner.name} def. {loser.name} by {method} (R{round_no})"
+            event_name = f"{company_name} Retirement Showcase"
+            self.result_records.insert(0, {
+                "date": f"Month {self.month} Week {self.week}",
+                "company": company_name,
+                "event": event_name,
+                "summary": f"Farewell fight: {result}",
+                "fights": 1,
+                "gate": "$0",
+                "profit": "$0",
+                "log": [f"{event_name}: {result}", *lines],
+                "fight_logs": [{"heading": f"{fighter.name} vs {opponent.name}", "label": "RETIREMENT SHOWCASE", "a": fighter.name, "b": opponent.name, "result": result, "lines": list(lines) + ["", result]}],
+                "finance": {"ticket_revenue": 0, "total_revenue": 0, "total_expense": 0, "profit": 0},
+            })
+            self.result_records = self.result_records[:500]
+            self.news.insert(0, f"Farewell fight booked: {result} at {event_name}.")
 
     def process_free_agent_retirements(self):
         """Free agency must not become a permanent retirement home for aging fighters."""
@@ -2401,11 +2515,10 @@ class WorldMixin:
             inactivity = 0.12 + max(0, -fighter.momentum) * 0.035
             health = fighter.injury_proneness / 850 + max(0, fighter.fatigue - 45) / 420
             if fighter.age >= 47 or random.random() < min(0.88, age_pressure + inactivity + health):
-                fighter.retired = True
-                fighter.retirement_reason = f"Retired from free agency at age {fighter.age}."
-                self.free_agents.remove(fighter)
-                self.retired_fighters.insert(0, fighter)
-                self.consider_hall_of_fame(fighter)
+                if not getattr(fighter, "retirement_pending", False):
+                    self.mark_retirement_fight_required(fighter, "Free-agent retirement review")
+                    fighter.free_agent_months = max(getattr(fighter, "free_agent_months", 0), 2)
+                    self.news.insert(0, f"Independent retirement watch: {fighter.name} is seeking one final showcase fight.")
 
     def adjust_random_skill(self, fighter, amount):
         key = random.choice(["striking", "wrestling", "grappling", "cardio", "chin"])
@@ -2544,6 +2657,36 @@ class WorldMixin:
             else:
                 pool.sort(key=lambda f: (0 if f.champion else 1, getattr(f, "ranking_position", 999), -getattr(f, "rank_score", 0), -f.overall))
             return pool
+
+        # 0) Retirement fights: aging fighters who have declared retirement get
+        # a final bout before they can leave the active roster.
+        pending_retirees = sorted(
+            [fighter for fighter in ready if getattr(fighter, "retirement_pending", False)],
+            key=lambda fighter: (self.month - getattr(fighter, "retirement_requested_month", self.month), fighter.age, fighter.popularity),
+            reverse=True,
+        )
+        for fighter in pending_retirees:
+            if len(fights) >= target or fighter.name in used:
+                continue
+            opponents = [
+                other for other in ready
+                if other.name not in used and other is not fighter
+                and other.gender == fighter.gender and other.weight == fighter.weight
+                and not getattr(other, "retirement_pending", False)
+            ]
+            if not opponents:
+                opponents = [
+                    other for other in ready
+                    if other.name not in used and other is not fighter
+                    and other.gender == fighter.gender and other.weight == fighter.weight
+                ]
+            if not opponents:
+                continue
+            opponent = min(opponents, key=lambda other: abs(other.overall - fighter.overall) + abs((other.record_w + other.record_l) - (fighter.record_w + fighter.record_l)) * 0.2)
+            used.update({fighter.name, opponent.name})
+            fights.append({"a": fighter, "b": opponent, "title": False, "main": False,
+                           "grudge": fighter.rival == opponent.name or opponent.rival == fighter.name,
+                           "booking_reason": "Final fight before retirement"})
 
         # 1) Title fights: champion (if fighting) defends against the top available contender.
         max_titles = (2 if promo.size >= 60 else 1) + (1 if mode == "Title Push" and promo.size >= 75 else 0)
@@ -2771,6 +2914,8 @@ class WorldMixin:
                 self.resolve_rivalry_result(winner, loser, bout, method)
             if method != "Draw":
                 self.evaluate_fight_achievements(winner, loser, bout, method, promo.name)
+            self.retire_after_final_fight_if_due(a, promo.name)
+            self.retire_after_final_fight_if_due(b, promo.name)
             pop_gain += max(1, (winner.popularity + loser.popularity) // 35) + (2 if is_title else 0)
             event_hype += max(1, (winner.popularity + loser.popularity + winner.overall + loser.overall) // 4) + (12 if is_title else 0) + (6 if is_grudge else 0)
             if random.random() < 0.1:
@@ -2855,7 +3000,8 @@ class WorldMixin:
             # feed a 0-12 novice to a much stronger prospect.
             def match_rating(item):
                 bouts = item.record_w + item.record_l + item.record_d
-                return item.overall + (item.record_w - item.record_l) * 0.7 + min(12, bouts) * 0.25 + random.uniform(-2, 2)
+                retirement_priority = 120 if getattr(item, "retirement_pending", False) else 0
+                return retirement_priority + item.overall + (item.record_w - item.record_l) * 0.7 + min(12, bouts) * 0.25 + random.uniform(-2, 2)
 
             fighters.sort(key=match_rating, reverse=True)
             while len(fighters) >= 2 and len(fights) < 7:
@@ -2924,6 +3070,8 @@ class WorldMixin:
                 self.adjust_random_skill(winner, 1)
                 self.adjust_detailed_skill(winner, 1)
             results.append(f"{winner.name} def. {loser.name} ({method} R{round_no})")
+            self.retire_after_final_fight_if_due(winner, promo.name)
+            self.retire_after_final_fight_if_due(loser, promo.name)
         promo.show_history.insert(0, f"{event_name}: {len(fights)} developmental bouts, main result {results[0]}.")
         promo.show_history = promo.show_history[:12]
         self.regional_review_underperformers(promo)
@@ -2943,16 +3091,11 @@ class WorldMixin:
             terminal_record = bouts >= 28 and win_rate < 0.28
             if not (early_washout or sustained_struggle or terminal_record):
                 continue
-            promo.roster.remove(fighter)
-            fighter.retired = True
-            fighter.retirement_pending = False
-            fighter.retirement_reason = "Left professional MMA after a regional career review."
-            fighter.champion = False
-            fighter.interim_champion = False
-            self.retired_fighters.insert(0, fighter)
+            if not getattr(fighter, "retirement_pending", False):
+                self.mark_retirement_fight_required(fighter, "Regional career review")
             departures.append(fighter)
         for fighter in departures[:2]:
-            headline = f"Regional career review: {fighter.name} leaves professional MMA ({fighter.record})."
+            headline = f"Regional career review: {fighter.name} needs one final fight before leaving professional MMA ({fighter.record})."
             self.news.insert(0, headline)
             self.record_world_story("Regional Career Review", headline, fighter.retirement_reason, [promo.name], [fighter.name], 2)
         return departures
@@ -3052,7 +3195,7 @@ class WorldMixin:
         eligible = [fighter for fighter in self.free_agents if not fighter.retired and not fighter.injured
                     and not fighter.ai_offer_company and fighter.fatigue < 42 and fighter.free_agent_months >= 2
                     and self.month - getattr(fighter, "showcase_last_month", -99) >= 3
-                    and fighter.age <= 34]
+                    and (fighter.age <= 34 or getattr(fighter, "retirement_pending", False))]
         groups = {}
         for fighter in eligible:
             groups.setdefault((fighter.gender, fighter.weight), []).append(fighter)
@@ -3065,7 +3208,7 @@ class WorldMixin:
         for fighters in groups.values():
             if bouts >= bout_target:
                 break
-            fighters.sort(key=lambda fighter: (fighter.overall, fighter.record_w - fighter.record_l, fighter.free_agent_months), reverse=True)
+            fighters.sort(key=lambda fighter: (getattr(fighter, "retirement_pending", False), fighter.overall, fighter.record_w - fighter.record_l, fighter.free_agent_months), reverse=True)
             while len(fighters) >= 2 and bouts < bout_target:
                 a = fighters.pop(0)
                 b = min(fighters, key=lambda fighter: abs(fighter.overall - a.overall) + abs((fighter.record_w + fighter.record_l) - (a.record_w + a.record_l)) * 0.3)

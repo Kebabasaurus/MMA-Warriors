@@ -86,6 +86,8 @@ class Fighter:
     retired: bool = False
     retirement_reason: str = ""
     retirement_pending: bool = False
+    retirement_requested_month: int = 0
+    retirement_fight_completed: bool = False
     camp_quality: int = 0
     camp_weeks: int = 0
     camp_boost: int = 0
