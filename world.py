@@ -954,10 +954,11 @@ class WorldMixin:
         merchandise = round(ticket_revenue * self.finance["merch_rate"] * (1 + self.company_pop / 130) * (0.85 + excitement_score / 110) * atmosphere["merch_factor"])
         commentator_pay = sum(c["salary"] for c in commentators)
         venue_ops = round(venue_capacity * (5 + self.company_pop / 16))
-        production = self.finance["production_base"] + len(event["fights"]) * 5200 + best_broadcaster["fee"] + commentator_pay + venue_ops
-        medical = self.finance["medical_base"] + len(event["fights"]) * 1900
+        bout_count = max(len(event["fights"]), len(results))
+        production = self.finance["production_base"] + bout_count * 5200 + best_broadcaster["fee"] + commentator_pay + venue_ops
+        medical = self.finance["medical_base"] + bout_count * 1900
         marketing = self.finance["marketing_budget"] + round(max(0, build_score - 48) * 1100)
-        drug_testing = 0 if self.rules["drug_testing"] == "None" else len(event["fights"]) * 2 * self.finance["drug_test_cost"]
+        drug_testing = 0 if self.rules["drug_testing"] == "None" else bout_count * 2 * self.finance["drug_test_cost"]
         bonuses = self.post_show_bonuses["fight"]
         for _winner, _loser, _fight, method in results:
             if "KO" in method or "TKO" in method:

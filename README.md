@@ -63,9 +63,9 @@ Close the packaged game before rebuilding. The build script preserves packaged `
 - Play as BAMMA and compete against UFC, PFL, ONE Championship, RIZIN, KSW, Cage Warriors, LFA, Oktagon MMA, BRAVE Combat Federation, and ACA.
 - Switch control to another promotion through the company screen.
 - Start a Spectator Mode save to hand BAMMA to the AI, fast-forward the living world by week, month, year, or a chosen date, and watch any promotion's latest card in the live fight-night viewer before taking control of a company.
-- Book main cards, prelims, early prelims, title fights, and TBA fights.
+- Book main cards, prelims, early prelims, title fights, TBA fights, and career-affecting 4/8-fighter one-night MMA tournaments. Tournament entrants are seeded by rank, use the normal camp and weigh-in system, accumulate fatigue between rounds, can crown a champion in the final, and remain reserved from other bookings.
 - Schedule shows by month and week, then watch or instantly simulate them.
-- Fight-night viewer with play-by-play, a tale-of-the-tape scoreboard, a live round-by-round score, colour-coded knockdowns and finishes, auto-play, round time, scorecards, skip controls, and post-event bonuses.
+- Fight-night viewer with play-by-play, a tale-of-the-tape scoreboard, live round-by-round scores, red/blue gas and condition bars, card progress and bout states, colour-coded knockdowns and finishes, auto-play, round timing, scorecards, skip controls, post-event bonuses, and live/completed tournament bracket viewing.
 - End-of-year awards (Fighter, Fight, Knockout, Submission, Prospect, Veteran, and Promotion of the Year) crowned automatically each January, with a browsable awards history.
 - A living world where fighters age a year each season, prospects break out, veterans decline, title contenders emerge on win streaks, and busy regions grow.
 - Regional feeder circuits where 16+ prospects build records, develop, graduate to free agency, and can return to stay active; AI promotions scout them through budgeted, stealable contract offers.

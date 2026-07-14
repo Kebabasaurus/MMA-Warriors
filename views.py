@@ -855,11 +855,11 @@ class ViewMixin:
         names = set()
         if include_booked:
             for fight in self.booked:
-                names.update(name for name in fight.get("fighters", []) if name != "TBA")
+                names.update(name for name in self.event_fight_participants(fight) if name != "TBA")
         for event in self.scheduled_events:
             if self.is_event_due(event) or (event.get("month", 1), event.get("week", 1)) >= (self.month, self.week):
                 for fight in event.get("fights", []):
-                    names.update(name for name in fight.get("fighters", []) if name != "TBA")
+                    names.update(name for name in self.event_fight_participants(fight) if name != "TBA")
         return names
 
     def fighter_busy_message(self, names):
@@ -874,6 +874,15 @@ class ViewMixin:
         self.card_tree.delete(*self.card_tree.get_children())
         self.normalize_card_order()
         for index, fight in enumerate(self.booked, 1):
+            if fight.get("tournament"):
+                entrants = fight.get("tournament_entrants", [])
+                slot = "Main Tournament" if fight.get("main") else "Tournament"
+                if fight.get("title"):
+                    slot = "Title " + slot
+                field = ", ".join(entrants[:3]) + (f" +{len(entrants) - 3}" if len(entrants) > 3 else "")
+                avg_hype = round(sum(self.fight_build_score(self.get_fighter(name)) for name in entrants if name != "TBA") / max(1, len([name for name in entrants if name != "TBA"])))
+                self.card_tree.insert("", "end", iid=str(index - 1), values=(slot, f"{fight.get('tournament_name', 'MMA Grand Prix')} [{field}]", fight.get("tournament_weight", ""), avg_hype, "Bracket"))
+                continue
             if fight.get("main") and fight.get("interim"):
                 slot = "Main Interim"
             elif fight.get("main") and fight.get("title"):
@@ -909,6 +918,8 @@ class ViewMixin:
             return "Main Event"
         self.normalize_card_order()
         main = next((fight for fight in fights if fight.get("main")), fights[0])
+        if main.get("tournament"):
+            return main.get("tournament_name", "MMA Grand Prix")
         names = main.get("fighters", [])
         if len(names) != 2:
             return "Main Event"
@@ -3387,6 +3398,51 @@ class ViewMixin:
         self.refresh_available()
         self.refresh_card()
 
+    def add_tournament_to_card(self):
+        """Book a seeded, career-affecting four- or eight-fighter MMA tournament."""
+        selection = list(self.available_tree.selection())
+        if len(selection) not in (4, 8):
+            messagebox.showinfo("MMA Tournament", "Select exactly 4 or 8 available fighters from one gender and weight division.")
+            return
+        fighters = [self.get_fighter(name) for name in selection]
+        if len({fighter.weight for fighter in fighters}) != 1 or len({fighter.gender for fighter in fighters}) != 1:
+            messagebox.showwarning("Invalid Tournament", "Every entrant must be in the same gender and weight division.")
+            return
+        if self.fighter_busy_message(selection):
+            self.refresh_available()
+            return
+        target_month = self.event_month.get() if hasattr(self, "event_month") else self.month
+        target_week = self.event_week.get() if hasattr(self, "event_week") else self.week
+        blocked = [fighter for fighter in fighters if fighter.injured or fighter.fatigue >= 55 or not self.fighter_available_for_date(fighter, target_month, target_week)]
+        if blocked:
+            messagebox.showwarning("Entrants Unavailable", "These fighters are not tournament-ready:\n\n" + "\n".join(f"{fighter.name}: {fighter.status} / {self.fighter_return_label(fighter)}" for fighter in blocked))
+            return
+        seeded = sorted(fighters, key=lambda fighter: (self.division_rank_number(fighter) or 99, -fighter.elo_rating, -fighter.overall, fighter.name))
+        weight, gender = seeded[0].weight, seeded[0].gender
+        title = bool(self.title_fight.get())
+        interim = bool(title and not any(fighter.champion for fighter in seeded))
+        make_main = bool(self.main_event.get() or not self.booked or title)
+        if make_main:
+            for existing in self.booked:
+                existing["main"] = False
+        tournament = {
+            "fighters": [seeded[0].name, seeded[-1].name], "tournament": True,
+            "tournament_size": len(seeded), "tournament_entrants": [fighter.name for fighter in seeded],
+            "tournament_weight": weight, "tournament_gender": gender,
+            "tournament_name": f"{gender} {weight} {len(seeded)}-Fighter Grand Prix",
+            "title": title, "interim": interim, "main": make_main,
+            "tier": "Main Card" if make_main else self.card_tier.get(),
+        }
+        if make_main:
+            self.booked.insert(0, tournament)
+        else:
+            self.booked.append(tournament)
+        self.normalize_card_order()
+        self.title_fight.set(False)
+        self.main_event.set(False)
+        self.refresh_available()
+        self.refresh_card()
+
     def add_tba_matchup(self):
         selection = self.available_tree.selection()
         if len(selection) != 1:
@@ -3434,6 +3490,9 @@ class ViewMixin:
             messagebox.showinfo("Fill TBA", "Select a fight with a TBA opponent.")
             return
         fight = self.booked[int(selected[0])]
+        if fight.get("tournament"):
+            messagebox.showinfo("Tournament Field", "Tournament alternates are resolved automatically at weigh-ins.")
+            return
         if "TBA" not in fight.get("fighters", []):
             messagebox.showinfo("Fill TBA", "That fight already has two named fighters.")
             return
@@ -3457,7 +3516,7 @@ class ViewMixin:
         if not selected:
             return
         fight = self.booked[int(selected[0])]
-        names = [name for name in fight.get("fighters", []) if name != "TBA"]
+        names = [name for name in self.event_fight_participants(fight) if name != "TBA"]
         fighters = [self.get_fighter(name) for name in names]
         fight["title"] = not fight.get("title", False)
         fight["interim"] = bool(fight["title"] and not any(f.champion for f in fighters))

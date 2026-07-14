@@ -1,5 +1,6 @@
 import json
 import random
+import re
 import sys
 import traceback
 from datetime import datetime
@@ -13,11 +14,15 @@ from models import Fighter, Gym, Promotion
 
 
 class EventMixin:
+    def event_fight_participants(self, fight):
+        """Return every booked athlete, including a tournament's complete field."""
+        return list(fight.get("tournament_entrants", fight.get("fighters", [])))
+
     def schedule_event(self):
         if len(self.booked) < 1:
             messagebox.showinfo("No fights", "Book at least one fight before scheduling a show.")
             return
-        names = [name for fight in self.booked for name in fight.get("fighters", []) if name != "TBA"]
+        names = [name for fight in self.booked for name in self.event_fight_participants(fight) if name != "TBA"]
         duplicates = sorted({name for name in names if names.count(name) > 1})
         if duplicates:
             messagebox.showwarning("Double booking", f"{', '.join(duplicates)} is booked in more than one fight on this card. A fighter can only appear once per event.")
@@ -73,12 +78,16 @@ class EventMixin:
         for event in sorted(self.scheduled_events, key=lambda e: (e.get("month", 1), e.get("week", 1))):
             event_names = set()
             for fight in event.get("fights", []):
-                fighters = fight.get("fighters", [])
-                for index, name in enumerate(fighters):
+                participants = self.event_fight_participants(fight)
+                for index, name in enumerate(participants):
                     if name == "TBA":
                         continue
                     if name in seen or name in event_names:
-                        fighters[index] = "TBA"
+                        if fight.get("tournament"):
+                            fight.setdefault("tournament_entrants", participants)[index] = "TBA"
+                            fight["fighters"] = list(fight["tournament_entrants"][:1] + fight["tournament_entrants"][-1:])
+                        else:
+                            fight.setdefault("fighters", participants)[index] = "TBA"
                         fight["tba_weight"] = fight.get("tba_weight", self._safe_weight(name))
                         fight["tba_gender"] = fight.get("tba_gender", self._safe_gender(name))
                         conflicts.append(name)
@@ -100,7 +109,7 @@ class EventMixin:
     def assign_event_camps(self, event):
         weeks_out = max(1, (event["month"] - self.month) * 4 + (event.get("week", 1) - self.week))
         for fight in event["fights"]:
-            for name in fight.get("fighters", []):
+            for name in self.event_fight_participants(fight):
                 if name == "TBA":
                     continue
                 fighter = self.get_fighter(name)
@@ -291,6 +300,11 @@ class EventMixin:
                 text.insert("end", "\n".join(package.get("log", [])))
         fight_list.bind("<<ListboxSelect>>", show_selected)
         show_selected()
+        replay_controls = ttk.Frame(window, style="Chrome.TFrame")
+        replay_controls.pack(fill="x", padx=8, pady=(0, 8))
+        if package.get("tournament_brackets"):
+            ttk.Button(replay_controls, text="View Tournament Bracket", style="Accent.TButton", command=lambda: self.open_event_tournament_bracket(package, window)).pack(side="left")
+        ttk.Button(replay_controls, text="Close", command=window.destroy).pack(side="right")
 
     def open_live_fight_window(self, event, package, apply_results=True, on_complete=None):
         window = tk.Toplevel(self.root)
@@ -307,6 +321,10 @@ class EventMixin:
         header.pack(fill="x", padx=8, pady=(8, 0))
         title_label = ttk.Label(header, text=f"LIVE FIGHT: {event['name']}", style="ScreenTitle.TLabel")
         title_label.pack(side="left", padx=10, pady=5)
+        event_progress_label = ttk.Label(header, text="Card ready", style="Panel.TLabel")
+        event_progress_label.pack(side="right", padx=10, pady=5)
+        event_progress = ttk.Progressbar(window, maximum=max(1, len(package.get("fight_logs", []))), value=0)
+        event_progress.pack(fill="x", padx=8, pady=(4, 0))
 
         # Tale-of-the-tape scoreboard that updates as each bout begins.
         tote = tk.Frame(window, bg=self.colors["chrome"])
@@ -325,6 +343,16 @@ class EventMixin:
         score_label.pack(fill="x", padx=8, pady=(0, 2))
         fight_read_label = tk.Label(window, text="", font=("Tahoma", 9, "bold"), bg=self.colors["chrome"], fg=self.colors["text"])
         fight_read_label.pack(fill="x", padx=8, pady=(0, 4))
+        condition_row = tk.Frame(window, bg=self.colors["chrome"])
+        condition_row.pack(fill="x", padx=28, pady=(0, 5))
+        left_condition = tk.Label(condition_row, text="RED CORNER READY", width=24, anchor="e", bg=self.colors["chrome"], fg=self.colors["muted"], font=("Tahoma", 8, "bold"))
+        left_condition.pack(side="left", padx=(0, 5))
+        left_gas = ttk.Progressbar(condition_row, maximum=100, value=100, length=220)
+        left_gas.pack(side="left", fill="x", expand=True, padx=(0, 12))
+        right_gas = ttk.Progressbar(condition_row, maximum=100, value=100, length=220)
+        right_gas.pack(side="left", fill="x", expand=True, padx=(12, 0))
+        right_condition = tk.Label(condition_row, text="BLUE CORNER READY", width=24, anchor="w", bg=self.colors["chrome"], fg=self.colors["muted"], font=("Tahoma", 8, "bold"))
+        right_condition.pack(side="left", padx=(5, 0))
 
         # Pack the control bar at the bottom FIRST so it always reserves its
         # space; the play-by-play body then expands into whatever is left.
@@ -341,7 +369,7 @@ class EventMixin:
         fight_list.pack(side="left", fill="y", padx=(0, 8))
         for index, fight_log in enumerate(package.get("fight_logs", []), 1):
             heading = fight_log.get("heading", fight_log.get("fight", f"Bout {index}"))
-            fight_list.insert("end", f"{index}. {heading[:38]}")
+            fight_list.insert("end", f"{index}. PENDING - {heading[:28]}")
 
         text = tk.Text(body, wrap="word", font=("Courier New", 11), bg=self.colors["cream"], fg=self.colors["text"], insertbackground=self.colors["text"], padx=14, pady=14, spacing1=3, spacing2=2, spacing3=8)
         text.pack(side="left", fill="both", expand=True)
@@ -357,6 +385,23 @@ class EventMixin:
 
         state = {"fight": -1, "line": 0, "delay": max(120, min(3000, self.fight_timer_delay.get() if hasattr(self, "fight_timer_delay") else 2150)), "running": False, "finished": False}
         fight_logs = package.get("fight_logs", [{"heading": "Event Report", "lines": package["log"]}])
+
+        def condition_word(gas):
+            if gas >= 70:
+                return "FRESH"
+            if gas >= 45:
+                return "WORKING"
+            if gas >= 25:
+                return "FADING"
+            return "EXHAUSTED"
+
+        def set_condition(gas_a, gas_b):
+            gas_a = max(0, min(100, int(gas_a)))
+            gas_b = max(0, min(100, int(gas_b)))
+            left_gas["value"] = gas_a
+            right_gas["value"] = gas_b
+            left_condition.config(text=f"RED {condition_word(gas_a)}  {gas_a}%")
+            right_condition.config(text=f"{gas_b}%  {condition_word(gas_b)} BLUE")
 
         def append_line(value):
             text.config(state="normal")
@@ -388,6 +433,11 @@ class EventMixin:
                 score_label.config(text="Live score:  " + fragment.split(". Gas", 1)[0].strip())
                 if "Gas" in value:
                     fight_read_label.config(text="Corner read: " + value.split("Gas", 1)[1].strip(" ."))
+                    current_log = fight_logs[state["fight"]] if 0 <= state["fight"] < len(fight_logs) else {}
+                    a_name, b_name = current_log.get("a", ""), current_log.get("b", "")
+                    match = re.search(rf"Gas:\s*{re.escape(a_name)}\s+(\d+),\s*{re.escape(b_name)}\s+(\d+)", value) if a_name and b_name else None
+                    if match:
+                        set_condition(match.group(1), match.group(2))
             elif value.startswith("R") and "Scores " in value:
                 score_label.config(text="Live score:  " + value.split("Scores ", 1)[1].strip())
             elif value.startswith(("Corner read:", "Mat-side read:")):
@@ -400,6 +450,8 @@ class EventMixin:
             if state["finished"]:
                 return
             state["finished"] = True
+            event_progress["value"] = max(1, len(fight_logs))
+            event_progress_label.config(text=f"Card complete - {len(fight_logs)} fights")
             if apply_results:
                 self.finish_event(event, package)
                 append_line("\n[Event processed. Results have been applied to the world.]")
@@ -413,7 +465,8 @@ class EventMixin:
             result = log.get("result")
             if result and fight_list.size() > index:
                 fight_list.delete(index)
-                fight_list.insert(index, f"{index + 1}. Done - {result[:34]}")
+                fight_list.insert(index, f"{index + 1}. DONE - {result[:31]}")
+            event_progress["value"] = index + 1
 
         def update_scoreboard(log):
             label_chip.config(text=log.get("label", ""))
@@ -428,8 +481,10 @@ class EventMixin:
                 right_name.config(text="")
             score_label.config(text="")
             if a_name and b_name:
+                set_condition(log.get("a_start_gas", 100), log.get("b_start_gas", 100))
                 fight_read_label.config(text=f"{log.get('weight', '')} | {log.get('label', 'Bout')} | Watch fatigue, damage, and round-by-round scoring.")
             else:
+                set_condition(100, 100)
                 fight_read_label.config(text="")
 
         def start_next_fight():
@@ -445,11 +500,15 @@ class EventMixin:
                 return
             fight_list.selection_clear(0, "end")
             if fight_list.size():
+                fight_list.delete(state["fight"])
+                fight_list.insert(state["fight"], f"{state['fight'] + 1}. LIVE - {fight_logs[state['fight']].get('heading', 'Bout')[:31]}")
                 fight_list.selection_set(state["fight"])
                 fight_list.see(state["fight"])
             log = fight_logs[state["fight"]]
             heading = log.get("heading", log.get("fight", "Bout"))
             title_label.config(text=f"LIVE FIGHT: {heading[:70]}")
+            stage = f" - {log.get('tournament_stage')}" if log.get("tournament_stage") else ""
+            event_progress_label.config(text=f"Fight {state['fight'] + 1} of {len(fight_logs)}{stage}")
             update_scoreboard(log)
             text.config(state="normal")
             text.delete("1.0", "end")
@@ -537,7 +596,17 @@ class EventMixin:
 
         def skip_to_end():
             state["running"] = False
+            for index in range(fight_list.size()):
+                mark_fight_done(index)
             finish_live_event()
+
+        def close_window():
+            if not state["finished"]:
+                action = "apply the complete event results and close" if apply_results else "close this simulation"
+                if not messagebox.askyesno("Fight Night in progress", f"The card is not finished.\n\nDo you want to {action}?", parent=window):
+                    return
+                finish_live_event()
+            window.destroy()
 
         ttk.Button(controls, text="Start Next Fight", style="Accent.TButton", command=start_next_fight).pack(side="left", padx=4)
         ttk.Button(controls, text="Play Fight", command=start).pack(side="left", padx=4)
@@ -563,7 +632,10 @@ class EventMixin:
         ttk.Spinbox(controls2, from_=120, to=3000, increment=50, textvariable=speed_var, width=6, command=apply_speed).pack(side="left", padx=2)
         ttk.Button(controls2, text="Apply Speed", command=apply_speed).pack(side="left", padx=4)
         ttk.Button(controls2, text="Skip Event", command=skip_to_end).pack(side="left", padx=4)
-        ttk.Button(controls2, text="Close", style="Accent.TButton", command=window.destroy).pack(side="right", padx=4)
+        if package.get("tournament_brackets"):
+            ttk.Button(controls2, text="View Bracket", command=lambda: self.open_event_tournament_bracket(package, window)).pack(side="left", padx=4)
+        ttk.Button(controls2, text="Close", style="Accent.TButton", command=close_window).pack(side="right", padx=4)
+        window.protocol("WM_DELETE_WINDOW", close_window)
 
     def sign_fighter(self):
         selected = self.market_tree.selection()
@@ -1070,10 +1142,27 @@ class EventMixin:
         results = []
         award_pool = []
         fight_logs = []
+        tournament_brackets = []
         ordered = self.event_fight_order(event["fights"])
         for fight in ordered:
             if fight in cancelled_fights:
                 fight_logs.append({"heading": "Cancelled bout", "lines": [f"{' vs '.join(fight.get('fighters', []))} was cancelled after weigh-ins."]})
+                continue
+            if fight.get("tournament"):
+                tournament = self.simulate_event_tournament(event, fight)
+                results.extend(tournament["results"])
+                award_pool.extend(tournament["award_pool"])
+                fight_logs.extend(tournament["fight_logs"])
+                tournament_brackets.append(tournament["bracket"])
+                total_hype += tournament["hype"]
+                total_build += tournament["build"]
+                total_excitement += tournament["excitement"]
+                total_cost += tournament["cost"]
+                log.extend(["", tournament["bracket"]["title"].upper(), "-" * 72])
+                for stage in tournament["bracket"]["stages"]:
+                    log.append(stage["name"])
+                    log.extend(f"  {match['summary']}" for match in stage["matches"])
+                log.append(f"  GRAND PRIX CHAMPION: {tournament['bracket']['champion']}")
                 continue
             fight = dict(fight)
             # Player-event post-processing still needs both fighters for contract
@@ -1088,6 +1177,8 @@ class EventMixin:
             total_hype += hype
             total_build += build
             total_cost += a.purse + b.purse
+            a_start_gas = round(self.starting_fight_gas(a))
+            b_start_gas = round(self.starting_fight_gas(b))
             winner, loser, method, round_no, commentary = self.simulate_fight(a, b, fight)
             excitement = self.fight_excitement(a, b, winner, loser, method, round_no, fight, hype)
             total_excitement += excitement
@@ -1111,6 +1202,7 @@ class EventMixin:
                 "heading": lines[0], "lines": lines,
                 "a": a.name, "b": b.name, "a_record": a.record, "b_record": b.record,
                 "weight": a.weight, "label": label, "result": result_text, "excitement": excitement,
+                "a_start_gas": a_start_gas, "b_start_gas": b_start_gas,
             })
             log.append("\n" + lines[0])
             log.extend(f"  {line}" for line in lines[1:])
@@ -1136,7 +1228,8 @@ class EventMixin:
         log.append(f"Fighter pay: ${finance['fighter_pay']:,} | Bonuses: ${finance['bonuses']:,} | Production: ${finance['production']:,} | Medical: ${finance['medical']:,} | Marketing: ${finance['marketing']:,} | Tax: ${finance['tax']:,}")
         log.append(f"Total revenue: ${finance['total_revenue']:,} | Total expense: ${finance['total_expense']:,} | Profit: ${profit:,}")
         log.append(f"Company popularity will move from {self.company_pop} to {projected_pop}. Stability will move from {self.company_stability} to {projected_stability}.")
-        summary = f"{event['name']} ({event['venue']}, {self.event_date_label(event)}): {len(event['fights'])} fights, excitement {round(avg_excitement)}, gate ${gate:,}, profit ${profit:,}, popularity {projected_pop}%, stability {projected_stability}%"
+        tournament_note = f", {len(tournament_brackets)} tournament(s)" if tournament_brackets else ""
+        summary = f"{event['name']} ({event['venue']}, {self.event_date_label(event)}): {len(results)} fights{tournament_note}, excitement {round(avg_excitement)}, gate ${gate:,}, profit ${profit:,}, popularity {projected_pop}%, stability {projected_stability}%"
         return {
             "log": log,
             "results": results,
@@ -1149,6 +1242,7 @@ class EventMixin:
             "awards": awards,
             "fight_count": len(results),
             "fight_logs": fight_logs,
+            "tournament_brackets": tournament_brackets,
             "award_pool": award_pool,
             "weigh_in_log": weigh_log,
             "event_name": event["name"],
@@ -1270,7 +1364,18 @@ class EventMixin:
         purse_penalty = 0
         cancelled = []
         for fight in event["fights"]:
-            names = [name for name in fight.get("fighters", []) if name != "TBA"]
+            if fight.get("tournament") and "TBA" in fight.get("tournament_entrants", []):
+                entrants = list(fight.get("tournament_entrants", []))
+                known = next((self.get_fighter(name) for name in entrants if name != "TBA"), None)
+                for index, name in enumerate(entrants):
+                    if name != "TBA":
+                        continue
+                    replacement = self.find_tba_replacement(fight.get("tournament_weight", known.weight), fight.get("tournament_gender", known.gender), known=known, short_notice=True)
+                    entrants[index] = replacement.name
+                    lines.append(f"Tournament alternate {replacement.name} entered the field on short notice.")
+                fight["tournament_entrants"] = entrants
+                fight["fighters"] = [entrants[0], entrants[-1]]
+            names = [name for name in self.event_fight_participants(fight) if name != "TBA"]
             fighters = [self.get_fighter(name) for name in names if any(r.name == name for r in self.roster)]
             if len(fighters) < 2:
                 continue
@@ -1287,6 +1392,22 @@ class EventMixin:
                     lines.append(f"{fighter.name} missed {fighter.weight} by {miss_by} lb ({fighter.scale_weight} lb). Fine ${fine:,}; cut penalty {fighter.weight_cut_penalty}.")
                 else:
                     lines.append(f"{fighter.name} made {fighter.weight} at {fighter.scale_weight} lb. Cut penalty {fighter.weight_cut_penalty}.")
+            if fight.get("tournament"):
+                if misses:
+                    fight["catchweight"] = True
+                    fight["title"] = False
+                    fight["interim"] = False
+                    lines.append(f"{fight.get('tournament_name', 'The tournament')} continues, but the championship sanction was removed after {len(misses)} weight miss(es).")
+                severe = [(fighter, miss_by) for fighter, miss_by in misses if miss_by > 2]
+                for missed, miss_by in severe:
+                    replacement = self.find_tba_replacement(missed.weight, missed.gender, known=missed, short_notice=True)
+                    entrants = fight.get("tournament_entrants", [])
+                    entrants[entrants.index(missed.name)] = replacement.name
+                    outcome = self.perform_weigh_in(replacement, title_fight=False, camp_weeks=0, persist=True)
+                    lines.append(f"Commission removed {missed.name} after a {miss_by} lb miss; alternate {replacement.name} weighed {outcome['scale_weight']} lb and joined the bracket.")
+                entrants = fight.get("tournament_entrants", [])
+                fight["fighters"] = [entrants[0], entrants[-1]]
+                continue
             if len(misses) == 2 or any(miss_by > 7 for _fighter, miss_by in misses):
                 made = next((fighter for fighter in fighters if not fighter.missed_weight), None)
                 if made and len(misses) == 1:
@@ -1304,6 +1425,146 @@ class EventMixin:
                 fight["interim"] = False
                 lines.append(f"{' vs '.join(names)} continues as a catchweight non-title bout.")
         return lines, purse_penalty, cancelled
+
+    def simulate_event_tournament(self, event, tournament):
+        """Simulate a one-night MMA bracket while preserving the normal career result pipeline."""
+        entrants = [self.get_fighter(name) for name in tournament.get("tournament_entrants", [])]
+        entrants = sorted(entrants, key=lambda fighter: (self.division_rank_number(fighter) or 99, -fighter.elo_rating, -fighter.overall, fighter.name))
+        starting_fatigue = {fighter.name: fighter.fatigue for fighter in entrants}
+        current = entrants
+        stages = []
+        results = []
+        award_pool = []
+        fight_logs = []
+        total_hype = total_build = total_excitement = total_cost = 0
+        while len(current) > 1:
+            stage = {8: "QUARTERFINALS", 4: "SEMIFINALS", 2: "FINAL"}.get(len(current), f"ROUND OF {len(current)}")
+            pairings = list(zip(current[:len(current) // 2], reversed(current[len(current) // 2:])))
+            winners = []
+            stage_matches = []
+            for a, b in pairings:
+                is_final = len(current) == 2
+                fight = {
+                    "fighters": [a.name, b.name], "title": bool(is_final and tournament.get("title")),
+                    "interim": bool(is_final and tournament.get("interim")), "main": bool(is_final and tournament.get("main")),
+                    "tier": tournament.get("tier", "Main Card"), "tournament": True,
+                    "tournament_stage": stage, "tournament_name": tournament.get("tournament_name", "MMA Grand Prix"),
+                    "_defer_retirement": True, "region": event.get("region", self.venue_region(event["venue"])),
+                    "city": event.get("city", ""),
+                }
+                hype = self.fight_hype(a, b, fight) + (8 if is_final else 3)
+                build = self.match_build_score(a, b, fight) + (8 if is_final else 4)
+                a_start_gas = round(self.starting_fight_gas(a))
+                b_start_gas = round(self.starting_fight_gas(b))
+                winner, loser, method, round_no, commentary = self.simulate_fight(a, b, fight)
+                replay = 0
+                while method == "Draw" and replay < 8:
+                    replay += 1
+                    commentary.append(f"Tournament rules require an advancing fighter. Sudden-death replay {replay} begins after the drawn bout.")
+                    winner, loser, method, round_no, replay_lines = self.simulate_fight(a, b, fight)
+                    commentary.extend(replay_lines)
+                if method == "Draw":
+                    winner, loser = ((a, b) if (a.elo_rating, a.overall, a.fight_iq) >= (b.elo_rating, b.overall, b.fight_iq) else (b, a))
+                    method = "Decision"
+                    commentary.append(f"After repeated level scorecards, the tournament commission's mandatory tiebreak criteria advances {winner.name}.")
+                # A finalist can fight several times before finish_event commits
+                # the career results. Preserve each bout's own box score so a
+                # later round cannot overwrite the earlier career telemetry.
+                fight["_fighter_stats"] = {
+                    a.name: dict(getattr(a, "last_fight_stats", {}) or {}),
+                    b.name: dict(getattr(b, "last_fight_stats", {}) or {}),
+                }
+                excitement = self.fight_excitement(a, b, winner, loser, method, round_no, fight, hype)
+                carry = max(4, round_no * 2 + (2 if method in ("Decision", "Majority Decision") else 0))
+                winner.fatigue = min(88, winner.fatigue + carry)
+                loser.fatigue = min(95, loser.fatigue + carry + 2)
+                label = f"TOURNAMENT {stage[:-1] if stage.endswith('S') else stage}"
+                if is_final:
+                    label = "TOURNAMENT FINAL" + (" — TITLE FIGHT" if fight.get("title") else "")
+                lines = [
+                    f"{label}: {a.name} vs {b.name} ({a.weight})",
+                    f"Bracket: {tournament.get('tournament_name', 'MMA Grand Prix')} | Cumulative fatigue {a.name} {a.fatigue}, {b.name} {b.fatigue}",
+                    f"Odds: {self.matchup_odds(a, b)}",
+                    f"Corner read: {a.name} camp {a.camp_weeks}w, morale {a.morale}, cut penalty {a.weight_cut_penalty} | {b.name} camp {b.camp_weeks}w, morale {b.morale}, cut penalty {b.weight_cut_penalty}",
+                ] + commentary
+                result_text = f"{winner.name} def. {loser.name} by {method}, R{round_no}"
+                lines.append(f"Result: {result_text} | Fight excitement {excitement} | {winner.name} advances")
+                results.append((winner, loser, fight, method))
+                award_pool.append({"winner": winner.name, "loser": loser.name, "fighters": [a.name, b.name], "method": method, "excitement": excitement, "round": round_no, "fight": f"{a.name} vs {b.name}"})
+                fight_logs.append({
+                    "heading": lines[0], "lines": lines, "a": a.name, "b": b.name,
+                    "a_record": a.record, "b_record": b.record, "weight": a.weight,
+                    "label": label, "result": result_text, "excitement": excitement,
+                    "tournament_stage": stage, "tournament_name": tournament.get("tournament_name", "MMA Grand Prix"),
+                    "a_start_gas": a_start_gas, "b_start_gas": b_start_gas,
+                })
+                stage_matches.append({"a": a.name, "b": b.name, "winner": winner.name, "method": method, "round": round_no, "summary": result_text})
+                winners.append(winner)
+                total_hype += hype
+                total_build += build
+                total_excitement += excitement
+                total_cost += a.purse + b.purse
+            stages.append({"name": stage, "matches": stage_matches})
+            current = winners
+        champion = current[0]
+        bracket = {
+            "title": tournament.get("tournament_name", "MMA Grand Prix"), "entrants": [fighter.name for fighter in entrants],
+            "stages": stages, "champion": champion.name, "title_fight": bool(tournament.get("title")),
+        }
+        # Later rounds need real cumulative fatigue while being simulated, but
+        # preparation happens before the viewer is completed. Restore the live
+        # world here; finish_event applies every bout in order exactly once.
+        for fighter in entrants:
+            fighter.fatigue = starting_fatigue[fighter.name]
+        return {
+            "results": results, "award_pool": award_pool, "fight_logs": fight_logs,
+            "hype": total_hype, "build": total_build, "excitement": total_excitement,
+            "cost": total_cost, "bracket": bracket,
+        }
+
+    def open_event_tournament_bracket(self, package, parent=None):
+        """Open a compact, readable bracket for a live or completed event."""
+        brackets = package.get("tournament_brackets", []) if isinstance(package, dict) else []
+        if not brackets:
+            messagebox.showinfo("Tournament Bracket", "This event has no tournament bracket.", parent=parent or self.root)
+            return
+        window = tk.Toplevel(parent or self.root)
+        window.title("Tournament Bracket")
+        window.geometry("900x620")
+        window.minsize(720, 480)
+        window.configure(bg=self.colors["chrome"])
+        header = ttk.Frame(window, style="Header.TFrame")
+        header.pack(fill="x", padx=8, pady=(8, 0))
+        ttk.Label(header, text="TOURNAMENT BRACKET", style="ScreenTitle.TLabel").pack(side="left", padx=10, pady=5)
+        notebook = ttk.Notebook(window)
+        notebook.pack(fill="both", expand=True, padx=8, pady=8)
+        for bracket in brackets:
+            tab = ttk.Frame(notebook, style="Chrome.TFrame")
+            notebook.add(tab, text=str(bracket.get("title", "Grand Prix"))[:32])
+            champion = bracket.get("champion", "TBD")
+            ttk.Label(tab, text=f"CHAMPION: {champion}", style="Section.TLabel", anchor="center").pack(fill="x", pady=(8, 4))
+            ttk.Label(tab, text=f"Field: {len(bracket.get('entrants', []))} fighters" + (" | Championship awarded in the final" if bracket.get("title_fight") else ""), style="Panel.TLabel", anchor="center").pack(fill="x", pady=(0, 8))
+            table_frame = ttk.Frame(tab, style="Chrome.TFrame")
+            table_frame.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+            columns = ("stage", "bout", "matchup", "winner", "result")
+            tree = ttk.Treeview(table_frame, columns=columns, show="headings")
+            widths = {"stage": 120, "bout": 50, "matchup": 260, "winner": 180, "result": 220}
+            labels = {"stage": "Stage", "bout": "Bout", "matchup": "Matchup", "winner": "Advances", "result": "Result"}
+            for column in columns:
+                tree.heading(column, text=labels[column])
+                tree.column(column, width=widths[column], minwidth=45, anchor="w", stretch=column in ("matchup", "result"))
+            scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=tree.yview)
+            tree.configure(yscrollcommand=scrollbar.set)
+            tree.pack(side="left", fill="both", expand=True)
+            scrollbar.pack(side="right", fill="y")
+            for stage in bracket.get("stages", []):
+                for bout_no, match in enumerate(stage.get("matches", []), 1):
+                    matchup = f"{match.get('a', 'TBD')} vs {match.get('b', 'TBD')}"
+                    result = f"{match.get('method', '')} R{match.get('round', '')}".strip()
+                    tree.insert("", "end", values=(stage.get("name", "ROUND"), bout_no, matchup, match.get("winner", "TBD"), result))
+            entrants = "Seeded field: " + "  |  ".join(bracket.get("entrants", []))
+            ttk.Label(tab, text=entrants, style="Panel.TLabel", wraplength=830, justify="left").pack(fill="x", padx=10, pady=(0, 8))
+        ttk.Button(window, text="Close", style="Accent.TButton", command=window.destroy).pack(anchor="e", padx=8, pady=(0, 8))
 
     def queue_cancelled_bout_rebooking(self, event, fight, names):
         entry = {"fighters": list(names), "weight": fight.get("weight", ""), "tier": fight.get("tier", "Main Card"), "main": fight.get("main", False), "title": False, "interim": False, "source_event": event.get("name", "Event"), "target_month": self.month + 1, "status": "Awaiting rebooking"}
@@ -1391,6 +1652,10 @@ class EventMixin:
         finance = package.get("finance", {})
         ppv_pool = finance.get("ticket_revenue", 0) + finance.get("broadcast_income", 0)
         for index, (winner, loser, fight, method) in enumerate(package["results"]):
+            stats = fight.get("_fighter_stats", {})
+            if stats:
+                winner.last_fight_stats = dict(stats.get(winner.name, {}) or {}) or None
+                loser.last_fight_stats = dict(stats.get(loser.name, {}) or {}) or None
             if method == "Draw":
                 self.apply_draw_result(winner, loser, fight)
             else:
@@ -1411,6 +1676,18 @@ class EventMixin:
             package["event_name"], revenue=finance.get("total_revenue", 0),
             costs=finance.get("total_expense", 0) + clause_payout,
         )
+        for bracket in package.get("tournament_brackets", []):
+            champion = self.find_fighter_anywhere(bracket.get("champion", ""))
+            if not champion:
+                continue
+            honour = f"Won {bracket.get('title', 'MMA Grand Prix')} in Month {self.month}"
+            champion.career_achievements = list(champion.career_achievements or [])
+            if honour not in champion.career_achievements:
+                champion.career_achievements.append(honour)
+            champion.popularity = min(100, champion.popularity + 4)
+            champion.morale = min(100, champion.morale + 8)
+            champion.legacy_score += 14 + len(bracket.get("entrants", []))
+            self.news.insert(0, f"GRAND PRIX WINNER: {champion.name} won the {bracket.get('title', 'MMA Grand Prix')}.")
         for winner, loser, fight, _method in package["results"]:
             for fighter, opponent in ((winner, loser), (loser, winner)):
                 if fighter not in self.roster:
@@ -1449,6 +1726,7 @@ class EventMixin:
             "profit": f"${package['profit']:,}",
             "log": package.get("log", []),
             "fight_logs": package.get("fight_logs", []),
+            "tournament_brackets": package.get("tournament_brackets", []),
             "finance": package.get("finance", {}),
         })
         self.result_records = self.result_records[:500]
@@ -1525,26 +1803,56 @@ class EventMixin:
             return
         window = tk.Toplevel(self.root)
         window.title("End of Event")
-        window.geometry("560x430")
+        window.geometry("820x600")
+        window.minsize(700, 500)
         window.configure(bg=self.colors["chrome"])
         header = ttk.Frame(window, style="Header.TFrame")
         header.pack(fill="x", padx=8, pady=(8, 0))
         ttk.Label(header, text="END OF EVENT", style="ScreenTitle.TLabel").pack(side="left", padx=10, pady=5)
-        canvas = tk.Canvas(window, bg=self.colors["cream"], highlightthickness=0)
-        canvas.pack(fill="both", expand=True, padx=8, pady=8)
-        canvas.create_text(24, 24, anchor="nw", fill=self.colors["text"], font=("Impact", 18), text=package["event_name"])
-        canvas.create_text(24, 62, anchor="nw", fill=self.colors["text"], font=("Tahoma", 10, "bold"), text=f"Profit ${package['profit']:,} | Gate ${package['gate']:,} | Popularity {package['projected_pop']} | Stability {package['projected_stability']}")
+        overview = ttk.Frame(window, style="Panel.TFrame")
+        overview.pack(fill="x", padx=8, pady=(8, 4))
+        ttk.Label(overview, text=package["event_name"], style="ScreenTitle.TLabel").pack(anchor="w", padx=12, pady=(8, 2))
+        ttk.Label(overview, text=f"Profit ${package['profit']:,}  |  Gate ${package['gate']:,}  |  Popularity {package['projected_pop']}  |  Stability {package['projected_stability']}", style="Panel.TLabel").pack(anchor="w", padx=12)
         atmosphere = package.get("finance", {}).get("atmosphere", {})
-        canvas.create_text(24, 84, anchor="nw", fill=self.colors["gold"], font=("Tahoma", 10, "bold"), text=f"Crowd: {atmosphere.get('mood', 'Engaged')} {atmosphere.get('intensity', 50)}/100 — {atmosphere.get('preference', 'Competitive fights')}")
-        y = 128
-        canvas.create_text(24, y, anchor="nw", fill=self.colors["gold"], font=("Impact", 14), text="BONUSES")
-        y += 34
+        ttk.Label(overview, text=f"Crowd: {atmosphere.get('mood', 'Engaged')} {atmosphere.get('intensity', 50)}/100 - {atmosphere.get('preference', 'Competitive fights')}  |  Average excitement {round(package.get('average_excitement', 0))}", style="Panel.TLabel").pack(anchor="w", padx=12, pady=(2, 8))
+        if package.get("tournament_brackets"):
+            champions = "  |  ".join(f"{bracket.get('title', 'Grand Prix')}: {bracket.get('champion', 'TBD')}" for bracket in package["tournament_brackets"])
+            ttk.Label(overview, text=f"TOURNAMENT CHAMPION - {champions}", style="Section.TLabel", anchor="center").pack(fill="x", padx=8, pady=(0, 8))
+
+        result_panel = ttk.Frame(window, style="Panel.TFrame")
+        result_panel.pack(fill="both", expand=True, padx=8, pady=4)
+        ttk.Label(result_panel, text="CARD RESULTS", style="Section.TLabel", anchor="center").pack(fill="x", ipady=3)
+        table_frame = ttk.Frame(result_panel, style="Panel.TFrame")
+        table_frame.pack(fill="both", expand=True, padx=8, pady=8)
+        columns = ("bout", "stage", "matchup", "result", "excitement")
+        tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=10)
+        definitions = (
+            ("bout", "#", 42, "center"), ("stage", "Stage", 125, "center"),
+            ("matchup", "Matchup", 250, "w"), ("result", "Result", 260, "w"),
+            ("excitement", "Exc.", 58, "center"),
+        )
+        for column, heading, width, anchor in definitions:
+            tree.heading(column, text=heading)
+            tree.column(column, width=width, minwidth=40, anchor=anchor, stretch=column in ("matchup", "result"))
+        scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar.set)
+        tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        for index, log in enumerate(package.get("fight_logs", []), 1):
+            matchup = f"{log.get('a', '')} vs {log.get('b', '')}" if log.get("a") else log.get("heading", "Bout")
+            stage = log.get("tournament_stage") or log.get("label", "BOUT")
+            tree.insert("", "end", values=(index, stage, matchup, log.get("result", "Cancelled"), log.get("excitement", "-")))
+
+        bonus_panel = ttk.Frame(window, style="Panel.TFrame")
+        bonus_panel.pack(fill="x", padx=8, pady=4)
+        ttk.Label(bonus_panel, text="POST-FIGHT BONUSES", style="Section.TLabel", anchor="center").pack(fill="x", ipady=3)
         if package.get("awards"):
             for award in package["awards"]:
-                canvas.create_text(34, y, anchor="nw", fill=self.colors["text"], font=("Tahoma", 10, "bold"), text=f"{award['award']}: {', '.join(award['fighters'])}")
-                y += 22
-                canvas.create_text(52, y, anchor="nw", fill=self.colors["muted"], font=("Tahoma", 9), text=f"{award['note']} | ${award['bonus']:,} | morale +8")
-                y += 30
+                ttk.Label(bonus_panel, text=f"{award['award']}: {', '.join(award['fighters'])}  |  {award['note']}  |  ${award['bonus']:,}", style="Panel.TLabel").pack(anchor="w", padx=12, pady=2)
         else:
-            canvas.create_text(34, y, anchor="nw", fill=self.colors["muted"], font=("Tahoma", 10), text="No bonuses awarded.")
-        ttk.Button(window, text="Close", command=window.destroy).pack(anchor="e", padx=8, pady=(0, 8))
+            ttk.Label(bonus_panel, text="No bonuses awarded.", style="Panel.TLabel").pack(anchor="w", padx=12, pady=4)
+        summary_controls = ttk.Frame(window, style="Chrome.TFrame")
+        summary_controls.pack(fill="x", padx=8, pady=(0, 8))
+        if package.get("tournament_brackets"):
+            ttk.Button(summary_controls, text="View Tournament Bracket", style="Accent.TButton", command=lambda: self.open_event_tournament_bracket(package, window)).pack(side="left")
+        ttk.Button(summary_controls, text="Close", command=window.destroy).pack(side="right")

@@ -63,6 +63,16 @@ def ready_pair(app):
     return next((fighters[:2] for fighters in groups.values() if len(fighters) >= 2), None)
 
 
+def ready_group(app, size=4):
+    groups = {}
+    for fighter in app.roster:
+        if not fighter.injured:
+            fighter.fatigue = 0
+            fighter.available_week = 0
+            groups.setdefault((fighter.gender, fighter.weight), []).append(fighter)
+    return next((fighters[:size] for fighters in groups.values() if len(fighters) >= size), None)
+
+
 def event_for(app, pair, name):
     a, b = pair
     fight = {"fighters": [a.name, b.name], "main": True, "title": False, "interim": False, "tier": "Main Event"}
@@ -130,6 +140,59 @@ def exercise_normal_and_retirement_events(app, root):
     close_secondary_windows(root)
     app.finish_event(normal, package)
     require(any(record.get("event") == "Stability Normal Event" for record in app.result_records), "Normal event did not finish")
+
+    field = ready_group(app, 4)
+    require(field, "Could not find a four-fighter tournament field")
+    tournament_fight = {
+        "fighters": [field[0].name, field[-1].name],
+        "tournament": True,
+        "tournament_size": 4,
+        "tournament_entrants": [fighter.name for fighter in field],
+        "tournament_weight": field[0].weight,
+        "tournament_gender": field[0].gender,
+        "tournament_name": "Stability Grand Prix",
+        "main": True, "title": False, "interim": False, "tier": "Main Event",
+    }
+    tournament_event = {
+        "name": "Stability Tournament Event", "venue": "Regional Arena",
+        "region": app.player_region, "city": "Las Vegas", "month": app.month,
+        "week": app.week, "broadcaster": app.broadcasters[0]["name"],
+        "fights": [tournament_fight],
+    }
+    app.assign_event_camps(tournament_event)
+    app.scheduled_events.append(tournament_event)
+    fatigue_before = {fighter.name: fighter.fatigue for fighter in field}
+    career_stats_before = {fighter.name: fighter.career_stat_fights for fighter in field}
+    tournament_package = app.prepare_event_result(tournament_event)
+    require(len(tournament_package.get("results", [])) == 3, "Four-fighter tournament did not generate three career bouts")
+    require(len(tournament_package.get("fight_logs", [])) == 3, "Tournament did not generate a live log for every bout")
+    require(tournament_package.get("tournament_brackets", [{}])[0].get("champion"), "Tournament bracket has no champion")
+    require(all(fighter.fatigue == fatigue_before[fighter.name] for fighter in field), "Tournament preparation leaked cumulative fatigue into the live world")
+    app.open_event_tournament_bracket(tournament_package)
+    bracket_window = next((child for child in root.winfo_children() if isinstance(child, tk.Toplevel) and child.title() == "Tournament Bracket"), None)
+    require(bracket_window is not None, "Tournament bracket viewer did not open")
+    root.update_idletasks()
+    close_secondary_windows(root)
+    root.deiconify()
+    app.show_event_summary(tournament_package)
+    root.update_idletasks()
+    summary_window = next((child for child in root.winfo_children() if isinstance(child, tk.Toplevel) and child.title() == "End of Event"), None)
+    require(summary_window is not None, "End-of-event card recap did not open")
+    require(any(widget.winfo_class() == "Treeview" for widget in descendants(summary_window)), "End-of-event recap has no card-results table")
+    close_secondary_windows(root)
+    root.withdraw()
+    app.finish_event(tournament_event, tournament_package)
+    tournament_record = next((record for record in app.result_records if record.get("event") == "Stability Tournament Event"), None)
+    require(tournament_record and tournament_record.get("tournament_brackets"), "Completed event did not retain its tournament bracket")
+    require(any("Won Stability Grand Prix" in achievement for fighter in field for achievement in (fighter.career_achievements or [])), "Tournament champion achievement was not applied")
+    appearances = {fighter.name: 0 for fighter in field}
+    for winner, loser, _fight, _method in tournament_package["results"]:
+        if winner.name in appearances:
+            appearances[winner.name] += 1
+        if loser.name in appearances:
+            appearances[loser.name] += 1
+    require(all(fighter.career_stat_fights - career_stats_before[fighter.name] == appearances[fighter.name] for fighter in field), "Tournament bout box scores were not committed once per appearance")
+    close_secondary_windows(root)
 
     pair = ready_pair(app)
     require(pair, "Could not find retirement event pairing")

@@ -1016,6 +1016,7 @@ class UIMixin:
         ttk.Label(controls, text="Tier", style="Inset.TLabel").pack(side="left")
         ttk.Combobox(controls, textvariable=self.card_tier, values=CARD_TIERS, state="readonly", width=14).pack(side="left", padx=6)
         ttk.Button(controls, text="Add Matchup", command=self.add_matchup).pack(side="right")
+        ttk.Button(controls, text="Add Tournament", style="Accent.TButton", command=self.add_tournament_to_card).pack(side="right", padx=4)
         ttk.Button(controls, text="Add TBA Opponent", command=self.add_tba_matchup).pack(side="right", padx=4)
         ttk.Button(controls, text="Assistant Pick", command=self.assistant_pick_matchup).pack(side="right", padx=4)
 
