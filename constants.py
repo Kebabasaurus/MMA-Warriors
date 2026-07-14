@@ -3,7 +3,11 @@ import sys
 from pathlib import Path
 
 
+BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent))
 APP_DIR = Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
+ASSET_DIR = BUNDLE_DIR / "assets" if (BUNDLE_DIR / "assets").exists() else APP_DIR / "assets"
+APP_ICON_ICO = ASSET_DIR / "app_icon.ico"
+APP_ICON_PNG = ASSET_DIR / "app_icon.png"
 GAME_NAME = "MMA Warriors"
 
 

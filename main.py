@@ -37,6 +37,15 @@ class FightEmpireApp(
         self.root.report_callback_exception = self.handle_uncaught_exception
         register_crash_app(self)
         self.root.title(GAME_NAME)
+        self.app_icon_image = None
+        try:
+            if APP_ICON_ICO.exists():
+                self.root.iconbitmap(default=str(APP_ICON_ICO))
+            if APP_ICON_PNG.exists():
+                self.app_icon_image = tk.PhotoImage(file=str(APP_ICON_PNG))
+                self.root.iconphoto(True, self.app_icon_image)
+        except tk.TclError:
+            pass
         # Keep the dense desktop layout usable on 13-inch/768px laptops.  The
         # old fixed 1280x760 launch size could extend underneath the taskbar or
         # beyond a smaller screen before the player had a chance to resize it.

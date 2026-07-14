@@ -60,7 +60,7 @@ for %%D in (Saves Databases Logs) do (
     )
 )
 
-%PY% -m PyInstaller --noconfirm --windowed --name "MMA Warriors" --add-data "%APP_DIR%assets;assets" --distpath "%APP_DIR%dist" --workpath "%APP_DIR%build" --specpath "%APP_DIR%build" "%APP_DIR%main.py"
+%PY% -m PyInstaller --noconfirm --windowed --name "MMA Warriors" --icon "%APP_DIR%assets\app_icon.ico" --add-data "%APP_DIR%assets;assets" --distpath "%APP_DIR%dist" --workpath "%APP_DIR%build" --specpath "%APP_DIR%build" "%APP_DIR%main.py"
 if errorlevel 1 (
     echo Build failed.
     pause
