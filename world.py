@@ -1728,37 +1728,199 @@ class WorldMixin:
             return "Submission" if random.random() < 0.38 + max(0, winner.submissions - loser.submission_defence) / 140 else "Points"
         return "Decision"
 
+    def combat_sport_skill_set(self, sport, fighter):
+        """Sport-specific skill lens used by non-MMA combat cards.
+
+        This deliberately shares fighter attributes with MMA, but each sport
+        weights them differently so a world-class wrestler, boxer, or grappler
+        does not feel like a generic overall roll.
+        """
+        ds = self.ds
+        if sport == "Boxing":
+            attack = ds(fighter, "punch_technique", fighter.striking) * 0.34 + ds(fighter, "hand_speed", fighter.striking) * 0.22 + ds(fighter, "footwork", fighter.striking) * 0.14 + fighter.power * 0.20 + fighter.fight_iq * 0.10
+            defense = ds(fighter, "head_movement", fighter.striking) * 0.26 + ds(fighter, "guard", fighter.striking) * 0.24 + ds(fighter, "footwork", fighter.striking) * 0.18 + fighter.chin * 0.18 + fighter.fight_iq * 0.14
+            finishing = fighter.power * 0.42 + ds(fighter, "punch_power", fighter.power) * 0.32 + fighter.finishing_instinct * 0.20 + ds(fighter, "killer_instinct", fighter.finishing_instinct) * 0.06
+            return attack, defense, finishing
+        if sport in ("Kickboxing", "Muay Thai"):
+            clinch_bonus = 0.16 if sport == "Muay Thai" or getattr(fighter, "primary_discipline", "") == "Lethwei" else 0.05
+            attack = ds(fighter, "punch_technique", fighter.striking) * 0.18 + ds(fighter, "kick_technique", fighter.striking) * 0.22 + ds(fighter, "low_kick_technique", fighter.striking) * 0.15 + ds(fighter, "knees", fighter.striking) * clinch_bonus + fighter.power * 0.20 + fighter.fight_iq * 0.10
+            defense = ds(fighter, "guard", fighter.striking) * 0.18 + ds(fighter, "kick_defence", fighter.striking) * 0.22 + ds(fighter, "footwork", fighter.striking) * 0.16 + fighter.chin * 0.18 + fighter.toughness * 0.14 + fighter.fight_iq * 0.12
+            finishing = fighter.power * 0.34 + ds(fighter, "kick_power", fighter.power) * 0.24 + ds(fighter, "knees", fighter.striking) * 0.14 + fighter.finishing_instinct * 0.20 + fighter.toughness * 0.08
+            return attack, defense, finishing
+        if sport == "Wrestling":
+            attack = ds(fighter, "takedowns", fighter.wrestling) * 0.30 + ds(fighter, "takedown_setup", fighter.wrestling) * 0.18 + ds(fighter, "chain_wrestling", fighter.wrestling) * 0.22 + ds(fighter, "ride_control", fighter.ground_control) * 0.14 + fighter.cardio * 0.10 + fighter.fight_iq * 0.06
+            defense = ds(fighter, "sprawl", fighter.wrestling) * 0.24 + ds(fighter, "takedown_defence_detail", fighter.takedown_defence) * 0.22 + ds(fighter, "get_ups", fighter.wrestling) * 0.16 + ds(fighter, "balance", fighter.wrestling) * 0.12 + fighter.cardio * 0.14 + fighter.toughness * 0.12
+            finishing = ds(fighter, "slams", fighter.wrestling) * 0.16 + ds(fighter, "ride_control", fighter.ground_control) * 0.24 + ds(fighter, "top_control", fighter.ground_control) * 0.22 + fighter.strength * 0.18 + fighter.fight_iq * 0.20 if hasattr(fighter, "strength") else fighter.wrestling
+            return attack, defense, finishing
+        if sport == "Brazilian Jiu-Jitsu":
+            attack = ds(fighter, "transitions", fighter.grappling) * 0.20 + ds(fighter, "guard_work", fighter.grappling) * 0.18 + ds(fighter, "positional_ability", fighter.grappling) * 0.18 + fighter.submissions * 0.24 + fighter.fight_iq * 0.12 + fighter.cardio * 0.08
+            defense = ds(fighter, "submission_defence_detail", fighter.submission_defence) * 0.26 + ds(fighter, "guard_work", fighter.grappling) * 0.16 + ds(fighter, "scrambles", fighter.grappling) * 0.18 + fighter.ground_control * 0.16 + fighter.cardio * 0.12 + fighter.fight_iq * 0.12
+            finishing = fighter.submissions * 0.42 + ds(fighter, "back_control", fighter.grappling) * 0.18 + ds(fighter, "mount_control", fighter.grappling) * 0.14 + ds(fighter, "flexibility", fighter.grappling) * 0.10 + fighter.fight_iq * 0.16
+            return attack, defense, finishing
+        rating = self.combat_sport_rating(fighter, sport) / 2
+        return rating, rating, rating
+
+    def combat_sport_bout_rules(self, sport, title=False, a=None, b=None):
+        lethwei = getattr(a, "primary_discipline", "") == "Lethwei" or getattr(b, "primary_discipline", "") == "Lethwei"
+        if sport == "Boxing":
+            return {"rounds": 10 if title else 6, "finish": "KO/TKO", "decision": "Decision", "draws": True, "fatigue": 3.0}
+        if sport == "Kickboxing":
+            return {"rounds": 5 if title else 3, "finish": "KO/TKO", "decision": "Decision", "draws": True, "fatigue": 4.0}
+        if sport == "Muay Thai":
+            return {"rounds": 5, "finish": "KO" if lethwei else "KO/TKO", "decision": "Draw" if lethwei else "Decision", "draws": True, "fatigue": 4.2}
+        if sport == "Wrestling":
+            return {"rounds": 3, "finish": "Pin", "decision": "Points", "draws": False, "fatigue": 3.4}
+        if sport == "Brazilian Jiu-Jitsu":
+            return {"rounds": 1, "finish": "Submission", "decision": "Points", "draws": False, "fatigue": 3.2}
+        return {"rounds": 3, "finish": "Finish", "decision": "Decision", "draws": True, "fatigue": 3.5}
+
+    def simulate_combat_sport_bout(self, sport, a, b, title=False):
+        rules = self.combat_sport_bout_rules(sport, title=title, a=a, b=b)
+        a_attack, a_defense, a_finish = self.combat_sport_skill_set(sport, a)
+        b_attack, b_defense, b_finish = self.combat_sport_skill_set(sport, b)
+        a_points = b_points = 0
+        a_rounds = b_rounds = 0
+        a_damage = b_damage = 0
+        a_stamina = max(18, a.cardio - a.fatigue * 0.35)
+        b_stamina = max(18, b.cardio - b.fatigue * 0.35)
+        log = []
+        round_scores = []
+        winner = loser = None
+        method = rules["decision"]
+        end_round = rules["rounds"]
+
+        for round_no in range(1, rules["rounds"] + 1):
+            a_energy = a_stamina - (round_no - 1) * rules["fatigue"] + random.uniform(-5, 5)
+            b_energy = b_stamina - (round_no - 1) * rules["fatigue"] + random.uniform(-5, 5)
+            a_perf = a_attack + a.momentum * 2.6 + a_energy * 0.20 - b_defense * 0.42 + random.gauss(0, 10)
+            b_perf = b_attack + b.momentum * 2.6 + b_energy * 0.20 - a_defense * 0.42 + random.gauss(0, 10)
+
+            if sport == "Wrestling":
+                a_rp = max(0, round((a_perf - b_perf) / 12 + random.choice([0, 1, 2])))
+                b_rp = max(0, round((b_perf - a_perf) / 12 + random.choice([0, 1, 2])))
+                if a_rp == b_rp:
+                    a_rp += 1 if a_perf >= b_perf else 0
+                    b_rp += 1 if b_perf > a_perf else 0
+                a_points += a_rp
+                b_points += b_rp
+                margin = a_rp - b_rp
+                log.append(f"R{round_no}: {a.name} {a_rp}, {b.name} {b_rp} - {'chain attacks and top control' if margin > 0 else 'scrambles and counters' if margin < 0 else 'even hand-fighting'}.")
+                if abs(a_points - b_points) >= 15 and round_no >= 2:
+                    winner, loser = (a, b) if a_points > b_points else (b, a)
+                    method = "Technical Fall"
+                    end_round = round_no
+                    break
+                pin_chance = max(0.01, min(0.22, (max(a_finish - b_defense, b_finish - a_defense) - 10) / 190))
+                if random.random() < pin_chance:
+                    winner, loser = (a, b) if a_perf + a_finish >= b_perf + b_finish else (b, a)
+                    method = "Pin"
+                    end_round = round_no
+                    break
+            elif sport == "Brazilian Jiu-Jitsu":
+                a_rp = max(0, round((a_perf - b_perf) / 10 + random.choice([0, 2, 2, 3])))
+                b_rp = max(0, round((b_perf - a_perf) / 10 + random.choice([0, 2, 2, 3])))
+                a_points += a_rp
+                b_points += b_rp
+                sub_a = max(0.02, min(0.58, (a_finish - b_defense + a_perf - b_perf + 20) / 175))
+                sub_b = max(0.02, min(0.58, (b_finish - a_defense + b_perf - a_perf + 20) / 175))
+                log.append(f"R{round_no}: {a.name} {a_rp}, {b.name} {b_rp} - guard passes, sweeps and submission threats decide the grappling exchanges.")
+                if random.random() < max(sub_a, sub_b):
+                    winner, loser = (a, b) if sub_a >= sub_b else (b, a)
+                    method = "Submission"
+                    end_round = round_no
+                    break
+            else:
+                margin = a_perf - b_perf
+                round_winner = a if margin >= 0 else b
+                if round_winner is a:
+                    a_rounds += 1
+                    a_score, b_score = (10, 8) if margin > 26 and random.random() < 0.28 else (10, 9)
+                else:
+                    b_rounds += 1
+                    a_score, b_score = (8, 10) if margin < -26 and random.random() < 0.28 else (9, 10)
+                round_scores.append((a_score, b_score))
+                damage_a = max(0, (b_perf + b_finish * 0.34 - a_defense) / 28)
+                damage_b = max(0, (a_perf + a_finish * 0.34 - b_defense) / 28)
+                a_damage += damage_a
+                b_damage += damage_b
+                action = "boxing combinations" if sport == "Boxing" else "kicks, knees and clinch exchanges" if sport == "Muay Thai" else "kicks and punch combinations"
+                log.append(f"R{round_no}: {round_winner.name} edges the round with cleaner {action}. Scores {a.name} {a_score}-{b_score} {b.name}.")
+                finish_a = max(0.005, min(0.44, (a_finish - b.chin + b_damage * 5 + max(0, margin)) / 230))
+                finish_b = max(0.005, min(0.44, (b_finish - a.chin + a_damage * 5 + max(0, -margin)) / 230))
+                if random.random() < max(finish_a, finish_b):
+                    winner, loser = (a, b) if finish_a >= finish_b else (b, a)
+                    method = rules["finish"]
+                    end_round = round_no
+                    log.append(f"R{round_no}: {winner.name} forces the stoppage after cumulative damage and a clean finishing sequence.")
+                    break
+
+        if not winner and method != "Draw":
+            if sport in ("Wrestling", "Brazilian Jiu-Jitsu"):
+                if a_points == b_points:
+                    winner, loser = (a, b) if (a_attack + a_defense + random.random()) >= (b_attack + b_defense + random.random()) else (b, a)
+                    method = "Referee Criteria"
+                else:
+                    winner, loser = (a, b) if a_points > b_points else (b, a)
+                    method = rules["decision"]
+            else:
+                a_total = sum(score[0] for score in round_scores)
+                b_total = sum(score[1] for score in round_scores)
+                close = abs(a_total - b_total) <= 1
+                if a_total == b_total or (close and rules["draws"] and random.random() < (0.18 if sport == "Muay Thai" else 0.07)):
+                    method = "Draw"
+                else:
+                    winner, loser = (a, b) if a_total > b_total else (b, a)
+                    method = rules["decision"]
+        if sport in ("Wrestling", "Brazilian Jiu-Jitsu"):
+            score_text = f"{a.name} {a_points}-{b_points} {b.name}"
+        else:
+            a_total = sum(score[0] for score in round_scores)
+            b_total = sum(score[1] for score in round_scores)
+            card_text = ", ".join(f"{x}-{y}" for x, y in round_scores) or "-"
+            score_text = f"{a.name} {a_total}-{b_total} {b.name} ({card_text})"
+        return {"winner": winner, "loser": loser, "method": method, "round": end_round, "score": score_text, "log": log}
+
+    def develop_after_combat_sport_bout(self, sport, fighter, won=False, finished=False):
+        focus = {
+            "Boxing": ("striking", "power", "cardio", "fight_iq"),
+            "Kickboxing": ("striking", "power", "cardio", "toughness"),
+            "Muay Thai": ("striking", "power", "toughness", "cardio"),
+            "Wrestling": ("wrestling", "ground_control", "cardio", "fight_iq"),
+            "Brazilian Jiu-Jitsu": ("grappling", "submissions", "ground_control", "fight_iq"),
+        }.get(sport, ("striking", "cardio", "fight_iq"))
+        growth_chance = 0.18 + (0.10 if won else 0) + (0.06 if finished else 0) + max(0, fighter.potential - fighter.overall) / 240
+        if fighter.age > fighter.prime_end:
+            growth_chance *= 0.45
+        if random.random() < growth_chance:
+            field = random.choice(focus)
+            setattr(fighter, field, max(1, min(99, getattr(fighter, field, 50) + 1)))
+            if field in ("striking", "wrestling", "grappling"):
+                self.adjust_detailed_skill(fighter, 1)
+
     def apply_combat_sport_result(self, sport, world, a, b, title=False, player_owned=False):
-        a_score = self.combat_sport_rating(a, sport) + a.momentum * 4 + random.uniform(-18, 18)
-        b_score = self.combat_sport_rating(b, sport) + b.momentum * 4 + random.uniform(-18, 18)
-        if abs(a_score - b_score) < 4 and sport in ("Muay Thai",) and random.random() < 0.08:
-            method = "Draw"
+        sim = self.simulate_combat_sport_bout(sport, a, b, title=title)
+        winner, loser, method = sim.get("winner"), sim.get("loser"), sim.get("method", "Decision")
+        if method == "Draw" or not winner:
             a.record_d += 1
             b.record_d += 1
-            winner = loser = None
-            result_line = f"Month {self.month}: {a.name} and {b.name} fought to a draw in {sport}"
+            result_line = f"Month {self.month}: {a.name} and {b.name} fought to a draw in {sport} ({sim.get('score', '-')})"
         else:
-            winner, loser = (a, b) if a_score >= b_score else (b, a)
-            method = self.combat_sport_method(sport, winner, loser, abs(a_score - b_score))
-            if method == "Draw":
-                a.record_d += 1
-                b.record_d += 1
-                result_line = f"Month {self.month}: {a.name} and {b.name} fought to a draw in {sport}"
-            else:
-                winner.record_w += 1
-                loser.record_l += 1
-                winner.momentum = min(5, winner.momentum + 1)
-                loser.momentum = max(-5, loser.momentum - 1)
-                winner.popularity = min(100, winner.popularity + (2 if title else 1) + int(method not in ("Decision", "Points")))
-                loser.popularity = max(1, loser.popularity - (1 if loser.popularity > winner.popularity + 12 else 0))
-                if title:
-                    world["champion"] = winner.name
-                    winner.title_wins += 1 if not getattr(winner, "champion", False) else 0
-                    winner.title_defenses += 1 if getattr(winner, "champion", False) else 0
-                    for fighter in world.get("roster", []):
-                        if fighter.sport_employer == winner.sport_employer:
-                            fighter.champion = fighter is winner
-                result_line = f"Month {self.month}: {winner.name} def. {loser.name} by {method} in {sport}"
+            winner.record_w += 1
+            loser.record_l += 1
+            winner.momentum = min(5, winner.momentum + 1)
+            loser.momentum = max(-5, loser.momentum - 1)
+            finished = method not in ("Decision", "Points", "Referee Criteria")
+            winner.popularity = min(100, winner.popularity + (2 if title else 1) + int(finished))
+            loser.popularity = max(1, loser.popularity - (1 if loser.popularity > winner.popularity + 12 else 0))
+            if title:
+                world["champion"] = winner.name
+                winner.title_wins += 1 if not getattr(winner, "champion", False) else 0
+                winner.title_defenses += 1 if getattr(winner, "champion", False) else 0
+                for fighter in world.get("roster", []):
+                    if fighter.sport_employer == winner.sport_employer:
+                        fighter.champion = fighter is winner
+            round_note = f" R{sim.get('round')}" if method not in ("Decision", "Points", "Referee Criteria") else ""
+            result_line = f"Month {self.month}: {winner.name} def. {loser.name} by {method}{round_note} in {sport} ({sim.get('score', '-')})"
         for fighter in (a, b):
             fighter.multi_sport_records = fighter.multi_sport_records or {}
             fighter.multi_sport_records[getattr(fighter, "primary_discipline", sport)] = f"{fighter.record_w}-{fighter.record_l}-{fighter.record_d}"
@@ -1769,7 +1931,8 @@ class WorldMixin:
             fighter.fatigue = min(100, fighter.fatigue + random.randint(12, 32))
             if random.random() < 0.025 + fighter.injury_proneness / 1400:
                 fighter.injured = max(fighter.injured, random.randint(1, 3))
-        return {"a": a.name, "b": b.name, "winner": winner.name if winner else "Draw", "method": method, "title": title, "result": result_line}
+            self.develop_after_combat_sport_bout(sport, fighter, won=(winner is fighter), finished=method not in ("Decision", "Points", "Draw", "Referee Criteria"))
+        return {"a": a.name, "b": b.name, "winner": winner.name if winner else "Draw", "method": method, "round": sim.get("round"), "score": sim.get("score", "-"), "title": title, "result": result_line, "log": sim.get("log", [])}
 
     def build_combat_sport_card(self, sport, world, employer, player_owned=False, target_bouts=6, champion_name=None):
         ranked = self.refresh_combat_sport_rankings(sport, world, employer=employer)
@@ -1905,7 +2068,7 @@ class WorldMixin:
             "gate": "$0" if not player_owned else f"${card.get('finance', {}).get('revenue', 0):,}",
             "profit": "$0" if not player_owned else f"${card.get('finance', {}).get('profit', 0):,}",
             "log": [headline, recap, ""] + [item["result"] for item in results],
-            "fight_logs": [],
+            "fight_logs": [{"fight": f"{item['a']} vs {item['b']}", "method": item.get("method", ""), "score": item.get("score", "-"), "lines": item.get("log", [])} for item in results],
             "finance": card.get("finance", {"ticket_revenue": 0, "total_revenue": 0, "total_expense": 0, "profit": 0}),
         })
         self.result_records = self.result_records[:500]
