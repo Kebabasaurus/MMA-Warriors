@@ -58,7 +58,7 @@ class EventMixin:
         self.event_name.set(self.default_event_name())
         self.event_month.set(month if week < 4 else month + 1)
         self.event_week.set(week + 1 if week < 4 else 1)
-        self.event_broadcaster.set("No Coverage")
+        self.event_broadcaster.set(self.broadcasters[0]["name"] if self.broadcasters else "No Coverage")
         self.refresh_all()
 
     def repair_booking_conflicts(self):
@@ -280,7 +280,8 @@ class EventMixin:
         text.pack(side="left", fill="both", expand=True)
         logs = package.get("fight_logs", [])
         for index, fight_log in enumerate(logs, 1):
-            fight_list.insert("end", f"{index}. {fight_log['heading'][:40]}")
+            heading = fight_log.get("heading", fight_log.get("fight", f"Bout {index}"))
+            fight_list.insert("end", f"{index}. {heading[:40]}")
         def show_selected(_event=None):
             selected = fight_list.curselection()
             text.delete("1.0", "end")
@@ -339,7 +340,8 @@ class EventMixin:
         fight_list = tk.Listbox(body, width=34, font=("Tahoma", 9), bg=self.colors["tree"], fg=self.colors["text"], selectbackground=self.colors["red"], selectforeground="#ffffff")
         fight_list.pack(side="left", fill="y", padx=(0, 8))
         for index, fight_log in enumerate(package.get("fight_logs", []), 1):
-            fight_list.insert("end", f"{index}. {fight_log['heading'][:38]}")
+            heading = fight_log.get("heading", fight_log.get("fight", f"Bout {index}"))
+            fight_list.insert("end", f"{index}. {heading[:38]}")
 
         text = tk.Text(body, wrap="word", font=("Courier New", 11), bg=self.colors["cream"], fg=self.colors["text"], insertbackground=self.colors["text"], padx=14, pady=14, spacing1=3, spacing2=2, spacing3=8)
         text.pack(side="left", fill="both", expand=True)
@@ -364,7 +366,7 @@ class EventMixin:
                 tag = "heading"
             elif value.startswith("Result:"):
                 tag = "result"
-            elif value.startswith("Round ") and "summary:" in value:
+            elif (value.startswith("Round ") and "summary:" in value) or (value.startswith("R") and ":" in value[:5]):
                 tag = "round"
             elif "referee" in lowered or "official" in lowered:
                 tag = "referee"
@@ -386,6 +388,10 @@ class EventMixin:
                 score_label.config(text="Live score:  " + fragment.split(". Gas", 1)[0].strip())
                 if "Gas" in value:
                     fight_read_label.config(text="Corner read: " + value.split("Gas", 1)[1].strip(" ."))
+            elif value.startswith("R") and "Scores " in value:
+                score_label.config(text="Live score:  " + value.split("Scores ", 1)[1].strip())
+            elif value.startswith(("Corner read:", "Mat-side read:")):
+                fight_read_label.config(text=value)
             elif value.startswith("Result:"):
                 score_label.config(text=value.replace("Result: ", "").split(" | ")[0])
                 fight_read_label.config(text=value.replace("Result: ", "").split(" | ")[-1])
@@ -442,7 +448,8 @@ class EventMixin:
                 fight_list.selection_set(state["fight"])
                 fight_list.see(state["fight"])
             log = fight_logs[state["fight"]]
-            title_label.config(text=f"LIVE FIGHT: {log['heading'][:70]}")
+            heading = log.get("heading", log.get("fight", "Bout"))
+            title_label.config(text=f"LIVE FIGHT: {heading[:70]}")
             update_scoreboard(log)
             text.config(state="normal")
             text.delete("1.0", "end")
@@ -1069,6 +1076,10 @@ class EventMixin:
                 fight_logs.append({"heading": "Cancelled bout", "lines": [f"{' vs '.join(fight.get('fighters', []))} was cancelled after weigh-ins."]})
                 continue
             fight = dict(fight)
+            # Player-event post-processing still needs both fighters for contract
+            # clauses, awards, regional effects and the final recap.  Defer a
+            # pending retirement until finish_event has completed those steps.
+            fight["_defer_retirement"] = True
             fight.setdefault("region", event.get("region", self.venue_region(event["venue"])))
             fight.setdefault("city", event.get("city", ""))
             a, b = self.resolve_fight_fighters(fight)
@@ -1086,8 +1097,8 @@ class EventMixin:
             if fight.get("interim"):
                 label = "INTERIM " + label
             lines = [f"{label}: {a.name} vs {b.name} ({a.weight})", f"Odds: {self.matchup_odds(a, b)}"]
-            red_form = f"{a.name}: camp {fight.get('red_camp', fight.get('camp_weeks', 8))}w, morale {a.morale}, fatigue {a.fatigue}, damage {a.damage}"
-            blue_form = f"{b.name}: camp {fight.get('blue_camp', fight.get('camp_weeks', 8))}w, morale {b.morale}, fatigue {b.fatigue}, damage {b.damage}"
+            red_form = f"{a.name}: camp {fight.get('red_camp', fight.get('camp_weeks', 8))}w, morale {a.morale}, fatigue {a.fatigue}, cut penalty {getattr(a, 'weight_cut_penalty', 0)}"
+            blue_form = f"{b.name}: camp {fight.get('blue_camp', fight.get('camp_weeks', 8))}w, morale {b.morale}, fatigue {b.fatigue}, cut penalty {getattr(b, 'weight_cut_penalty', 0)}"
             lines.append(f"Corner read: {red_form} | {blue_form}")
             lines.extend(commentary)
             if method == "Draw":
@@ -1422,6 +1433,11 @@ class EventMixin:
             self.scheduled_events.remove(event)
         self.apply_event_awards(package.get("awards", []))
         self.apply_regional_show_effects(package)
+        # apply_result/apply_draw_result deliberately deferred these removals so
+        # every event subsystem could still resolve the participants safely.
+        for winner, loser, _fight, _method in package["results"]:
+            self.retire_after_final_fight_if_due(winner, self.player_company_name)
+            self.retire_after_final_fight_if_due(loser, self.player_company_name)
         self.result_history.insert(0, package["summary"])
         self.result_records.insert(0, {
             "date": f"Month {self.month} Week {self.week}",
@@ -1460,7 +1476,11 @@ class EventMixin:
         morale_bonus = data.get("promo_benefit", {}).get("morale", 1)
         for winner, loser, fight, method in package["results"]:
             for name in fight.get("fighters", []):
-                fighter = self.get_fighter(name)
+                # Prefer the exact objects stored in the result.  The fallback
+                # also supports old result packages and already-retired fighters.
+                fighter = winner if winner.name == name else loser if loser.name == name else self.find_fighter_anywhere(name)
+                if not fighter:
+                    continue
                 connection = self.fighter_event_connection(fighter, region, city)
                 if connection["strength"] <= 0:
                     continue
@@ -1493,7 +1513,9 @@ class EventMixin:
     def apply_event_awards(self, awards):
         for award in awards:
             for name in award["fighters"]:
-                fighter = self.get_fighter(name)
+                fighter = self.find_fighter_anywhere(name)
+                if not fighter:
+                    continue
                 fighter.morale = min(100, fighter.morale + 8)
                 fighter.popularity = min(100, fighter.popularity + 1)
                 self.finance["ledger"].insert(0, f"Month {self.month}: {fighter.name} earned {award['award']} bonus ${award['bonus']:,}.")

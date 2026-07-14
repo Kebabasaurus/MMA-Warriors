@@ -1646,18 +1646,35 @@ class SeedMixin:
                     for index, name in enumerate(real_rosters.get("Lethwei", []))
                 )
             ranked = sorted(roster, key=lambda fighter: (fighter.overall, fighter.popularity, fighter.record_w - fighter.record_l), reverse=True)
+            division_groups = {}
+            for fighter in ranked:
+                division_groups.setdefault(f"{fighter.gender}|{fighter.weight}", []).append(fighter)
+            rankings_by_division = {key: [fighter.name for fighter in fighters[:10]] for key, fighters in division_groups.items()}
+            titles = {key: fighters[0].name for key, fighters in division_groups.items() if len(fighters) >= 2}
             worlds[sport] = {
                 "promotion": promotion,
                 "roster": roster,
                 "rankings": [fighter.name for fighter in ranked[:15]],
                 "champion": ranked[0].name if ranked else "",
+                "titles": titles,
+                "title_history": {},
+                "rankings_by_division": rankings_by_division,
+                "titles_initialized": True,
                 "events": 0,
                 "records": {},
+                "record_book": {},
+                "season_stats": {},
                 "awards": [],
                 "hall_of_fame": [],
                 "media": [f"{promotion} announces a real-name {sport} roster built around {ranked[0].name}." if ranked else f"{promotion} launches."],
                 "prospects": [],
                 "event_history": [],
+                "strategy": random.choice(["Champion Showcase", "Prospect Rotation", "Deep Roster", "Merit Ladder"]),
+                "cash": {"Boxing": 8_000_000, "Kickboxing": 4_500_000, "Muay Thai": 3_800_000, "Wrestling": 3_000_000, "Brazilian Jiu-Jitsu": 2_800_000}.get(sport, 3_000_000),
+                "reputation": {"Boxing": 76, "Kickboxing": 68, "Muay Thai": 72, "Wrestling": 66, "Brazilian Jiu-Jitsu": 65}.get(sport, 62),
+                "stability": 72,
+                "finance_history": [],
+                "starting_roster_size": len(roster),
             }
         return worlds
 
@@ -1676,11 +1693,10 @@ class SeedMixin:
             for fighter in world.get("roster", []):
                 if not isinstance(fighter, Fighter):
                     fighter = Fighter(**fighter)
-                is_flagship_filler = fighter.sport_employer == promotion and fighter.name not in seeded_by_name
-                if is_flagship_filler:
-                    continue
                 if fighter.name in seen:
                     continue
+                self.ensure_detailed_skills(fighter)
+                self.ensure_fighter_business_stats(fighter)
                 repaired_roster.append(fighter)
                 seen.add(fighter.name)
             for name, fighter in seeded_by_name.items():
@@ -1693,8 +1709,15 @@ class SeedMixin:
             world["rankings"] = [fighter.name for fighter in ranked[:15]]
             if world.get("champion") not in seen:
                 world["champion"] = ranked[0].name if ranked else ""
-            for key, value in {"events": 0, "records": {}, "awards": [], "hall_of_fame": [], "media": [], "prospects": [], "event_history": []}.items():
+            for key, value in {
+                "events": 0, "records": {}, "record_book": {}, "season_stats": {}, "titles": {}, "title_history": {},
+                "rankings_by_division": {}, "awards": [], "hall_of_fame": [], "media": [], "prospects": [],
+                "event_history": [], "finance_history": [], "cash": seeded_world.get("cash", 3_000_000),
+                "reputation": seeded_world.get("reputation", 62), "stability": 72,
+                "starting_roster_size": len(seeded_world.get("roster", [])), "strategy": "Merit Ladder",
+            }.items():
                 world.setdefault(key, value if not isinstance(value, (list, dict)) else value.copy())
+            world.setdefault("titles_initialized", bool(world.get("titles")))
         self.combat_sport_worlds = current_worlds
 
     def assign_career_arc(self, fighter):

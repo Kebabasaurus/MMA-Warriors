@@ -1,4 +1,5 @@
 import json
+import gzip
 import logging
 import os
 import platform
@@ -37,6 +38,24 @@ def atomic_write_text(path, contents):
 
 def atomic_write_json(path, data):
     atomic_write_text(path, json.dumps(data, indent=2))
+
+
+def atomic_write_json_gzip(path, data):
+    """Atomically write a compressed JSON backup/autosave."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    with gzip.open(temporary, "wt", encoding="utf-8", compresslevel=6) as handle:
+        json.dump(data, handle, separators=(",", ":"))
+    os.replace(temporary, path)
+
+
+def read_json_text(path):
+    path = Path(path)
+    if path.suffix.lower() == ".gz":
+        with gzip.open(path, "rt", encoding="utf-8") as handle:
+            return handle.read()
+    return path.read_text(encoding="utf-8")
 
 
 def configure_runtime_logging():
@@ -203,8 +222,9 @@ class PersistenceMixin:
             return None
         backup_dir = self.save_backup_dir()
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        target = backup_dir / f"{path.stem}_{reason}_{stamp}.json"
-        shutil.copy2(path, target)
+        target = backup_dir / f"{path.stem}_{reason}_{stamp}.json.gz"
+        with path.open("rb") as source, gzip.open(target, "wb", compresslevel=6) as destination:
+            shutil.copyfileobj(source, destination)
         manifest = target.with_suffix(".manifest.json")
         manifest.write_text(json.dumps({
             "created_at": datetime.now().isoformat(timespec="seconds"),
@@ -217,9 +237,12 @@ class PersistenceMixin:
     def prune_save_backups(self, keep=None):
         backup_dir = self.save_backup_dir()
         if keep is None:
-            keep = int(self.rules.get("save_backup_keep", 60)) if hasattr(self, "rules") else 60
-        backups = sorted(backup_dir.glob("*.json"), key=lambda item: item.stat().st_mtime, reverse=True)
-        data_backups = [item for item in backups if not item.name.endswith(".manifest.json")]
+            keep = int(self.rules.get("save_backup_keep", 12)) if hasattr(self, "rules") else 12
+        backups = list(backup_dir.glob("*.json")) + list(backup_dir.glob("*.json.gz"))
+        data_backups = sorted(
+            [item for item in backups if not item.name.endswith(".manifest.json")],
+            key=lambda item: item.stat().st_mtime, reverse=True,
+        )
         for old in data_backups[keep:]:
             try:
                 manifest = old.with_suffix(".manifest.json")
@@ -245,12 +268,12 @@ class PersistenceMixin:
         year = 2026 + (getattr(self, "month", 1) - 1) // 12
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         label = f"{kind.title()} Autosave Y{year} M{getattr(self, 'month', 1):02d} W{getattr(self, 'week', 1)}"
-        path = self.autosave_dir(kind) / f"{kind}_Y{year}_M{getattr(self, 'month', 1):02d}_W{getattr(self, 'week', 1)}_{stamp}.json"
+        path = self.autosave_dir(kind) / f"{kind}_Y{year}_M{getattr(self, 'month', 1):02d}_W{getattr(self, 'week', 1)}_{stamp}.json.gz"
         data = self.serialize_world()
         data["_save_meta"] = self.save_metadata(label)
         data["_save_meta"]["autosave_kind"] = kind
         try:
-            atomic_write_json(path, data)
+            atomic_write_json_gzip(path, data)
             manifest = path.with_suffix(".manifest.json")
             manifest.write_text(json.dumps({
                 "created_at": datetime.now().isoformat(timespec="seconds"),
@@ -262,7 +285,7 @@ class PersistenceMixin:
                 "company": getattr(self, "player_company_name", PLAYER_PROMOTION_NAME),
             }, indent=2), encoding="utf-8")
             keep_key = "autosave_monthly_keep" if kind == "monthly" else "autosave_weekly_keep"
-            self.prune_rolling_autosaves(kind, int(self.rules.get(keep_key, 24 if kind == "monthly" else 12)))
+            self.prune_rolling_autosaves(kind, int(self.rules.get(keep_key, 6 if kind == "monthly" else 8)))
             return path
         except Exception as exc:
             LOGGER.exception("Rolling %s autosave failed: %s", kind, exc)
@@ -270,7 +293,8 @@ class PersistenceMixin:
 
     def prune_rolling_autosaves(self, kind="weekly", keep=12):
         folder = self.autosave_dir(kind)
-        saves = sorted([item for item in folder.glob("*.json") if not item.name.endswith(".manifest.json")], key=lambda item: item.stat().st_mtime, reverse=True)
+        candidates = list(folder.glob("*.json")) + list(folder.glob("*.json.gz"))
+        saves = sorted([item for item in candidates if not item.name.endswith(".manifest.json")], key=lambda item: item.stat().st_mtime, reverse=True)
         for old in saves[max(1, keep):]:
             try:
                 manifest = old.with_suffix(".manifest.json")
@@ -1106,7 +1130,7 @@ class PersistenceMixin:
         limits = {
             "autosave_weekly_keep": (3, 52),
             "autosave_monthly_keep": (3, 120),
-            "save_backup_keep": (10, 250),
+            "save_backup_keep": (5, 250),
         }
         low, high = limits.get(key, (1, 250))
         self.rules[key] = max(low, min(high, int(self.rules.get(key, low)) + amount))
@@ -1126,7 +1150,7 @@ class PersistenceMixin:
         ]
         backups = []
         for label, folder in sources:
-            for item in folder.glob("*.json"):
+            for item in list(folder.glob("*.json")) + list(folder.glob("*.json.gz")):
                 if not item.name.endswith(".manifest.json"):
                     backups.append((label, item))
         backups.sort(key=lambda row: row[1].stat().st_mtime, reverse=True)
@@ -1172,7 +1196,7 @@ class PersistenceMixin:
                 return
             if target.exists():
                 self.backup_save_file(target, "before_restore")
-            shutil.copy2(item, target)
+            atomic_write_text(target, read_json_text(item))
             self.refresh_game_menu()
             messagebox.showinfo("Backup Restored", f"Restored to {target.name}.")
 
@@ -1278,7 +1302,7 @@ class PersistenceMixin:
         self.belts = self.blank_belts()
         self.interim_belts = self.blank_belts()
         self.belt_history = self.blank_belt_history()
-        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "allow_mixed_gender": False, "active_fighter_target": 1200, "auto_renew_enabled": False, "scouting_mode": False, "autosave_enabled": True, "autosave_weekly_keep": 12, "autosave_monthly_keep": 24, "save_backup_keep": 60}
+        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "allow_mixed_gender": False, "active_fighter_target": 1200, "auto_renew_enabled": False, "scouting_mode": False, "autosave_enabled": True, "autosave_weekly_keep": 8, "autosave_monthly_keep": 6, "save_backup_keep": 12, "save_retention_version": 2}
         media_section = self.universe_section("media", {}) if hasattr(self, "universe_section") else {}
         self.broadcasters = media_section.get("player_broadcasters", self.default_player_media() if hasattr(self, "default_player_media") else [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}])
         self.weight_classes = list(WEIGHTS)

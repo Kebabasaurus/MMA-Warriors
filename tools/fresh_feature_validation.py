@@ -1,5 +1,5 @@
 """Fresh-world gameplay validation for recently added MMA Warriors systems."""
-import importlib.util, sys, tkinter as tk
+import importlib.util, random, sys, tkinter as tk
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -7,6 +7,7 @@ sys.path.insert(0, str(ROOT))
 OUT = ROOT / "audits" / "fresh_feature_validation_latest.txt"
 
 def main():
+    random.seed(20260714)
     spec = importlib.util.spec_from_file_location("fresh_validation_game", ROOT / "main.py")
     module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
     root = tk.Tk(); root.withdraw()
@@ -19,12 +20,17 @@ def main():
         app.start_selected_scout_report("basic")
         for _ in range(2): app.process_scouting_reports()
         checks.append(("Basic scouting", app.scouting_reports[target.name]["status"] == "Complete"))
-        app.academy.update({"owned": True, "level": 1, "capacity": 6, "weekly_cost": 4500})
+        app.academy.update({
+            "owned": True, "level": 1, "capacity": 8, "weekly_cost": 4500,
+            "network_active": True, "network_weeks": 0, "network_region": app.player_region,
+            "network_scout": "Validation Scout", "network_scout_skill": 99,
+        })
         app.month, app.week = 1, 4
         app.process_academy_week()
         checks.append(("Academy talent generation", bool(app.academy["talent_pool"])))
         talent = app.academy["talent_pool"].pop(0)
-        talent.update({"plan": "Wrestling", "amateur_w": 0, "amateur_l": 0, "amateur_history": [], "weeks": 0, "development": 0})
+        talent.update({"plan": "Wrestling", "amateur_w": 0, "amateur_l": 0, "amateur_d": 0, "amateur_history": [], "weeks": 0, "development": 0})
+        app.repair_academy_prospect(talent)
         app.academy["prospects"].append(talent)
         app.process_academy_week()
         checks.append(("Academy weekly development", app.academy["prospects"][0]["weeks"] > 0))

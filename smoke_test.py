@@ -83,6 +83,12 @@ def main():
         assert_true(ok and len(division["roster"]) >= 10, "Player combat-sport division launch failed")
         player_card = app.run_combat_sport_card("Boxing", app.combat_sport_worlds["Boxing"], app.player_company_name, player_owned=True, target_bouts=5)
         assert_true(player_card and len(player_card["results"]) >= 4 and division.get("events"), "Player combat-sport card builder failed")
+        sport_result = player_card["results"][0]
+        assert_true(any(line.startswith("Camp:") for line in sport_result.get("log", [])), "Combat-sport camps are not reaching the fight log")
+        assert_true(any(line.startswith("Weigh-in:") for line in sport_result.get("log", [])), "Combat-sport weigh-ins are not reaching the fight log")
+        assert_true(any(line.startswith("Fight-night readiness:") for line in sport_result.get("log", [])), "Combat-sport readiness metrics are not visible")
+        assert_true(sport_result.get("condition") and sport_result.get("readiness"), "Combat-sport condition/readiness telemetry missing")
+        assert_true(all(log.get("heading") and log.get("lines") for log in player_card.get("fight_logs", [])), "Combat-sport live replay contract incomplete")
         feeder_promotions = [promotion for promotion in app.promotions if promotion.is_regional_feeder]
         assert_true(len(feeder_promotions) == 10, "Regional feeder promotions missing")
         assert_true(all(promotion.cash == 0 and all(fighter.age >= 16 for fighter in promotion.roster) for promotion in feeder_promotions), "Regional feeders must be non-financial and age-16 minimum")

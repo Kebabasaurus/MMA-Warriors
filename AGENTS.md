@@ -2,6 +2,20 @@
 
 This file is for coding agents working on MMA Warriors. Read it before editing.
 
+## Multi-Agent Collaboration
+
+Multi-agent delegation and parallel agent work are explicitly enabled for this project.
+Agents may spawn sub-agents whenever independent investigation, implementation, review, or
+testing work can be performed safely in parallel. Keep delegated tasks focused, coordinate
+shared-file edits, and have the primary agent integrate and verify the final result.
+
+## Approval Policy
+
+Do not ask for approval before performing ordinary, in-scope development actions. Proceed
+autonomously with reading, editing, testing, building, and other reversible project work.
+Ask the user only when essential information is missing or an action would materially expand
+the requested scope, affect external systems or people, or be destructive and irreversible.
+
 ## Project Goal
 
 MMA Warriors is a desktop MMA promotion management sim. The target feel is a deep WMMA-style world: promotions compete, fighters age and develop, gyms matter, contracts and morale matter, and fight simulation produces believable MMA results without fudging outcomes.

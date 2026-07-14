@@ -1231,8 +1231,8 @@ class ViewMixin:
         window.configure(bg=self.colors["chrome"])
         ttk.Label(window, text="COMBAT SPORTS UNIVERSE", style="ScreenTitle.TLabel").pack(anchor="w", padx=12, pady=(10, 4))
         ttk.Label(window, text="Each sport has an AI flagship circuit. You can open one child division under your MMA business, sign specialists, run smart cards, and graduate academy prospects into it.", style="Inset.TLabel").pack(fill="x", padx=12, pady=(0, 8))
-        tree = ttk.Treeview(window, columns=("sport", "promotion", "strategy", "roster", "player", "champion", "events", "latest"), show="headings")
-        for column, label, width in (("sport", "Sport", 125), ("promotion", "AI Flagship", 210), ("strategy", "AI Strategy", 120), ("roster", "Roster", 60), ("player", "Your Division", 115), ("champion", "Champion", 160), ("events", "Cards", 60), ("latest", "Latest Media", 260)):
+        tree = ttk.Treeview(window, columns=("sport", "promotion", "strategy", "roster", "titles", "cash", "rep", "player", "events"), show="headings")
+        for column, label, width in (("sport", "Sport", 120), ("promotion", "AI Flagship", 195), ("strategy", "AI Strategy", 120), ("roster", "Active", 55), ("titles", "Titles", 50), ("cash", "Circuit Cash", 95), ("rep", "Rep", 45), ("player", "Your Division", 105), ("events", "Cards", 50)):
             tree.heading(column, text=label); tree.column(column, width=width, anchor="w")
         detail = tk.Text(window, height=7, wrap="word", bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 9), padx=10, pady=8)
         detail.pack(side="bottom", fill="x", padx=10, pady=(0, 8))
@@ -1241,9 +1241,12 @@ class ViewMixin:
         def redraw():
             tree.delete(*tree.get_children())
             for sport, world in getattr(self, "combat_sport_worlds", {}).items():
+                state = self.ensure_combat_sport_circuit_state(sport, world, world.get("promotion", ""), False)
                 division = getattr(self, "player_combat_divisions", {}).get(sport, {})
                 owned = f"Open ({len(division.get('roster', []))})" if division else "Not opened"
-                tree.insert("", "end", iid=sport, values=(sport, world.get("promotion", ""), world.get("strategy", "Merit Ladder"), len(world.get("roster", [])), owned, world.get("champion", "Uncrowned") or "Uncrowned", world.get("events", 0), (world.get("media", []) or ["No major story yet."])[0]))
+                active = len(self.combat_sport_roster(sport, world.get("promotion", "")))
+                titles = sum(1 for champion in state.get("titles", {}).values() if champion)
+                tree.insert("", "end", iid=sport, values=(sport, world.get("promotion", ""), world.get("strategy", "Merit Ladder"), active, titles, f"${world.get('cash', 0):,}", world.get("reputation", 0), owned, world.get("events", 0)))
             if not tree.selection() and tree.get_children():
                 tree.selection_set(tree.get_children()[0])
             show_detail()
@@ -1255,12 +1258,17 @@ class ViewMixin:
             division = getattr(self, "player_combat_divisions", {}).get(sport, {})
             ranked = self.combat_sport_ranked(sport, world.get("promotion", ""))[:5] if sport else []
             latest = world.get("event_history", [])[:3]
+            titles = world.get("titles", {})
+            title_text = "; ".join(f"{self.combat_sport_division_label(key)} — {champion or 'Vacant'}" for key, champion in list(titles.items())[:5]) or "No established titles"
+            latest_award = (world.get("awards", []) or [{}])[0]
+            award_text = latest_award.get("summary", latest_award) if isinstance(latest_award, dict) else str(latest_award)
             lines = [
                 f"{sport or 'Select a sport'}",
-                f"AI flagship: {world.get('promotion', '-')}. Strategy: {world.get('strategy', 'Merit Ladder')}. Roster: {len(world.get('roster', []))}.",
+                f"AI flagship: {world.get('promotion', '-')}. Strategy: {world.get('strategy', 'Merit Ladder')}. Cash ${world.get('cash', 0):,} | Reputation {world.get('reputation', 0)} | Stability {world.get('stability', 0)}.",
                 f"Your child division: {'opened' if division else 'not opened'}" + (f" | Strategy {division.get('strategy', 'Balanced')} | Athletes {len(division.get('roster', []))} | Net ${division.get('profit_total', 0):,}" if division else ""),
+                "Championships: " + title_text,
                 "Top AI athletes: " + (", ".join(fighter.name for fighter in ranked) if ranked else "None"),
-                "Latest: " + (latest[0] if latest else "No cards yet."),
+                "Latest: " + (latest[0] if latest else "No cards yet.") + (f" | Awards: {award_text}" if award_text else ""),
             ]
             detail.config(state="normal")
             detail.delete("1.0", "end")
@@ -1290,8 +1298,71 @@ class ViewMixin:
             else:
                 self.open_player_combat_division_window(sport)
         ttk.Button(actions, text="Open / Manage Your Division", style="Accent.TButton", command=manage).pack(side="left")
+        ttk.Button(actions, text="Circuit Records & History", command=lambda: self.open_combat_sport_history_window(tree.selection()[0]) if tree.selection() else None).pack(side="left", padx=6)
         ttk.Button(actions, text="Refresh", command=redraw).pack(side="left", padx=6)
         ttk.Button(actions, text="Close", command=window.destroy).pack(side="right")
+
+    def open_combat_sport_history_window(self, sport, player_owned=False):
+        world = getattr(self, "combat_sport_worlds", {}).get(sport, {})
+        employer = self.player_company_name if player_owned else world.get("promotion", "")
+        state = self.ensure_combat_sport_circuit_state(sport, world, employer, player_owned)
+        self.combat_sport_record_book(sport, world, employer, player_owned)
+        window = tk.Toplevel(self.root)
+        circuit_name = self.player_company_name if player_owned else world.get("promotion", sport)
+        window.title(f"{sport} - Records and History")
+        window.geometry("980x650")
+        window.minsize(760, 500)
+        window.configure(bg=self.colors["chrome"])
+        ttk.Label(window, text=f"{sport.upper()} — {circuit_name.upper()}", style="ScreenTitle.TLabel").pack(fill="x", padx=10, pady=(10, 5))
+        notebook = ttk.Notebook(window)
+        notebook.pack(fill="both", expand=True, padx=10, pady=6)
+
+        rankings_tab = ttk.Frame(notebook, style="Chrome.TFrame")
+        notebook.add(rankings_tab, text="Championships & Rankings")
+        ranking_tree = ttk.Treeview(rankings_tab, columns=("division", "champion", "top"), show="headings")
+        for column, label, width in (("division", "Division", 180), ("champion", "Champion", 210), ("top", "Ranked Contenders", 500)):
+            ranking_tree.heading(column, text=label); ranking_tree.column(column, width=width, anchor="w")
+        ranking_tree.pack(fill="both", expand=True, padx=6, pady=6)
+        for key, names in sorted(state.get("rankings_by_division", {}).items()):
+            ranking_tree.insert("", "end", iid=key, values=(self.combat_sport_division_label(key), state.get("titles", {}).get(key, "") or "Vacant", ", ".join(names[:6])))
+
+        def open_ranked_athlete(_event=None):
+            selected = ranking_tree.selection()
+            if not selected:
+                return
+            key = selected[0]
+            name = state.get("titles", {}).get(key, "") or next(iter(state.get("rankings_by_division", {}).get(key, [])), "")
+            fighter = next((candidate for candidate in world.get("roster", []) if candidate.name == name), None)
+            if fighter:
+                self.open_fighter_profile_window(fighter)
+        ranking_tree.bind("<Double-1>", open_ranked_athlete)
+
+        def add_text_tab(label, lines):
+            frame = ttk.Frame(notebook, style="Chrome.TFrame")
+            notebook.add(frame, text=label)
+            text = tk.Text(frame, wrap="word", bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 10), padx=12, pady=10)
+            scroll = ttk.Scrollbar(frame, orient="vertical", command=text.yview)
+            text.configure(yscrollcommand=scroll.set)
+            text.pack(side="left", fill="both", expand=True)
+            scroll.pack(side="right", fill="y")
+            text.insert("end", "\n\n".join(str(line) for line in lines if str(line).strip()) or "No history recorded yet.")
+            text.config(state="disabled")
+
+        title_lines = []
+        for key, history in sorted(state.get("title_history", {}).items()):
+            title_lines.append(self.combat_sport_division_label(key).upper())
+            title_lines.extend(f"Year {entry.get('year', '-')} / Month {entry.get('month', '-')}: {entry.get('winner', 'Vacant')} over {entry.get('loser', '')} — {entry.get('method', '')}" for entry in history[:30])
+        add_text_tab("Title Lineage", title_lines)
+        add_text_tab("Record Book", [f"{label}: {value}" for label, value in state.get("record_book", {}).items()])
+        add_text_tab("Awards", [entry.get("summary", entry) if isinstance(entry, dict) else entry for entry in state.get("awards", [])])
+        add_text_tab("Hall of Fame", [entry.get("summary", entry) if isinstance(entry, dict) else entry for entry in state.get("hall_of_fame", [])])
+        finance_lines = [f"Month {entry.get('month', '-')}: Revenue ${entry.get('revenue', 0):,} | Costs ${entry.get('cost', 0):,} | Profit ${entry.get('profit', 0):,} | Cash ${entry.get('cash', 0):,}" for entry in state.get("finance_history", [])]
+        add_text_tab("Finances", [f"Current cash: ${state.get('cash', self.cash if player_owned else 0):,} | Reputation {state.get('reputation', 0)} | Stability {state.get('stability', 0)}"] + finance_lines)
+        event_lines = ([event.get("headline", event.get("recap", "Completed card")) for event in state.get("events", [])] if player_owned else world.get("event_history", []))
+        add_text_tab("Event Archive", event_lines)
+        footer = ttk.Frame(window, style="Chrome.TFrame"); footer.pack(fill="x", padx=10, pady=(0, 10))
+        ttk.Button(footer, text="Open Selected Athlete", command=open_ranked_athlete).pack(side="left")
+        ttk.Button(footer, text="Close", command=window.destroy).pack(side="right")
 
     def open_player_combat_division_window(self, sport):
         division = getattr(self, "player_combat_divisions", {}).get(sport)
@@ -1344,14 +1415,14 @@ class ViewMixin:
             strategy_var.set(division.get("strategy", "Balanced"))
             members = sorted(roster_members(), key=lambda fighter: (self.combat_sport_rating(fighter, sport), fighter.record_w - fighter.record_l), reverse=True)
             division["roster"] = [fighter.name for fighter in members]
-            division["rankings"] = [fighter.name for fighter in members[:10]]
-            if division.get("champion") not in division["roster"]:
-                division["champion"] = members[0].name if members else ""
-            summary_var.set(f"{division.get('title_name', sport + ' Title')}: {division.get('champion', 'Uncrowned') or 'Uncrowned'} | Roster {len(members)} | Cash ${self.cash:,}")
-            finance_line.config(text=f"Strategy: {division.get('strategy', 'Balanced')} | Lifetime revenue ${division.get('revenue_total', 0):,} | Costs ${division.get('cost_total', 0):,} | Net ${division.get('profit_total', 0):,} | Last: {division.get('last_card_summary', 'No player card yet.')}")
+            self.refresh_combat_sport_rankings(sport, world, employer=self.player_company_name, division=division)
+            self.combat_sport_record_book(sport, world, self.player_company_name, True)
+            champions = {name for name in division.get("titles", {}).values() if name}
+            summary_var.set(f"{len(champions)} champion(s) | Roster {len(members)} | Cash ${self.cash:,}")
+            finance_line.config(text=f"Strategy: {division.get('strategy', 'Balanced')} | Rep {division.get('reputation', 0)} | Stability {division.get('stability', 0)} | Lifetime revenue ${division.get('revenue_total', 0):,} | Costs ${division.get('cost_total', 0):,} | Net ${division.get('profit_total', 0):,} | Last: {division.get('last_card_summary', 'No player card yet.')}")
             roster_tree.delete(*roster_tree.get_children())
             for index, fighter in enumerate(members, 1):
-                rank = "C" if fighter.name == division.get("champion") else index
+                rank = "C" if fighter.name in champions else index
                 dev_gap = max(0, fighter.potential - fighter.overall)
                 trend = ""
                 if getattr(fighter, "annual_overalls", None):
@@ -1382,9 +1453,25 @@ class ViewMixin:
                 finance = card.get("finance", {})
                 finance_text = f"\n\nRevenue ${finance.get('revenue', 0):,} | Cost ${finance.get('cost', 0):,} | Profit ${finance.get('profit', 0):,}" if finance else ""
                 result_lines = "\n".join(item.get("result", "") for item in card.get("results", [])[:10])
-                messagebox.showinfo(f"{sport} Card Recap", f"{card.get('recap', 'Card complete')}{finance_text}\n\n{result_lines}")
+                watch = messagebox.askyesno(f"{sport} Card Recap", f"{card.get('recap', 'Card complete')}{finance_text}\n\n{result_lines}\n\nWatch the complete live replay now?")
+                if watch:
+                    package = {"event_name": card.get("event_name", f"{sport} Card"), "log": [card.get("headline", ""), card.get("recap", "")], "fight_logs": card.get("fight_logs", [])}
+                    self.open_live_fight_window({"name": package["event_name"]}, package, apply_results=False)
             redraw()
             self.refresh_all()
+
+        def watch_selected_card(_event=None):
+            selected = events.curselection()
+            cards = division.get("events", [])
+            if not selected or selected[0] >= len(cards):
+                messagebox.showinfo("Combat Sports", "Select a completed card from Latest Events first.")
+                return
+            card = cards[selected[0]]
+            package = {"event_name": card.get("event_name", f"{sport} Card"), "log": [card.get("headline", ""), card.get("recap", "")], "fight_logs": card.get("fight_logs", [])}
+            if not package["fight_logs"]:
+                messagebox.showinfo("Combat Sports", "That older card does not contain a saved play-by-play replay.")
+                return
+            self.open_live_fight_window({"name": package["event_name"]}, package, apply_results=False)
 
         def set_strategy():
             division["strategy"] = strategy_var.get() or "Balanced"
@@ -1412,16 +1499,31 @@ class ViewMixin:
             redraw()
             self.refresh_all()
 
+        def set_selected_camp():
+            selected = roster_tree.selection()
+            if not selected:
+                messagebox.showinfo("Camp Plan", "Select an athlete from your sport roster first.")
+                return
+            fighter = next((candidate for candidate in roster_members() if candidate.name == selected[0]), None)
+            if fighter:
+                self.open_fighter_camp_plan(fighter, on_save=redraw)
+
         roster_tree.bind("<Double-1>", lambda _event: self.open_fighter_profile_window(next((fighter for fighter in roster_members() if fighter.name == roster_tree.selection()[0]), None)) if roster_tree.selection() else None)
+        events.bind("<Double-1>", watch_selected_card)
         controls = ttk.Frame(window, style="Chrome.TFrame")
-        controls.pack(fill="x", padx=8, pady=(0, 8))
+        controls.pack(fill="x", padx=8, pady=(0, 3))
         ttk.Label(controls, text="Strategy", style="Chrome.TLabel").pack(side="left", padx=(4, 2))
         ttk.Combobox(controls, values=("Balanced", "Prospect Builder", "Star Showcase", "Title Focus"), textvariable=strategy_var, state="readonly", width=17).pack(side="left", padx=3)
         ttk.Button(controls, text="Set Strategy", command=set_strategy).pack(side="left", padx=4)
         ttk.Button(controls, text="Run Smart Card", style="Accent.TButton", command=run_card).pack(side="left", padx=4)
-        ttk.Button(controls, text="Sign Selected", command=sign_selected).pack(side="left", padx=4)
-        ttk.Button(controls, text="Refresh", command=redraw).pack(side="left", padx=4)
-        ttk.Button(controls, text="Close", command=window.destroy).pack(side="right", padx=4)
+        ttk.Button(controls, text="Watch Selected Card", command=watch_selected_card).pack(side="left", padx=4)
+        controls2 = ttk.Frame(window, style="Chrome.TFrame")
+        controls2.pack(fill="x", padx=8, pady=(0, 8))
+        ttk.Button(controls2, text="Set Athlete Camp", command=set_selected_camp).pack(side="left", padx=4)
+        ttk.Button(controls2, text="Sign Selected", command=sign_selected).pack(side="left", padx=4)
+        ttk.Button(controls2, text="Records & History", command=lambda: self.open_combat_sport_history_window(sport, player_owned=True)).pack(side="left", padx=4)
+        ttk.Button(controls2, text="Refresh", command=redraw).pack(side="left", padx=4)
+        ttk.Button(controls2, text="Close", command=window.destroy).pack(side="right", padx=4)
         redraw()
 
     def open_world_chronicle(self):
@@ -1809,10 +1911,10 @@ class ViewMixin:
             cost = 180000
             if messagebox.askyesno("Fighting Academy", f"Open a fighting academy for ${cost:,}? It begins with 8 places and $4,500 weekly costs. Youths must be scouted before they appear."):
                 if self.cash < cost: messagebox.showwarning("Academy", "Not enough cash."); return
-                self.cash -= cost; academy.update(self.academy_defaults()); academy.update({"owned": True, "level": 1, "capacity": 8, "weekly_cost": 4500, "last_scout_report": "Hire or use a Scout to establish a regional youth network."}); self.refresh_all()
+                self.cash -= cost; academy.update(self.academy_defaults()); academy.update({"owned": True, "level": 1, "capacity": 8, "weekly_cost": 4500, "build_spend": cost, "last_scout_report": "Hire or use a Scout to establish a regional youth network."}); self.record_finance_transaction("Build Fighting Academy", costs=cost); self.refresh_all()
             return
         self.repair_academy(academy)
-        window = tk.Toplevel(self.root); window.title("MMA Warriors - Fighting Academy"); window.geometry("1120x720"); window.minsize(880, 560); window.configure(bg=self.colors["chrome"])
+        window = tk.Toplevel(self.root); window.title("MMA Warriors - Fighting Academy"); window.geometry("1240x760"); window.minsize(960, 600); window.configure(bg=self.colors["chrome"])
         ttk.Label(window, text="FIGHTING ACADEMY", style="ScreenTitle.TLabel").pack(anchor="w", padx=10, pady=8)
         status = ttk.Label(window, style="Inset.TLabel"); status.pack(fill="x", padx=10)
         report = ttk.Label(window, style="Inset.TLabel", wraplength=1060); report.pack(fill="x", padx=10, pady=(4, 0))
@@ -1820,19 +1922,30 @@ class ViewMixin:
         scout_names = [member.get("name", "") for member in self.staff if member.get("role") == "Scout"] or ["Staff Scout"]
         scout_var = tk.StringVar(value=academy.get("network_scout") or scout_names[0])
         region_var = tk.StringVar(value=academy.get("network_region") or self.player_region)
+        philosophy_var = tk.StringVar(value=academy.get("philosophy", "Balanced MMA"))
         ttk.Label(network, text="Scout", style="Chrome.TLabel").pack(side="left", padx=(4, 2))
         ttk.Combobox(network, values=scout_names, textvariable=scout_var, state="readonly", width=22).pack(side="left", padx=3)
         ttk.Label(network, text="Region", style="Chrome.TLabel").pack(side="left", padx=(12, 2))
         ttk.Combobox(network, values=REGIONS, textvariable=region_var, state="readonly", width=18).pack(side="left", padx=3)
+        ttk.Label(network, text="Philosophy", style="Chrome.TLabel").pack(side="left", padx=(12, 2))
+        ttk.Combobox(network, values=("Balanced MMA", "Striking Academy", "Wrestling Pipeline", "Submission School", "Athletic Development", "Multi-Sport Pathway"), textvariable=philosophy_var, state="readonly", width=21).pack(side="left", padx=3)
+        network_actions = ttk.Frame(window, style="Chrome.TFrame"); network_actions.pack(fill="x", padx=10, pady=(0, 3))
         body = ttk.Panedwindow(window, orient="horizontal"); body.pack(fill="both", expand=True, padx=10, pady=8)
         left = ttk.Frame(body, style="Panel.TFrame"); right = ttk.Frame(body, style="Panel.TFrame")
         body.add(left, weight=1); body.add(right, weight=2)
         ttk.Label(left, text="RECRUITMENT LEADS", style="Section.TLabel").pack(fill="x")
-        talent = tk.Listbox(left, width=52, font=("Tahoma", 10), bg=self.colors["tree"], fg=self.colors["text"], selectbackground=self.colors["red"], selectforeground="#ffffff"); talent.pack(fill="both", expand=True, padx=8, pady=8)
+        talent_frame = ttk.Frame(left, style="Panel.TFrame"); talent_frame.pack(fill="both", expand=True, padx=8, pady=8)
+        talent = tk.Listbox(talent_frame, width=52, font=("Tahoma", 9), bg=self.colors["tree"], fg=self.colors["text"], selectbackground=self.colors["red"], selectforeground="#ffffff")
+        talent_x = ttk.Scrollbar(talent_frame, orient="horizontal", command=talent.xview); talent.configure(xscrollcommand=talent_x.set)
+        talent.pack(fill="both", expand=True); talent_x.pack(fill="x")
         ttk.Label(right, text="SIGNED PROSPECTS", style="Section.TLabel").pack(fill="x")
-        prospects = tk.Listbox(right, width=78, font=("Tahoma", 10), bg=self.colors["tree"], fg=self.colors["text"], selectbackground=self.colors["red"], selectforeground="#ffffff"); prospects.pack(fill="both", expand=True, padx=8, pady=8)
+        prospect_frame = ttk.Frame(right, style="Panel.TFrame"); prospect_frame.pack(fill="both", expand=True, padx=8, pady=8)
+        prospects = tk.Listbox(prospect_frame, width=78, font=("Tahoma", 9), bg=self.colors["tree"], fg=self.colors["text"], selectbackground=self.colors["red"], selectforeground="#ffffff")
+        prospect_x = ttk.Scrollbar(prospect_frame, orient="horizontal", command=prospects.xview); prospects.configure(xscrollcommand=prospect_x.set)
+        prospects.pack(fill="both", expand=True); prospect_x.pack(fill="x")
         training_plans = ['Automatic', 'Balanced', 'Wrestling', 'Boxing', 'Muay Thai', 'BJJ', 'Judo', 'Sambo', 'Clinch', 'Cardio', 'Strength', 'Fight IQ']
         focus_var = tk.StringVar(value="Automatic")
+        intensity_var = tk.StringVar(value="Standard")
         destinations = ["MMA"] + sorted(getattr(self, "player_combat_divisions", {}).keys())
         destination_var = tk.StringVar(value=destinations[0])
         def redraw():
@@ -1844,7 +1957,8 @@ class ViewMixin:
             else:
                 net = "none"
             showcase = f"{academy.get('showcase_weeks', 2)}w" if academy.get("auto_showcases", True) else "Off"
-            status.config(text=f"Level {academy['level']} | Capacity {len(academy['prospects'])}/{academy['capacity']} | Weekly cost ${academy['weekly_cost']:,} | Network {net} | Auto training {'On' if academy.get('auto_train', True) else 'Off'} | Next showcase {showcase}")
+            total_invested = sum(academy.get(key, 0) for key in ("build_spend", "operating_spend", "signing_spend", "upgrade_spend", "network_spend"))
+            status.config(text=f"Level {academy['level']} | Reputation {academy.get('reputation', 10)}/100 | {academy.get('philosophy', 'Balanced MMA')} | Capacity {len(academy['prospects'])}/{academy['capacity']} | Weekly ${academy['weekly_cost']:,} | Invested ${total_invested:,} | Network {net} | Training {'Auto' if academy.get('auto_train', True) else 'Paused'} | Showcase {showcase}")
             report.config(text=academy.get("last_scout_report", "Scout youth prospects to build the shortlist."))
             talent.delete(0, 'end'); prospects.delete(0, 'end')
             for item in academy['talent_pool']:
@@ -1852,14 +1966,16 @@ class ViewMixin:
             for item in academy['prospects']:
                 self.repair_academy_prospect(item)
                 injury = f" | INJ {item['injured']}w" if item.get("injured", 0) else ""
-                prospects.insert('end', f"{item['name']} | age {item['age']} | {item['amateur_weight']} | {item['plan']} (rec {self.recommended_academy_focus(item)}) | {item['amateur_w']}-{item['amateur_l']}-{item.get('amateur_d', 0)} | {item['rating']}/{item['potential']} | Dev {item.get('development', 0)} | S{item['striking']} W{item['wrestling']} G{item['grappling']}{injury}")
+                trend = self.academy_prospect_trend(item)
+                ready = self.academy_graduation_readiness(item)
+                prospects.insert('end', f"{item['name']} | age {item['age']} | {item['amateur_weight']} | {item['plan']}/{item.get('training_intensity', 'Standard')} (rec {self.recommended_academy_focus(item)}) | {item['amateur_w']}-{item['amateur_l']}-{item.get('amateur_d', 0)} | {item['rating']}/{item['potential']} ({trend:+}) | Ready {ready}% | S{item['striking']} W{item['wrestling']} G{item['grappling']}{injury}")
         def sign():
             if not talent.curselection() or len(academy['prospects']) >= academy['capacity']: return
             item = academy['talent_pool'][talent.curselection()[0]]
             cost = item.get('signing_cost') or self.academy_signing_cost(item)
             if self.cash < cost: messagebox.showwarning('Academy', f'Signing {item["name"]} costs ${cost:,}.'); return
             self.cash -= cost
-            item = academy['talent_pool'].pop(talent.curselection()[0]); item.update({'plan': 'Automatic', 'amateur_w': 0, 'amateur_l': 0, 'amateur_d': 0, 'amateur_history': [], 'weeks': 0, 'development': 0, 'weeks_to_sign': 0}); self.repair_academy_prospect(item); academy['prospects'].append(item); academy['last_scout_report'] = f"Signed {item['name']} into the academy for ${cost:,}."; redraw(); self.refresh_all()
+            item = academy['talent_pool'].pop(talent.curselection()[0]); item.update({'plan': 'Automatic', 'training_intensity': 'Standard', 'amateur_w': 0, 'amateur_l': 0, 'amateur_d': 0, 'amateur_history': [], 'weeks': 0, 'development': 0, 'weeks_to_sign': 0, 'academy_member': True, 'joined_month': self.month, 'baseline_rating': item.get('rating', 40)}); self.repair_academy_prospect(item); academy['prospects'].append(item); academy['signing_spend'] = academy.get('signing_spend', 0) + cost; self.record_finance_transaction(f"Academy signing: {item['name']}", costs=cost); academy['last_scout_report'] = f"Signed {item['name']} into the academy for ${cost:,}."; redraw(); self.refresh_all()
         def pass_lead():
             if not talent.curselection(): return
             item = academy['talent_pool'].pop(talent.curselection()[0]); academy['last_scout_report'] = f"Passed on {item.get('name', 'a youth lead')} from the {item.get('region', 'regional')} youth list."; redraw()
@@ -1867,8 +1983,18 @@ class ViewMixin:
             if not prospects.curselection(): return
             item = academy['prospects'][prospects.curselection()[0]]
             item['plan'] = focus_var.get() or 'Automatic'
+            item['training_intensity'] = intensity_var.get() or 'Standard'
             academy['last_scout_report'] = f"{item['name']} training focus set to {item['plan']}."
             redraw()
+        def selected_prospect(_event=None):
+            if not prospects.curselection(): return None
+            item = academy['prospects'][prospects.curselection()[0]]
+            focus_var.set(item.get('plan', 'Automatic')); intensity_var.set(item.get('training_intensity', 'Standard'))
+            return item
+        def open_lead_report():
+            if not talent.curselection(): return
+            item = academy['talent_pool'][talent.curselection()[0]]
+            messagebox.showinfo(f"Scout Report - {item['name']}", self.academy_lead_report(item))
         def open_prospect_profile():
             if not prospects.curselection(): return
             item = academy['prospects'][prospects.curselection()[0]]
@@ -1884,11 +2010,15 @@ class ViewMixin:
                 f"{item['gender']} | Age {item['age']} | {item['region']} | {item['amateur_weight']} -> {item['weight']}",
                 f"Current/Potential: {item['rating']}/{item['potential']} | Development {item.get('development', 0)} | Fatigue {item.get('fatigue', 0)} | Injury {item.get('injured', 0)}w",
                 f"Training focus: {item.get('plan', 'Automatic')} | Recommended: {self.recommended_academy_focus(item)}",
+                f"Intensity: {item.get('training_intensity', 'Standard')} | Preferred pathway: {self.academy_preferred_sport(item)} | Graduation readiness: {self.academy_graduation_readiness(item)}%",
+                f"Dedication: {item.get('dedication', 50)} | Coachability: {item.get('coachability', 50)} | Confidence: {item.get('confidence', 50)} | Trend: {self.academy_prospect_trend(item):+}",
                 f"Amateur record: {item['amateur_w']}-{item['amateur_l']}-{item.get('amateur_d', 0)}",
                 "",
             ]
             for key in ("striking", "wrestling", "grappling", "cardio", "chin", "power", "toughness", "fight_iq"):
                 lines.append(bar(key.title(), item.get(key, 40)))
+            lines += ["", "MILESTONES"] + (item.get("milestones", [])[:12] or ["No milestones yet."])
+            lines += ["", "RECENT TRAINING"] + (item.get("training_log", [])[:12] or ["No recorded training gains yet."])
             lines += ["", "AMATEUR HISTORY"] + (item.get("amateur_history", [])[:30] or ["No amateur bouts yet."])
             text.insert("end", "\n".join(lines)); text.config(state="disabled")
         def amateur_bout():
@@ -1908,10 +2038,29 @@ class ViewMixin:
             academy['last_scout_report'] = note
             self.news.insert(0, note)
             redraw(); self.refresh_all()
+        def release_prospect():
+            item = selected_prospect()
+            if not item: return
+            if not messagebox.askyesno("Release Academy Prospect", f"Release {item['name']} from the academy? This cannot be undone."): return
+            academy['prospects'].remove(item)
+            academy['last_scout_report'] = f"Released {item['name']} from the academy."
+            redraw()
+        def watch_last_card():
+            cards = academy.get('card_history', [])
+            if not cards: messagebox.showinfo("Academy Cards", "No academy showcase has been completed yet."); return
+            card = cards[0]
+            package = {'event_name': card.get('event_name', 'Academy Showcase'), 'log': [card.get('recap', '')] + card.get('results', []), 'fight_logs': card.get('fight_logs', [])}
+            self.open_live_fight_window({'name': package['event_name']}, package, apply_results=False)
+        def show_alumni():
+            alumni = academy.get('alumni', [])
+            if not alumni: messagebox.showinfo("Academy Alumni", "No academy graduates yet."); return
+            lines = [f"{row.get('name')} | {row.get('destination')} | Amateur {row.get('amateur_record')} | Pro {row.get('professional_record')} | OVR {row.get('current_rating')} | Titles {row.get('title_wins', 0)}" for row in alumni[:40]]
+            messagebox.showinfo("Academy Alumni", "ACADEMY GRADUATES\n\n" + "\n".join(lines))
         controls = ttk.Frame(window, style='Inset.TFrame'); controls.pack(fill='x', padx=10, pady=(0, 8))
         def upgrade():
-            if self.cash < 50000: messagebox.showwarning('Academy', 'Upgrade costs $50,000.'); return
-            self.cash -= 50000; academy.update({'capacity': academy['capacity'] + 2, 'level': academy['level'] + 1, 'weekly_cost': academy['weekly_cost'] + 1800}); redraw()
+            cost = 50000 + max(0, academy.get('level', 1) - 1) * 35000
+            if self.cash < cost: messagebox.showwarning('Academy', f'Upgrade costs ${cost:,}.'); return
+            self.cash -= cost; academy.update({'capacity': academy['capacity'] + 2, 'level': academy['level'] + 1, 'weekly_cost': academy['weekly_cost'] + 1800}); academy['upgrade_spend'] = academy.get('upgrade_spend', 0) + cost; academy['reputation'] = min(100, academy.get('reputation', 10) + 2); self.record_finance_transaction('Academy facilities upgrade', costs=cost); redraw()
         def start_network():
             ok, message = self.start_academy_network(region_var.get(), scout_var.get())
             if not ok: messagebox.showwarning("Academy", message)
@@ -1920,26 +2069,46 @@ class ViewMixin:
             ok, message = self.cancel_academy_network()
             if not ok: messagebox.showinfo("Academy", message)
             redraw()
-        ttk.Button(network, text="Set Up Network", style="Accent.TButton", command=start_network).pack(side="left", padx=6)
-        ttk.Button(network, text="Cancel Network", command=cancel_network).pack(side="left", padx=3)
+        def set_philosophy():
+            academy['philosophy'] = philosophy_var.get() or 'Balanced MMA'
+            academy['last_scout_report'] = f"Academy philosophy set to {academy['philosophy']}. Training will now favour those attributes."
+            redraw()
+        def toggle_training():
+            academy['auto_train'] = not academy.get('auto_train', True); redraw()
+        def toggle_showcases():
+            academy['auto_showcases'] = not academy.get('auto_showcases', True); redraw()
+        ttk.Button(network_actions, text="Set Up Network", style="Accent.TButton", command=start_network).pack(side="left", padx=4)
+        ttk.Button(network_actions, text="Cancel Network", command=cancel_network).pack(side="left", padx=3)
+        ttk.Button(network_actions, text="Set Philosophy", command=set_philosophy).pack(side="left", padx=3)
         recruit_row = ttk.Frame(controls, style='Inset.TFrame'); recruit_row.pack(fill='x', pady=2)
         ttk.Button(recruit_row, text='Sign Selected Talent', command=sign).grid(row=0, column=0, sticky='ew', padx=3, pady=2)
         ttk.Button(recruit_row, text='Pass Selected Lead', command=pass_lead).grid(row=0, column=1, sticky='ew', padx=3, pady=2)
         ttk.Button(recruit_row, text='Profile / History', command=open_prospect_profile).grid(row=0, column=2, sticky='ew', padx=3, pady=2)
         ttk.Button(recruit_row, text='Run Amateur Card', command=amateur_bout).grid(row=0, column=3, sticky='ew', padx=3, pady=2)
+        ttk.Button(recruit_row, text='Scout Report', command=open_lead_report).grid(row=0, column=4, sticky='ew', padx=3, pady=2)
         train_row = ttk.Frame(controls, style='Inset.TFrame'); train_row.pack(fill='x', pady=2)
         ttk.Label(train_row, text='Focus', style='Inset.TLabel').grid(row=0, column=0, sticky='w', padx=(4, 2))
         ttk.Combobox(train_row, values=training_plans, textvariable=focus_var, state='readonly', width=12).grid(row=0, column=1, sticky='ew', padx=2)
-        ttk.Button(train_row, text='Set Focus', command=set_training_focus).grid(row=0, column=2, sticky='ew', padx=3, pady=2)
-        ttk.Label(train_row, text='Promote to', style='Inset.TLabel').grid(row=0, column=3, sticky='w', padx=(8, 2))
-        ttk.Combobox(train_row, values=destinations, textvariable=destination_var, state='readonly', width=16).grid(row=0, column=4, sticky='ew', padx=2)
-        ttk.Button(train_row, text='Promote', style='Accent.TButton', command=promote).grid(row=0, column=5, sticky='ew', padx=3, pady=2)
+        ttk.Label(train_row, text='Intensity', style='Inset.TLabel').grid(row=0, column=2, sticky='w', padx=(6, 2))
+        ttk.Combobox(train_row, values=('Light', 'Standard', 'Intensive', 'Recovery'), textvariable=intensity_var, state='readonly', width=10).grid(row=0, column=3, sticky='ew', padx=2)
+        ttk.Button(train_row, text='Set Plan', command=set_training_focus).grid(row=0, column=4, sticky='ew', padx=3, pady=2)
+        ttk.Label(train_row, text='Promote to', style='Inset.TLabel').grid(row=0, column=5, sticky='w', padx=(8, 2))
+        ttk.Combobox(train_row, values=destinations, textvariable=destination_var, state='readonly', width=16).grid(row=0, column=6, sticky='ew', padx=2)
+        ttk.Button(train_row, text='Promote', style='Accent.TButton', command=promote).grid(row=0, column=7, sticky='ew', padx=3, pady=2)
         upgrade_row = ttk.Frame(controls, style='Inset.TFrame'); upgrade_row.pack(fill='x', pady=2)
-        ttk.Button(upgrade_row, text='Upgrade Capacity (+2)', command=upgrade).pack(fill='x', padx=3, pady=2)
-        for row_frame, cols in ((recruit_row, 4), (train_row, 6)):
+        for col in range(3): upgrade_row.columnconfigure(col, weight=1)
+        ttk.Button(upgrade_row, text='Upgrade Facilities / Capacity (+2)', command=upgrade).grid(row=0, column=0, sticky='ew', padx=3, pady=2)
+        ttk.Button(upgrade_row, text='Release Selected', command=release_prospect).grid(row=0, column=1, sticky='ew', padx=3, pady=2)
+        ttk.Button(upgrade_row, text='Watch Last Card', command=watch_last_card).grid(row=0, column=2, sticky='ew', padx=3, pady=2)
+        ttk.Button(upgrade_row, text='Academy Alumni', command=show_alumni).grid(row=1, column=0, sticky='ew', padx=3, pady=2)
+        ttk.Button(upgrade_row, text='Toggle Training', command=toggle_training).grid(row=1, column=1, sticky='ew', padx=3, pady=2)
+        ttk.Button(upgrade_row, text='Toggle Auto Cards', command=toggle_showcases).grid(row=1, column=2, sticky='ew', padx=3, pady=2)
+        for row_frame, cols in ((recruit_row, 5), (train_row, 8)):
             for col in range(cols):
                 row_frame.columnconfigure(col, weight=1)
         prospects.bind("<Double-1>", lambda _event: open_prospect_profile())
+        prospects.bind("<<ListboxSelect>>", selected_prospect)
+        talent.bind("<Double-1>", lambda _event: open_lead_report())
         redraw()
 
     def refresh_companies(self):
@@ -2539,12 +2708,20 @@ class ViewMixin:
         self.rules.setdefault("allow_mixed_gender", False)
         self.rules.setdefault("active_fighter_target", 1200)
         self.rules.setdefault("autosave_enabled", True)
-        self.rules.setdefault("autosave_weekly_keep", 12)
-        self.rules.setdefault("autosave_monthly_keep", 24)
-        self.rules.setdefault("save_backup_keep", 60)
-        self.rules["autosave_weekly_keep"] = max(3, min(52, int(self.rules.get("autosave_weekly_keep", 12))))
-        self.rules["autosave_monthly_keep"] = max(3, min(120, int(self.rules.get("autosave_monthly_keep", 24))))
-        self.rules["save_backup_keep"] = max(10, min(250, int(self.rules.get("save_backup_keep", 60))))
+        # Version 1 shipped very large defaults (12/24/60).  A mature world can
+        # exceed 13 MB per JSON file, so that policy could quietly consume more
+        # than a gigabyte.  Migrate only the exact old defaults; deliberate custom
+        # values are preserved.
+        if int(self.rules.get("save_retention_version", 1)) < 2:
+            if (int(self.rules.get("autosave_weekly_keep", 12)), int(self.rules.get("autosave_monthly_keep", 24)), int(self.rules.get("save_backup_keep", 60))) == (12, 24, 60):
+                self.rules.update({"autosave_weekly_keep": 8, "autosave_monthly_keep": 6, "save_backup_keep": 12})
+            self.rules["save_retention_version"] = 2
+        self.rules.setdefault("autosave_weekly_keep", 8)
+        self.rules.setdefault("autosave_monthly_keep", 6)
+        self.rules.setdefault("save_backup_keep", 12)
+        self.rules["autosave_weekly_keep"] = max(3, min(52, int(self.rules.get("autosave_weekly_keep", 8))))
+        self.rules["autosave_monthly_keep"] = max(3, min(120, int(self.rules.get("autosave_monthly_keep", 6))))
+        self.rules["save_backup_keep"] = max(5, min(250, int(self.rules.get("save_backup_keep", 12))))
         # Migrate worlds created before the population floor was corrected.
         if self.rules["active_fighter_target"] < 800:
             self.rules["active_fighter_target"] = 1200
@@ -3402,6 +3579,9 @@ class ViewMixin:
             messagebox.showinfo("Camp Plan", "Select a fighter first.")
             return
         fighter = self.get_fighter(selected[0])
+        self.open_fighter_camp_plan(fighter)
+
+    def open_fighter_camp_plan(self, fighter, on_save=None):
         window = tk.Toplevel(self.root)
         window.title(f"Camp Plan - {fighter.name}")
         window.geometry("460x410")
@@ -3432,6 +3612,8 @@ class ViewMixin:
             fighter.camp_intensity = intensity_choice.get()
             self.news.insert(0, f"Camp plan: {fighter.name} joins {fighter.camp} for a {fighter.camp_intensity.lower()} {fighter.camp_focus.lower()} camp.")
             self.refresh_all()
+            if on_save:
+                on_save()
             window.destroy()
         ttk.Button(window, text="Set Camp Focus", style="Accent.TButton", command=save).pack(pady=10)
 

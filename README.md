@@ -30,7 +30,7 @@ Before shipping a build, run:
 Run Smoke Tests.bat
 ```
 
-The smoke test checks startup, core promotions, roster sizes, gyms, save/load serialization, and one fight simulation.
+The test launcher runs both `smoke_test.py` and `stability_test.py`. The smoke test checks startup, core promotions, roster sizes, gyms, save/load serialization, and fight simulation. The stability playtest additionally completes normal and retirement events, opens every major UI viewer, tests isolated academy and child-sport matchmaking, round-trips a progressed world through JSON, and advances several independent worlds while watching for Tk callback errors.
 
 For a reproducible 500-fight commentary, metrics, and finish-distribution report, run:
 
@@ -69,7 +69,9 @@ Close the packaged game before rebuilding. The build script preserves packaged `
 - End-of-year awards (Fighter, Fight, Knockout, Submission, Prospect, Veteran, and Promotion of the Year) crowned automatically each January, with a browsable awards history.
 - A living world where fighters age a year each season, prospects break out, veterans decline, title contenders emerge on win streaks, and busy regions grow.
 - Regional feeder circuits where 16+ prospects build records, develop, graduate to free agency, and can return to stay active; AI promotions scout them through budgeted, stealable contract offers.
+- Player-built Fighting Academy with regional scouting networks, reports that become more accurate while leads are observed, prospect dedication/coachability/confidence, academy philosophies, individual training focus and intensity, full-engine amateur showcases with watchable replays, graduation-readiness guidance, MMA or child-sport pathways, finances, reputation, milestones, and persistent alumni careers.
 - Detailed fight engine using striking, wrestling, grappling, clinch, physical, mental, stamina, momentum, traits, morale, camps, and fight context.
+- Playable Boxing, Kickboxing, Muay Thai/Lethwei, Wrestling, and Brazilian Jiu-Jitsu child divisions with AI promotions, smart cards, titles, finances, sport-specific development, and paced live replays. Their bouts use the same camp, gym, morale, motivation, fatigue, weight-cut, trait, damage, injury, and medical-recovery foundation as MMA while retaining sport-specific rules and skills.
 - Expanded style identities including Dutch kickboxing, Taekwondo, Sanda, freestyle and catch wrestling, Luta Livre, and submission grappling; styles influence action selection and matchup context.
 - Shared weight-management model across live cards, AI cards, and the Simulation Lab: walking weight, natural size, cutting skill, camp length, camp quality, scale weight, missed weight, and cut penalties all affect the bout. Player fighters can only change division when their body can credibly make the move.
 - Simulation Lab with gender and weight-class filters, side-by-side fighter scouting cards, full profile access, one-off fight watching, engine audits, and sandbox 4/8/16-fighter tournaments that never alter careers or saves.
@@ -86,7 +88,7 @@ Close the packaged game before rebuilding. The build script preserves packaged `
 
 ## Shipping Checklist
 
-1. Run `Run Smoke Tests.bat`.
+1. Run `Run Smoke Tests.bat` and confirm both the smoke and stability playtests pass.
 2. Start the game from `Launch MMA Warriors.bat`.
 3. Confirm the Game Menu company picker shows every listed promotion once, including Oktagon MMA, BRAVE Combat Federation, and ACA.
 4. Schedule a small event for the current week and simulate it.

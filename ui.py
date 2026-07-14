@@ -109,6 +109,7 @@ class UIMixin:
         shell = ttk.Frame(parent, style=style)
         canvas = tk.Canvas(shell, bg=self.colors["paper"], highlightthickness=0, borderwidth=0)
         scroll = ttk.Scrollbar(shell, orient="vertical", command=canvas.yview)
+        horizontal = ttk.Scrollbar(shell, orient="horizontal", command=canvas.xview)
         inner = ttk.Frame(canvas, style=style)
         window_id = canvas.create_window((0, 0), window=inner, anchor="nw")
 
@@ -116,7 +117,10 @@ class UIMixin:
             canvas.configure(scrollregion=canvas.bbox("all"))
 
         def fit_width(event):
-            canvas.itemconfigure(window_id, width=event.width)
+            # Fill the viewport when content fits, but preserve the natural
+            # requested width of dense tables/toolbars so laptop users can
+            # scroll to controls instead of having them clipped off-screen.
+            canvas.itemconfigure(window_id, width=max(event.width, inner.winfo_reqwidth()))
             update_scrollregion()
 
         def wheel(event):
@@ -139,9 +143,12 @@ class UIMixin:
         canvas.bind("<Configure>", fit_width)
         shell.bind("<Enter>", bind_wheel)
         shell.bind("<Leave>", unbind_wheel)
-        canvas.configure(yscrollcommand=scroll.set)
-        canvas.pack(side="left", fill="both", expand=True)
-        scroll.pack(side="right", fill="y")
+        canvas.configure(yscrollcommand=scroll.set, xscrollcommand=horizontal.set)
+        shell.rowconfigure(0, weight=1)
+        shell.columnconfigure(0, weight=1)
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scroll.grid(row=0, column=1, sticky="ns")
+        horizontal.grid(row=1, column=0, sticky="ew")
         if not hasattr(self, "scrollable_canvases"):
             self.scrollable_canvases = []
         self.scrollable_canvases.append(canvas)
@@ -178,9 +185,18 @@ class UIMixin:
         work = ttk.Frame(shell, style="Chrome.TFrame")
         work.pack(fill="both", expand=True, padx=8, pady=(0, 8))
 
-        nav = ttk.Frame(work, style="Panel.TFrame", width=154)
-        nav.pack(side="left", fill="y", padx=(0, 8))
-        nav.pack_propagate(False)
+        nav_shell = ttk.Frame(work, style="Panel.TFrame", width=174)
+        nav_shell.pack(side="left", fill="y", padx=(0, 8))
+        nav_shell.pack_propagate(False)
+        nav_canvas = tk.Canvas(nav_shell, width=154, bg=self.colors["panel"], highlightthickness=0, borderwidth=0)
+        nav_scroll = ttk.Scrollbar(nav_shell, orient="vertical", command=nav_canvas.yview)
+        nav = ttk.Frame(nav_canvas, style="Panel.TFrame")
+        nav_window = nav_canvas.create_window((0, 0), window=nav, anchor="nw")
+        nav.bind("<Configure>", lambda _event: nav_canvas.configure(scrollregion=nav_canvas.bbox("all")))
+        nav_canvas.bind("<Configure>", lambda event: nav_canvas.itemconfigure(nav_window, width=event.width))
+        nav_canvas.configure(yscrollcommand=nav_scroll.set)
+        nav_canvas.pack(side="left", fill="both", expand=True)
+        nav_scroll.pack(side="right", fill="y")
         groups = (
             ("TODAY", (("Assistant", "assistant"), ("Inbox", "inbox"), ("Media Desk", "website"), ("Fight Night", "log"))),
             ("PROMOTION", (("Roster", "roster"), ("Matchmaking", "booking"), ("Contracts", "contracts"), ("Free Agents", "market"), ("Staff", "staff"), ("Finance", "finance"))),

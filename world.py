@@ -776,8 +776,9 @@ class WorldMixin:
                     "type": "Contract", "resolved": False,
                 })
         self.evaluate_fight_achievements(winner, loser, fight, method, self.fighter_company_name(winner))
-        self.retire_after_final_fight_if_due(winner, self.fighter_company_name(winner))
-        self.retire_after_final_fight_if_due(loser, self.fighter_company_name(loser))
+        if not fight.get("_defer_retirement"):
+            self.retire_after_final_fight_if_due(winner, self.fighter_company_name(winner))
+            self.retire_after_final_fight_if_due(loser, self.fighter_company_name(loser))
 
     def apply_draw_result(self, a, b, fight):
         self.commit_career_stats(a)
@@ -813,8 +814,9 @@ class WorldMixin:
                 fighter.rivalry_history = (fighter.rivalry_history or [])[-39:] + [f"Month {self.month}: Draw with {b.name if fighter is a else a.name}; rematch demand intensifies. Heat now {next_heat}/100."]
         if fight.get("title"):
             self.news.insert(0, f"The {a.gender} {a.weight} title fight between {a.name} and {b.name} ended in a draw; title status remains unchanged.")
-        self.retire_after_final_fight_if_due(a, self.fighter_company_name(a))
-        self.retire_after_final_fight_if_due(b, self.fighter_company_name(b))
+        if not fight.get("_defer_retirement"):
+            self.retire_after_final_fight_if_due(a, self.fighter_company_name(a))
+            self.retire_after_final_fight_if_due(b, self.fighter_company_name(b))
 
     def update_elo(self, winner, loser, fight, method):
         winner_elo = getattr(winner, "elo_rating", 1500)
@@ -1008,11 +1010,12 @@ class WorldMixin:
             self.prompt_due_event()
             return
         self.week = 1
+        completed_month = self.month
         old_year = 2026 + (self.month - 1) // 12
         self.month += 1
         month_changed = True
         new_year = 2026 + (self.month - 1) // 12
-        self.process_world_month(player_ran_show=False)
+        self.process_world_month(player_ran_show=self.player_ran_show_in_month(completed_month))
         if new_year != old_year:
             self.run_end_of_year_awards(old_year)
             self.age_world_one_year()
@@ -1029,6 +1032,20 @@ class WorldMixin:
         if hasattr(self, "run_automatic_save_cycle"):
             self.run_automatic_save_cycle(month_changed=month_changed)
         self.refresh_all()
+
+    def player_ran_show_in_month(self, month):
+        """Return whether the player completed a recorded event in a month.
+
+        Deriving this from result records keeps old saves compatible and avoids a
+        transient flag being lost when a game is saved between the show and the
+        end-of-month rollover.
+        """
+        marker = f"Month {int(month)} "
+        return any(
+            record.get("company") == self.player_company_name
+            and marker in str(record.get("date", ""))
+            for record in getattr(self, "result_records", [])
+        )
         self.write_log()
         self.prompt_due_event()
 
@@ -1085,6 +1102,10 @@ class WorldMixin:
             "weekly_cost": 0, "auto_train": True, "network_weeks": 0, "network_active": False,
             "network_region": "", "network_scout": "", "network_scout_skill": 0,
             "showcase_weeks": 2, "auto_showcases": True, "last_scout_report": "",
+            "philosophy": "Balanced MMA", "reputation": 10, "card_history": [], "alumni": [],
+            "total_cards": 0, "total_bouts": 0, "total_graduates": 0, "build_spend": 0, "operating_spend": 0,
+            "signing_spend": 0, "upgrade_spend": 0, "network_spend": 0,
+            "lost_leads": [], "last_alumni_review_month": 0,
         }
 
     def repair_academy(self, academy=None):
@@ -1094,9 +1115,27 @@ class WorldMixin:
         if academy.get("owned"):
             academy["capacity"] = max(8, academy.get("capacity", 8))
             academy["weekly_cost"] = max(4500, academy.get("weekly_cost", 4500))
+            academy["reputation"] = max(1, min(100, int(academy.get("reputation", 10))))
+        academy["card_history"] = list(academy.get("card_history", []))[:24]
+        academy["alumni"] = list(academy.get("alumni", []))[:100]
+        academy["lost_leads"] = list(academy.get("lost_leads", []))[:30]
+        academy["total_cards"] = max(int(academy.get("total_cards", 0)), len(academy["card_history"]))
+        if academy["card_history"] and not academy.get("total_bouts"):
+            academy["total_bouts"] = sum(len(card.get("results", [])) for card in academy["card_history"])
         for prospect in academy.get("prospects", []) + academy.get("talent_pool", []):
             self.repair_academy_prospect(prospect)
         return academy
+
+    def academy_philosophy_fields(self, academy=None):
+        academy = academy or getattr(self, "academy", {})
+        return {
+            "Balanced MMA": ("striking", "wrestling", "grappling", "cardio", "fight_iq"),
+            "Striking Academy": ("striking", "power", "cardio", "chin"),
+            "Wrestling Pipeline": ("wrestling", "cardio", "fight_iq", "toughness"),
+            "Submission School": ("grappling", "fight_iq", "wrestling", "toughness"),
+            "Athletic Development": ("cardio", "power", "toughness", "chin"),
+            "Multi-Sport Pathway": ("striking", "wrestling", "grappling", "fight_iq"),
+        }.get(academy.get("philosophy", "Balanced MMA"), ("striking", "wrestling", "grappling"))
 
     def academy_weight_band(self, weight):
         if weight in ("Strawweight", "Flyweight", "Bantamweight"):
@@ -1136,7 +1175,8 @@ class WorldMixin:
         current = max(0, rating - 35)
         confidence_tax = max(0, prospect.get("scout_confidence", 50) - 55) * 55
         base = 5_500 + current * 135 + upside * 210 + high_potential * 720 + elite_potential * 1_250 + confidence_tax
-        return round(base * (1 + distance * 0.42))
+        reputation_discount = max(0.88, 1 - max(0, self.academy.get("reputation", 10) - 30) / 500)
+        return round(base * (1 + distance * 0.42) * reputation_discount)
 
     def academy_scout_range(self, value, confidence, minimum=1, maximum=99):
         spread = max(2, round((100 - confidence) / 7))
@@ -1166,6 +1206,21 @@ class WorldMixin:
         prospect.setdefault("fatigue", 0); prospect.setdefault("injured", 0)
         prospect.setdefault("weeks_to_sign", random.randint(2, 3))
         prospect.setdefault("scout_confidence", 45)
+        prospect.setdefault("joined_month", self.month if hasattr(self, "month") else 1)
+        prospect.setdefault("baseline_rating", prospect.get("rating", 42))
+        prospect.setdefault("dedication", random.randint(40, 92))
+        prospect.setdefault("coachability", random.randint(38, 94))
+        prospect.setdefault("confidence", random.randint(45, 72))
+        prospect.setdefault("training_intensity", "Standard")
+        prospect.setdefault("preferred_sport", "MMA")
+        prospect.setdefault("rating_history", [])
+        prospect.setdefault("training_log", [])
+        prospect.setdefault("milestones", [])
+        prospect.setdefault("last_amateur_bout", {})
+        prospect.setdefault("opponent_counts", {})
+        prospect.setdefault("last_amateur_week", -99)
+        prospect.setdefault("plateau_weeks", 0)
+        prospect.setdefault("academy_member", False)
         self.academy_skill_defaults(prospect)
         prospect.setdefault("current_range", self.academy_scout_range(prospect["rating"], prospect["scout_confidence"], 20, 99))
         prospect.setdefault("potential_range", self.academy_scout_range(prospect["potential"], prospect["scout_confidence"], 45, 99))
@@ -1176,7 +1231,8 @@ class WorldMixin:
         region = region or self.player_region
         fighter = self.create_generated_fighter(0, 4, 32, 53, region=region)
         fighter.age = random.randint(12, 15)
-        confidence = max(30, min(94, round(scout_score + random.randint(-12, 10))))
+        academy_reputation = getattr(self, "academy", {}).get("reputation", 10)
+        confidence = max(30, min(94, round(scout_score + academy_reputation * 0.08 + random.randint(-12, 10))))
         prospect = {
             "name": fighter.name, "age": fighter.age, "potential": random.randint(max(62, fighter.overall + 12), 96),
             "region": region, "gender": fighter.gender, "weight": fighter.weight,
@@ -1189,8 +1245,41 @@ class WorldMixin:
             "striking": fighter.striking, "wrestling": fighter.wrestling, "grappling": fighter.grappling,
             "cardio": fighter.cardio, "chin": fighter.chin, "power": fighter.power,
             "toughness": fighter.toughness, "fight_iq": fighter.fight_iq,
+            "dedication": random.randint(35, 96), "coachability": random.randint(35, 96),
+            "confidence": random.randint(42, 70), "source_network": region,
         }
         return self.repair_academy_prospect(prospect)
+
+    def refine_academy_lead(self, prospect, academy):
+        """Improve report accuracy while a lead remains on the live shortlist."""
+        self.repair_academy_prospect(prospect)
+        skill = academy.get("network_scout_skill", 45)
+        distance = self.academy_region_distance(prospect.get("region", self.player_region))
+        gain = max(1, round(skill / 32 + academy.get("reputation", 10) / 45 - distance * 0.35))
+        prospect["scout_confidence"] = min(97, prospect.get("scout_confidence", 45) + gain)
+        spread = max(1, round((101 - prospect["scout_confidence"]) / 8))
+        prospect["current_range"] = (max(20, prospect["rating"] - spread), min(99, prospect["rating"] + spread))
+        prospect["potential_range"] = (max(45, prospect["potential"] - spread - 1), min(99, prospect["potential"] + spread + 1))
+        return prospect
+
+    def academy_lead_report(self, prospect):
+        self.repair_academy_prospect(prospect)
+        current = prospect.get("current_range", (prospect["rating"], prospect["rating"]))
+        potential = prospect.get("potential_range", (prospect["potential"], prospect["potential"]))
+        strongest = sorted(("striking", "wrestling", "grappling", "cardio", "power", "fight_iq"), key=lambda key: prospect.get(key, 40), reverse=True)[:3]
+        personality_accuracy = prospect.get("scout_confidence", 45)
+        personality = (
+            f"Dedication approximately {max(20, prospect['dedication'] - (100-personality_accuracy)//8)}-"
+            f"{min(99, prospect['dedication'] + (100-personality_accuracy)//8)}; coachability approximately "
+            f"{max(20, prospect['coachability'] - (100-personality_accuracy)//8)}-{min(99, prospect['coachability'] + (100-personality_accuracy)//8)}."
+        )
+        return (
+            f"{prospect['name']} — {prospect['gender']} age {prospect['age']} from {prospect['region']}\n\n"
+            f"Projected current ability: {current[0]}-{current[1]}\nProjected potential: {potential[0]}-{potential[1]}\n"
+            f"Report confidence: {personality_accuracy}% | Signing cost: ${prospect.get('signing_cost', 0):,} | Decision window: {prospect.get('weeks_to_sign', 0)} week(s)\n\n"
+            f"Observed strengths: {', '.join(key.replace('_', ' ').title() for key in strongest)}.\n{personality}\n\n"
+            f"Likely pathway: {self.academy_preferred_sport(prospect)}. Reports narrow each week while the lead remains available."
+        )
 
     def academy_recruitment_label(self, prospect):
         self.repair_academy_prospect(prospect)
@@ -1216,6 +1305,7 @@ class WorldMixin:
         self.cash -= cost
         self.record_finance_transaction(f"Academy scouting network: {region}", costs=cost)
         academy.update({"network_weeks": 8, "network_active": False, "network_region": region, "network_scout": scout_name or "Scout", "network_scout_skill": round(scout_skill), "talent_pool": []})
+        academy["network_spend"] = academy.get("network_spend", 0) + cost
         academy["last_scout_report"] = f"{academy['network_scout']} is setting up a {region} youth network. Setup takes 8 weeks."
         return True, academy["last_scout_report"]
 
@@ -1242,6 +1332,36 @@ class WorldMixin:
             "Strength": ("power", "toughness", "chin"), "Fight IQ": ("fight_iq", "cardio"),
         }.get(plan, ("striking", "wrestling", "grappling"))
 
+    def academy_preferred_sport(self, prospect):
+        self.repair_academy_prospect(prospect)
+        scores = {
+            "Boxing": prospect.get("striking", 40) + prospect.get("power", 40) * 0.35,
+            "Kickboxing": prospect.get("striking", 40) + prospect.get("cardio", 40) * 0.22,
+            "Muay Thai": prospect.get("striking", 40) + prospect.get("toughness", 40) * 0.28,
+            "Wrestling": prospect.get("wrestling", 40) * 1.25 + prospect.get("cardio", 40) * 0.18,
+            "Brazilian Jiu-Jitsu": prospect.get("grappling", 40) * 1.25 + prospect.get("fight_iq", 40) * 0.18,
+            "MMA": min(prospect.get("striking", 40), prospect.get("wrestling", 40), prospect.get("grappling", 40)) * 0.8 + prospect.get("fight_iq", 40) * 0.4,
+        }
+        preferred = max(scores, key=scores.get)
+        prospect["preferred_sport"] = preferred
+        return preferred
+
+    def academy_graduation_readiness(self, prospect):
+        self.repair_academy_prospect(prospect)
+        bouts = self.academy_amateur_fight_count(prospect)
+        age_score = max(0, min(28, (prospect.get("age", 15) - 15) * 9))
+        ability = max(0, min(30, (prospect.get("rating", 40) - 42) * 1.2))
+        experience = min(24, bouts * 3)
+        mentality = (prospect.get("confidence", 55) + prospect.get("dedication", 55)) / 12
+        injury_drag = prospect.get("injured", 0) * 3 + max(0, prospect.get("fatigue", 0) - 55) / 4
+        return max(0, min(100, round(age_score + ability + experience + mentality - injury_drag)))
+
+    def academy_prospect_trend(self, prospect):
+        history = prospect.get("rating_history", [])
+        if len(history) < 2:
+            return prospect.get("rating", 40) - prospect.get("baseline_rating", prospect.get("rating", 40))
+        return history[-1].get("rating", prospect.get("rating", 40)) - history[-2].get("rating", prospect.get("rating", 40))
+
     def recommended_academy_focus(self, prospect):
         self.repair_academy_prospect(prospect)
         if prospect.get("grappling", 0) >= max(prospect.get("striking", 0), prospect.get("wrestling", 0)) + 5:
@@ -1262,17 +1382,41 @@ class WorldMixin:
         if prospect.get("injured", 0):
             prospect["injured"] = max(0, prospect.get("injured", 0) - 1)
             return
-        prospect["fatigue"] = max(0, prospect.get("fatigue", 0) - random.randint(4, 9))
+        intensity = prospect.get("training_intensity", "Standard")
+        recovery = {"Light": (9, 14), "Standard": (7, 12), "Intensive": (5, 9), "Recovery": (12, 18)}.get(intensity, (7, 12))
+        prospect["fatigue"] = max(0, prospect.get("fatigue", 0) - random.randint(*recovery))
         if not academy.get("auto_train", True):
             return
+        if intensity == "Recovery" or prospect.get("fatigue", 0) >= 65:
+            prospect["confidence"] = min(99, prospect.get("confidence", 55) + (1 if random.random() < 0.28 else 0))
+            return
         fields = self.academy_training_fields(prospect.get("plan", "Automatic"), prospect)
-        facility = academy.get("level", 1) * 5 + self.staff_skill("Trainer") * 0.25 + self.staff_skill("Scout") * 0.12
-        if random.random() < min(0.42, 0.09 + facility / 360):
-            field = random.choice(fields)
+        philosophy = self.academy_philosophy_fields(academy)
+        facility = academy.get("level", 1) * 5 + self.staff_skill("Trainer") * 0.25 + academy.get("reputation", 10) * 0.08
+        potential_gap = max(0, prospect.get("potential", 70) - prospect.get("rating", 40))
+        mentality = (prospect.get("dedication", 55) + prospect.get("coachability", 55)) / 200
+        intensity_factor = {"Light": 0.72, "Standard": 1.0, "Intensive": 1.28}.get(intensity, 1.0)
+        fatigue_drag = max(0, prospect.get("fatigue", 0) - 35) / 180
+        growth_chance = min(0.48, (0.055 + facility / 440 + potential_gap / 380) * mentality * intensity_factor - fatigue_drag)
+        if random.random() < max(0.025, growth_chance):
+            weighted_fields = list(fields) + [field for field in philosophy if field in fields]
+            field = random.choice(weighted_fields)
             prospect[field] = min(99, prospect.get(field, prospect.get("rating", 40)) + 1)
             prospect["development"] = prospect.get("development", 0) + 1
+            prospect["plateau_weeks"] = 0
+            prospect["training_log"] = ([f"M{self.month} W{self.week}: {field.replace('_', ' ').title()} improved under {prospect.get('plan', 'Automatic')} training."] + prospect.get("training_log", []))[:30]
+        else:
+            prospect["plateau_weeks"] = prospect.get("plateau_weeks", 0) + 1
+        fatigue_gain = {"Light": 1, "Standard": 2, "Intensive": 4}.get(intensity, 2)
+        prospect["fatigue"] = min(100, prospect.get("fatigue", 0) + fatigue_gain)
+        injury_risk = max(0.002, 0.004 + (0.012 if intensity == "Intensive" else 0) + max(0, prospect["fatigue"] - 75) / 1700)
+        if random.random() < injury_risk:
+            prospect["injured"] = random.randint(1, 4)
+            prospect["training_log"] = ([f"M{self.month} W{self.week}: Training injury; out {prospect['injured']} week(s)."] + prospect.get("training_log", []))[:30]
         if prospect.get("weeks", 0) % 5 == 0 and prospect.get("rating", 40) < prospect.get("potential", 70):
             self.recalculate_academy_rating(prospect)
+        if prospect.get("weeks", 0) % 4 == 0:
+            prospect["rating_history"] = (prospect.get("rating_history", []) + [{"month": self.month, "week": self.week, "rating": prospect.get("rating", 40)}])[-36:]
 
     def recalculate_academy_rating(self, prospect):
         rating = round((prospect.get("striking", 40) + prospect.get("wrestling", 40) + prospect.get("grappling", 40) + prospect.get("cardio", 40) + prospect.get("chin", 40) + prospect.get("fight_iq", 40)) / 6)
@@ -1293,7 +1437,8 @@ class WorldMixin:
             field = random.choice(fields)
             prospect[field] = min(99, prospect.get(field, 45) + 1)
             prospect["development"] = prospect.get("development", 0) + 1
-        prospect["fatigue"] = min(100, prospect.get("fatigue", 0) + random.randint(10, 22))
+        prospect["fatigue"] = min(100, prospect.get("fatigue", 0) + random.randint(8, 16))
+        prospect["confidence"] = max(20, min(99, prospect.get("confidence", 55) + (random.randint(2, 5) if won else random.randint(-3, 1))))
         if random.random() < 0.025:
             prospect["injured"] = max(prospect.get("injured", 0), random.randint(1, 3))
         self.recalculate_academy_rating(prospect)
@@ -1310,13 +1455,69 @@ class WorldMixin:
                 setattr(fighter, key, prospect[key])
         fighter.fight_history = list(prospect.get("amateur_history", [])) + ["Promoted from the Fighting Academy."]
         fighter.contract_months = 24
+        fighter.feeder_origin = f"{self.player_company_name} Fighting Academy"
+        fighter.motivation = max(35, min(99, prospect.get("dedication", fighter.motivation)))
+        fighter.professionalism = max(30, min(99, round((prospect.get("dedication", 55) + prospect.get("coachability", 55)) / 2)))
+        fighter.career_achievements = list(fighter.career_achievements or []) + [
+            f"Graduated from {self.player_company_name}'s academy with a {prospect.get('amateur_w', 0)}-{prospect.get('amateur_l', 0)}-{prospect.get('amateur_d', 0)} amateur record."
+        ]
         fighter.rank_score = self.rank_value(fighter)
         return fighter
+
+    def record_academy_graduate(self, prospect, fighter, destination):
+        academy = self.repair_academy(getattr(self, "academy", {}))
+        entry = {
+            "name": fighter.name, "destination": destination, "graduated_month": self.month,
+            "amateur_record": f"{prospect.get('amateur_w', 0)}-{prospect.get('amateur_l', 0)}-{prospect.get('amateur_d', 0)}",
+            "graduation_rating": prospect.get("rating", fighter.overall), "potential": prospect.get("potential", fighter.potential),
+            "current_rating": fighter.overall, "professional_record": fighter.record, "title_wins": 0,
+            "last_wins": fighter.record_w, "active": True,
+        }
+        academy["alumni"] = ([entry] + [row for row in academy.get("alumni", []) if row.get("name") != fighter.name])[:100]
+        academy["total_graduates"] = academy.get("total_graduates", 0) + 1
+        academy["reputation"] = min(100, academy.get("reputation", 10) + 1 + int(prospect.get("rating", 40) >= 65))
+        prospect["milestones"] = ([f"M{self.month}: Graduated to {destination} at rating {prospect.get('rating', fighter.overall)}."] + prospect.get("milestones", []))[:20]
+        self.record_world_story("Academy Graduate", f"{fighter.name} graduates from {self.player_company_name}'s academy.", f"Destination {destination}; amateur record {entry['amateur_record']}; potential {fighter.potential}.", [self.player_company_name], [fighter.name], 2)
+
+    def academy_alumnus_fighter(self, name):
+        fighter = self.find_fighter_anywhere(name) if hasattr(self, "find_fighter_anywhere") else None
+        if fighter:
+            return fighter
+        for world in getattr(self, "combat_sport_worlds", {}).values():
+            for candidate in world.get("roster", []):
+                if candidate.name == name:
+                    return candidate
+        return None
+
+    def update_academy_alumni(self, academy=None):
+        academy = academy or getattr(self, "academy", {})
+        if not academy.get("owned") or academy.get("last_alumni_review_month") == self.month:
+            return
+        academy["last_alumni_review_month"] = self.month
+        for entry in academy.get("alumni", []):
+            fighter = self.academy_alumnus_fighter(entry.get("name", ""))
+            if not fighter:
+                entry["active"] = False
+                continue
+            prior_wins = entry.get("last_wins", 0)
+            prior_titles = entry.get("title_wins", 0)
+            entry.update({"current_rating": fighter.overall, "professional_record": fighter.record,
+                          "title_wins": getattr(fighter, "title_wins", 0), "last_wins": fighter.record_w,
+                          "active": not getattr(fighter, "retired", False)})
+            gained_wins = max(0, fighter.record_w - prior_wins)
+            gained_titles = max(0, getattr(fighter, "title_wins", 0) - prior_titles)
+            if gained_wins or gained_titles:
+                academy["reputation"] = min(100, academy.get("reputation", 10) + min(2, gained_wins) + gained_titles * 3)
+                if gained_titles:
+                    note = f"Academy alumnus {fighter.name} won a professional title; academy reputation rose to {academy['reputation']}."
+                    academy["last_scout_report"] = note
+                    self.news.insert(0, note)
 
     def promote_academy_prospect_to_sport(self, prospect, sport):
         fighter = self.academy_prospect_to_fighter(prospect)
         if sport == "MMA":
             self.roster.append(fighter)
+            self.record_academy_graduate(prospect, fighter, sport)
             return True, f"Academy graduate: {fighter.name} joined {self.player_company_name}.", fighter
         ok, division = self.open_player_combat_division(sport)
         if not ok:
@@ -1331,35 +1532,113 @@ class WorldMixin:
         fighter.crossover_history.append(f"Month {self.month}: Graduated from {self.player_company_name}'s academy into {sport}.")
         world["roster"].append(fighter)
         division["roster"] = list(dict.fromkeys(division.get("roster", []) + [fighter.name]))
+        self.record_academy_graduate(prospect, fighter, sport)
         return True, f"Academy graduate: {fighter.name} joined {self.player_company_name}'s {sport} division.", fighter
 
+    def academy_bout_fighter(self, prospect):
+        """Build a disposable fighter so amateur bouts use the complete MMA engine."""
+        fighter = self.academy_prospect_to_fighter(prospect)
+        fighter.detailed_skills = None
+        fighter.age = max(16, fighter.age)
+        fighter.camp = f"{self.player_company_name} Fighting Academy"
+        fighter.camp_quality = min(96, 48 + getattr(self, "academy", {}).get("level", 1) * 7)
+        fighter.camp_weeks = 4
+        fighter.camp_boost = max(0, min(8, getattr(self, "academy", {}).get("level", 1) + prospect.get("coachability", 50) // 25))
+        fighter.morale = prospect.get("confidence", 55)
+        fighter.motivation = prospect.get("dedication", 55)
+        fighter.fatigue = prospect.get("fatigue", 0)
+        fighter.walk_weight = self.default_walk_weight(fighter)
+        fighter.scale_weight = float(WEIGHT_LIMITS.get(fighter.weight, fighter.walk_weight))
+        return fighter
+
     def simulate_academy_amateur_bout(self, a, b, label):
-        a_score = a.get("rating", 40) + a.get("fight_iq", 40) * 0.12 + random.randint(-14, 14)
-        b_score = b.get("rating", 40) + b.get("fight_iq", 40) * 0.12 + random.randint(-14, 14)
-        if abs(a_score - b_score) <= 2 and random.random() < 0.16:
+        self.repair_academy_prospect(a); self.repair_academy_prospect(b)
+        a_fighter, b_fighter = self.academy_bout_fighter(a), self.academy_bout_fighter(b)
+        fight = {"main": False, "title": False, "tier": "Academy Showcase", "region": a.get("region", self.player_region)}
+        winner_fighter, loser_fighter, method, round_no, lines = self.simulate_fight(a_fighter, b_fighter, fight)
+        detail = {"heading": f"{a['name']} vs {b['name']}", "label": f"{label} AMATEUR",
+                  "a": a["name"], "b": b["name"], "weight": label, "lines": list(lines)}
+        absolute_week = self.calendar_week_index()
+        for prospect, opponent in ((a, b), (b, a)):
+            prospect["last_amateur_week"] = absolute_week
+            counts = prospect.setdefault("opponent_counts", {})
+            counts[opponent["name"]] = counts.get(opponent["name"], 0) + 1
+            if len(counts) > 20:
+                prospect["opponent_counts"] = dict(list(counts.items())[-20:])
+        if method == "Draw":
             a["amateur_d"] += 1; b["amateur_d"] += 1
-            method = "Draw"
-            line = f"{a['name']} vs {b['name']} ended in a draw ({label})."
+            line = f"Month {self.month}: {a['name']} vs {b['name']} ended in a draw ({label}, R{round_no})."
             a["amateur_history"].insert(0, line); b["amateur_history"].insert(0, line)
             self.apply_academy_bout_development(a, method, False); self.apply_academy_bout_development(b, method, False)
+            detail["result"] = line; detail["lines"] += ["", f"Result: {line}"]
+            a["last_amateur_bout"] = b["last_amateur_bout"] = detail
             return line
-        winner, loser = (a, b) if a_score >= b_score else (b, a)
-        method = random.choices(["Decision", "TKO", "Submission"], weights=[52, 28, 20], k=1)[0]
+        winner, loser = (a, b) if winner_fighter.name == a["name"] else (b, a)
         winner["amateur_w"] += 1; loser["amateur_l"] += 1
-        line = f"{winner['name']} def. {loser['name']} by {method} ({label} Academy Showcase)."
+        line = f"Month {self.month}: {winner['name']} def. {loser['name']} by {method} (R{round_no}, {label} Academy Showcase)."
         winner["amateur_history"].insert(0, line); loser["amateur_history"].insert(0, line)
         self.apply_academy_bout_development(winner, method, True); self.apply_academy_bout_development(loser, method, False)
+        detail["result"] = line; detail["lines"] += ["", f"Result: {line}"]
+        a["last_amateur_bout"] = b["last_amateur_bout"] = detail
+        if winner.get("academy_member") and (winner["amateur_w"] in (1, 5, 10) or (winner["amateur_w"] >= 6 and winner["amateur_l"] == 0)):
+            milestone = f"M{self.month}: Reached {winner['amateur_w']} amateur wins ({winner['amateur_w']}-{winner['amateur_l']}-{winner.get('amateur_d', 0)})."
+            winner["milestones"] = ([milestone] + winner.get("milestones", []))[:20]
         return line
 
     def academy_amateur_fight_count(self, prospect):
         return prospect.get("amateur_w", 0) + prospect.get("amateur_l", 0) + prospect.get("amateur_d", 0)
 
+    def create_academy_guest_opponent(self, prospect, reserved_names=None):
+        """Create a same-gender regional amateur for an isolated prospect.
+
+        Academy capacity is intentionally small, so requiring an internal match
+        can strand a lone woman or weight-band outlier for years.  Guest amateurs
+        give every healthy prospect real simulated experience without signing a
+        permanent ninth academy member.
+        """
+        reserved = set(reserved_names or ()) | {item.get("name", "") for item in self.academy.get("prospects", [])}
+        rating = max(30, min(78, prospect.get("rating", 40) + random.randint(-5, 5)))
+        fighter = self.create_generated_fighter(
+            2, 12, max(28, rating - 6), min(82, rating + 6),
+            weight=prospect.get("weight", "Lightweight"),
+            gender=prospect.get("gender", "Male"),
+            region=prospect.get("region", self.player_region),
+        )
+        self.avoid_name_collision(fighter, self.active_fighter_names() | reserved)
+        guest = {
+            "name": fighter.name,
+            "age": max(15, min(20, prospect.get("age", 17) + random.choice([-1, 0, 0, 1]))),
+            "potential": max(rating, min(88, rating + random.randint(5, 16))),
+            "region": prospect.get("region", self.player_region),
+            "gender": prospect.get("gender", "Male"),
+            "weight": prospect.get("weight", "Lightweight"),
+            "amateur_weight": prospect.get("amateur_weight", "Youth Openweight"),
+            "rating": rating,
+            "style": fighter.style,
+            "nationality": fighter.nationality,
+            "striking": max(25, min(85, rating + random.randint(-7, 7))),
+            "wrestling": max(25, min(85, rating + random.randint(-7, 7))),
+            "grappling": max(25, min(85, rating + random.randint(-7, 7))),
+            "cardio": max(30, min(88, rating + random.randint(-5, 8))),
+            "chin": max(30, min(88, rating + random.randint(-6, 7))),
+            "power": max(25, min(86, rating + random.randint(-7, 7))),
+            "toughness": max(30, min(88, rating + random.randint(-5, 8))),
+            "fight_iq": max(25, min(86, rating + random.randint(-7, 7))),
+            "plan": "Regional Club",
+            "amateur_w": random.randint(0, 4), "amateur_l": random.randint(0, 3), "amateur_d": 0,
+            "amateur_history": [], "weeks": 0, "development": 0, "fatigue": 0, "injured": 0,
+        }
+        return self.repair_academy_prospect(guest)
+
     def choose_academy_showcase_card(self, academy=None):
         academy = academy or getattr(self, "academy", {})
         ready = [item for item in academy.get("prospects", []) if not item.get("injured", 0) and item.get("fatigue", 0) < 70]
         ready.sort(key=lambda item: (self.academy_amateur_fight_count(item), item.get("fatigue", 0), random.random()))
+        target_bouts = max(1, min(5, academy.get("level", 1) + 1))
         bouts, used = [], set()
         for a in ready:
+            if len(bouts) >= target_bouts:
+                break
             if a["name"] in used:
                 continue
             candidates = [b for b in ready if b["name"] not in used and b["name"] != a["name"] and b.get("gender") == a.get("gender")]
@@ -1367,14 +1646,41 @@ class WorldMixin:
             pool = same_weight or candidates
             if not pool:
                 continue
-            b = min(pool, key=lambda item: abs(item.get("rating", 40) - a.get("rating", 40)) + abs(self.academy_amateur_fight_count(item) - self.academy_amateur_fight_count(a)))
+            b = min(pool, key=lambda item: abs(item.get("rating", 40) - a.get("rating", 40)) + abs(self.academy_amateur_fight_count(item) - self.academy_amateur_fight_count(a)) + a.get("opponent_counts", {}).get(item.get("name"), 0) * 14)
+            if a.get("opponent_counts", {}).get(b.get("name"), 0) >= 3:
+                continue
             label = a.get("amateur_weight", "Youth Openweight") if b in same_weight else "Open Youth"
             bouts.append((a, b, label)); used.update([a["name"], b["name"]])
+        # Fill any odd or isolated slots with regional guest amateurs.  The guest
+        # is simulated normally but is not retained in the owned academy roster.
+        reserved = {item.get("name", "") for item in ready}
+        for prospect in ready:
+            if len(bouts) >= target_bouts:
+                break
+            if prospect["name"] in used:
+                continue
+            guest = self.create_academy_guest_opponent(prospect, reserved)
+            reserved.add(guest["name"])
+            bouts.append((prospect, guest, prospect.get("amateur_weight", "Youth Openweight")))
+            used.add(prospect["name"])
         return bouts
 
     def run_academy_showcase_card(self, academy=None):
         academy = academy or getattr(self, "academy", {})
-        return [self.simulate_academy_amateur_bout(a, b, label) for a, b, label in self.choose_academy_showcase_card(academy)]
+        results, fight_logs = [], []
+        for a, b, label in self.choose_academy_showcase_card(academy):
+            results.append(self.simulate_academy_amateur_bout(a, b, label))
+            fight_logs.append(dict(a.get("last_amateur_bout", {})))
+        if results:
+            academy["total_cards"] = academy.get("total_cards", 0) + 1
+            card_number = academy["total_cards"]
+            card = {"event_name": f"{self.player_company_name} Academy Showcase {card_number}",
+                    "date": f"Month {self.month} Week {self.week}", "results": list(results),
+                    "fight_logs": fight_logs, "recap": f"{len(results)} amateur bout(s) completed."}
+            academy["card_history"] = ([card] + academy.get("card_history", []))[:24]
+            academy["total_bouts"] = academy.get("total_bouts", 0) + len(results)
+            academy["reputation"] = min(100, academy.get("reputation", 10) + (1 if academy["total_bouts"] % 12 < len(results) else 0))
+        return results
 
     def run_academy_showcase_if_due(self, academy=None):
         academy = academy or getattr(self, "academy", {})
@@ -1395,13 +1701,19 @@ class WorldMixin:
         if not academy.get("owned"):
             return
         self.cash -= academy.get("weekly_cost", 0)
+        academy["operating_spend"] = academy.get("operating_spend", 0) + academy.get("weekly_cost", 0)
         self.record_finance_transaction("Academy operating costs", costs=academy.get("weekly_cost", 0))
         for prospect in academy.get("prospects", []):
             self.train_academy_prospect(prospect, academy)
         for prospect in list(academy.get("talent_pool", [])):
+            self.refine_academy_lead(prospect, academy)
             prospect["weeks_to_sign"] = prospect.get("weeks_to_sign", 2) - 1
             if prospect["weeks_to_sign"] < 0:
                 academy["talent_pool"].remove(prospect)
+                academy["lost_leads"] = ([{"name": prospect.get("name", "Unknown"), "region": prospect.get("region", ""),
+                                                    "potential_range": list(prospect.get("potential_range", (0, 0))), "lost_month": self.month}]
+                                                 + academy.get("lost_leads", []))[:30]
+                academy["last_scout_report"] = f"The signing window closed for {prospect.get('name', 'a youth prospect')}; the lead has left your network."
         if academy.get("network_weeks", 0) > 0:
             academy["network_weeks"] -= 1
             if academy["network_weeks"] <= 0:
@@ -1419,6 +1731,7 @@ class WorldMixin:
             if added:
                 academy["last_scout_report"] = f"{academy.get('network_region', self.player_region)} network produced {added} youth lead(s). Leads expire after 2-3 weeks."
         self.run_academy_showcase_if_due(academy)
+        self.update_academy_alumni(academy)
 
     def process_scouting_reports(self):
         for name, report in list(getattr(self, "scouting_reports", {}).items()):
@@ -1736,17 +2049,121 @@ class WorldMixin:
             reverse=True,
         )
 
+    def combat_sport_division_key(self, fighter):
+        """Stable save key for a non-MMA championship division."""
+        return f"{fighter.gender}|{fighter.weight}"
+
+    def combat_sport_division_label(self, key):
+        gender, _, weight = str(key).partition("|")
+        return f"{gender} {weight}" if weight else gender
+
+    def combat_sport_state(self, sport, world, player_owned=False):
+        if player_owned:
+            return getattr(self, "player_combat_divisions", {}).get(sport, world)
+        return world
+
+    def ensure_combat_sport_circuit_state(self, sport, world, employer=None, player_owned=False):
+        """Migrate the old one-champion circuit into divisional, persistent state."""
+        state = self.combat_sport_state(sport, world, player_owned)
+        if not player_owned:
+            employer = world.get("promotion", employer)
+        state.setdefault("titles", {})
+        state.setdefault("title_history", {})
+        state.setdefault("rankings_by_division", {})
+        state.setdefault("records", {})
+        state.setdefault("record_book", {})
+        state.setdefault("season_stats", {})
+        state.setdefault("awards", [])
+        state.setdefault("hall_of_fame", [])
+        state.setdefault("finance_history", [])
+        state.setdefault("reputation", 50 if player_owned else 62)
+        state.setdefault("stability", 60 if player_owned else 72)
+        if not player_owned:
+            starting_cash = {
+                "Boxing": 8_000_000,
+                "Kickboxing": 4_500_000,
+                "Muay Thai": 3_800_000,
+                "Wrestling": 3_000_000,
+                "Brazilian Jiu-Jitsu": 2_800_000,
+            }.get(sport, 3_000_000)
+            state.setdefault("cash", starting_cash)
+            state.setdefault("starting_roster_size", len(self.combat_sport_roster(sport, employer)))
+        roster = self.combat_sport_roster(sport, employer)
+        valid_names = {fighter.name for fighter in roster}
+        groups = {}
+        for fighter in roster:
+            groups.setdefault(self.combat_sport_division_key(fighter), []).append(fighter)
+        ranked_groups = {
+            key: sorted(
+                fighters,
+                key=lambda fighter: (self.combat_sport_rating(fighter, sport), fighter.record_w - fighter.record_l, fighter.popularity),
+                reverse=True,
+            )
+            for key, fighters in groups.items()
+        }
+        state["rankings_by_division"] = {key: [fighter.name for fighter in fighters[:10]] for key, fighters in ranked_groups.items()}
+        # Retirements, crossovers and signings vacate belts rather than silently
+        # transferring them to the next athlete in a table.
+        for key, champion in list(state["titles"].items()):
+            if champion not in valid_names or champion not in state["rankings_by_division"].get(key, []):
+                state["titles"][key] = ""
+        if not state.get("titles_initialized"):
+            legacy_champion = state.get("champion", "")
+            legacy_fighter = next((fighter for fighter in roster if fighter.name == legacy_champion), None)
+            if legacy_fighter:
+                state["titles"][self.combat_sport_division_key(legacy_fighter)] = legacy_fighter.name
+            # A fresh AI universe begins with established divisional champions;
+            # player child divisions crown theirs through booked title bouts.
+            if not player_owned:
+                for key, fighters in ranked_groups.items():
+                    if len(fighters) >= 2:
+                        state["titles"].setdefault(key, fighters[0].name)
+            state["titles_initialized"] = True
+        champions = [name for name in state["titles"].values() if name]
+        state["champion"] = champions[0] if champions else ""
+        for fighter in roster:
+            fighter.champion = fighter.name in champions
+        return state
+
+    def combat_sport_record_book(self, sport, world, employer=None, player_owned=False):
+        state = self.ensure_combat_sport_circuit_state(sport, world, employer, player_owned)
+        roster = self.combat_sport_roster(sport, employer)
+        if not roster:
+            state["record_book"] = {}
+            return state["record_book"]
+        eligible_pct = [fighter for fighter in roster if fighter.record_w + fighter.record_l + fighter.record_d >= 5]
+        title_counts = {}
+        for history in state.get("title_history", {}).values():
+            for entry in history:
+                winner = entry.get("winner", "")
+                title_counts[winner] = title_counts.get(winner, 0) + 1
+        finish_methods = ("KO", "KO/TKO", "TKO", "Submission", "Technical Fall", "Pin")
+        finish_counts = {}
+        for fighter in roster:
+            finish_counts[fighter.name] = sum(1 for line in fighter.fight_history if sport in line and any(f"by {method}" in line for method in finish_methods))
+        most_wins = max(roster, key=lambda fighter: fighter.record_w)
+        best_pct = max(eligible_pct, key=lambda fighter: fighter.record_w / max(1, fighter.record_w + fighter.record_l + fighter.record_d)) if eligible_pct else most_wins
+        most_titles = max(title_counts, key=title_counts.get) if title_counts else "No title history yet"
+        most_finishes = max(finish_counts, key=finish_counts.get) if finish_counts else most_wins.name
+        state["record_book"] = {
+            "Most wins": f"{most_wins.name} ({most_wins.record_w})",
+            "Best win rate (5+ bouts)": f"{best_pct.name} ({best_pct.record_w / max(1, best_pct.record_w + best_pct.record_l + best_pct.record_d):.1%})",
+            "Most championship wins": f"{most_titles} ({title_counts.get(most_titles, 0)})",
+            "Most recorded finishes": f"{most_finishes} ({finish_counts.get(most_finishes, 0)})",
+            "Oldest active athlete": f"{max(roster, key=lambda fighter: fighter.age).name} ({max(fighter.age for fighter in roster)})",
+        }
+        return state["record_book"]
+
     def refresh_combat_sport_rankings(self, sport, world, employer=None, division=None):
         ranked = self.combat_sport_ranked(sport, employer)
         names = [fighter.name for fighter in ranked[:15]]
         if division is not None:
             division["rankings"] = names[:10]
-            if division.get("champion") not in names:
-                division["champion"] = names[0] if names else ""
+            self.ensure_combat_sport_circuit_state(sport, world, employer, player_owned=True)
         else:
-            world["rankings"] = names
-            if world.get("champion") not in names:
-                world["champion"] = names[0] if names else ""
+            if not employer or employer == world.get("promotion", employer):
+                world["rankings"] = names
+            self.ensure_combat_sport_circuit_state(sport, world, employer, player_owned=False)
         return ranked
 
     def combat_sport_inactivity_months(self, fighter):
@@ -1760,7 +2177,7 @@ class WorldMixin:
         inactive = sum(1 for fighter in roster if self.combat_sport_inactivity_months(fighter) >= 5)
         if inactive >= max(8, len(roster) // 4):
             world["strategy"] = "Deep Roster"
-        elif world.get("champion") and random.random() < 0.18:
+        elif any(world.get("titles", {}).values()) and random.random() < 0.18:
             world["strategy"] = "Champion Showcase"
         return world["strategy"]
 
@@ -1813,16 +2230,786 @@ class WorldMixin:
     def combat_sport_bout_rules(self, sport, title=False, a=None, b=None):
         lethwei = getattr(a, "primary_discipline", "") == "Lethwei" or getattr(b, "primary_discipline", "") == "Lethwei"
         if sport == "Boxing":
-            return {"rounds": 10 if title else 6, "finish": "KO/TKO", "decision": "Decision", "draws": True, "fatigue": 3.0}
+            return {"rounds": 10 if title else 6, "finish": "KO/TKO", "decision": "Decision", "draws": True, "fatigue": 3.0, "finish_divisor": 335, "finish_cap": 0.19, "draw_chance": 0.22}
         if sport == "Kickboxing":
-            return {"rounds": 5 if title else 3, "finish": "KO/TKO", "decision": "Decision", "draws": True, "fatigue": 4.0}
+            return {"rounds": 5 if title else 3, "finish": "KO/TKO", "decision": "Decision", "draws": True, "fatigue": 4.0, "finish_divisor": 230, "finish_cap": 0.33, "draw_chance": 0.22}
         if sport == "Muay Thai":
-            return {"rounds": 5, "finish": "KO" if lethwei else "KO/TKO", "decision": "Draw" if lethwei else "Decision", "draws": True, "fatigue": 4.2}
+            return {"rounds": 5, "finish": "KO" if lethwei else "KO/TKO", "decision": "Decision", "draws": True, "fatigue": 4.2, "finish_divisor": 292 if not lethwei else 260, "finish_cap": 0.31 if not lethwei else 0.36, "draw_chance": 0.08 if not lethwei else 0.48, "lethwei": lethwei}
         if sport == "Wrestling":
-            return {"rounds": 3, "finish": "Pin", "decision": "Points", "draws": False, "fatigue": 3.4}
+            return {"rounds": 3, "finish": "Pin", "decision": "Points", "draws": False, "fatigue": 3.4, "tech_gap": 10}
         if sport == "Brazilian Jiu-Jitsu":
             return {"rounds": 1, "finish": "Submission", "decision": "Points", "draws": False, "fatigue": 3.2}
         return {"rounds": 3, "finish": "Finish", "decision": "Decision", "draws": True, "fatigue": 3.5}
+
+    def combat_sport_commentary_bank(self):
+        """Reusable sport-specific phrase library.
+
+        The categories are intentionally generic enough that the MMA engine can
+        reuse them later for pure boxing, kickboxing, Thai clinch, wrestling, or
+        BJJ moments inside an MMA fight.
+        """
+        bank = {
+            "Boxing": {
+                "opening": [
+                    "{stakes}: {A} vs {B}. The key battle is jab, counters and pocket discipline.",
+                    "{stakes}: {A} meets {B}. Watch the lead hand, the first counter, and who owns the center line.",
+                    "{stakes}: {A} and {B} touch gloves. This should be decided by range, timing and body work.",
+                    "{stakes}: {A} vs {B}. The corner talk is all about feints, exits and not giving away the pocket.",
+                    "{stakes}: {A} faces {B}. The fight starts as a battle for the jab lane.",
+                    "{stakes}: {A} and {B} square up. The question is who can draw first and answer last.",
+                    "{stakes}: {A} vs {B}. Both teams expect a chess match until someone finds the counter.",
+                    "{stakes}: {A} meets {B}. Early footwork will decide who punches downhill.",
+                ],
+                "close": [
+                    "R{round_no}: {A} shades a tight boxing round with the jab and a cleaner final exchange. {score_text}",
+                    "R{round_no}: {A} lands the more memorable single shots, but {B} keeps the round uncomfortable. {score_text}",
+                    "R{round_no}: {A} steals the optics late, stepping out after a short right hand. {score_text}",
+                    "R{round_no}: {A} does just enough with feints and check hooks to edge a cagey round. {score_text}",
+                    "R{round_no}: {A} controls the rhythm for small stretches; {B} answers, but not quite enough. {score_text}",
+                    "R{round_no}: {A} keeps the lead hand busy and makes {B} reset before the counters arrive. {score_text}",
+                    "R{round_no}: A narrow round. {A}'s body jab and late pivot are the clearest scoring moments. {score_text}",
+                    "R{round_no}: {A} wins the round on cleaner exits, avoiding the return fire after landing. {score_text}",
+                    "R{round_no}: {A} puts a right hand behind the jab twice and that may be enough. {score_text}",
+                    "R{round_no}: {A} walks {B} onto the cleaner counters in a low-volume round. {score_text}",
+                    "R{round_no}: {A} makes the judges choose accuracy over volume. {score_text}",
+                    "R{round_no}: {A} edges the exchanges by punching in twos while {B} mostly lands singles. {score_text}",
+                ],
+                "dominant": [
+                    "R{round_no}: {A} takes over behind a stiff jab, then rips the body when {B} shells up. {score_text}",
+                    "R{round_no}: {A} owns the center and keeps {B} turning into the right hand. {score_text}",
+                    "R{round_no}: {A} strings together jab, cross, hook and leaves {B} stuck behind the guard. {score_text}",
+                    "R{round_no}: {A} hurts {B} with a body-head sequence and controls the rest of the round. {score_text}",
+                    "R{round_no}: {A} is reading every entry now, slipping outside and countering clean. {score_text}",
+                    "R{round_no}: {A} doubles the jab, splits the guard and backs {B} to the ropes. {score_text}",
+                    "R{round_no}: {A} wins the pocket exchanges and makes {B} pay for every reset. {score_text}",
+                    "R{round_no}: {A} breaks the rhythm with feints, then lands the heavier combinations. {score_text}",
+                    "R{round_no}: {A} turns defence into offence, rolling under and answering upstairs. {score_text}",
+                    "R{round_no}: {A} piles up scoring punches while {B} struggles to get their feet set. {score_text}",
+                    "R{round_no}: {A} catches {B} between stances and runs away with the round. {score_text}",
+                    "R{round_no}: {A} makes it a fundamentals round: jab, angle, counter, repeat. {score_text}",
+                ],
+                "finish": [
+                    "R{round_no}: {A} has read the timing now - a jab freezes {B}, the follow-up lands clean, and the referee waves it off.",
+                    "R{round_no}: {A} pours on a measured finishing burst. {B} is defending but not answering enough. {method}.",
+                    "R{round_no}: A clean counter changes the fight. {A} stays composed and closes the show with accurate follow-up shots.",
+                    "R{round_no}: {A} digs to the body, brings the guard down, then lands the fight-ending shot upstairs.",
+                    "R{round_no}: {B} backs straight out and {A} punishes the mistake with a perfect right hand.",
+                    "R{round_no}: {A} traps {B} on the ropes and the unanswered combinations force the stoppage.",
+                    "R{round_no}: {A} lands the same counter twice; the second one ends the argument.",
+                    "R{round_no}: {B}'s legs betray them after a clean hook and {A} swarms with discipline.",
+                    "R{round_no}: {A} feints low, fires high, and the referee has no choice but to step in.",
+                    "R{round_no}: {A} turns a defensive slip into a finishing counter. {B} cannot recover.",
+                ],
+                "decision": [
+                    "The scorecards reward {A}'s cleaner boxing and round management over {B}. ({score_text})",
+                    "{A} takes it on the cards after banking the clearer work in the scoring rounds. ({score_text})",
+                    "The judges side with {A}: sharper entries, fewer wasted exchanges, better control of the fight. ({score_text})",
+                    "{A}'s jab and exits carry the decision. {B} had moments, but not enough rounds. ({score_text})",
+                    "The cards favor {A}'s cleaner counters and steadier ring generalship. ({score_text})",
+                    "{A} wins the tactical battle: first touch, last punch, better geography. ({score_text})",
+                ],
+                "draw": [
+                    "The cards cannot split them. The booth points to the swing rounds and the rematch talk starts immediately. ({score_text})",
+                    "The judges are divided by the close rounds; this boxing match ends level. ({score_text})",
+                    "Neither fighter separates clearly enough on the cards. It is a draw. ({score_text})",
+                ],
+            },
+            "Kickboxing": {
+                "opening": [
+                    "{stakes}: {A} vs {B}. The key battle is range, low kicks and layered kick-punch exits.",
+                    "{stakes}: {A} meets {B}. Watch the lead leg, the body kick and who exits after punching.",
+                    "{stakes}: {A} and {B} square off. This starts with stance reads and calf-kick threats.",
+                    "{stakes}: {A} vs {B}. The first fighter to blend hands into kicks may control the tempo.",
+                    "{stakes}: {A} faces {B}. Range weapons, teeps and counter knees are the story.",
+                    "{stakes}: {A} meets {B}. Expect feints upstairs and punishment to the base.",
+                    "{stakes}: {A} vs {B}. The corners want clean resets after every combination.",
+                    "{stakes}: {A} and {B} touch gloves. The leg-kick battle starts immediately.",
+                ],
+                "close": [
+                    "R{round_no}: {A} edges it with cleaner kick-punch exits. {score_text}",
+                    "R{round_no}: {A}'s body kick and final flurry stand out in a close kickboxing round. {score_text}",
+                    "R{round_no}: {A} lands the better single shots while {B} answers in spots. {score_text}",
+                    "R{round_no}: Neither fighter takes over; {A} shades it on accuracy. {score_text}",
+                    "R{round_no}: {A} checks a kick, returns low, and steals a narrow round. {score_text}",
+                    "R{round_no}: {A} finishes combinations with kicks while {B} mostly boxes back. {score_text}",
+                    "R{round_no}: {A} wins the small moments: a teep, a low kick, a clean exit. {score_text}",
+                    "R{round_no}: {A} keeps {B} at the edge of kicking range and nicks the round. {score_text}",
+                    "R{round_no}: {A} lands the cleaner counter kick after most punching exchanges. {score_text}",
+                    "R{round_no}: {A} scores just enough with low kicks to tilt a tight frame. {score_text}",
+                ],
+                "dominant": [
+                    "R{round_no}: {A} mixes low kicks into the boxing and visibly slows {B}'s stance. {score_text}",
+                    "R{round_no}: {A} controls range with teeps and punctuates the round with hard right hands. {score_text}",
+                    "R{round_no}: {A} wins the kicking battle, forcing {B} to reset after every exchange. {score_text}",
+                    "R{round_no}: {A} batters the lead leg, then goes high when {B} starts bracing. {score_text}",
+                    "R{round_no}: {A} turns the round into a range clinic with body kicks and exit hooks. {score_text}",
+                    "R{round_no}: {A} catches {B} marching in and keeps meeting them with knees and counters. {score_text}",
+                    "R{round_no}: {A} overwhelms {B} with layered attacks: jab, low kick, cross, body kick. {score_text}",
+                    "R{round_no}: {B} cannot plant safely; {A} keeps chopping and angling away. {score_text}",
+                    "R{round_no}: {A} makes {B} miss at kicking range and answers with the heavier work. {score_text}",
+                    "R{round_no}: {A} turns every reset into a scoring opportunity. {score_text}",
+                ],
+                "finish": [
+                    "R{round_no}: {A} chops the base, goes upstairs, and the final combination forces the stoppage.",
+                    "R{round_no}: {B} is trapped between the ropes and the low kick. {A} opens up and gets the {method}.",
+                    "R{round_no}: A kick-punch sequence lands flush for {A}; the referee has seen enough.",
+                    "R{round_no}: {A} hammers the calf, draws the guard down and lands clean upstairs.",
+                    "R{round_no}: {A} times the entry with a knee, then follows with hands until the stoppage.",
+                    "R{round_no}: {B}'s stance collapses after repeated low kicks and {A} closes the show.",
+                    "R{round_no}: {A} hides the high kick behind the cross and finishes with follow-up punches.",
+                    "R{round_no}: {A} corners {B}, rips the body, and the unanswered shots bring the referee in.",
+                    "R{round_no}: {A} lands a spinning attack that breaks the rhythm and leads straight to the finish.",
+                    "R{round_no}: {A} keeps the pressure measured, picking the final shot rather than rushing it.",
+                ],
+                "decision": [
+                    "{A} wins the decision through cleaner kick-punch layers and better range discipline. ({score_text})",
+                    "The cards go to {A}; the low kicks and exits told the story. ({score_text})",
+                    "{A}'s range control and body kicks carry the decision. ({score_text})",
+                    "The judges reward {A}'s more complete kickboxing: hands to set kicks, kicks to reset hands. ({score_text})",
+                    "{A} wins on accuracy, stance damage and cleaner exits. ({score_text})",
+                    "{A} takes it by controlling the safest kicking lanes. ({score_text})",
+                ],
+                "draw": [
+                    "The judges see the momentum shifts as too close to separate. ({score_text})",
+                    "The kickboxing rounds split thinly enough that the cards come back level. ({score_text})",
+                    "Neither fighter owns enough clean rounds; this ends as a draw. ({score_text})",
+                ],
+            },
+            "Muay Thai": {
+                "opening": [
+                    "{stakes}: {A} vs {B}. The key battle is balance, body kicks and clinch scoring{lethwei_note}.",
+                    "{stakes}: {A} meets {B}. Watch the checks, the teeps and who controls posture in the clinch{lethwei_note}.",
+                    "{stakes}: {A} and {B} take the center. Thai scoring will reward balance, effect and clean body kicks{lethwei_note}.",
+                    "{stakes}: {A} vs {B}. The early read is whether elbows or kicks force the first reaction{lethwei_note}.",
+                    "{stakes}: {A} faces {B}. The clinch battle may decide the whole fight{lethwei_note}.",
+                    "{stakes}: {A} meets {B}. Every checked kick and every off-balancing knee matters{lethwei_note}.",
+                    "{stakes}: {A} vs {B}. Expect body kicks, long guard frames and sudden elbows{lethwei_note}.",
+                    "{stakes}: {A} and {B} touch gloves. This one starts with balance and ends in the clinch{lethwei_note}.",
+                ],
+                "close": [
+                    "R{round_no}: Tight Thai round; both score, but {A}'s body kick is the clearest moment. {score_text}",
+                    "R{round_no}: A measured round with checks, feints and clinch pummeling. {A} just shades it. {score_text}",
+                    "R{round_no}: {A} edges the Muay Thai scoring with balance, kicks, and clinch control. {score_text}",
+                    "R{round_no}: {A} lands the cleaner knees inside and exits before {B} can answer. {score_text}",
+                    "R{round_no}: {A} keeps posture in the clinch and scores the cleaner knees. {score_text}",
+                    "R{round_no}: {A}'s teep disrupts the rhythm just enough to win a close round. {score_text}",
+                    "R{round_no}: {A} checks well, returns to the body, and steals the optics. {score_text}",
+                    "R{round_no}: {A} lands one heavy kick across the ribs that may swing the frame. {score_text}",
+                    "R{round_no}: {A} balances better after contact and that matters on the Thai cards. {score_text}",
+                    "R{round_no}: {A} wins a narrow round by turning {B} in the clinch. {score_text}",
+                ],
+                "dominant": [
+                    "R{round_no}: {A} takes command in the clinch, landing knees and turning {B} into the ropes. {score_text}",
+                    "R{round_no}: {A} scores with heavy body kicks and checks the returns. {score_text}",
+                    "R{round_no}: {A} breaks posture with elbows and knees, making the round feel one-way. {score_text}",
+                    "R{round_no}: {A} dumps {B} from the clinch and follows with a heavy kick on the reset. {score_text}",
+                    "R{round_no}: {A} repeatedly wins inside position and drives knees through the middle. {score_text}",
+                    "R{round_no}: {A} uses the long guard to frame, elbow and exit before {B} can settle. {score_text}",
+                    "R{round_no}: {A} dominates the scoring weapons: kick, knee, turn, kick again. {score_text}",
+                    "R{round_no}: {B} is losing balance after nearly every exchange; {A} is in control. {score_text}",
+                    "R{round_no}: {A}'s body kicks are moving {B} across the ring. {score_text}",
+                    "R{round_no}: {A} makes the clinch a trap and wins the round clearly. {score_text}",
+                ],
+                "finish": [
+                    "R{round_no}: {A} breaks posture in the clinch and piles on knees until the stoppage comes.",
+                    "R{round_no}: Heavy body kicks set the trap, then {A} crashes in with fight-ending knees and elbows.",
+                    "R{round_no}: {B} cannot get out of the clinch storm. {A} forces the {method}.",
+                    "R{round_no}: {A} folds {B} with a body kick and follows with the finishing barrage.",
+                    "R{round_no}: {A} cuts the angle, lands the elbow, and {B} never truly recovers.",
+                    "R{round_no}: {A} times the knee as {B} steps in and the fight turns instantly.",
+                    "R{round_no}: {A} off-balances {B}, then lands clean before the guard returns.",
+                    "R{round_no}: {B} is trapped on the ropes eating knees; the referee steps in.",
+                    "R{round_no}: {A}'s small gloves find the gap in the long guard and the finish follows.",
+                    "R{round_no}: {A} lands the kind of elbow that changes the whole room's sound.",
+                ],
+                "decision": [
+                    "{A} gets the nod on Thai scoring: balance, body kicks and clinch control carried the fight. ({score_text})",
+                    "The judges reward {A}'s stronger scoring weapons in the championship rounds. ({score_text})",
+                    "{A} wins through cleaner body kicks, better posture and stronger clinch turns. ({score_text})",
+                    "Thai scoring favors {A}: more effect, cleaner balance, better late-round authority. ({score_text})",
+                    "{A} takes it by making the meaningful scoring moments clearer. ({score_text})",
+                    "{A}'s knees and kicks did more visible damage across the fight. ({score_text})",
+                ],
+                "draw": [
+                    "The scoring moments balance out; neither fighter gets enough separation on the cards. ({score_text})",
+                    "The Thai rounds are too tight to split cleanly. This one is ruled a draw. ({score_text})",
+                    "Both fighters had scoring weapons, but neither owned the fight. Draw. ({score_text})",
+                ],
+            },
+            "Wrestling": {
+                "opening": [
+                    "{stakes}: {A} vs {B}. The key battle is hand-fighting, chain attacks and ride control.",
+                    "{stakes}: {A} meets {B}. First contact will tell us who owns inside ties.",
+                    "{stakes}: {A} and {B} step in low. Watch the first re-shot and the mat returns.",
+                    "{stakes}: {A} vs {B}. This could swing on underhooks, head position and edge control.",
+                    "{stakes}: {A} faces {B}. Whoever wins the hand fight probably wins the periods.",
+                    "{stakes}: {A} meets {B}. The danger is not the first shot; it is the second and third.",
+                    "{stakes}: {A} vs {B}. Ride time and exposure threats matter as much as takedowns.",
+                    "{stakes}: {A} and {B} start low, forehead pressure already building.",
+                ],
+                "close": [
+                    "R{round_no}: {points_text} - {A} wins the hand-fight and converts the key scramble.",
+                    "R{round_no}: {points_text} - {A} scores off the re-attack after {B}'s first shot stalls.",
+                    "R{round_no}: {points_text} - {A} controls the tie long enough to edge the period.",
+                    "R{round_no}: {points_text} - {A} gets the important go-behind in a cagey period.",
+                    "R{round_no}: {points_text} - {A} finishes one clean attack and defends the rest.",
+                    "R{round_no}: {points_text} - {A} wins the edge exchanges and denies the late answer.",
+                    "R{round_no}: {points_text} - {A} uses head position to make the decisive attack.",
+                    "R{round_no}: {points_text} - {A} scrambles through danger and comes out with the points.",
+                    "R{round_no}: {points_text} - {A} turns defence into a short score at the boundary.",
+                    "R{round_no}: {points_text} - {A} rides just long enough to separate the period.",
+                ],
+                "dominant": [
+                    "R{round_no}: {points_text} - {A} chains attempts, finishes cleanly, and rides out the period on top.",
+                    "R{round_no}: {points_text} - {A} breaks {B}'s stance with snaps and scores repeatedly.",
+                    "R{round_no}: {points_text} - {A} controls wrists, hips and tempo for a one-way period.",
+                    "R{round_no}: {points_text} - {A} gets to the legs whenever the opening is there and keeps returning {B}.",
+                    "R{round_no}: {points_text} - {A} stacks attacks until {B}'s defence finally opens.",
+                    "R{round_no}: {points_text} - {A} dominates the mat with turns, rides and pressure.",
+                    "R{round_no}: {points_text} - {B} cannot clear the ties and {A} keeps scoring.",
+                    "R{round_no}: {points_text} - {A} wins the period with chain wrestling and heavy hips.",
+                    "R{round_no}: {points_text} - {A} turns every scramble into their own points.",
+                    "R{round_no}: {points_text} - {A} runs the score up with relentless second efforts.",
+                ],
+                "finish": [
+                    "R{round_no}: {A} catches the turn, settles chest pressure and secures the {method}.",
+                    "R{round_no}: {A} converts the scramble into full control. The official calls it: {method}.",
+                    "R{round_no}: {A} stacks the hips, kills the bridge and finishes the {method}.",
+                    "R{round_no}: {A} chains one attack into another until the technical fall is inevitable.",
+                    "R{round_no}: {A} exposes {B} again and the scoreboard ends it.",
+                    "R{round_no}: {A} rides heavy, traps the shoulders and gets the pin.",
+                    "R{round_no}: {A} turns a single-leg scramble into full control and the finish.",
+                    "R{round_no}: {A} keeps building points until the official steps between them.",
+                    "R{round_no}: {B} cannot escape the ride and {A} completes the finish.",
+                    "R{round_no}: {A} wins the scramble, the position and finally the match.",
+                ],
+                "decision": [
+                    "{A} wins on the mat through activity, chain attacks and control. ({score_text})",
+                    "The final whistle confirms {A}'s edge in takedowns and ride time. ({score_text})",
+                    "{A} takes it through cleaner attacks, heavier hips and better period management. ({score_text})",
+                    "{A}'s hand-fighting and mat returns decide the match. ({score_text})",
+                    "{A} wins because the second and third attacks kept coming. ({score_text})",
+                    "{A} controls enough ties and scrambles to earn the points win. ({score_text})",
+                ],
+                "criteria": [
+                    "Referee criteria goes to {A}: better initiative, cleaner attacks and stronger control positions. ({score_text})",
+                    "{A} gets the criteria nod after creating the more meaningful attacks in a tied match. ({score_text})",
+                    "The official criteria favors {A}'s hand-fighting, pressure and late activity. ({score_text})",
+                    "{A} wins the criteria call by forcing more defensive reactions from {B}. ({score_text})",
+                ],
+                "draw": [],
+            },
+            "Brazilian Jiu-Jitsu": {
+                "opening": [
+                    "{stakes}: {A} vs {B}. The key battle is guard battles, positional pressure and submission threats.",
+                    "{stakes}: {A} meets {B}. Watch the grips, the first guard choice and who concedes top position.",
+                    "{stakes}: {A} and {B} begin hand-fighting. The first pass attempt may reveal everything.",
+                    "{stakes}: {A} vs {B}. The danger is positional: pass, back take, submission chain.",
+                    "{stakes}: {A} faces {B}. This could be decided by advantage threats as much as points.",
+                    "{stakes}: {A} meets {B}. Expect patient grips until one scramble opens the match.",
+                    "{stakes}: {A} vs {B}. Guard retention and back exposure are the key tells.",
+                    "{stakes}: {A} and {B} start measured, both hunting the first meaningful grip.",
+                ],
+                "close": [
+                    "Match: {points_text} - {A} wins the positional battle through sweeps, pressure and advantage threats.",
+                    "Match: {points_text} - {A} creates the better submission reactions in a tight grappling exchange.",
+                    "Match: {points_text} - {A} keeps the grips they want and edges the positional flow.",
+                    "Match: {points_text} - {A} threatens the pass just enough to tilt the match.",
+                    "Match: {points_text} - {A} uses a sweep threat to force the key scoring moment.",
+                    "Match: {points_text} - {A} wins the scramble by coming up to top position.",
+                    "Match: {points_text} - {A} keeps {B} defending the neck while chasing points.",
+                    "Match: {points_text} - {A} pressures through half guard and makes {B} react first.",
+                    "Match: {points_text} - {A} uses grip fighting to keep the match on their terms.",
+                    "Match: {points_text} - {A} edges a technical exchange with better positional intent.",
+                ],
+                "dominant": [
+                    "Match: {points_text} - {A} passes, settles position, and forces repeated submission reactions.",
+                    "Match: {points_text} - {A} smashes through guard and makes {B} defend layer after layer.",
+                    "Match: {points_text} - {A} controls the hips, clears the frames and dominates from top.",
+                    "Match: {points_text} - {A} turns a sweep into pressure and never lets {B} rebuild guard.",
+                    "Match: {points_text} - {A} keeps advancing: pass threat, mount threat, back threat.",
+                    "Match: {points_text} - {A} pins the shoulders and opens submission routes repeatedly.",
+                    "Match: {points_text} - {A} breaks the guard structure and stacks pressure from every angle.",
+                    "Match: {points_text} - {A} turns grip dominance into positional dominance.",
+                    "Match: {points_text} - {A} forces {B} to defend instead of attack for almost the whole match.",
+                    "Match: {points_text} - {A} is ahead in every phase: grips, passing and submission danger.",
+                ],
+                "finish": [
+                    "Match: {A} links the pass to back control and tightens the submission before {B} can peel the grip.",
+                    "Match: {A} forces the defensive reaction, switches grips, and gets the tap.",
+                    "Match: {A} stays patient through the scramble and finishes the submission chain.",
+                    "Match: {A} traps the far arm, climbs to a stronger angle and finishes before {B} can turn.",
+                    "Match: {A} uses the pass threat to expose the neck and locks the submission.",
+                    "Match: {A} catches {B} during the guard recovery and the tap comes quickly.",
+                    "Match: {A} chains from sweep to back take to submission in one clean sequence.",
+                    "Match: {A} isolates the limb, adjusts the hips and forces the tap.",
+                    "Match: {A} stays calm through the roll and tightens the choke on the far side.",
+                    "Match: {A} converts pressure into panic and panic into a submission.",
+                ],
+                "decision": [
+                    "{A} takes the grappling match through positional pressure and higher-value threats. ({score_text})",
+                    "The result goes to {A}; the passes, sweeps and submission danger mattered most. ({score_text})",
+                    "{A} wins because the match spent longer in their preferred positions. ({score_text})",
+                    "{A}'s passing pressure and submission threats carry the points result. ({score_text})",
+                    "{A} controlled the grip sequences and won the important scrambles. ({score_text})",
+                    "{A} earns it through positional intent and cleaner scoring moments. ({score_text})",
+                ],
+                "criteria": [
+                    "Referee criteria decides it for {A}: more initiative, stronger positional intent, and the better late threats. ({score_text})",
+                    "{A} gets the criteria nod after creating the more credible submission danger in a dead-even score. ({score_text})",
+                    "The criteria call goes to {A}, who pushed the action and forced the more urgent defence. ({score_text})",
+                    "{A} wins the criteria debate by attacking first and making {B} respond. ({score_text})",
+                ],
+                "draw": [],
+            },
+        }
+        self.expand_combat_sport_commentary_bank(bank)
+        return bank
+
+    def expand_combat_sport_commentary_bank(self, bank):
+        """Add generated sport-native templates without making the file unreadable.
+
+        These templates are still sport-specific; generation just combines
+        authentic tactical nouns with authentic scoring/finish consequences.
+        That gives each sport hundreds of usable lines while keeping one source
+        of truth that MMA can also reuse.
+        """
+        generators = {
+            "Boxing": {
+                "close_tools": ["the double jab", "the body jab", "a check hook", "a short right hand", "a slip-counter", "a late one-two", "a shoulder roll counter", "a pivot off the ropes"],
+                "dominant_tools": ["body-head combinations", "a punishing jab", "rope-side pressure", "counter right hands", "uppercuts through the guard", "angle changes", "inside hooks", "lead-hand control"],
+                "finish_tools": ["a counter right hand", "a body shot that drops the elbow", "a left hook on the exit", "a jab-cross through the guard", "an uppercut in the pocket", "a rope-trap combination"],
+                "scoring": ["cleaner punching", "ring generalship", "body work", "counter timing", "defensive responsibility", "late-round accuracy"],
+                "dominant_results": ["sustained pressure", "body work", "clean counters"],
+            },
+            "Kickboxing": {
+                "close_tools": ["a checked kick and return", "a calf kick", "a body kick", "a teep to reset range", "a kick-punch exit", "a counter knee", "a low kick after the jab", "a right hand into a left kick"],
+                "dominant_tools": ["low-kick damage", "body kicks", "teeps and exits", "kick-punch layers", "stance switches", "counter knees", "high-kick feints", "pressure against the ropes"],
+                "finish_tools": ["a low kick that buckles the stance", "a head kick hidden behind the cross", "a knee on entry", "a body kick that freezes the guard", "a spinning kick", "a kick-punch flurry"],
+                "scoring": ["range control", "leg damage", "body-kick effect", "clean exits", "kick volume", "counter accuracy"],
+                "dominant_results": ["range control", "leg damage", "body-kick effect"],
+            },
+            "Muay Thai": {
+                "close_tools": ["a body kick", "a clinch turn", "a knee inside", "a checked kick and return", "a long-guard elbow", "a teep to the hip", "a dump from the clinch", "a late scoring kick"],
+                "dominant_tools": ["clinch knees", "body kicks", "elbows through the guard", "off-balancing turns", "long-guard pressure", "rib-cracking kicks", "sweeps and dumps", "posture-breaking knees"],
+                "finish_tools": ["a small-glove counter", "a slicing elbow", "a knee up the middle", "a body kick that folds the stance", "a clinch storm", "a rope-side elbow exchange"],
+                "scoring": ["balance", "visible effect", "body-kick impact", "clinch control", "posture breaks", "late-round authority"],
+                "dominant_results": ["balance", "visible effect", "clinch control"],
+            },
+            "Wrestling": {
+                "close_tools": ["inside ties", "a re-shot", "edge control", "a go-behind", "a short ride", "head position", "wrist control", "a late mat return"],
+                "dominant_tools": ["chain attacks", "heavy rides", "exposure turns", "snap-down pressure", "leg attacks", "mat returns", "wrist rides", "relentless second efforts"],
+                "finish_tools": ["a trapped turn", "a stack and pin", "repeated exposure", "a technical-fall sequence", "a scramble to chest pressure", "a ride that kills the bridge"],
+                "scoring": ["takedowns", "ride time", "exposure threats", "hand-fighting", "mat returns", "scramble control"],
+                "dominant_results": ["takedowns", "exposure threats", "ride control"],
+            },
+            "Brazilian Jiu-Jitsu": {
+                "close_tools": ["grip fighting", "a sweep threat", "a knee-cut attempt", "a guard recovery", "a back-take threat", "an advantage attack", "half-guard pressure", "a collar grip"],
+                "dominant_tools": ["passing pressure", "back exposure", "mount pressure", "guard-smashing", "submission chains", "hip control", "grip dominance", "positional pressure"],
+                "finish_tools": ["a back-take to choke", "an arm isolation", "a leg entanglement", "a pass-to-mount chain", "a neck attack during the scramble", "a sweep into submission control"],
+                "scoring": ["passes", "sweeps", "submission danger", "positional intent", "grip control", "advantage threats"],
+                "dominant_results": ["submission danger", "positional control", "back exposure"],
+            },
+        }
+        for sport, data in generators.items():
+            close_templates = [
+                "R{round_no}: {A} edges the frame with " + tool + " and " + score + ". {score_text}"
+                for tool in data["close_tools"] for score in data["scoring"][:3]
+            ]
+            if sport in ("Wrestling", "Brazilian Jiu-Jitsu"):
+                close_templates = [
+                    ("R{round_no}: {points_text} - {A} edges the period with " if sport == "Wrestling" else "Match: {points_text} - {A} edges the exchange with ") + tool + " and " + score + "."
+                    for tool in data["close_tools"] for score in data["scoring"][:3]
+                ]
+            dominant_templates = [
+                "R{round_no}: {A} takes over through " + tool + ", forcing {B} to deal with " + score + ". {score_text}"
+                for tool in data["dominant_tools"] for score in data.get("dominant_results", data["scoring"][:3])
+            ]
+            if sport in ("Wrestling", "Brazilian Jiu-Jitsu"):
+                dominant_templates = [
+                    ("R{round_no}: {points_text} - {A} takes over with " if sport == "Wrestling" else "Match: {points_text} - {A} takes over with ") + tool + ", turning it into " + score + "."
+                    for tool in data["dominant_tools"] for score in data.get("dominant_results", data["scoring"][:3])
+                ]
+            finish_templates = [
+                "R{round_no}: {A} finds " + tool + "; {B} cannot recover and the result is {method}."
+                for tool in data["finish_tools"]
+            ]
+            if sport == "Brazilian Jiu-Jitsu":
+                finish_templates = ["Match: {A} finds " + tool + "; {B} has to tap." for tool in data["finish_tools"]]
+            elif sport == "Wrestling":
+                finish_templates = ["R{round_no}: {A} finishes through " + tool + ". The official records it as {method}." for tool in data["finish_tools"]]
+            bank[sport]["close"].extend(close_templates)
+            bank[sport]["dominant"].extend(dominant_templates)
+            bank[sport]["finish"].extend(finish_templates)
+            bank[sport]["decision"].extend([
+                "{A} wins because " + score + " decided the fight. ({score_text})"
+                for score in data["scoring"]
+            ])
+
+    def combat_sport_phrase(self, sport, category, actor=None, opponent=None, **context):
+        bank = self.combat_sport_commentary_bank()
+        templates = bank.get(sport, {}).get(category) or bank.get(sport, {}).get("close") or ["{A} has the cleaner moment."]
+        actor_name = getattr(actor, "name", actor) or context.get("actor", "The fighter")
+        opponent_name = getattr(opponent, "name", opponent) or context.get("opponent", "the opponent")
+        values = {
+            "A": actor_name,
+            "B": opponent_name,
+            "round_no": context.get("round_no", ""),
+            "score_text": context.get("score_text", ""),
+            "points_text": context.get("points_text", ""),
+            "method": context.get("method", ""),
+            "stakes": context.get("stakes", "Scheduled bout"),
+            "lethwei_note": context.get("lethwei_note", ""),
+        }
+        return random.choice(templates).format(**values)
+
+    def combat_sport_round_commentary(self, sport, round_no, leader, trailer, margin, score_text="", points_text=""):
+        """Richer, sport-specific lines for combat-sport cards.
+
+        These are intentionally lighter than the live MMA engine, but they use
+        the same idea: the text should explain why the round moved the fight.
+        """
+        edge = abs(margin)
+        category = "dominant" if edge > 24 or (sport in ("Wrestling", "Brazilian Jiu-Jitsu") and margin > 3) else "close"
+        return self.combat_sport_phrase(sport, category, leader, trailer, round_no=round_no, score_text=score_text, points_text=points_text)
+
+    def combat_sport_finish_commentary(self, sport, round_no, winner, loser, method):
+        return self.combat_sport_phrase(sport, "finish", winner, loser, round_no=round_no, method=method)
+
+    def combat_sport_opening_commentary(self, sport, a, b, title=False):
+        stakes = "Title bout" if title else "Scheduled bout"
+        lethwei_note = ""
+        if sport == "Muay Thai" and (getattr(a, "primary_discipline", "") == "Lethwei" or getattr(b, "primary_discipline", "") == "Lethwei"):
+            lethwei_note = " with Lethwei knockout urgency"
+        return self.combat_sport_phrase(sport, "opening", a, b, stakes=stakes, lethwei_note=lethwei_note)
+
+    def combat_sport_decision_commentary(self, sport, winner, loser, method, score_text):
+        if method == "Draw" or not winner:
+            return self.combat_sport_phrase(sport, "draw", winner, loser, score_text=score_text)
+        category = "criteria" if sport in ("Brazilian Jiu-Jitsu", "Wrestling") and method == "Referee Criteria" else "decision"
+        return self.combat_sport_phrase(sport, category, winner, loser, score_text=score_text, method=method)
+
+    def combat_sport_live_actions(self, sport):
+        """Return action definitions used by the detailed non-MMA fight viewer.
+
+        Each action names the detailed skills that create and stop it. This makes
+        the commentary a description of the simulation rather than decorative
+        text added after a round has already been decided.
+        """
+        actions = {
+            "Boxing": [
+                ("jab", "punch_technique", "head_movement", 1.5, 0.7),
+                ("double jab", "hand_speed", "guard", 1.8, 0.9),
+                ("body shot", "punch_power", "guard", 2.4, 1.7),
+                ("right hand", "punch_technique", "head_movement", 2.7, 2.2),
+                ("check hook", "counter_striking", "footwork", 2.2, 1.8),
+                ("combination", "hand_speed", "guard", 3.3, 2.6),
+                ("uppercut", "punch_power", "head_movement", 3.0, 2.8),
+                ("rope attack", "killer_instinct", "guard", 3.6, 3.0),
+            ],
+            "Kickboxing": [
+                ("jab-cross", "punch_technique", "head_movement", 2.0, 1.2),
+                ("low kick", "low_kick_technique", "kick_defence", 2.6, 1.8),
+                ("body kick", "kick_technique", "kick_defence", 3.0, 2.1),
+                ("head kick", "kick_speed", "guard", 4.0, 3.5),
+                ("counter cross", "counter_striking", "head_movement", 2.4, 2.0),
+                ("kick-punch combination", "kick_technique", "footwork", 3.6, 2.7),
+                ("spinning attack", "creativity", "footwork", 4.5, 3.8),
+                ("clinch knee", "knees", "clinch_control", 3.5, 2.8),
+            ],
+            "Muay Thai": [
+                ("teep", "kick_technique", "balance", 1.8, 0.9),
+                ("body kick", "kick_technique", "kick_defence", 3.0, 2.2),
+                ("low kick", "low_kick_technique", "kick_defence", 2.7, 1.9),
+                ("elbow", "elbows", "guard", 3.1, 3.2),
+                ("straight knee", "knees", "clinch_control", 3.3, 2.8),
+                ("clinch turn", "clinch_control", "balance", 3.5, 1.5),
+                ("dump", "trips", "balance", 3.8, 2.0),
+                ("high kick", "kick_power", "guard", 4.2, 3.8),
+            ],
+            "Wrestling": [
+                ("single leg", "takedowns", "sprawl", 3.0, 1.3),
+                ("double leg", "takedown_setup", "takedown_defence_detail", 3.7, 1.7),
+                ("re-shot", "chain_wrestling", "balance", 3.8, 1.5),
+                ("body lock", "clinch_control", "balance", 3.2, 1.2),
+                ("mat return", "slams", "get_ups", 4.0, 2.1),
+                ("ride", "ride_control", "scrambles", 2.5, 0.8),
+                ("turn", "top_control", "get_ups", 3.6, 1.8),
+                ("pinning attack", "ride_control", "toughness", 4.2, 2.2),
+            ],
+            "Brazilian Jiu-Jitsu": [
+                ("guard pull", "guard_work", "balance", 1.8, 0.3),
+                ("sweep", "transitions", "base", 3.0, 0.8),
+                ("guard pass", "positional_ability", "guard_work", 3.2, 0.9),
+                ("back take", "back_control", "scrambles", 3.5, 1.0),
+                ("mount advance", "mount_control", "get_ups", 3.3, 0.9),
+                ("arm attack", "submissions", "submission_defence_detail", 3.6, 1.3),
+                ("choke attack", "back_control", "submission_defence_detail", 3.8, 1.4),
+                ("leg entanglement", "leg_locks", "submission_defence_detail", 3.9, 1.2),
+            ],
+        }
+        return actions.get(sport, actions["Kickboxing"])
+
+    def combat_sport_live_line(self, sport, action, actor, defender, success, momentum=False):
+        """Create one sport-native live call for a simulated exchange."""
+        success_lines = {
+            "Boxing": {
+                "jab": ["{A} spears the jab through the center and steps off before {B} can answer.", "{A} touches the body, brings the jab upstairs and makes {B} reset."],
+                "double jab": ["{A} doubles the jab and the second one snaps {B}'s head back.", "Two quick jabs from {A}; {B}'s guard is being moved out of position."],
+                "body shot": ["{A} dips outside the lead hand and digs a hook into {B}'s ribs.", "A hard body shot lands for {A}; {B} gives ground and takes a deeper breath."],
+                "right hand": ["{A} freezes {B} with the lead hand and drives the right hand down the pipe.", "{A}'s straight right gets there first and forces {B} into a hurried clinch."],
+                "check hook": ["{A} gives a half-step, catches {B} with the check hook and pivots away.", "{B} reaches on the entry and {A} makes them pay with a compact counter hook."],
+                "combination": ["{A} puts three punches together, finishes to the body and leaves on an angle.", "Sharp combination from {A}: jab, cross, hook before {B} can close the guard."],
+                "uppercut": ["{A} splits the guard with an uppercut as {B} leans over the front knee.", "The uppercut lands clean for {A}; {B}'s legs stiffen for a moment."],
+                "rope attack": ["{A} traps {B} near the ropes and works head-body-head without smothering the shots.", "{A} cuts off the exit and unloads while {B} shells up on the ropes."],
+            },
+            "Kickboxing": {
+                "jab-cross": ["{A} steps through a crisp jab-cross and exits outside {B}'s lead leg.", "The straight punches land clean for {A} before {B} can set the kick."],
+                "low kick": ["{A} punches into a chopping low kick; {B}'s stance jolts on impact.", "A clean outside low kick from {A} reddens {B}'s lead thigh."],
+                "body kick": ["{A} whips the shin into {B}'s open side and turns the hip all the way through.", "{A}'s body kick lands flush beneath the elbow; {B} exhales sharply."],
+                "head kick": ["{A} hides the high kick behind the hands and clips {B} around the guard.", "The head kick gets through for {A}; {B} stumbles away and regains the stance."],
+                "counter cross": ["{A} checks the kick and fires the right hand straight back at {B}.", "{B} is caught admiring the kick as {A}'s counter cross lands clean."],
+                "kick-punch combination": ["{A} goes low kick, cross, left hook and keeps {B} defending on two levels.", "{A} layers the attack beautifully, kicking into punches before angling out."],
+                "spinning attack": ["{A} reads the pressure and lands a spinning back kick to {B}'s body.", "A spinning strike from {A} finds the target and brings the crowd to its feet."],
+                "clinch knee": ["{A} catches the posture and drives a knee through the middle before the break.", "In the brief clinch, {A} lands the clean knee and turns {B} off balance."],
+            },
+            "Muay Thai": {
+                "teep": ["{A} plants a teep in {B}'s chest and takes the center back.", "The lead teep from {A} breaks {B}'s rhythm and sends them back a step."],
+                "body kick": ["{A} scores with a heavy body kick, shin slapping across {B}'s ribs.", "A balanced, fully turned-over body kick lands for {A}; the judges see it clearly."],
+                "low kick": ["{A} chops the supporting leg as {B} begins to punch.", "{A}'s low kick lands with a thud and makes {B} square the stance."],
+                "elbow": ["{A} frames in the pocket and slices an elbow across {B}'s brow.", "A short elbow lands for {A} as {B} tries to close into the clinch."],
+                "straight knee": ["{A} wins inside position and drives a straight knee into {B}'s body.", "The clinch tightens and {A} scores with a clean knee up the middle."],
+                "clinch turn": ["{A} controls the biceps, turns {B} sharply and finishes the exchange in command.", "Excellent clinch balance from {A}, who off-balances {B} and lands on the turn."],
+                "dump": ["{A} times the kick, catches it and dumps {B} hard to the canvas.", "{A} steps across in the clinch and sends {B} down with a clean dump."],
+                "high kick": ["{A} raises the tempo and wraps a high kick around {B}'s guard.", "The shin reaches the head for {A}; {B} absorbs it but looks shaken."],
+            },
+            "Wrestling": {
+                "single leg": ["{A} gets to the single, runs the pipe and puts {B} on the mat.", "{A} catches the lead leg and finishes the single before {B} can square up."],
+                "double leg": ["{A} changes levels under the hands and drives through a clean double-leg finish.", "Deep penetration step from {A}; {B} is carried to the boundary and taken down."],
+                "re-shot": ["{A} stuffs the first contact, immediately re-shoots and wins the scramble.", "The first attack stalls, but {A} chains into the re-shot and finishes."],
+                "body lock": ["{A} locks around the waist, steps behind and returns {B} to the mat.", "{A} wins the underhook battle and converts the body lock into control."],
+                "mat return": ["{B} gets one foot under them, but {A} lifts and returns them hard to the mat.", "Another mat return from {A}; {B} cannot clear the hands around the waist."],
+                "ride": ["{A} stays heavy on the hips, follows every turn and keeps {B} underneath.", "{A}'s wrist ride kills the escape and keeps the control clock moving."],
+                "turn": ["{A} breaks {B} flat and exposes the back for scoring points.", "{A} drives across the shoulders and earns the turn as {B} fights off the back."],
+                "pinning attack": ["{A} tightens the pressure across the chest; {B} bridges desperately away from the fall.", "{A} settles the pinning combination and {B} has to fight every inch off the back."],
+            },
+            "Brazilian Jiu-Jitsu": {
+                "guard pull": ["{A} secures the preferred grips and pulls directly into an active guard.", "{A} sits to guard on their terms and immediately threatens {B}'s posture."],
+                "sweep": ["{A} disrupts the base, comes up on top and completes the sweep.", "Beautiful timing from {A}, who redirects {B}'s pressure into a clean sweep."],
+                "guard pass": ["{A} clears the knee line, settles the hips and completes the guard pass.", "{A} wins the grip fight and circles around {B}'s legs into side control."],
+                "back take": ["{A} follows the turn, inserts both hooks and secures the back.", "{B} exposes the back during the scramble and {A} attaches immediately."],
+                "mount advance": ["{A} isolates the near arm and slides through into mount.", "Heavy positional pressure from {A}, who advances from side control to mount."],
+                "arm attack": ["{A} separates the elbow and extends the arm; {B} is forced into a hurried defensive roll.", "The arm is in danger as {A} transitions cleanly between the armbar and triangle."],
+                "choke attack": ["{A} gets under the chin and tightens the choke; {B} fights the hands with urgency.", "A dangerous choke sequence from {A} forces {B} to turn and surrender position."],
+                "leg entanglement": ["{A} enters the legs, controls the knee line and begins isolating the foot.", "{A} sits beneath the base and turns the exchange into a dangerous leg entanglement."],
+            },
+        }
+        defended_lines = {
+            "Boxing": ["{B} reads the attack, catches it on the gloves and answers before {A} can settle.", "{A} commits, but {B} slips outside and the counter just misses."],
+            "Kickboxing": ["{B} checks the first attack and forces {A} to reset at kicking range.", "{A}'s attack is read early; {B} blocks and returns a quick low kick."],
+            "Muay Thai": ["{B} checks the kick and answers immediately, refusing to concede the scoring exchange.", "{B} frames, turns out of the clinch and leaves {A} reaching."],
+            "Wrestling": ["{B} gets the hips back, squares to the shot and forces a neutral reset.", "{A} attacks, but {B} wins the scramble and clears the danger."],
+            "Brazilian Jiu-Jitsu": ["{B} recognizes the transition, rebuilds the frames and denies {A}'s advance.", "{A} threatens, but {B} stays calm and pummels back to a safe position."],
+        }
+        pool = success_lines.get(sport, {}).get(action, []) if success else defended_lines.get(sport, [])
+        if not pool:
+            pool = ["{A} creates an opening, but {B} closes it before the attack develops."]
+        line = random.choice(pool).format(A=actor.name, B=defender.name)
+        if momentum and success:
+            line += random.choice([" The momentum is beginning to shift.", " That is the clearest sequence of the round so far.", " The pressure is building now."])
+        return line
+
+    def simulate_combat_sport_live_beats(self, sport, a, b, round_no, margin, stamina, damage, body=None, leg=None, cuts=None):
+        """Simulate and narrate the exchanges inside one non-MMA round."""
+        body = body if body is not None else {a.name: 0.0, b.name: 0.0}
+        leg = leg if leg is not None else {a.name: 0.0, b.name: 0.0}
+        cuts = cuts if cuts is not None else {a.name: 0.0, b.name: 0.0}
+        actions = self.combat_sport_live_actions(sport)
+        beat_count = random.randint(7, 11) if sport != "Brazilian Jiu-Jitsu" else random.randint(20, 28)
+        lines = []
+        successful = {a.name: 0, b.name: 0}
+        previous_actor = None
+        previous_line = ""
+        for beat_no in range(1, beat_count + 1):
+            a_share = max(0.22, min(0.78, 0.50 + margin / 115))
+            actor, defender = (a, b) if random.random() < a_share else (b, a)
+            action_weights = [
+                max(8, self.ds(actor, item[1], actor.overall)) * self.combat_sport_action_multiplier(sport, actor, item[0], stamina[actor.name])
+                for item in actions
+            ]
+            action = random.choices(actions, weights=action_weights, k=1)[0]
+            action_name, attack_key, defense_key, cost, base_damage = action
+            attack_fallback = actor.wrestling if sport == "Wrestling" else actor.grappling if sport == "Brazilian Jiu-Jitsu" else actor.striking
+            defense_fallback = defender.takedown_defence if sport == "Wrestling" else defender.submission_defence if sport == "Brazilian Jiu-Jitsu" else defender.striking
+            attack = self.ds(actor, attack_key, attack_fallback) + actor.fight_iq * 0.11 + stamina[actor.name] * 0.10 + actor.momentum * 1.4
+            defense = self.ds(defender, defense_key, defense_fallback) + defender.fight_iq * 0.09 + stamina[defender.name] * 0.08
+            exchange_margin = attack - defense + random.gauss(0, 15)
+            success = exchange_margin >= -1.5
+            stamina[actor.name] = max(3, stamina[actor.name] - cost * random.uniform(0.20, 0.34))
+            stamina[defender.name] = max(3, stamina[defender.name] - cost * random.uniform(0.06, 0.13))
+            if success:
+                successful[actor.name] += 1
+                impact = base_damage * 0.28 + max(0, exchange_margin) / 65 + actor.power / 500
+                damage[defender.name] += impact
+                if action_name in ("body shot", "body kick", "straight knee", "clinch knee"):
+                    body[defender.name] += impact
+                    stamina[defender.name] = max(3, stamina[defender.name] - 0.5 - impact * 0.18)
+                if action_name == "low kick":
+                    leg[defender.name] += impact
+                if action_name in ("elbow", "right hand", "uppercut", "head kick", "high kick"):
+                    cut_skill = self.ds(actor, "cut_creation", actor.power)
+                    cuts[defender.name] += max(0, impact * (0.18 + cut_skill / 500) - 0.15)
+            momentum = previous_actor is not actor and success and successful[actor.name] >= 2
+            line = self.combat_sport_live_line(sport, action_name, actor, defender, success, momentum=momentum)
+            for _ in range(3):
+                if line != previous_line:
+                    break
+                line = self.combat_sport_live_line(sport, action_name, actor, defender, success, momentum=momentum)
+            if line == previous_line:
+                line += " The position changes before they engage again."
+            lines.append(line)
+            previous_line = line
+            previous_actor = actor if success else previous_actor
+        return lines, successful
+
+    def combat_sport_round_status(self, sport, a, b, stamina, damage, body=None, leg=None, cuts=None):
+        if sport in ("Wrestling", "Brazilian Jiu-Jitsu"):
+            physical = "grip and scramble pace" if sport == "Brazilian Jiu-Jitsu" else "hand-fighting pace"
+            return f"Mat-side read: {a.name} stamina {round(stamina[a.name])}, {b.name} stamina {round(stamina[b.name])}; the {physical} is beginning to matter."
+        a_state = "marked up" if damage[a.name] >= 7 else "under pressure" if damage[a.name] >= 3.5 else "composed"
+        b_state = "marked up" if damage[b.name] >= 7 else "under pressure" if damage[b.name] >= 3.5 else "composed"
+        body = body or {a.name: 0, b.name: 0}
+        leg = leg or {a.name: 0, b.name: 0}
+        cuts = cuts or {a.name: 0, b.name: 0}
+        details = []
+        for fighter in (a, b):
+            concerns = []
+            if body[fighter.name] >= 3:
+                concerns.append("body wear")
+            if leg[fighter.name] >= 3:
+                concerns.append("lead-leg damage")
+            if cuts[fighter.name] >= 1.2:
+                concerns.append("facial cut")
+            if concerns:
+                details.append(f"{fighter.name}: {', '.join(concerns)}")
+        condition_note = f" Damage: {'; '.join(details)}." if details else ""
+        return f"Corner read: {a.name} stamina {round(stamina[a.name])} ({a_state}); {b.name} stamina {round(stamina[b.name])} ({b_state}).{condition_note}"
+
+    def combat_sport_focus_fit(self, sport, fighter):
+        preferred = {
+            "Boxing": "Striking", "Kickboxing": "Striking", "Muay Thai": "Striking",
+            "Wrestling": "Wrestling", "Brazilian Jiu-Jitsu": "Grappling",
+        }.get(sport, "Balanced")
+        focus = getattr(fighter, "camp_focus", "Balanced")
+        if focus == preferred:
+            return 3.0
+        if focus in ("Conditioning", "Game Plan", "Weight Management"):
+            return 1.5
+        return 0.0 if focus == "Balanced" else -0.8
+
+    def prepare_combat_sport_fighter(self, sport, fighter, title=False):
+        """Run a real camp and weigh-in before a combat-sport card.
+
+        Combat-sport cards are generated and resolved together, so this models
+        the camp retrospectively from activity, professionalism and motivation.
+        It uses the same gym/camp/weigh-in functions as MMA and stores the same
+        fighter fields for profiles and save compatibility.
+        """
+        inactivity = self.combat_sport_inactivity_months(fighter)
+        reliability = (fighter.professionalism + fighter.motivation) / 2
+        weeks = round(5 + min(4, inactivity * 0.55) + (reliability - 55) / 28 + random.uniform(-1.8, 1.8))
+        weeks = max(2, min(12, weeks))
+        gym = self.gym_by_name(fighter.camp)
+        quality = self.gym_quality(fighter.camp)
+        specialty = self.gym_specialty_bonus(fighter, gym)
+        focus_fit = self.combat_sport_focus_fit(sport, fighter)
+        focus_bonus = self.camp_focus_bonus(fighter, gym)
+        intensity = getattr(fighter, "camp_intensity", "Standard")
+        intensity_bonus = {"Light": -1.5, "Standard": 0, "Hard": 3.5}.get(intensity, 0)
+        crowded = max(0, (gym.member_count - gym.capacity) / max(1, gym.capacity)) if gym and gym.capacity < 500 else 0
+        base_boost = round(
+            weeks * (quality + specialty + focus_bonus + focus_fit * 2 + intensity_bonus) / 112
+            * (0.55 + fighter.professionalism / 100 * 0.3 + fighter.motivation / 100 * 0.25)
+            / (2.8 + crowded)
+        )
+        fighter.camp_quality = quality
+        fighter.camp_weeks = weeks
+        fighter.camp_boost = min(12, max(0, base_boost + self.camp_form_variance(fighter, gym)))
+        fighter.morale = min(100, fighter.morale + max(0, fighter.camp_boost // 3))
+        self.apply_gym_camp_micro_improvement(fighter, gym, weeks)
+        self.apply_camp_focus_improvement(fighter, gym, weeks)
+        self.evolve_trait_from_camp(fighter, quality, weeks)
+        setback = False
+        if intensity == "Hard" and random.random() < max(0.012, fighter.injury_proneness / 1900):
+            setback = True
+            fighter.camp_boost = max(0, fighter.camp_boost - 3)
+            fighter.fatigue = min(100, fighter.fatigue + random.randint(3, 8))
+        weigh_in = self.perform_weigh_in(fighter, title_fight=title, camp_weeks=weeks, persist=True)
+        focus_text = getattr(fighter, "camp_focus", "Balanced")
+        note = f"Camp: {fighter.name} completed {weeks} weeks at {fighter.camp} ({focus_text}, {intensity}); readiness +{fighter.camp_boost}."
+        if setback:
+            note += " A hard-camp knock reduced the final preparation score."
+        weight_outcome = "made weight" if weigh_in["made"] else f"missed by {weigh_in['miss_by']:.1f} lb"
+        weight_note = f"Weigh-in: {fighter.name} {weight_outcome} at {weigh_in['scale_weight']} lb; cut penalty {weigh_in['penalty']}."
+        return {"weeks": weeks, "setback": setback, "weigh_in": weigh_in, "notes": [note, weight_note]}
+
+    def prepare_combat_sport_bout(self, sport, a, b, title=False):
+        a_prep = self.prepare_combat_sport_fighter(sport, a, title=title)
+        b_prep = self.prepare_combat_sport_fighter(sport, b, title=title)
+        title_valid = title and a_prep["weigh_in"]["made"] and b_prep["weigh_in"]["made"]
+        notes = a_prep["notes"] + b_prep["notes"]
+        if title and not title_valid:
+            notes.append("Commission ruling: a missed weight removes championship status from this bout.")
+        return {"a": a_prep, "b": b_prep, "title_valid": title_valid, "notes": notes}
+
+    def combat_sport_readiness_modifier(self, sport, fighter, opponent=None, title=False):
+        mental = (fighter.morale - 55) * 0.065 + (fighter.motivation - 55) * 0.055
+        preparation = fighter.camp_boost * 0.85 + min(2.4, fighter.camp_weeks * 0.20)
+        gym = min(2.2, (fighter.camp_quality or self.gym_quality(fighter.camp)) / 48)
+        focus = self.combat_sport_focus_fit(sport, fighter)
+        cut = fighter.weight_cut_penalty * 1.15
+        trait = 0.0
+        if fighter.trait in ("Clutch", "Title Mentality") and title:
+            trait += 2.0
+        if fighter.trait in ("Gym Rat", "Coach Favourite"):
+            trait += 1.0
+        if fighter.trait == "Momentum Fighter":
+            trait += fighter.momentum * 0.55
+        if fighter.trait in ("Erratic", "Slow Starter"):
+            trait -= random.uniform(0.5, 2.0)
+        pressure = 0.0
+        if opponent and opponent.popularity > fighter.popularity + 18:
+            composure = self.ds(fighter, "composure", fighter.fight_iq)
+            pressure = (composure - 55) / 25
+        return max(-12, min(16, mental + preparation + gym + focus + trait + pressure - cut))
+
+    def combat_sport_action_multiplier(self, sport, fighter, action_name, stamina):
+        multiplier = 1.0
+        trait = fighter.trait
+        behaviour = fighter.behaviour
+        if trait == "Body Hunter" and action_name in ("body shot", "body kick", "straight knee", "clinch knee"):
+            multiplier *= 1.8
+        if trait == "Leg Kicker" and action_name == "low kick":
+            multiplier *= 1.8
+        if trait == "Elbow Specialist" and action_name == "elbow":
+            multiplier *= 1.9
+        if trait in ("Counter Specialist", "Comeback Artist") and action_name in ("check hook", "counter cross", "re-shot", "sweep"):
+            multiplier *= 1.55
+        if trait in ("Knockout Artist", "Big Finisher", "Fight Finisher") and action_name in ("right hand", "uppercut", "head kick", "high kick", "elbow", "pinning attack", "choke attack"):
+            multiplier *= 1.45
+        if behaviour in ("Pressure Fighter", "Dynamic Attacker") and action_name in ("combination", "rope attack", "kick-punch combination", "clinch knee", "straight knee", "double leg", "guard pass"):
+            multiplier *= 1.30
+        elif behaviour in ("Counter Specialist", "Cautious Counter") and action_name in ("check hook", "counter cross", "re-shot", "sweep"):
+            multiplier *= 1.35
+        if stamina < 28 and action_name in ("combination", "rope attack", "head kick", "spinning attack", "high kick", "double leg", "mat return", "pinning attack", "choke attack", "leg entanglement"):
+            multiplier *= 0.48
+        return multiplier
+
+    def clear_combat_sport_preparation(self, fighter):
+        fighter.camp_boost = 0
+        fighter.camp_weeks = 0
+        fighter.weight_cut_penalty = 0
+        fighter.missed_weight = False
 
     def simulate_combat_sport_bout(self, sport, a, b, title=False):
         rules = self.combat_sport_bout_rules(sport, title=title, a=a, b=b)
@@ -1831,78 +3018,156 @@ class WorldMixin:
         a_points = b_points = 0
         a_rounds = b_rounds = 0
         a_damage = b_damage = 0
-        a_stamina = max(18, a.cardio - a.fatigue * 0.35)
-        b_stamina = max(18, b.cardio - b.fatigue * 0.35)
+        # Other sports now begin from the same physical-readiness calculation
+        # as MMA: conditioning, resilience, fatigue, traits and weight-cut state.
+        # The sport-specific exchanges below then spend that gas differently.
+        a_stamina = self.starting_fight_gas(a)
+        b_stamina = self.starting_fight_gas(b)
+        stamina = {a.name: float(a_stamina), b.name: float(b_stamina)}
+        damage = {a.name: 0.0, b.name: 0.0}
+        body_damage = {a.name: 0.0, b.name: 0.0}
+        leg_damage = {a.name: 0.0, b.name: 0.0}
+        cuts = {a.name: 0.0, b.name: 0.0}
+        a_readiness = self.combat_sport_readiness_modifier(sport, a, b, title=title)
+        b_readiness = self.combat_sport_readiness_modifier(sport, b, a, title=title)
         log = []
         round_scores = []
+        fight_edge = 0
         winner = loser = None
         method = rules["decision"]
         end_round = rules["rounds"]
+        log.append(self.combat_sport_opening_commentary(sport, a, b, title=title))
 
         for round_no in range(1, rules["rounds"] + 1):
-            a_energy = a_stamina - (round_no - 1) * rules["fatigue"] + random.uniform(-5, 5)
-            b_energy = b_stamina - (round_no - 1) * rules["fatigue"] + random.uniform(-5, 5)
-            a_perf = a_attack + a.momentum * 2.6 + a_energy * 0.20 - b_defense * 0.42 + random.gauss(0, 10)
-            b_perf = b_attack + b.momentum * 2.6 + b_energy * 0.20 - a_defense * 0.42 + random.gauss(0, 10)
+            if round_no > 1:
+                a_recovery = 1.0 + self.ds(a, "conditioning", a.cardio) / 45 + a.recovery / 120 + a.camp_quality / 100 + a.camp_weeks * 0.04 + a.camp_boost * 0.08 - body_damage[a.name] * 0.10
+                b_recovery = 1.0 + self.ds(b, "conditioning", b.cardio) / 45 + b.recovery / 120 + b.camp_quality / 100 + b.camp_weeks * 0.04 + b.camp_boost * 0.08 - body_damage[b.name] * 0.10
+                if a.trait == "Cardio Machine":
+                    a_recovery += 1.4
+                if b.trait == "Cardio Machine":
+                    b_recovery += 1.4
+                stamina[a.name] = min(a_stamina, stamina[a.name] + a_recovery)
+                stamina[b.name] = min(b_stamina, stamina[b.name] + b_recovery)
+            a_energy = stamina[a.name] + random.uniform(-4, 4) - leg_damage[a.name] * (0.20 if sport in ("Kickboxing", "Muay Thai") else 0.05)
+            b_energy = stamina[b.name] + random.uniform(-4, 4) - leg_damage[b.name] * (0.20 if sport in ("Kickboxing", "Muay Thai") else 0.05)
+            a_perf = a_attack + a.momentum * 2.6 + a_energy * 0.20 + a_readiness - b_defense * 0.42 + random.gauss(0, 10)
+            b_perf = b_attack + b.momentum * 2.6 + b_energy * 0.20 + b_readiness - a_defense * 0.42 + random.gauss(0, 10)
 
             if sport == "Wrestling":
-                a_rp = max(0, round((a_perf - b_perf) / 12 + random.choice([0, 1, 2])))
-                b_rp = max(0, round((b_perf - a_perf) / 12 + random.choice([0, 1, 2])))
+                a_rp = max(0, round((a_perf - b_perf) / 9 + random.choice([0, 1, 2, 3])))
+                b_rp = max(0, round((b_perf - a_perf) / 9 + random.choice([0, 1, 2, 3])))
                 if a_rp == b_rp:
                     a_rp += 1 if a_perf >= b_perf else 0
                     b_rp += 1 if b_perf > a_perf else 0
                 a_points += a_rp
                 b_points += b_rp
                 margin = a_rp - b_rp
-                log.append(f"R{round_no}: {a.name} {a_rp}, {b.name} {b_rp} - {'chain attacks and top control' if margin > 0 else 'scrambles and counters' if margin < 0 else 'even hand-fighting'}.")
-                if abs(a_points - b_points) >= 15 and round_no >= 2:
+                leader, trailer = (a, b) if margin >= 0 else (b, a)
+                live_lines, _successful = self.simulate_combat_sport_live_beats(sport, a, b, round_no, a_perf - b_perf, stamina, damage, body_damage, leg_damage, cuts)
+                log.extend(live_lines)
+                if abs(a_points - b_points) >= rules.get("tech_gap", 10) and round_no >= 2:
                     winner, loser = (a, b) if a_points > b_points else (b, a)
                     method = "Technical Fall"
                     end_round = round_no
+                    log.append(self.combat_sport_finish_commentary(sport, round_no, winner, loser, method))
                     break
-                pin_chance = max(0.01, min(0.22, (max(a_finish - b_defense, b_finish - a_defense) - 10) / 190))
+                log.append(self.combat_sport_round_commentary(sport, round_no, leader, trailer, abs(margin), points_text=f"{a.name} {a_rp}, {b.name} {b_rp}"))
+                log.append(self.combat_sport_round_status(sport, a, b, stamina, damage, body_damage, leg_damage, cuts))
+                pin_chance = max(0.006, min(0.14, (max(a_finish - b_defense, b_finish - a_defense) - 16) / 230))
                 if random.random() < pin_chance:
                     winner, loser = (a, b) if a_perf + a_finish >= b_perf + b_finish else (b, a)
                     method = "Pin"
                     end_round = round_no
+                    log.append(self.combat_sport_finish_commentary(sport, round_no, winner, loser, method))
                     break
             elif sport == "Brazilian Jiu-Jitsu":
                 a_rp = max(0, round((a_perf - b_perf) / 10 + random.choice([0, 2, 2, 3])))
                 b_rp = max(0, round((b_perf - a_perf) / 10 + random.choice([0, 2, 2, 3])))
                 a_points += a_rp
                 b_points += b_rp
-                sub_a = max(0.02, min(0.58, (a_finish - b_defense + a_perf - b_perf + 20) / 175))
-                sub_b = max(0.02, min(0.58, (b_finish - a_defense + b_perf - a_perf + 20) / 175))
-                log.append(f"R{round_no}: {a.name} {a_rp}, {b.name} {b_rp} - guard passes, sweeps and submission threats decide the grappling exchanges.")
+                margin = a_rp - b_rp
+                leader, trailer = (a, b) if margin >= 0 else (b, a)
+                sub_a = max(0.015, min(0.62, ((a_finish - b_defense) * 1.05 + (a_perf - b_perf) * 1.35 + 16) / 165))
+                sub_b = max(0.015, min(0.62, ((b_finish - a_defense) * 1.05 + (b_perf - a_perf) * 1.35 + 16) / 165))
+                live_lines, _successful = self.simulate_combat_sport_live_beats(sport, a, b, round_no, a_perf - b_perf, stamina, damage, body_damage, leg_damage, cuts)
+                log.extend(live_lines)
                 if random.random() < max(sub_a, sub_b):
                     winner, loser = (a, b) if sub_a >= sub_b else (b, a)
                     method = "Submission"
                     end_round = round_no
+                    log.append(self.combat_sport_finish_commentary(sport, round_no, winner, loser, method))
                     break
+                log.append(self.combat_sport_round_commentary(sport, round_no, leader, trailer, abs(margin), points_text=f"{a.name} {a_rp}, {b.name} {b_rp}"))
+                log.append(self.combat_sport_round_status(sport, a, b, stamina, damage, body_damage, leg_damage, cuts))
             else:
                 margin = a_perf - b_perf
+                fight_edge += margin
+                live_lines, _successful = self.simulate_combat_sport_live_beats(sport, a, b, round_no, margin, stamina, damage, body_damage, leg_damage, cuts)
+                log.extend(live_lines)
                 round_winner = a if margin >= 0 else b
                 if round_winner is a:
                     a_rounds += 1
-                    a_score, b_score = (10, 8) if margin > 26 and random.random() < 0.28 else (10, 9)
+                    a_score, b_score = (10, 8) if margin > 31 and random.random() < 0.18 else (10, 9)
                 else:
                     b_rounds += 1
-                    a_score, b_score = (8, 10) if margin < -26 and random.random() < 0.28 else (9, 10)
+                    a_score, b_score = (8, 10) if margin < -31 and random.random() < 0.18 else (9, 10)
                 round_scores.append((a_score, b_score))
-                damage_a = max(0, (b_perf + b_finish * 0.34 - a_defense) / 28)
-                damage_b = max(0, (a_perf + a_finish * 0.34 - b_defense) / 28)
-                a_damage += damage_a
-                b_damage += damage_b
-                action = "boxing combinations" if sport == "Boxing" else "kicks, knees and clinch exchanges" if sport == "Muay Thai" else "kicks and punch combinations"
-                log.append(f"R{round_no}: {round_winner.name} edges the round with cleaner {action}. Scores {a.name} {a_score}-{b_score} {b.name}.")
-                finish_a = max(0.005, min(0.44, (a_finish - b.chin + b_damage * 5 + max(0, margin)) / 230))
-                finish_b = max(0.005, min(0.44, (b_finish - a.chin + a_damage * 5 + max(0, -margin)) / 230))
-                if random.random() < max(finish_a, finish_b):
-                    winner, loser = (a, b) if finish_a >= finish_b else (b, a)
+                # Live exchanges accumulate enough detail for the viewer to
+                # describe condition, but only a calibrated fraction feeds the
+                # established finish model. Otherwise a ten-round boxing bout
+                # receives ten rounds of full-exchange damage on top of its
+                # existing stoppage pressure and becomes unrealistically wild.
+                a_damage = damage[a.name] * 0.15
+                b_damage = damage[b.name] * 0.15
+                score_text = f"Scores {a.name} {a_score}-{b_score} {b.name}."
+                trailer = b if round_winner is a else a
+                finish_divisor = rules.get("finish_divisor", 300)
+                finish_cap = rules.get("finish_cap", 0.30)
+                if sport == "Boxing":
+                    finish_a = (a_finish - b.chin + b_damage * 3.3 + body_damage[b.name] * 0.45 + cuts[b.name] * 0.55 + max(0, margin) * 0.62 - max(0, b_energy - 55) * 0.10) / finish_divisor
+                    finish_b = (b_finish - a.chin + a_damage * 3.3 + body_damage[a.name] * 0.45 + cuts[a.name] * 0.55 + max(0, -margin) * 0.62 - max(0, a_energy - 55) * 0.10) / finish_divisor
+                else:
+                    finish_a = (a_finish - b.chin + b_damage * 4.2 + body_damage[b.name] * 0.40 + leg_damage[b.name] * 0.28 + cuts[b.name] * 0.65 + max(0, margin) * 0.82) / finish_divisor
+                    finish_b = (b_finish - a.chin + a_damage * 4.2 + body_damage[a.name] * 0.40 + leg_damage[a.name] * 0.28 + cuts[a.name] * 0.65 + max(0, -margin) * 0.82) / finish_divisor
+                    if sport == "Muay Thai":
+                        # Small gloves and clinch/elbow exchanges make Thai rules
+                        # more volatile than kickboxing score-fighting. A clearly
+                        # weaker fighter should still have a live counter/inside
+                        # finish path without turning every close fight into chaos.
+                        a_rating = self.combat_sport_rating(a, sport)
+                        b_rating = self.combat_sport_rating(b, sport)
+                        small_glove_volatility = 0.010
+                        lethwei_bonus = 0.010 if rules.get("lethwei") else 0
+                        if a_rating + 12 < b_rating:
+                            finish_a += min(0.060, (b_rating - a_rating) / 520) + small_glove_volatility + lethwei_bonus
+                        else:
+                            finish_a += small_glove_volatility * 0.45 + lethwei_bonus * 0.50
+                        if b_rating + 12 < a_rating:
+                            finish_b += min(0.060, (a_rating - b_rating) / 520) + small_glove_volatility + lethwei_bonus
+                        else:
+                            finish_b += small_glove_volatility * 0.45 + lethwei_bonus * 0.50
+                finish_a = max(0.003, min(finish_cap, finish_a))
+                finish_b = max(0.003, min(finish_cap, finish_b))
+                a_finish_lands = random.random() < finish_a
+                b_finish_lands = random.random() < finish_b
+                if a_finish_lands or b_finish_lands:
+                    if a_finish_lands and b_finish_lands:
+                        a_claim = finish_a + max(0, margin) / 360 + random.uniform(0, 0.04)
+                        b_claim = finish_b + max(0, -margin) / 360 + random.uniform(0, 0.04)
+                        winner, loser = (a, b) if a_claim >= b_claim else (b, a)
+                    else:
+                        winner, loser = (a, b) if a_finish_lands else (b, a)
                     method = rules["finish"]
+                    loser_condition = loser.name
+                    if cuts[loser_condition] >= 4.5 and random.random() < min(0.55, cuts[loser_condition] / 12):
+                        method = "Doctor Stoppage"
+                    elif stamina[loser_condition] <= 9 and damage[loser_condition] >= 8 and random.random() < 0.45:
+                        method = "Corner Stoppage"
                     end_round = round_no
-                    log.append(f"R{round_no}: {winner.name} forces the stoppage after cumulative damage and a clean finishing sequence.")
+                    log.append(self.combat_sport_finish_commentary(sport, round_no, winner, loser, method))
                     break
+                log.append(self.combat_sport_round_commentary(sport, round_no, round_winner, trailer, margin, score_text=score_text))
+                log.append(self.combat_sport_round_status(sport, a, b, stamina, damage, body_damage, leg_damage, cuts))
 
         if not winner and method != "Draw":
             if sport in ("Wrestling", "Brazilian Jiu-Jitsu"):
@@ -1916,11 +3181,16 @@ class WorldMixin:
                 a_total = sum(score[0] for score in round_scores)
                 b_total = sum(score[1] for score in round_scores)
                 close = abs(a_total - b_total) <= 1
-                if a_total == b_total or (close and rules["draws"] and random.random() < (0.18 if sport == "Muay Thai" else 0.07)):
+                draw_chance = rules.get("draw_chance", 0.06)
+                if a_total == b_total and rules["draws"] and random.random() < draw_chance:
                     method = "Draw"
                 else:
-                    winner, loser = (a, b) if a_total > b_total else (b, a)
-                    method = rules["decision"]
+                    if a_total == b_total:
+                        winner, loser = (a, b) if fight_edge >= 0 else (b, a)
+                        method = "Majority Decision" if rules["draws"] else rules["decision"]
+                    else:
+                        winner, loser = (a, b) if a_total > b_total else (b, a)
+                        method = rules["decision"]
         if sport in ("Wrestling", "Brazilian Jiu-Jitsu"):
             score_text = f"{a.name} {a_points}-{b_points} {b.name}"
         else:
@@ -1928,7 +3198,14 @@ class WorldMixin:
             b_total = sum(score[1] for score in round_scores)
             card_text = ", ".join(f"{x}-{y}" for x, y in round_scores) or "-"
             score_text = f"{a.name} {a_total}-{b_total} {b.name} ({card_text})"
-        return {"winner": winner, "loser": loser, "method": method, "round": end_round, "score": score_text, "log": log}
+        if not any("stoppage" in line.lower() or "submission" in line.lower() and "gets the tap" in line.lower() or "technical fall" in line.lower() or "secures the pin" in line.lower() for line in log[-2:]):
+            if method in ("Decision", "Majority Decision", "Points", "Referee Criteria", "Draw"):
+                log.append(self.combat_sport_decision_commentary(sport, winner, loser, method, score_text))
+        condition = {
+            a.name: {"stamina": round(stamina[a.name], 1), "damage": round(damage[a.name], 1), "body": round(body_damage[a.name], 1), "leg": round(leg_damage[a.name], 1), "cuts": round(cuts[a.name], 1)},
+            b.name: {"stamina": round(stamina[b.name], 1), "damage": round(damage[b.name], 1), "body": round(body_damage[b.name], 1), "leg": round(leg_damage[b.name], 1), "cuts": round(cuts[b.name], 1)},
+        }
+        return {"winner": winner, "loser": loser, "method": method, "round": end_round, "score": score_text, "log": log, "condition": condition, "readiness": {a.name: round(a_readiness, 1), b.name: round(b_readiness, 1)}}
 
     def develop_after_combat_sport_bout(self, sport, fighter, won=False, finished=False):
         focus = {
@@ -1947,47 +3224,183 @@ class WorldMixin:
             if field in ("striking", "wrestling", "grappling"):
                 self.adjust_detailed_skill(fighter, 1)
 
-    def apply_combat_sport_result(self, sport, world, a, b, title=False, player_owned=False):
-        sim = self.simulate_combat_sport_bout(sport, a, b, title=title)
+    def record_combat_sport_season_result(self, state, a, b, winner, method, title_key="", previous_champion=""):
+        stats = state.setdefault("season_stats", {})
+        for fighter in (a, b):
+            row = stats.setdefault(fighter.name, {"bouts": 0, "wins": 0, "losses": 0, "draws": 0, "finishes": 0, "title_wins": 0, "title_defenses": 0, "score": 0})
+            row["bouts"] += 1
+            if not winner:
+                row["draws"] += 1
+                row["score"] += 2
+            elif fighter is winner:
+                row["wins"] += 1
+                row["score"] += 8 + min(5, fighter.popularity // 20)
+                if method not in ("Decision", "Majority Decision", "Points", "Referee Criteria"):
+                    row["finishes"] += 1
+                    row["score"] += 3
+                if title_key:
+                    if previous_champion == fighter.name:
+                        row["title_defenses"] += 1
+                        row["score"] += 6
+                    else:
+                        row["title_wins"] += 1
+                        row["score"] += 10
+            else:
+                row["losses"] += 1
+        state["records"] = state.get("records", {})
+        state["records"][a.name] = a.record
+        state["records"][b.name] = b.record
+
+    def consider_combat_sport_hall_of_fame(self, sport, world, fighter, state):
+        if any(entry.get("name") == fighter.name for entry in state.get("hall_of_fame", []) if isinstance(entry, dict)):
+            return False
+        title_entries = sum(1 for history in state.get("title_history", {}).values() for entry in history if entry.get("winner") == fighter.name)
+        score = fighter.record_w * 2 + title_entries * 9 + fighter.popularity + max(0, self.combat_sport_rating(fighter, sport) - 140) / 2
+        if fighter.record_w < 10 or score < 105:
+            return False
+        induction = {
+            "name": fighter.name, "year": self.current_year(), "record": fighter.record,
+            "titles": title_entries, "popularity": fighter.popularity,
+            "summary": f"{fighter.name} inducted after a {fighter.record} {sport} career with {title_entries} championship result(s).",
+        }
+        state.setdefault("hall_of_fame", []).insert(0, induction)
+        state["hall_of_fame"] = state["hall_of_fame"][:100]
+        world.setdefault("media", []).insert(0, f"HALL OF FAME: {induction['summary']}")
+        return True
+
+    def retire_combat_sport_after_final_fight(self, sport, world, fighter, state):
+        if not fighter.retirement_pending or fighter.retired:
+            return False
+        fighter.retirement_fight_completed = True
+        fighter.retirement_pending = False
+        fighter.retired = True
+        fighter.retirement_reason = f"Retired from {sport} after a final fight at age {fighter.age}."
+        fighter.champion = False
+        for key, champion in list(state.get("titles", {}).items()):
+            if champion == fighter.name:
+                state["titles"][key] = ""
+                state.setdefault("title_history", {}).setdefault(key, []).insert(0, {
+                    "month": self.month, "year": self.current_year(), "winner": "VACANT",
+                    "loser": "", "method": "Retirement", "previous_champion": fighter.name,
+                })
+        headline = f"{fighter.name} retired from {sport} after completing a required farewell fight ({fighter.record})."
+        world.setdefault("media", []).insert(0, headline)
+        self.news.insert(0, headline)
+        self.record_world_story("Combat Sports Retirement", headline, fighter.retirement_reason, [world.get("promotion", "")], [fighter.name], 3)
+        return True
+
+    def apply_combat_sport_result(self, sport, world, a, b, title=False, player_owned=False, title_key="", employer=""):
+        state = self.ensure_combat_sport_circuit_state(sport, world, employer or a.sport_employer, player_owned)
+        preparation = self.prepare_combat_sport_bout(sport, a, b, title=title)
+        effective_title = bool(title and preparation["title_valid"])
+        title_key = title_key or (self.combat_sport_division_key(a) if effective_title else "")
+        previous_champion = state.get("titles", {}).get(title_key, "") if title_key else ""
+        sim = self.simulate_combat_sport_bout(sport, a, b, title=effective_title)
+        readiness = sim.get("readiness", {})
+        readiness_note = f"Fight-night readiness: {a.name} {readiness.get(a.name, 0):+} | {b.name} {readiness.get(b.name, 0):+}. Camp, morale, motivation, gym, traits and weight cut are active."
+        sim["log"] = preparation["notes"] + [readiness_note] + sim.get("log", [])
         winner, loser, method = sim.get("winner"), sim.get("loser"), sim.get("method", "Decision")
         if method == "Draw" or not winner:
             a.record_d += 1
             b.record_d += 1
+            a.career_win_streak = b.career_win_streak = 0
+            a.morale = min(100, a.morale + random.randint(0, 2))
+            b.morale = min(100, b.morale + random.randint(0, 2))
             result_line = f"Month {self.month}: {a.name} and {b.name} fought to a draw in {sport} ({sim.get('score', '-')})"
         else:
             winner.record_w += 1
             loser.record_l += 1
+            winner.career_win_streak = getattr(winner, "career_win_streak", 0) + 1
+            loser.career_win_streak = 0
             winner.momentum = min(5, winner.momentum + 1)
             loser.momentum = max(-5, loser.momentum - 1)
-            finished = method not in ("Decision", "Points", "Referee Criteria")
-            winner.popularity = min(100, winner.popularity + (2 if title else 1) + int(finished))
+            winner.morale = min(100, winner.morale + random.randint(3, 7))
+            loser.morale = max(15, loser.morale - random.randint(3, 9))
+            winner.motivation = min(99, winner.motivation + random.randint(1, 3))
+            loser.motivation = max(1, loser.motivation - random.randint(1, 5))
+            finished = method not in ("Decision", "Majority Decision", "Points", "Referee Criteria")
+            winner.popularity = min(100, winner.popularity + (2 if effective_title else 1) + int(finished))
             loser.popularity = max(1, loser.popularity - (1 if loser.popularity > winner.popularity + 12 else 0))
-            if title:
-                world["champion"] = winner.name
-                winner.title_wins += 1 if not getattr(winner, "champion", False) else 0
-                winner.title_defenses += 1 if getattr(winner, "champion", False) else 0
-                for fighter in world.get("roster", []):
-                    if fighter.sport_employer == winner.sport_employer:
-                        fighter.champion = fighter is winner
-            round_note = f" R{sim.get('round')}" if method not in ("Decision", "Points", "Referee Criteria") else ""
+            if effective_title:
+                state.setdefault("titles", {})[title_key] = winner.name
+                if previous_champion == winner.name:
+                    winner.title_defenses += 1
+                else:
+                    winner.title_wins += 1
+                state.setdefault("title_history", {}).setdefault(title_key, []).insert(0, {
+                    "month": self.month, "year": self.current_year(), "winner": winner.name,
+                    "loser": loser.name, "method": method, "previous_champion": previous_champion,
+                })
+                state["title_history"][title_key] = state["title_history"][title_key][:80]
+                state["champion"] = winner.name
+            round_note = f" R{sim.get('round')}" if method not in ("Decision", "Majority Decision", "Points", "Referee Criteria") else ""
             result_line = f"Month {self.month}: {winner.name} def. {loser.name} by {method}{round_note} in {sport} ({sim.get('score', '-')})"
+        retired_after = []
         for fighter in (a, b):
             fighter.multi_sport_records = fighter.multi_sport_records or {}
-            fighter.multi_sport_records[getattr(fighter, "primary_discipline", sport)] = f"{fighter.record_w}-{fighter.record_l}-{fighter.record_d}"
+            fighter.multi_sport_records[sport] = f"{fighter.record_w}-{fighter.record_l}-{fighter.record_d}"
             fighter.fight_history = fighter.fight_history or []
             fighter.fight_history.insert(0, result_line)
             fighter.last_fight = result_line
             fighter.last_fight_month = self.month
-            fighter.fatigue = min(100, fighter.fatigue + random.randint(12, 32))
-            if random.random() < 0.025 + fighter.injury_proneness / 1400:
+            condition = sim.get("condition", {}).get(fighter.name, {})
+            exertion = max(0, 100 - condition.get("stamina", 70))
+            damage_load = condition.get("damage", 0) + condition.get("body", 0) * 0.6 + condition.get("leg", 0) * 0.7
+            lost = bool(loser is fighter)
+            fatigue_gain = 10 + round(exertion * 0.34 + damage_load * 0.22) + (4 if lost else 0) + random.randint(0, 7)
+            fighter.fatigue = min(100, fighter.fatigue + fatigue_gain)
+            recovery_method = "TKO" if method == "KO/TKO" else method
+            self.set_post_fight_recovery(fighter, recovery_method, lost=lost)
+            injury_chance = 0.018 + fighter.injury_proneness / 1700 + damage_load / 520 + condition.get("cuts", 0) / 380
+            if lost and method in ("KO", "KO/TKO", "Technical Fall", "Pin", "Submission"):
+                injury_chance += 0.018
+            if random.random() < min(0.24, injury_chance):
                 fighter.injured = max(fighter.injured, random.randint(1, 3))
-            self.develop_after_combat_sport_bout(sport, fighter, won=(winner is fighter), finished=method not in ("Decision", "Points", "Draw", "Referee Criteria"))
-        return {"a": a.name, "b": b.name, "winner": winner.name if winner else "Draw", "method": method, "round": sim.get("round"), "score": sim.get("score", "-"), "title": title, "result": result_line, "log": sim.get("log", [])}
+            serious_chance = 0.00045 + fighter.injury_proneness / 110_000 + max(0, fighter.age - 34) / 20_000
+            if lost and method in ("KO", "KO/TKO", "Technical Fall"):
+                serious_chance += 0.0012
+            if random.random() < serious_chance:
+                self.apply_serious_injury(fighter, f"{sport} bout")
+            self.develop_after_combat_sport_bout(sport, fighter, won=(winner is fighter), finished=method not in ("Decision", "Majority Decision", "Points", "Draw", "Referee Criteria"))
+            self.clear_combat_sport_preparation(fighter)
+            if self.retire_combat_sport_after_final_fight(sport, world, fighter, state):
+                retired_after.append(fighter)
+        self.record_combat_sport_season_result(state, a, b, winner, method, title_key if effective_title else "", previous_champion)
+        for fighter in retired_after:
+            self.consider_combat_sport_hall_of_fame(sport, world, fighter, state)
+        return {"a": a.name, "b": b.name, "winner": winner.name if winner else "Draw", "method": method, "round": sim.get("round"), "score": sim.get("score", "-"), "weight": a.weight, "title_key": title_key if effective_title else "", "title": effective_title, "scheduled_title": title, "result": result_line, "log": sim.get("log", []), "condition": sim.get("condition", {}), "readiness": sim.get("readiness", {})}
+
+    def create_combat_sport_guest_opponent(self, sport, fighter, employer, reserved_names=None):
+        """Supply a credible independent opponent for an isolated sport athlete."""
+        guest = self.create_generated_fighter(
+            5, max(12, fighter.popularity), max(34, fighter.overall - 6), min(94, fighter.overall + 6),
+            weight=fighter.weight, gender=fighter.gender, region=fighter.region,
+        )
+        reserved = set(reserved_names or ()) | self.active_fighter_names()
+        self.avoid_name_collision(guest, reserved)
+        guest.primary_discipline = sport
+        guest.sport_employer = f"Independent {sport} Circuit"
+        guest.contract_type = "One-Fight Independent"
+        guest.popularity = max(5, min(fighter.popularity, guest.popularity))
+        target_rating = max(30, min(96, fighter.overall + random.randint(-5, 4)))
+        for field in ("striking", "wrestling", "grappling", "cardio", "chin"):
+            setattr(guest, field, max(25, min(99, target_rating + random.randint(-4, 4))))
+        guest.potential = max(guest.overall, min(98, guest.overall + random.randint(0, 8)))
+        guest.fatigue = random.randint(0, 16)
+        guest.injured = 0
+        guest.available_week = 0
+        return guest
 
     def build_combat_sport_card(self, sport, world, employer, player_owned=False, target_bouts=6, champion_name=None):
         ranked = self.refresh_combat_sport_rankings(sport, world, employer=employer)
-        available = [fighter for fighter in ranked if fighter.fatigue < 55 and not fighter.injured]
-        if len(available) < 2:
+        state = self.ensure_combat_sport_circuit_state(sport, world, employer, player_owned)
+        current_week = self.calendar_week_index()
+        available = [
+            fighter for fighter in ranked
+            if (fighter.fatigue < 55 or (fighter.retirement_pending and fighter.fatigue < 66))
+            and not fighter.injured and getattr(fighter, "available_week", 0) <= current_week
+        ]
+        if not available:
             return []
         card_strategy = self.combat_sport_card_strategy(sport, world, employer, player_owned)
         if not player_owned and len(available) > target_bouts * 2:
@@ -1998,14 +3411,37 @@ class WorldMixin:
             target_bouts = min(target_bouts, 8)
         used = set()
         bouts = []
-        champion_name = champion_name if champion_name is not None else world.get("champion", "")
-        champion = next((fighter for fighter in available if fighter.name == champion_name), None)
-        if champion and champion.name not in used and card_strategy != "Prospect Rotation":
-            challengers = [fighter for fighter in available if fighter is not champion and fighter.name not in used]
-            if challengers:
-                challenger = min(challengers[:8], key=lambda fighter: abs(self.combat_sport_rating(fighter, sport) - self.combat_sport_rating(champion, sport)))
-                bouts.append({"a": champion, "b": challenger, "title": True, "main": True, "booking_reason": f"{card_strategy}: champion vs closest top contender"})
-                used.update([champion.name, challenger.name])
+        available_by_division = {}
+        for fighter in available:
+            available_by_division.setdefault(self.combat_sport_division_key(fighter), []).append(fighter)
+        title_opportunities = []
+        for key, names in state.get("rankings_by_division", {}).items():
+            eligible = [fighter for fighter in available_by_division.get(key, []) if fighter.name in names]
+            if len(eligible) < 2:
+                continue
+            champion = next((fighter for fighter in eligible if fighter.name == state.get("titles", {}).get(key, "")), None)
+            if champion and card_strategy == "Prospect Rotation":
+                continue
+            inactivity = self.combat_sport_inactivity_months(champion) if champion else 99
+            title_opportunities.append((0 if not champion else 1, -inactivity, key, champion, eligible))
+        title_opportunities.sort(key=lambda item: (item[0], item[1], item[2]))
+        max_title_bouts = 2 if card_strategy == "Title Focus" else 1
+        for _vacancy, _inactivity, key, champion, eligible in title_opportunities[:max_title_bouts]:
+            if champion:
+                challengers = [fighter for fighter in eligible if fighter is not champion and fighter.name not in used]
+                challenger = min(challengers[:8], key=lambda fighter: abs(self.combat_sport_rating(fighter, sport) - self.combat_sport_rating(champion, sport))) if challengers else None
+                if not challenger:
+                    continue
+                a, b = champion, challenger
+                reason = f"{card_strategy}: {self.combat_sport_division_label(key)} champion vs closest ranked contender"
+            else:
+                eligible = [fighter for fighter in eligible if fighter.name not in used]
+                if len(eligible) < 2:
+                    continue
+                a, b = eligible[0], eligible[1]
+                reason = f"Vacant {self.combat_sport_division_label(key)} championship: top two available contenders"
+            bouts.append({"a": a, "b": b, "title": True, "title_key": key, "main": not bouts, "booking_reason": reason})
+            used.update([a.name, b.name])
 
         band_size = max(6, len(available) // 4)
         card_pool = []
@@ -2023,12 +3459,12 @@ class WorldMixin:
             card_pool.extend(band[:max(2, target_bouts // 2)])
         card_pool = sorted(
             dict((fighter.name, fighter) for fighter in card_pool if fighter.name not in used).values(),
-            key=lambda fighter: (self.combat_sport_inactivity_months(fighter) if card_strategy == "Deep Roster" else 0, fighter.age <= 27, fighter.potential - fighter.overall),
+            key=lambda fighter: (fighter.retirement_pending, self.combat_sport_inactivity_months(fighter) if card_strategy == "Deep Roster" else 0, fighter.age <= 27, fighter.potential - fighter.overall),
             reverse=True,
         )
         fallback_pool = sorted(
             [fighter for fighter in available if fighter.name not in used],
-            key=lambda fighter: (self.combat_sport_inactivity_months(fighter), random.random()),
+            key=lambda fighter: (fighter.retirement_pending, self.combat_sport_inactivity_months(fighter), random.random()),
             reverse=True,
         )
         for fighter in card_pool + fallback_pool:
@@ -2038,16 +3474,34 @@ class WorldMixin:
                 other for other in available
                 if other.name not in used and other is not fighter
                 and other.gender == fighter.gender
+                and other.weight == fighter.weight
                 and abs(self.combat_sport_rating(other, sport) - self.combat_sport_rating(fighter, sport)) <= (30 if fighter.age <= 25 else 44)
             ]
+            if not opponent_pool:
+                try:
+                    fighter_weight_index = WEIGHTS.index(fighter.weight)
+                except ValueError:
+                    fighter_weight_index = -99
+                opponent_pool = [
+                    other for other in available
+                    if other.name not in used and other is not fighter
+                    and other.gender == fighter.gender
+                    and other.weight in WEIGHTS
+                    and abs(WEIGHTS.index(other.weight) - fighter_weight_index) == 1
+                    and abs(self.combat_sport_rating(other, sport) - self.combat_sport_rating(fighter, sport)) <= (30 if fighter.age <= 25 else 44)
+                ]
             if not opponent_pool and self.combat_sport_inactivity_months(fighter) >= 8:
                 opponent_pool = [
                     other for other in available
                     if other.name not in used and other is not fighter
                     and other.gender == fighter.gender
+                    and other.weight == fighter.weight
                     and abs(self.combat_sport_rating(other, sport) - self.combat_sport_rating(fighter, sport)) <= 60
                 ]
             if not opponent_pool:
+                opponent = self.create_combat_sport_guest_opponent(sport, fighter, employer, used)
+                bouts.append({"a": fighter, "b": opponent, "title": False, "title_key": "", "main": not bouts, "booking_reason": "Independent opponent for an isolated division"})
+                used.update([fighter.name, opponent.name])
                 continue
             opponent = min(opponent_pool, key=lambda other: (
                 abs(self.combat_sport_rating(other, sport) - self.combat_sport_rating(fighter, sport)),
@@ -2055,27 +3509,29 @@ class WorldMixin:
                 abs(other.record_w + other.record_l - fighter.record_w - fighter.record_l),
             ))
             reason = "Activity rotation" if self.combat_sport_inactivity_months(fighter) >= 5 or self.combat_sport_inactivity_months(opponent) >= 5 else "Style/ranking matchup"
+            if fighter.weight != opponent.weight:
+                reason = f"Adjacent-division catchweight: {fighter.weight}/{opponent.weight}"
             if card_strategy == "Prospect Rotation" and (fighter.age <= 27 or opponent.age <= 27):
                 reason = "Prospect rotation"
-            bouts.append({"a": fighter, "b": opponent, "title": False, "main": not bouts, "booking_reason": reason})
+            bouts.append({"a": fighter, "b": opponent, "title": False, "title_key": "", "main": not bouts, "booking_reason": reason})
             used.update([fighter.name, opponent.name])
         return bouts
 
     def run_combat_sport_card(self, sport, world, employer, player_owned=False, target_bouts=6):
         division = getattr(self, "player_combat_divisions", {}).get(sport) if player_owned else None
-        champion_name = division.get("champion", "") if division else None
         if player_owned and division:
             target_bouts = {"Prospect Builder": 6, "Star Showcase": 4, "Title Focus": 5}.get(division.get("strategy", "Balanced"), target_bouts)
-        bouts = self.build_combat_sport_card(sport, world, employer, player_owned=player_owned, target_bouts=target_bouts, champion_name=champion_name)
+        state = self.ensure_combat_sport_circuit_state(sport, world, employer, player_owned)
+        bouts = self.build_combat_sport_card(sport, world, employer, player_owned=player_owned, target_bouts=target_bouts)
         if not bouts:
             return None
         event_no = world.get("events", 0) + 1
         world["events"] = event_no
         promotion = self.player_company_name if player_owned else world.get("promotion", employer)
-        original_champion = world.get("champion", "")
-        if player_owned and division:
-            world["champion"] = division.get("champion", "")
-        results = [self.apply_combat_sport_result(sport, world, bout["a"], bout["b"], title=bout.get("title", False), player_owned=player_owned) for bout in bouts]
+        results = [self.apply_combat_sport_result(
+            sport, world, bout["a"], bout["b"], title=bout.get("title", False),
+            player_owned=player_owned, title_key=bout.get("title_key", ""), employer=employer,
+        ) for bout in bouts]
         title_result = next((item for item in results if item.get("title")), None)
         finishes = sum(1 for item in results if item.get("method") not in ("Decision", "Points", "Draw"))
         headline = f"Month {self.month}: {promotion} ran a {sport} card headlined by {results[0]['result']}."
@@ -2083,7 +3539,19 @@ class WorldMixin:
         recap = f"{len(results)} bouts | {finishes} finish(es) | Strategy: {strategy}"
         if title_result:
             recap += f" | Title: {title_result['result']}"
-        card = {"month": self.month, "week": self.week, "sport": sport, "promotion": promotion, "event": event_no, "results": results, "headline": headline, "recap": recap, "strategy": strategy, "bouts": [{"a": bout["a"].name, "b": bout["b"].name, "title": bout.get("title", False), "reason": bout.get("booking_reason", "Sport matchmaking")} for bout in bouts]}
+        fight_logs = [{
+            "heading": f"{'TITLE' if item.get('title') else 'BOUT'}: {item['a']} vs {item['b']}",
+            "fight": f"{item['a']} vs {item['b']}",
+            "label": f"{sport} {self.combat_sport_division_label(item.get('title_key')) + ' Title Bout' if item.get('title') else 'Bout'}",
+            "a": item["a"],
+            "b": item["b"],
+            "weight": item.get("weight", next((fighter.weight for fighter in world.get("roster", []) if fighter.name == item["a"]), "")),
+            "method": item.get("method", ""),
+            "score": item.get("score", "-"),
+            "result": item.get("result", ""),
+            "lines": item.get("log", []),
+        } for item in results]
+        card = {"month": self.month, "week": self.week, "sport": sport, "promotion": promotion, "event": event_no, "event_name": f"{promotion} {sport} Card {event_no}", "results": results, "fight_logs": fight_logs, "headline": headline, "recap": recap, "strategy": strategy, "bouts": [{"a": bout["a"].name, "b": bout["b"].name, "title": bout.get("title", False), "title_key": bout.get("title_key", ""), "reason": bout.get("booking_reason", "Sport matchmaking")} for bout in bouts]}
         world["event_history"] = ([headline] + world.get("event_history", []))[:80]
         world["media"] = ([headline] + world.get("media", []))[:24]
         self.refresh_combat_sport_rankings(sport, world, employer=employer)
@@ -2100,25 +3568,38 @@ class WorldMixin:
                 division["revenue_total"] = division.get("revenue_total", 0) + revenue
                 division["cost_total"] = division.get("cost_total", 0) + cost
                 division["profit_total"] = division.get("profit_total", 0) + profit
-                if results and results[0].get("title") and results[0].get("winner") != "Draw":
-                    division["champion"] = results[0].get("winner", division.get("champion", ""))
+                division["reputation"] = max(10, min(99, division.get("reputation", self.company_pop) + (1 if title_result or finishes >= 3 else 0)))
+                division["stability"] = max(5, min(99, division.get("stability", 60) + (1 if profit >= 0 else -2)))
+                division.setdefault("finance_history", []).insert(0, {"month": self.month, "revenue": revenue, "cost": cost, "profit": profit, "cash": self.cash + profit})
+                division["finance_history"] = division["finance_history"][:120]
                 self.refresh_combat_sport_rankings(sport, world, employer=employer, division=division)
                 self.cash = max(0, self.cash + profit)
                 self.record_finance_transaction(f"{sport} child division card", revenue=revenue, costs=cost)
                 self.news.insert(0, headline)
-            world["champion"] = original_champion
-        elif random.random() < 0.35:
-            self.record_world_story("Combat Sports", headline, "\n".join(item["result"] for item in results[:6]), [promotion], [results[0]["a"], results[0]["b"]], importance=2)
+        else:
+            reputation = state.get("reputation", 62)
+            star_value = sum(max(1200, fighter.popularity * 210 + fighter.overall * 75) for bout in bouts for fighter in (bout["a"], bout["b"]))
+            revenue = round((32_000 + star_value + reputation * 1_450) * random.uniform(0.82, 1.18))
+            cost = 42_000 + len(bouts) * 4_500 + sum(max(1_200, fighter.popularity * 105 + fighter.overall * 42) for bout in bouts for fighter in (bout["a"], bout["b"]))
+            profit = revenue - cost
+            state["cash"] = state.get("cash", 0) + profit
+            state["reputation"] = max(10, min(99, reputation + (1 if title_result or finishes >= 3 else 0) - (1 if finishes == 0 and random.random() < 0.3 else 0)))
+            state["stability"] = max(5, min(99, state.get("stability", 70) + (1 if profit >= 0 else -2)))
+            card["finance"] = {"revenue": revenue, "cost": cost, "profit": profit, "cash_after": state["cash"]}
+            state.setdefault("finance_history", []).insert(0, {"month": self.month, "revenue": revenue, "cost": cost, "profit": profit, "cash": state["cash"]})
+            state["finance_history"] = state["finance_history"][:120]
+            if random.random() < 0.35:
+                self.record_world_story("Combat Sports", headline, "\n".join(item["result"] for item in results[:6]), [promotion], [results[0]["a"], results[0]["b"]], importance=2)
         self.result_records.insert(0, {
             "date": f"Month {self.month} Week {self.week}",
             "company": promotion,
             "event": f"{sport} Card {event_no}",
             "summary": recap,
             "fights": len(results),
-            "gate": "$0" if not player_owned else f"${card.get('finance', {}).get('revenue', 0):,}",
-            "profit": "$0" if not player_owned else f"${card.get('finance', {}).get('profit', 0):,}",
+            "gate": f"${card.get('finance', {}).get('revenue', 0):,}",
+            "profit": f"${card.get('finance', {}).get('profit', 0):,}",
             "log": [headline, recap, ""] + [item["result"] for item in results],
-            "fight_logs": [{"fight": f"{item['a']} vs {item['b']}", "method": item.get("method", ""), "score": item.get("score", "-"), "lines": item.get("log", [])} for item in results],
+            "fight_logs": fight_logs,
             "finance": card.get("finance", {"ticket_revenue": 0, "total_revenue": 0, "total_expense": 0, "profit": 0}),
         })
         self.result_records = self.result_records[:500]
@@ -2149,24 +3630,161 @@ class WorldMixin:
             fighter.annual_overalls[year] = max(fighter.annual_overalls.get(year, 0), fighter.overall)
             fighter.rank_score = self.rank_value(fighter)
 
+    def review_combat_sport_retirements(self, sport, world):
+        """Stage retirement reviews while guaranteeing a final booked contest."""
+        marked = 0
+        for fighter in self.combat_sport_roster(sport):
+            if fighter.retirement_pending or fighter.age < 38:
+                continue
+            annual_review_month = sum(ord(char) for char in fighter.name) % 12 + 1
+            calendar_month = (self.month - 1) % 12 + 1
+            if fighter.age < 50 and calendar_month != annual_review_month:
+                continue
+            losses = fighter.record_l / max(1, fighter.record_w + fighter.record_l + fighter.record_d)
+            age_pressure = max(0, fighter.age - fighter.prime_end) * 0.07
+            chance = 1.0 if fighter.age >= 50 else min(0.82, 0.08 + age_pressure + losses * 0.12)
+            if random.random() < chance:
+                self.mark_retirement_fight_required(fighter, f"{sport} career review at age {fighter.age}")
+                fighter.available_week = min(getattr(fighter, "available_week", 0), self.calendar_week_index())
+                marked += 1
+                if fighter.sport_employer == self.player_company_name:
+                    self.inbox.append({
+                        "subject": f"{sport} Farewell Fight Required",
+                        "body": f"{fighter.name} plans to retire. Book them on your next {sport} card to complete their career.",
+                        "type": "Combat Sports", "fighter": fighter.name, "resolved": False,
+                    })
+        return marked
+
+    def generate_combat_sport_prospect(self, sport, world):
+        promotion = world.get("promotion", "")
+        target_skill = {
+            "Boxing": ("striking", "power"),
+            "Kickboxing": ("striking", "cardio"),
+            "Muay Thai": ("striking", "toughness"),
+            "Wrestling": ("wrestling", "ground_control"),
+            "Brazilian Jiu-Jitsu": ("grappling", "submissions"),
+        }.get(sport, ("striking", "cardio"))
+        fighter = self.create_generated_fighter(3, 18, 38, 62, region=random.choice(REGIONS))
+        reserved = self.active_fighter_names()
+        for sport_world in getattr(self, "combat_sport_worlds", {}).values():
+            reserved.update(candidate.name for candidate in sport_world.get("roster", []))
+        self.avoid_name_collision(fighter, reserved)
+        fighter.age = random.randint(18, 23)
+        fighter.record_w = random.randint(0, 5)
+        fighter.record_l = random.randint(0, 2)
+        fighter.record_d = 0
+        fighter.primary_discipline = sport
+        fighter.sport_employer = promotion
+        fighter.contract_type = f"{sport} Development Deal"
+        fighter.exclusive = True
+        for field in target_skill:
+            setattr(fighter, field, min(92, max(getattr(fighter, field, 45), fighter.overall + random.randint(5, 14))))
+        self.generate_detailed_skills(fighter)
+        self.sync_broad_skills_from_details(fighter)
+        fighter.potential = max(fighter.overall + random.randint(6, 15), fighter.potential)
+        fighter.potential = min(97, fighter.potential)
+        fighter.multi_sport_records = {sport: fighter.record}
+        return fighter
+
+    def replenish_combat_sport_world(self, sport, world):
+        promotion = world.get("promotion", "")
+        active = self.combat_sport_roster(sport, promotion)
+        target = max(36, int(world.get("starting_roster_size", len(active) or 50)))
+        if len(active) >= max(30, round(target * 0.88)):
+            return 0
+        additions = min(3, max(1, target - len(active)))
+        for _ in range(additions):
+            prospect = self.generate_combat_sport_prospect(sport, world)
+            world.setdefault("roster", []).append(prospect)
+            world.setdefault("prospects", []).insert(0, prospect.name)
+        world["prospects"] = world.get("prospects", [])[:80]
+        world.setdefault("media", []).insert(0, f"{world.get('promotion', sport)} signed {additions} new {sport} prospect(s) to replenish its development ranks.")
+        return additions
+
+    def run_combat_sport_year_awards(self, sport, world, year, player_owned=False):
+        employer = self.player_company_name if player_owned else world.get("promotion", "")
+        state = self.ensure_combat_sport_circuit_state(sport, world, employer, player_owned)
+        if state.get("last_awards_year", 0) >= year:
+            return None
+        stats = state.get("season_stats", {})
+        roster_by_name = {fighter.name: fighter for fighter in world.get("roster", [])}
+        eligible = [(name, row) for name, row in stats.items() if row.get("bouts", 0)]
+        if not eligible:
+            state["last_awards_year"] = year
+            return None
+        athlete = max(eligible, key=lambda item: (item[1].get("score", 0), item[1].get("wins", 0)))[0]
+        prospects = [(name, row) for name, row in eligible if roster_by_name.get(name) and roster_by_name[name].age <= 25]
+        veteran = [(name, row) for name, row in eligible if roster_by_name.get(name) and roster_by_name[name].age >= 34]
+        finisher = max(eligible, key=lambda item: (item[1].get("finishes", 0), item[1].get("wins", 0)))[0]
+        award = {
+            "year": year,
+            "athlete": athlete,
+            "prospect": max(prospects, key=lambda item: item[1].get("score", 0))[0] if prospects else "No eligible prospect",
+            "veteran": max(veteran, key=lambda item: item[1].get("score", 0))[0] if veteran else "No eligible veteran",
+            "finisher": finisher,
+            "summary": f"{year} {sport} Awards — Athlete: {athlete}; Prospect: {max(prospects, key=lambda item: item[1].get('score', 0))[0] if prospects else 'None'}; Finisher: {finisher}.",
+        }
+        state.setdefault("awards", []).insert(0, award)
+        state["awards"] = state["awards"][:60]
+        state["last_awards_year"] = year
+        state["season_stats"] = {}
+        world.setdefault("media", []).insert(0, award["summary"])
+        company = self.player_company_name if player_owned else world.get("promotion", "")
+        self.record_world_story("Combat Sports Awards", award["summary"], f"Veteran award: {award['veteran']}.", [company], [athlete, finisher], 2)
+        return award
+
+    def update_combat_sport_business_strategy(self, sport, world):
+        cash = world.get("cash", 0)
+        stability = world.get("stability", 70)
+        if cash < -1_000_000:
+            injection = 2_250_000
+            world["cash"] = cash + injection
+            world["stability"] = max(18, stability - 14)
+            world["reputation"] = max(15, world.get("reputation", 60) - 7)
+            world["strategy"] = "Prospect Rotation"
+            story = f"{world.get('promotion', sport)} received a ${injection:,} federation survival injection and shifted toward lower-cost prospects."
+            world.setdefault("media", []).insert(0, story)
+            self.record_world_story("Combat Sports Finance", story, "The circuit survives, but its reputation and stability have fallen.", [world.get("promotion", "")], [], 3)
+        elif cash < 500_000 or stability < 35:
+            world["strategy"] = "Prospect Rotation"
+        elif cash > 8_000_000 and random.random() < 0.25:
+            world["strategy"] = "Champion Showcase"
+        return world.get("strategy", "Merit Ladder")
+
     def process_combat_sport_worlds(self):
         """Run independent combat sports as real circuits with smart cards, records, and rare MMA crossovers."""
         worlds = getattr(self, "combat_sport_worlds", {}) or self.seed_combat_sport_worlds()
         for sport, world in worlds.items():
             promotion = world.get("promotion", "")
             roster = self.combat_sport_roster(sport)
+            self.ensure_combat_sport_circuit_state(sport, world, promotion, False)
             self.develop_combat_sport_roster(sport, roster)
+            self.review_combat_sport_retirements(sport, world)
+            self.update_combat_sport_business_strategy(sport, world)
             self.refresh_combat_sport_rankings(sport, world, employer=promotion)
-            if random.random() < 0.82:
+            show_chance = max(0.55, min(0.92, 0.68 + world.get("stability", 70) / 500 + world.get("reputation", 60) / 1000))
+            if random.random() < show_chance:
                 target = min(max(8, len(self.combat_sport_roster(sport, promotion)) // 5), 12)
                 self.run_combat_sport_card(sport, world, promotion, player_owned=False, target_bouts=random.randint(max(6, target - 2), target))
-            if random.random() < 0.006:
-                candidates = [fighter for fighter in self.combat_sport_ranked(sport, promotion)[4:24] if fighter.age <= 34 and fighter.fatigue < 45]
+            if (self.month - 1) % 12 == 0:
+                self.run_combat_sport_year_awards(sport, world, self.current_year() - 1)
+                if sport in getattr(self, "player_combat_divisions", {}):
+                    self.run_combat_sport_year_awards(sport, world, self.current_year() - 1, player_owned=True)
+            self.replenish_combat_sport_world(sport, world)
+            crossover_pressure = 0.003 + (0.002 if world.get("cash", 0) < 500_000 else 0)
+            if random.random() < crossover_pressure:
+                champions = set(world.get("titles", {}).values())
+                candidates = [
+                    fighter for fighter in self.combat_sport_ranked(sport, promotion)[4:28]
+                    if fighter.age <= 34 and fighter.fatigue < 45 and not fighter.retirement_pending
+                    and fighter.name not in champions and fighter.overall >= 58
+                ]
                 if candidates:
-                    fighter = random.choice(candidates)
+                    fighter = random.choices(candidates, weights=[max(1, candidate.popularity + candidate.potential - candidate.overall) for candidate in candidates], k=1)[0]
                     fighter.sport_employer = ""
                     fighter.crossover_history = (fighter.crossover_history or [])[-9:] + [f"Month {self.month}: Left {world['promotion']} to pursue MMA."]
                     fighter.multi_sport_records = fighter.multi_sport_records or {}
+                    fighter.multi_sport_records[sport] = fighter.record
                     fighter.multi_sport_records["MMA"] = "0-0-0"
                     fighter.record_w = fighter.record_l = fighter.record_d = 0
                     world["roster"].remove(fighter)
@@ -2174,6 +3792,8 @@ class WorldMixin:
                     headline = f"CROSSOVER: Former {sport} standout {fighter.name} has entered the MMA free-agent market."
                     self.news.insert(0, headline)
                     self.record_world_story("Crossover", headline, fighter.crossover_history[-1], [world["promotion"]], [fighter.name], importance=4)
+            self.refresh_combat_sport_rankings(sport, world, employer=promotion)
+            self.combat_sport_record_book(sport, world, promotion, False)
         self.combat_sport_worlds = worlds
 
     def open_player_combat_division(self, sport):
@@ -2190,9 +3810,11 @@ class WorldMixin:
                 fighter.sport_employer = self.player_company_name
             divisions[sport] = {
                 "sport": sport, "roster": [fighter.name for fighter in signed], "rankings": [fighter.name for fighter in signed[:10]],
-                "champion": signed[0].name if signed else "", "events": [], "records": {}, "awards": [], "hall_of_fame": [],
+                "champion": "", "titles": {}, "title_history": {}, "rankings_by_division": {}, "titles_initialized": True,
+                "events": [], "records": {}, "record_book": {}, "season_stats": {}, "awards": [], "hall_of_fame": [], "finance_history": [],
                 "budget": startup_cost, "active": True, "strategy": "Balanced", "revenue_total": 0, "cost_total": startup_cost,
-                "profit_total": -startup_cost, "last_card_summary": "No player card yet.", "title_name": f"{self.player_company_name} {sport} Championship",
+                "profit_total": -startup_cost, "last_card_summary": "No player card yet.", "title_name": f"{self.player_company_name} {sport} Championships",
+                "reputation": max(20, self.company_pop), "stability": 60,
             }
             self.player_combat_divisions = divisions
             self.news.insert(0, f"{self.player_company_name} launched a {sport} division with {len(signed)} signed athletes and a shared-brand startup investment of ${startup_cost:,}.")

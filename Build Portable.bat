@@ -40,6 +40,13 @@ if errorlevel 1 (
     exit /b 1
 )
 
+%PY% "%APP_DIR%stability_test.py"
+if errorlevel 1 (
+    echo Stability playtest failed. Fix it before building.
+    pause
+    exit /b 1
+)
+
 %PY% -m pip show pyinstaller >nul 2>nul
 if errorlevel 1 (
     echo PyInstaller is not installed for this Python.

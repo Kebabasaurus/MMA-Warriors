@@ -534,6 +534,17 @@ class AwardsMixin:
         records.setdefault("promotion", {})
         records.setdefault("event", {})
         records.setdefault("initialized", False)
+        # Older in-memory record updates could retain the current history list
+        # inside a prior entry, creating an unsaveable circular reference.  Keep
+        # history deliberately flat: previous marks never need their own nested
+        # copy of the entire record book.
+        for group in ("world", "promotion", "event"):
+            for entry in records[group].values():
+                cleaned = []
+                for prior in list(entry.get("history", []) or []):
+                    if isinstance(prior, dict) and prior is not entry:
+                        cleaned.append({key: value for key, value in prior.items() if key != "history"})
+                entry["history"] = cleaned[:30]
         self.historical_records = records
         return records
 
@@ -543,12 +554,13 @@ class AwardsMixin:
         bucket = records[group]
         old = bucket.get(key)
         if not old or value > old.get("value", -1):
+            history = list((old or {}).get("history", []) or [])
             if old:
-                prior = dict(old)
+                prior = {field: detail for field, detail in old.items() if field != "history"}
                 prior["still_stands"] = False
                 prior["ended_month"] = self.month
-                old.setdefault("history", []).insert(0, prior)
-            entry = {"value": value, "holders": list(holders), "date": context.get("date", f"Month {self.month} Week {self.week}"), "event": context.get("event", ""), "promotion": context.get("promotion", ""), "opponent": context.get("opponent", ""), "still_stands": True, "history": (old or {}).get("history", [])[:30]}
+                history.insert(0, prior)
+            entry = {"value": value, "holders": list(holders), "date": context.get("date", f"Month {self.month} Week {self.week}"), "event": context.get("event", ""), "promotion": context.get("promotion", ""), "opponent": context.get("opponent", ""), "still_stands": True, "history": history[:30]}
             bucket[key] = entry
             if records["initialized"]:
                 verb = "holds" if len(holders) == 1 else "hold"

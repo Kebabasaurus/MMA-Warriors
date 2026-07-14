@@ -5,24 +5,36 @@ set "BUNDLED_PY=C:\Users\Tanks\.cache\codex-runtimes\codex-primary-runtime\depen
 
 cd /d "%APP_DIR%"
 
-if exist "%BUNDLED_PY%" (
-    "%BUNDLED_PY%" "%APP_DIR%smoke_test.py"
+if exist "%BUNDLED_PY%" set "PY=%BUNDLED_PY%"
+
+if not defined PY (
+    where py >nul 2>nul
+    if not errorlevel 1 set "PY=py"
+)
+
+if not defined PY (
+    where python >nul 2>nul
+    if not errorlevel 1 set "PY=python"
+)
+
+if not defined PY (
+    echo Python was not found. Install Python 3 with Tkinter, then run this again.
     goto done
 )
 
-where py >nul 2>nul
-if not errorlevel 1 (
-    py "%APP_DIR%smoke_test.py"
-    goto done
-)
+%PY% "%APP_DIR%smoke_test.py"
+if errorlevel 1 goto failed
 
-where python >nul 2>nul
-if not errorlevel 1 (
-    python "%APP_DIR%smoke_test.py"
-    goto done
-)
+%PY% "%APP_DIR%stability_test.py"
+if errorlevel 1 goto failed
 
-echo Python was not found. Install Python 3 with Tkinter, then run this again.
+echo.
+echo Smoke and stability playtests passed.
+goto done
+
+:failed
+echo.
+echo A shipping test failed. Review the traceback above before building.
 
 :done
 pause
