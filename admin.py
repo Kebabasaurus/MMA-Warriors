@@ -463,6 +463,7 @@ class AdminMixin:
             audit = self.__class__(audit_root)
             audit.enter_spectator_mode()
             audit.suppress_award_popups = True
+            audit.suppress_autosaves = True
             real_simulate = audit.simulate_fight
             def count_fight(a, b, fight):
                 winner, loser, method, round_no, lines = real_simulate(a, b, fight)
@@ -555,6 +556,7 @@ class AdminMixin:
             audit = self.__class__(audit_root)
             audit.enter_spectator_mode()
             audit.suppress_award_popups = True
+            audit.suppress_autosaves = True
             real_simulate = audit.simulate_fight
 
             def count_fight(a, b, fight):

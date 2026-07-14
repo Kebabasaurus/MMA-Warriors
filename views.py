@@ -2522,6 +2522,13 @@ class ViewMixin:
         self.rules.setdefault("judging_randomness", 2)
         self.rules.setdefault("allow_mixed_gender", False)
         self.rules.setdefault("active_fighter_target", 1200)
+        self.rules.setdefault("autosave_enabled", True)
+        self.rules.setdefault("autosave_weekly_keep", 12)
+        self.rules.setdefault("autosave_monthly_keep", 24)
+        self.rules.setdefault("save_backup_keep", 60)
+        self.rules["autosave_weekly_keep"] = max(3, min(52, int(self.rules.get("autosave_weekly_keep", 12))))
+        self.rules["autosave_monthly_keep"] = max(3, min(120, int(self.rules.get("autosave_monthly_keep", 24))))
+        self.rules["save_backup_keep"] = max(10, min(250, int(self.rules.get("save_backup_keep", 60))))
         # Migrate worlds created before the population floor was corrected.
         if self.rules["active_fighter_target"] < 800:
             self.rules["active_fighter_target"] = 1200

@@ -87,7 +87,7 @@ class FightEmpireApp(
         self.inbox = []
         self.inbox_hidden_types = set()
         self.owner_goals = self.seed_owner_goals()
-        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "active_fighter_target": 1200, "auto_renew_enabled": False, "scouting_mode": False}
+        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "active_fighter_target": 1200, "auto_renew_enabled": False, "scouting_mode": False, "autosave_enabled": True, "autosave_weekly_keep": 12, "autosave_monthly_keep": 24, "save_backup_keep": 60}
         self.rules["allow_mixed_gender"] = False
         self.broadcasters = [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}]
         self.weight_classes = list(WEIGHTS)

@@ -212,8 +212,10 @@ class PersistenceMixin:
         }, indent=2), encoding="utf-8")
         return target
 
-    def prune_save_backups(self, keep=30):
+    def prune_save_backups(self, keep=None):
         backup_dir = self.save_backup_dir()
+        if keep is None:
+            keep = int(self.rules.get("save_backup_keep", 60)) if hasattr(self, "rules") else 60
         backups = sorted(backup_dir.glob("*.json"), key=lambda item: item.stat().st_mtime, reverse=True)
         data_backups = [item for item in backups if not item.name.endswith(".manifest.json")]
         for old in data_backups[keep:]:
@@ -224,6 +226,69 @@ class PersistenceMixin:
                     manifest.unlink()
             except Exception:
                 LOGGER.exception("Could not prune old save backup: %s", old)
+
+    def autosave_dir(self, kind="weekly"):
+        path = SAVE_DIR / "Autosaves" / str(kind).capitalize()
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def write_rolling_autosave(self, kind="weekly"):
+        if getattr(self, "suppress_autosaves", False):
+            return None
+        if hasattr(self, "ensure_rule_defaults"):
+            self.ensure_rule_defaults()
+        if not self.rules.get("autosave_enabled", True):
+            return None
+        kind = "monthly" if kind == "monthly" else "weekly"
+        year = 2026 + (getattr(self, "month", 1) - 1) // 12
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        label = f"{kind.title()} Autosave Y{year} M{getattr(self, 'month', 1):02d} W{getattr(self, 'week', 1)}"
+        path = self.autosave_dir(kind) / f"{kind}_Y{year}_M{getattr(self, 'month', 1):02d}_W{getattr(self, 'week', 1)}_{stamp}.json"
+        data = self.serialize_world()
+        data["_save_meta"] = self.save_metadata(label)
+        data["_save_meta"]["autosave_kind"] = kind
+        try:
+            atomic_write_json(path, data)
+            manifest = path.with_suffix(".manifest.json")
+            manifest.write_text(json.dumps({
+                "created_at": datetime.now().isoformat(timespec="seconds"),
+                "source": "automatic rolling autosave",
+                "kind": kind,
+                "year": year,
+                "month": getattr(self, "month", 1),
+                "week": getattr(self, "week", 1),
+                "company": getattr(self, "player_company_name", PLAYER_PROMOTION_NAME),
+            }, indent=2), encoding="utf-8")
+            keep_key = "autosave_monthly_keep" if kind == "monthly" else "autosave_weekly_keep"
+            self.prune_rolling_autosaves(kind, int(self.rules.get(keep_key, 24 if kind == "monthly" else 12)))
+            return path
+        except Exception as exc:
+            LOGGER.exception("Rolling %s autosave failed: %s", kind, exc)
+            return None
+
+    def prune_rolling_autosaves(self, kind="weekly", keep=12):
+        folder = self.autosave_dir(kind)
+        saves = sorted([item for item in folder.glob("*.json") if not item.name.endswith(".manifest.json")], key=lambda item: item.stat().st_mtime, reverse=True)
+        for old in saves[max(1, keep):]:
+            try:
+                manifest = old.with_suffix(".manifest.json")
+                old.unlink()
+                if manifest.exists():
+                    manifest.unlink()
+            except Exception:
+                LOGGER.exception("Could not prune old %s autosave: %s", kind, old)
+
+    def run_automatic_save_cycle(self, month_changed=False):
+        weekly = self.write_rolling_autosave("weekly")
+        monthly = self.write_rolling_autosave("monthly") if month_changed else None
+        if weekly or monthly:
+            bits = []
+            if weekly:
+                bits.append(f"weekly autosave {weekly.name}")
+            if monthly:
+                bits.append(f"monthly autosave {monthly.name}")
+            self.event_log.insert(0, f"Save system: wrote {', '.join(bits)}.")
+        return weekly, monthly
 
     def serialize_world(self):
         self.ensure_all_company_champions()
@@ -636,6 +701,16 @@ class PersistenceMixin:
             self.save_slot_list.selection_set(min(current_save[0], self.save_slot_list.size() - 1))
         if current_db and self.database_list.size():
             self.database_list.selection_set(min(current_db[0], self.database_list.size() - 1))
+        if hasattr(self, "autosave_status_label"):
+            if hasattr(self, "ensure_rule_defaults"):
+                self.ensure_rule_defaults()
+            status = "ON" if self.rules.get("autosave_enabled", True) else "OFF"
+            weekly_count = len([item for item in self.autosave_dir("weekly").glob("*.json") if not item.name.endswith(".manifest.json")]) if hasattr(self, "autosave_dir") else 0
+            monthly_count = len([item for item in self.autosave_dir("monthly").glob("*.json") if not item.name.endswith(".manifest.json")]) if hasattr(self, "autosave_dir") else 0
+            backup_count = len([item for item in self.save_backup_dir().glob("*.json") if not item.name.endswith(".manifest.json")]) if hasattr(self, "save_backup_dir") else 0
+            self.autosave_status_label.config(
+                text=f"Autosaves {status} | Weekly {weekly_count}/{self.rules.get('autosave_weekly_keep', 12)} | Monthly {monthly_count}/{self.rules.get('autosave_monthly_keep', 24)} | Backups {backup_count}/{self.rules.get('save_backup_keep', 60)}"
+            )
 
     def player_company_as_promotion(self):
         show_history = list(self.result_history[:12])
@@ -1013,27 +1088,60 @@ class PersistenceMixin:
         except Exception:
             messagebox.showinfo("Saves Folder", str(SAVE_DIR))
 
+    def toggle_autosaves(self):
+        if hasattr(self, "ensure_rule_defaults"):
+            self.ensure_rule_defaults()
+        self.rules["autosave_enabled"] = not self.rules.get("autosave_enabled", True)
+        self.refresh_game_menu()
+
+    def change_autosave_keep(self, key, amount):
+        if hasattr(self, "ensure_rule_defaults"):
+            self.ensure_rule_defaults()
+        limits = {
+            "autosave_weekly_keep": (3, 52),
+            "autosave_monthly_keep": (3, 120),
+            "save_backup_keep": (10, 250),
+        }
+        low, high = limits.get(key, (1, 250))
+        self.rules[key] = max(low, min(high, int(self.rules.get(key, low)) + amount))
+        if key == "autosave_weekly_keep":
+            self.prune_rolling_autosaves("weekly", self.rules[key])
+        elif key == "autosave_monthly_keep":
+            self.prune_rolling_autosaves("monthly", self.rules[key])
+        elif key == "save_backup_keep":
+            self.prune_save_backups(self.rules[key])
+        self.refresh_game_menu()
+
     def open_save_backup_manager(self):
-        backup_dir = self.save_backup_dir()
-        backups = sorted([item for item in backup_dir.glob("*.json") if not item.name.endswith(".manifest.json")], key=lambda item: item.stat().st_mtime, reverse=True)
+        sources = [
+            ("Backup", self.save_backup_dir()),
+            ("Weekly Autosave", self.autosave_dir("weekly")),
+            ("Monthly Autosave", self.autosave_dir("monthly")),
+        ]
+        backups = []
+        for label, folder in sources:
+            for item in folder.glob("*.json"):
+                if not item.name.endswith(".manifest.json"):
+                    backups.append((label, item))
+        backups.sort(key=lambda row: row[1].stat().st_mtime, reverse=True)
         window = tk.Toplevel(self.root)
-        window.title("Save Backup Manager")
+        window.title("Save Backup / Autosave Manager")
         window.geometry("860x520")
         window.configure(bg=self.colors["chrome"])
-        ttk.Label(window, text="SAVE BACKUP MANAGER", style="ScreenTitle.TLabel").pack(anchor="w", padx=10, pady=(10, 4))
-        ttk.Label(window, text="Restore creates a backup of the destination first. Backups live in Saves/Backups.", style="Inset.TLabel").pack(fill="x", padx=10, pady=(0, 8))
+        ttk.Label(window, text="SAVE BACKUP / AUTOSAVE MANAGER", style="ScreenTitle.TLabel").pack(anchor="w", padx=10, pady=(10, 4))
+        ttk.Label(window, text="Restore creates a backup of the destination first. Manual backups live in Saves/Backups; rolling autosaves live in Saves/Autosaves.", style="Inset.TLabel").pack(fill="x", padx=10, pady=(0, 8))
         body = ttk.Frame(window, style="Chrome.TFrame")
         body.pack(fill="both", expand=True, padx=10, pady=(0, 8))
         backup_list = tk.Listbox(body, font=("Consolas", 9), bg=self.colors["tree"], fg=self.colors["text"], selectbackground=self.colors["red"], selectforeground="#ffffff")
         backup_list.pack(side="left", fill="both", expand=True, padx=(0, 8))
         detail = tk.Text(body, width=38, wrap="word", bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 9), padx=10, pady=8)
         detail.pack(side="left", fill="both")
-        for item in backups:
-            backup_list.insert("end", f"{item.name} | {datetime.fromtimestamp(item.stat().st_mtime).strftime('%Y-%m-%d %H:%M')}")
+        for label, item in backups:
+            backup_list.insert("end", f"[{label}] {item.name} | {datetime.fromtimestamp(item.stat().st_mtime).strftime('%Y-%m-%d %H:%M')}")
 
         def selected_backup():
             sel = backup_list.curselection()
-            return backups[sel[0]] if sel else None
+            return backups[sel[0]][1] if sel else None
 
         def show_detail(_event=None):
             item = selected_backup()
@@ -1041,7 +1149,7 @@ class PersistenceMixin:
             detail.delete("1.0", "end")
             if item:
                 manifest = item.with_suffix(".manifest.json")
-                text = f"Backup: {item.name}\nSize: {item.stat().st_size:,} bytes\nModified: {datetime.fromtimestamp(item.stat().st_mtime)}\n\n"
+                text = f"File: {item.name}\nFolder: {item.parent}\nSize: {item.stat().st_size:,} bytes\nModified: {datetime.fromtimestamp(item.stat().st_mtime)}\n\n"
                 if manifest.exists():
                     text += manifest.read_text(encoding="utf-8")
                 detail.insert("end", text)
@@ -1164,7 +1272,7 @@ class PersistenceMixin:
         self.belts = self.blank_belts()
         self.interim_belts = self.blank_belts()
         self.belt_history = self.blank_belt_history()
-        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "allow_mixed_gender": False, "active_fighter_target": 1200, "auto_renew_enabled": False, "scouting_mode": False}
+        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "allow_mixed_gender": False, "active_fighter_target": 1200, "auto_renew_enabled": False, "scouting_mode": False, "autosave_enabled": True, "autosave_weekly_keep": 12, "autosave_monthly_keep": 24, "save_backup_keep": 60}
         media_section = self.universe_section("media", {}) if hasattr(self, "universe_section") else {}
         self.broadcasters = media_section.get("player_broadcasters", self.default_player_media() if hasattr(self, "default_player_media") else [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}])
         self.weight_classes = list(WEIGHTS)

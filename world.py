@@ -947,9 +947,12 @@ class WorldMixin:
         if any(self.is_event_due(event) for event in self.scheduled_events):
             self.prompt_due_event()
             return
+        month_changed = False
         self.process_world_week()
         self.week += 1
         if self.week <= 4:
+            if hasattr(self, "run_automatic_save_cycle"):
+                self.run_automatic_save_cycle(month_changed=False)
             self.refresh_all()
             self.write_log()
             self.prompt_due_event()
@@ -957,6 +960,7 @@ class WorldMixin:
         self.week = 1
         old_year = 2026 + (self.month - 1) // 12
         self.month += 1
+        month_changed = True
         new_year = 2026 + (self.month - 1) // 12
         self.process_world_month(player_ran_show=False)
         if new_year != old_year:
@@ -972,6 +976,8 @@ class WorldMixin:
             self.tick_business_deals()
             self.finance["ledger"].insert(0, f"Month {self.month}: Monthly overhead ${overhead:,} (office ${self.finance['monthly_office']:,}, payroll ${payroll:,})")
             self.event_log.insert(0, f"Month {self.month}: overhead paid. Injured fighters recovered one month.")
+        if hasattr(self, "run_automatic_save_cycle"):
+            self.run_automatic_save_cycle(month_changed=month_changed)
         self.refresh_all()
         self.write_log()
         self.prompt_due_event()
@@ -2304,7 +2310,8 @@ class WorldMixin:
             "Regional Development": 0.42,
             "Balanced": 0.16,
         }.get(personality, 0.16)
-        mode = self.promotion_strategy(promo).get("current_mode", "Balanced")
+        strategy = self.promotion_strategy(promo)
+        mode = strategy.get("current_mode", "Balanced")
         executive = getattr(promo, "executive", {}) or {}
         executive_drive = (executive.get("aggression", 55) - executive.get("discipline", 55)) / 700
         mandate = executive.get("board_mandate", "")
