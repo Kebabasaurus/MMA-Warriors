@@ -423,6 +423,7 @@ class UIMixin:
         self.start_company_choice = tk.StringVar(value=PLAYER_PROMOTION_NAME)
         self.start_company_combo = ttk.Combobox(start_inner, textvariable=self.start_company_choice, state="readonly", width=34)
         self.start_company_combo.pack(side="left", padx=4, pady=4)
+        ttk.Button(start_inner, text="Start New Game", style="Accent.TButton", command=self.new_game).pack(side="left", padx=4, pady=4)
         ttk.Label(start_inner, text="Choose Spectator Mode to run the whole MMA world without controlling a company.", style="Inset.TLabel").pack(side="left", padx=8)
 
         self.spectator_sim_panel, spectator = self.section(db_inner, "SPECTATOR WORLD SIMULATION")

@@ -179,11 +179,13 @@ class PersistenceMixin:
         messagebox.showinfo("Saved", f"Quick saved to {SAVE_FILE.resolve()}\n\nPrevious quick save: {backup_path.name}")
 
     def save_metadata(self, slot_name=""):
+        company_label = "Spectator Mode" if getattr(self, "spectator_mode", False) else getattr(self, "player_company_name", PLAYER_PROMOTION_NAME)
         return {
             "schema": 1,
             "slot_name": slot_name,
             "saved_at": datetime.now().isoformat(timespec="seconds"),
-            "company": getattr(self, "player_company_name", PLAYER_PROMOTION_NAME),
+            "company": company_label,
+            "spectator_mode": bool(getattr(self, "spectator_mode", False)),
             "month": getattr(self, "month", 1),
             "week": getattr(self, "week", 1),
             "cash": getattr(self, "cash", 0),
@@ -1036,7 +1038,8 @@ class PersistenceMixin:
             messagebox.showerror("Save failed", f"The slot was not changed.\n\n{type(exc).__name__}: {exc}")
             return
         self.refresh_game_menu()
-        messagebox.showinfo("Saved", f"Saved slot: {name}")
+        saved_as = "Spectator Mode" if getattr(self, "spectator_mode", False) else getattr(self, "player_company_name", PLAYER_PROMOTION_NAME)
+        messagebox.showinfo("Saved", f"Saved slot: {name}\nMode/company: {saved_as}")
 
     def selected_save_path(self):
         selected = self.save_slot_list.curselection()
