@@ -1170,6 +1170,28 @@ class ViewMixin:
             self.free_agents.append(fighter)
             existing_names.add(fighter.name)
             created += 1
+        # Total population alone can conceal an aging world. Maintain a modest
+        # next-generation share, distributed into the thinnest divisions, so
+        # long saves replace retiring cohorts instead of filling with 40+ free
+        # agents. The monthly cap prevents a sudden artificial youth dump.
+        mma_active = [fighter for fighter in self.roster if not fighter.retired]
+        mma_active.extend(fighter for promo in self.promotions for fighter in promo.roster if not fighter.retired)
+        mma_active.extend(fighter for fighter in self.free_agents if not fighter.retired)
+        youth_target = max(260, min(460, round(len(mma_active) * 0.16)))
+        youth_count = sum(1 for fighter in mma_active if fighter.age < 25)
+        for _ in range(min(8, max(0, youth_target - youth_count))):
+            gender, weight = self.thinnest_world_division()
+            fighter = self.create_generated_fighter(
+                3, 28, 38, 74, weight=weight, gender=gender,
+                age_override=random.randint(18, 22),
+            )
+            self.avoid_name_collision(fighter, existing_names)
+            fighter.purse = max(2500, min(fighter.purse, random.randint(4000, 14000)))
+            fighter.contract_type = "Free Agent"
+            fighter.free_agent_months = 0
+            self.free_agents.append(fighter)
+            existing_names.add(fighter.name)
+            created += 1
         if created:
             if year >= 2040:
                 self.news.insert(0, f"Next generation wave: {created} young fighters entered the market to replenish thinning divisions.")

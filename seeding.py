@@ -1736,7 +1736,11 @@ class SeedMixin:
         fighter.career_archetype = archetype
         late_bonus = 2 if archetype in ("Late Maturation", "Durable Career") else 0
         early_penalty = 2 if archetype == "Early Maturation" else 0
-        longevity = round((conditioning + resilience + dedication + fighter.professionalism) / 42)
+        # A normal professional profile previously added roughly six years here,
+        # keeping balanced fighters in their prime until about age 38.  A gentler
+        # scale preserves genuine durability without making late-career growth the
+        # default across the whole world.
+        longevity = round((conditioning + resilience + dedication + fighter.professionalism) / 70)
         fighter.prime_start = max(22, min(29, 25 + random.randint(-2, 2) - (1 if archetype == "Early Maturation" else 0) + (1 if archetype == "Late Maturation" else 0)))
         fighter.prime_end = max(
             fighter.prime_start + 4,
@@ -1813,7 +1817,7 @@ class SeedMixin:
         last_pool = pool.get("last") or LAST_NAMES
         return random.choice(first_pool), random.choice(last_pool)
 
-    def create_generated_fighter(self, min_pop=6, max_pop=45, min_skill=45, max_skill=82, weight=None, gender=None, region=None):
+    def create_generated_fighter(self, min_pop=6, max_pop=45, min_skill=45, max_skill=82, weight=None, gender=None, region=None, apply_entry_balance=True, age_override=None):
         # The world deliberately creates more men than women. Female divisions
         # remain healthy, but a century simulation should not drift to 50/50
         # solely because the depth-repair routines create equal buckets.
@@ -1822,16 +1826,32 @@ class SeedMixin:
         birth_region = self.weighted_birth_region(market_region)
         first, last = self.generated_name_parts(gender, birth_region)
         name = self.unique_generated_name(first, last)
-        base = random.randint(min_skill, max_skill)
         # New entrants are predominantly prospects. Established veterans should
         # emerge through records and regional careers, not every generated name.
-        age = random.choices(range(18, 34), weights=[11, 13, 15, 16, 16, 15, 13, 11, 9, 8, 7, 6, 5, 4, 3, 2], k=1)[0]
+        age = (max(18, min(45, int(age_override))) if age_override is not None else
+               random.choices(range(18, 34), weights=[11, 13, 15, 16, 16, 15, 13, 11, 9, 8, 7, 6, 5, 4, 3, 2], k=1)[0])
+        age_skill_adjustment = 0
+        if apply_entry_balance:
+            if age <= 24:
+                age_skill_adjustment = max(-4, -int((24 - age) * 2 / 3 + 0.5))
+            else:
+                age_skill_adjustment = min(3, int((age - 24) / 2 + 0.5))
+        base = max(min_skill, min(max_skill, random.randint(min_skill, max_skill) + age_skill_adjustment))
+        if apply_entry_balance:
+            record_cap = max(2, min(25, (age - 18) * 4 + 2))
+            record_w = random.randint(0, min(18, record_cap))
+            record_l = random.randint(0, min(7, record_cap - record_w))
+        else:
+            # Feeder promotions apply their own younger age, record, and upside
+            # profile after creation, so keep their legacy starting roll intact.
+            record_w = random.randint(0, 18)
+            record_l = random.randint(0, 7)
         fighter = Fighter(
             name=name,
             weight=weight or random.choice(WEIGHTS),
             age=age,
-            record_w=random.randint(0, 18),
-            record_l=random.randint(0, 7),
+            record_w=record_w,
+            record_l=record_l,
             striking=max(25, min(99, base + random.randint(-13, 13))),
             wrestling=max(25, min(99, base + random.randint(-13, 13))),
             grappling=max(25, min(99, base + random.randint(-13, 13))),
@@ -1847,6 +1867,9 @@ class SeedMixin:
         # default is only a safe fallback for imported or hand-authored fighters.
         fighter.career_archetype = ""
         self.enrich_fighter(fighter, player_owned=False)
+        if apply_entry_balance:
+            potential_floor = 8 if age <= 21 else 5 if age <= 25 else 2
+            fighter.potential = min(98, max(fighter.potential, fighter.overall + potential_floor))
         self.assign_regional_identity(fighter, market_region, birth_region=birth_region, generated=True, force=True)
         return fighter
 
@@ -2007,7 +2030,7 @@ class SeedMixin:
         return promotions
 
     def create_regional_feeder_fighter(self, region, used_names, gender):
-        fighter = self.create_generated_fighter(2, 22, 40, 70, gender=gender, region=region)
+        fighter = self.create_generated_fighter(2, 22, 40, 70, gender=gender, region=region, apply_entry_balance=False)
         fighter.age = random.choices(range(16, 27), weights=[6, 9, 12, 12, 11, 10, 8, 6, 5, 3, 2], k=1)[0]
         fighter.record_w = random.randint(0, 6)
         fighter.record_l = random.randint(0, min(4, fighter.record_w + 1))

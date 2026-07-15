@@ -183,23 +183,36 @@ class WorldMixin:
             roster_size = len([fighter for fighter in promo.roster if not fighter.retired])
             executive = getattr(promo, "executive", {}) or {}
             discipline = executive.get("discipline", 60)
+            strategy = self.promotion_strategy(promo)
             # Cost control matters, but cannot fully erase a large roster and
             # production footprint. This makes reckless expansion expensive.
             operating_multiplier = 0.88 + max(0, 85 - discipline) / 170
-            monthly_cost = round((32_000 + promo.size * 1_850 + roster_size * 520) * operating_multiplier)
+            # Smaller national/regional companies must be capable of surviving
+            # on modest gates. Fixed production overhead still scales with
+            # company size and roster depth, but no longer prices half the
+            # seeded field into a repeating buyout cycle.
+            monthly_cost = round((32_000 + promo.size * 1_800 + roster_size * 650) * operating_multiplier)
             promo.cash -= monthly_cost
             # Cash does not compound forever. Profit above a healthy, size-based
             # operating reserve is spent on the sport (bigger purses, facilities,
             # expansion) and distributed to ownership, so a company's bank mean-
             # reverts to a realistic band instead of growing into the billions.
-            target_reserve = max(2_000_000, int(promo.size ** 2 * 9_000))
+            target_reserve = max(1_500_000, int(promo.size ** 2 * 3_500))
+            strategy["target_reserve"] = target_reserve
             if promo.cash > target_reserve:
-                promo.cash -= int((promo.cash - target_reserve) * 0.28)
+                promo.cash -= int((promo.cash - target_reserve) * 0.35)
+            commercial_strength = strategy.get("commercial_strength", promo.reputation_score)
+            stability_target = max(58, min(86, round(50 + commercial_strength * 0.38)))
+            strategy["stability_target"] = stability_target
+            # Healthy companies retain distinct identities rather than all
+            # accumulating at the old universal 91-92 stability ceiling.
+            if self.month % 3 == 0 and promo.stability > stability_target:
+                promo.stability = max(stability_target, promo.stability - 1)
             reserve = max(150_000, promo.size * 8_000)
             if promo.cash < 0:
-                promo.stability = max(1, promo.stability - 7)
+                promo.stability = max(1, promo.stability - 4)
             elif promo.cash < reserve:
-                promo.stability = max(1, promo.stability - 3)
+                promo.stability = max(1, promo.stability - 2)
             elif promo.cash < reserve * 2:
                 promo.stability = max(1, promo.stability - 1)
 
@@ -218,12 +231,31 @@ class WorldMixin:
             terminal = has_runway_history and promo.stability <= 2 and promo.cash < 100_000
             if not (insolvent or terminal):
                 continue
+            strategy = self.promotion_strategy(promo)
+            last_buyout = int(strategy.get("last_buyout_month", 0) or 0)
+            # New ownership gets six years to execute its rebuild. Without a
+            # protected period, one weak season could trigger another buyout,
+            # repeatedly dumping most of the same roster into free agency.
+            if last_buyout and self.month - last_buyout < 72:
+                last_workout = int(strategy.get("last_post_buyout_workout_month", 0) or 0)
+                if promo.cash < 0 and self.month - last_workout >= 12:
+                    card_runway = max(750_000, promo.size * 12_000)
+                    workout = max(1_000_000, promo.size * 30_000, -promo.cash + card_runway)
+                    promo.cash += workout
+                    promo.stability = max(22, promo.stability)
+                    strategy["last_post_buyout_workout_month"] = self.month
+                    strategy["post_buyout_workouts"] = strategy.get("post_buyout_workouts", 0) + 1
+                    strategy["current_mode"] = "Post-Buyout Rebuild"
+                    promo.show_history = list(promo.show_history or [])
+                    promo.show_history.insert(0, f"Post-buyout lender workout: ${workout:,} bridge funding, no roster purge.")
+                    promo.show_history = promo.show_history[:12]
+                continue
             executive = promo.executive or self.seed_promotion_executive(promo.name)
             promo.executive = executive
             if not executive.get("rescue_capital_used", False):
-                rescue = max(8_000_000, promo.size * 120_000)
+                rescue = max(4_000_000, promo.size * 75_000)
                 executive["rescue_capital_used"] = True
-                promo.cash = rescue
+                promo.cash += rescue
                 promo.stability = max(36, promo.stability)
                 headline = f"{promo.name} secures a final ${rescue:,} investor rescue package."
                 self.news.insert(0, headline)
@@ -267,12 +299,12 @@ class WorldMixin:
                             value[weight] = ""
                 elif value and value not in retained:
                     belts[key] = ""
-        injection = max(2_500_000, promo.size * random.randint(55_000, 85_000))
+        injection = max(4_000_000, promo.size * random.randint(75_000, 105_000))
         promo.cash = injection
         promo.stability = random.randint(32, 48)
         promo.momentum = max(-4, min(3, promo.momentum + random.randint(-1, 2)))
-        promo.size = max(22, promo.size - random.randint(3, 9))
-        promo.reputation_score = max(18, promo.reputation_score - random.randint(2, 6))
+        promo.size = max(35, promo.size - random.randint(2, 5))
+        promo.reputation_score = max(30, promo.reputation_score - random.randint(1, 4))
         promo.reputation = "Global" if promo.reputation_score >= 68 else ("National" if promo.reputation_score >= 45 else "Regional")
         strategy = self.promotion_strategy(promo)
         strategy["current_mode"] = "Post-Buyout Rebuild"
@@ -284,7 +316,9 @@ class WorldMixin:
         if successor.get("name") == former:
             successor["name"] = f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}"
         successor["job_security"] = random.randint(62, 86)
-        successor["rescue_capital_used"] = False
+        # The first investor rescue is a one-time route. Future failures lead
+        # to another ownership change instead of an endless rescue/buyout loop.
+        successor["rescue_capital_used"] = strategy["distressed_buyouts"] >= 1
         promo.executive = successor
         promo.era_history = list(getattr(promo, "era_history", []))
         note = f"Distressed buyout injected ${injection:,}, retained {len(promo.roster)} fighters, and released {len(released)} fighters into free agency."
@@ -3562,6 +3596,10 @@ class WorldMixin:
             if division:
                 revenue = sum(max(1200, fighter.popularity * 150 + fighter.overall * 60) for bout in bouts for fighter in (bout["a"], bout["b"]))
                 cost = 18000 + len(bouts) * 2200 + sum(max(900, fighter.popularity * 95) for bout in bouts for fighter in (bout["a"], bout["b"]))
+                # Growing a child division requires production, promotion and
+                # athlete-development reinvestment rather than converting the
+                # whole card surplus directly into parent-company cash.
+                cost += round(max(0, revenue - cost) * 0.45)
                 profit = revenue - cost
                 card["finance"] = {"revenue": revenue, "cost": cost, "profit": profit}
                 division["events"] = ([card] + division.get("events", []))[:50]
@@ -3570,7 +3608,8 @@ class WorldMixin:
                 division["cost_total"] = division.get("cost_total", 0) + cost
                 division["profit_total"] = division.get("profit_total", 0) + profit
                 division["reputation"] = max(10, min(99, division.get("reputation", self.company_pop) + (1 if title_result or finishes >= 3 else 0)))
-                division["stability"] = max(5, min(99, division.get("stability", 60) + (1 if profit >= 0 else -2)))
+                stability_target = max(58, min(90, round(50 + division.get("reputation", self.company_pop) * 0.4)))
+                division["stability"] = max(5, min(99, division.get("stability", 60) + (1 if profit >= 0 and division.get("stability", 60) < stability_target else (-2 if profit < 0 else 0))))
                 division.setdefault("finance_history", []).insert(0, {"month": self.month, "revenue": revenue, "cost": cost, "profit": profit, "cash": self.cash + profit})
                 division["finance_history"] = division["finance_history"][:120]
                 self.refresh_combat_sport_rankings(sport, world, employer=employer, division=division)
@@ -3582,10 +3621,12 @@ class WorldMixin:
             star_value = sum(max(1200, fighter.popularity * 210 + fighter.overall * 75) for bout in bouts for fighter in (bout["a"], bout["b"]))
             revenue = round((32_000 + star_value + reputation * 1_450) * random.uniform(0.82, 1.18))
             cost = 42_000 + len(bouts) * 4_500 + sum(max(1_200, fighter.popularity * 105 + fighter.overall * 42) for bout in bouts for fighter in (bout["a"], bout["b"]))
+            cost += round(max(0, revenue - cost) * 0.62)
             profit = revenue - cost
             state["cash"] = state.get("cash", 0) + profit
             state["reputation"] = max(10, min(99, reputation + (1 if title_result or finishes >= 3 else 0) - (1 if finishes == 0 and random.random() < 0.3 else 0)))
-            state["stability"] = max(5, min(99, state.get("stability", 70) + (1 if profit >= 0 else -2)))
+            stability_target = max(58, min(88, round(50 + state["reputation"] * 0.38)))
+            state["stability"] = max(5, min(99, state.get("stability", 70) + (1 if profit >= 0 and state.get("stability", 70) < stability_target else (-2 if profit < 0 else 0))))
             card["finance"] = {"revenue": revenue, "cost": cost, "profit": profit, "cash_after": state["cash"]}
             state.setdefault("finance_history", []).insert(0, {"month": self.month, "revenue": revenue, "cost": cost, "profit": profit, "cash": state["cash"]})
             state["finance_history"] = state["finance_history"][:120]
@@ -4034,7 +4075,7 @@ class WorldMixin:
                     health_pressure = fighter.injury_proneness / 900 + max(0, fighter.fatigue - 55) / 500
                     legacy_buffer = 0.10 if fighter.champion or fighter.popularity >= 75 or fighter.motivation >= 82 else 0
                     retirement_chance = max(0.01, min(0.82, age_pressure + motivation_pressure + form_pressure + health_pressure - legacy_buffer))
-                    should_retire = fighter.age >= 49 or random.random() < retirement_chance
+                    should_retire = fighter.age >= 46 or random.random() < retirement_chance
                 if should_retire:
                     player_booked = player_owned and fighter.name in self.scheduled_fighter_names(include_booked=True)
                     if not getattr(fighter, "retirement_pending", False):
@@ -4084,11 +4125,17 @@ class WorldMixin:
         ]
         pending.sort(key=lambda fighter: (self.retirement_fight_wait_months(fighter), fighter.age), reverse=True)
         booked = set()
-        for fighter in pending[:10]:
+        retirement_limit = min(40, max(10, len(pending) // 20))
+        for fighter in pending[:retirement_limit]:
             wait = self.retirement_fight_wait_months(fighter)
             threshold = 6 if fighter in self.free_agents else 12
-            if wait < threshold or fighter.name in booked or fighter.injured:
+            if wait < threshold or fighter.name in booked:
                 continue
+            if fighter.injured:
+                if fighter.age >= 50 and wait >= 12:
+                    fighter.injured = max(0, fighter.injured - 1)
+                if fighter.injured:
+                    continue
             roster, company_name, region = self.retirement_fight_roster_for(fighter)
             if not roster:
                 continue
@@ -4097,6 +4144,13 @@ class WorldMixin:
                 if candidate is not fighter and not getattr(candidate, "retired", False) and not getattr(candidate, "retirement_pending", False)
                 and not candidate.injured and candidate.fatigue < 70 and candidate.gender == fighter.gender
             ]
+            if not opponents:
+                opponents = [
+                    candidate for candidate in roster
+                    if candidate is not fighter and not getattr(candidate, "retired", False)
+                    and candidate.name not in booked and not candidate.injured and candidate.fatigue < 70
+                    and candidate.gender == fighter.gender
+                ]
             same_weight = [candidate for candidate in opponents if candidate.weight == fighter.weight]
             opponents = same_weight or opponents
             if not opponents:
@@ -4128,18 +4182,30 @@ class WorldMixin:
             })
             self.result_records = self.result_records[:500]
             self.news.insert(0, f"Farewell fight booked: {result} at {event_name}.")
+            self.retire_after_final_fight_if_due(fighter, company_name)
+            self.retire_after_final_fight_if_due(opponent, company_name)
 
     def process_free_agent_retirements(self):
         """Free agency must not become a permanent retirement home for aging fighters."""
         for fighter in list(self.free_agents):
-            if fighter.age < 38 or (self.month - 1) % 12 + 1 != self.retirement_review_month(fighter):
+            if (self.month - 1) % 12 + 1 != self.retirement_review_month(fighter):
                 continue
-            age_pressure = max(0, fighter.age - 38) * 0.075
-            inactivity = 0.12 + max(0, -fighter.momentum) * 0.035
+            waiting = max(0, getattr(fighter, "free_agent_months", 0))
+            aging_out = fighter.age >= 38
+            journeyman_exit = (fighter.age >= 34 and waiting >= 30 and fighter.overall < 73
+                               and fighter.potential < 82 and not self.is_blue_chip_prospect(fighter))
+            stalled_career = (fighter.age >= 30 and waiting >= 48 and fighter.overall < 68
+                              and fighter.potential < 76 and not self.is_blue_chip_prospect(fighter))
+            if not (aging_out or journeyman_exit or stalled_career):
+                continue
+            age_pressure = max(0, fighter.age - 37) * 0.065
+            market_pressure = max(0, waiting - 24) / 150
+            inactivity = 0.08 + max(0, -fighter.momentum) * 0.035
             health = fighter.injury_proneness / 850 + max(0, fighter.fatigue - 45) / 420
-            if fighter.age >= 47 or random.random() < min(0.88, age_pressure + inactivity + health):
+            if fighter.age >= 46 or random.random() < min(0.88, age_pressure + market_pressure + inactivity + health):
                 if not getattr(fighter, "retirement_pending", False):
-                    self.mark_retirement_fight_required(fighter, "Free-agent retirement review")
+                    reason = "Free-agent retirement review" if aging_out else "Independent-career review"
+                    self.mark_retirement_fight_required(fighter, reason)
                     fighter.free_agent_months = max(getattr(fighter, "free_agent_months", 0), 2)
                     self.news.insert(0, f"Independent retirement watch: {fighter.name} is seeking one final showcase fight.")
 
@@ -4338,7 +4404,11 @@ class WorldMixin:
                 if len(fights) >= target or fighter.name in used:
                     continue
                 if fighter.rival:
-                    opp = next((o for o in pool if o.name == fighter.rival and o.name not in used), None)
+                    # A rivalry is valuable only while it remains a credible
+                    # sporting contest. Extremely lopsided old rivalries stay
+                    # dormant instead of displacing most of a normal card.
+                    opp = next((o for o in pool if o.name == fighter.rival and o.name not in used
+                                and abs(o.overall - fighter.overall) <= 10), None)
                     if opp:
                         used.update({fighter.name, opp.name})
                         fights.append({"a": fighter, "b": opp, "title": False, "main": False, "grudge": True, "booking_reason": "Active rivalry matchup"})
@@ -4349,15 +4419,19 @@ class WorldMixin:
         prospects = [fighter for fighter in ready if fighter.name not in used and fighter.age <= 29
                      and (fighter.potential >= 90 or (fighter.potential - fighter.overall >= 12 and fighter.potential >= 84))]
         prospects.sort(key=lambda fighter: (fighter.potential, fighter.overall, fighter.record_w - fighter.record_l), reverse=True)
+        prospect_showcase_limit = 2 if promo.size >= 65 and target >= 8 else 1
+        prospect_showcases = 0
         for prospect in prospects:
-            if len(fights) >= target:
+            if len(fights) >= target or prospect_showcases >= prospect_showcase_limit:
                 break
             opponents = [fighter for fighter in ready if fighter.name not in used and fighter.name != prospect.name
-                         and fighter.gender == prospect.gender and fighter.weight == prospect.weight]
+                         and fighter.gender == prospect.gender and fighter.weight == prospect.weight
+                         and abs(fighter.overall - prospect.overall) <= 6]
             if not opponents:
                 continue
             opponent = min(opponents, key=lambda fighter: abs(fighter.overall - prospect.overall) + abs((fighter.record_w + fighter.record_l) - (prospect.record_w + prospect.record_l)) * 0.25)
             used.update({prospect.name, opponent.name})
+            prospect_showcases += 1
             fights.append({"a": prospect, "b": opponent, "title": False, "main": False,
                            "grudge": prospect.rival == opponent.name or opponent.rival == prospect.name, "booking_reason": "Development opportunity for a high-upside prospect"})
 
@@ -4370,11 +4444,22 @@ class WorldMixin:
                 available = [fighter for fighter in pool if fighter.name not in used]
                 if len(available) < 2:
                     break
-                a, b = available[0], available[1]
-                if mode == "Prospect Rebuild" and a.age <= 26 and a.potential - a.overall >= 7:
-                    protected = next((candidate for candidate in available[1:] if candidate.overall <= a.overall + 3), None)
-                    if protected:
-                        b = protected
+                pair_options = []
+                for index, a_option in enumerate(available[:-1]):
+                    for b_option in available[index + 1:]:
+                        rating_gap = abs(b_option.overall - a_option.overall)
+                        if rating_gap > 6:
+                            continue
+                        rank_gap = abs(getattr(b_option, "ranking_position", 999) - getattr(a_option, "ranking_position", 999))
+                        form_gap = abs(getattr(b_option, "momentum", 0) - getattr(a_option, "momentum", 0))
+                        protect_a = mode == "Prospect Rebuild" and a_option.age <= 26 and a_option.potential - a_option.overall >= 7
+                        protect_b = mode == "Prospect Rebuild" and b_option.age <= 26 and b_option.potential - b_option.overall >= 7
+                        protection_penalty = int(protect_a and b_option.overall > a_option.overall + 3)
+                        protection_penalty += int(protect_b and a_option.overall > b_option.overall + 3)
+                        pair_options.append(((protection_penalty, rating_gap * 4 + rank_gap * 0.7 + form_gap * 0.8, rating_gap), a_option, b_option))
+                if not pair_options:
+                    break
+                _, a, b = min(pair_options, key=lambda item: item[0])
                 used.update({a.name, b.name})
                 reason = "Adjacent-ranked divisional matchup"
                 if inactive.get(a.name, 0) >= 8 or inactive.get(b.name, 0) >= 8:
@@ -4454,7 +4539,12 @@ class WorldMixin:
         if len(fights) < minimum_card:
             return
         projected_cost = sum(f["a"].purse + f["b"].purse for f in fights) + promo.size * 9500 + len(fights) * 22000
-        if promo.cash < projected_cost * 1.25:
+        # Broadcasters and venues advance a portion of expected receipts. AI
+        # companies therefore need meaningful working capital, not the entire
+        # card cost sitting idle in cash; this lets a small promotion trade out
+        # of trouble while still preventing an insolvent company from booking.
+        working_capital = max(80_000, projected_cost * (0.22 if mode == "Financial Recovery" else 0.32))
+        if promo.cash < working_capital:
             if random.random() < 0.35:
                 promo.stability = max(1, promo.stability - 1)
                 self.news.insert(0, f"Week {self.week}: {promo.name} postponed a card after budget review.")
@@ -4564,12 +4654,35 @@ class WorldMixin:
         commercial_factor = 0.42 + commercial_strength / 170 + market_momentum / 95
         event_noise = random.uniform(-market_volatility / 170, market_volatility / 170)
         revenue_factor = max(0.32, commercial_factor + event_noise)
-        revenue = round(event_hype * promo.size * regional_pull * random.randint(85, 210) * revenue_factor)
-        strategic_reinvestment = round(max(0, revenue - projected_cost) * (0.3 + promo.size / 320))
+        revenue = round(event_hype * promo.size * regional_pull * random.randint(70, 175) * revenue_factor)
+        # Attendance, distribution and sponsor demand are not certain. Most
+        # cards land near forecast, while a minority underperform or break out;
+        # this creates genuine loss-making shows without predetermining them.
+        commercial_roll = random.random()
+        if commercial_roll < 0.18:
+            revenue = round(revenue * random.uniform(0.28, 0.48))
+            projected_cost = round(projected_cost * random.uniform(1.12, 1.28))
+        elif commercial_roll > 0.90:
+            revenue = round(revenue * random.uniform(1.15, 1.35))
+        # Successful companies reinvest most gross surplus into purses,
+        # distribution and production. The retained share stays meaningful but
+        # no longer produces the old 50% average event margins.
+        reinvestment_rate = min(0.74, 0.40 + promo.size / 300)
+        strategic_reinvestment = round(max(0, revenue - projected_cost) * reinvestment_rate)
         event_profit = revenue - projected_cost - strategic_reinvestment
         promo.cash += event_profit
         margin = event_profit / max(1, projected_cost)
-        stability_delta = 1 if margin >= 0.25 and promo.stability < 92 else (-1 if margin >= 0 else -3)
+        stability_target = strategy.get("stability_target", max(58, min(86, round(50 + commercial_strength * 0.38))))
+        if margin >= 0.35 and promo.stability < stability_target:
+            stability_delta = 1
+        elif margin >= 0.08:
+            stability_delta = 0
+        elif margin >= 0:
+            stability_delta = -1
+        elif margin >= -0.20:
+            stability_delta = -2
+        else:
+            stability_delta = -3
         promo.stability = max(1, min(100, promo.stability + round(rep_delta / 2 + stability_delta)))
         summary = f"{event_name}: {len(fights)} fights, main event {main_result}, rep {'+' if rep_delta >= 0 else ''}{rep_delta} [{strategy.get('current_mode', 'Balanced')}]"
         promo.show_history.insert(0, summary)
@@ -4753,7 +4866,7 @@ class WorldMixin:
             return
         candidates = [
             fighter for fighter in self.free_agents
-            if not fighter.ai_offer_company and not fighter.injured and fighter.age <= 33
+            if not fighter.ai_offer_company and not fighter.retirement_pending and not fighter.injured and fighter.age <= 33
             and (fighter.overall < 76 or fighter.potential >= 78)
         ]
         if candidates:
@@ -4828,7 +4941,16 @@ class WorldMixin:
         results = []
         bout_target = random.randint(6, 8)
         event_name = f"Independent Showcase {getattr(self, 'independent_showcase_counter', 1)}"
-        for fighters in groups.values():
+        ordered_groups = sorted(
+            groups.values(),
+            key=lambda fighters: (
+                any(getattr(fighter, "retirement_pending", False) for fighter in fighters),
+                max((fighter.age for fighter in fighters if getattr(fighter, "retirement_pending", False)), default=0),
+                len(fighters),
+            ),
+            reverse=True,
+        )
+        for fighters in ordered_groups:
             if bouts >= bout_target:
                 break
             fighters.sort(key=lambda fighter: (getattr(fighter, "retirement_pending", False), fighter.overall, fighter.record_w - fighter.record_l, fighter.free_agent_months), reverse=True)
@@ -4856,6 +4978,8 @@ class WorldMixin:
                 event_log.extend([f"[SHOWCASE] {a.name} vs {b.name}", *lines, result_line, ""])
                 results.append((a, b, result_line, excitement))
                 bouts += 1
+                self.retire_after_final_fight_if_due(a, "Independent Circuit")
+                self.retire_after_final_fight_if_due(b, "Independent Circuit")
         if not results:
             return
         self.independent_showcase_counter = getattr(self, "independent_showcase_counter", 1) + 1
@@ -4894,15 +5018,34 @@ class WorldMixin:
             return 1
         if pool_size < 500:
             return 2 if self.week in (1, 3) else 1
-        return 2
+        if pool_size < 900:
+            return 2
+        if pool_size < 1800:
+            return 3
+        return 4
 
     def update_ai_contracts(self):
         for promo in [item for item in self.promotions if not getattr(item, "is_regional_feeder", False)]:
             for fighter in list(promo.roster):
                 if fighter.contract_months > 0:
                     continue
-                retain = fighter.champion or fighter.overall >= 75 or fighter.potential >= 86 or fighter.popularity >= 50
-                if retain and promo.cash > max(180_000, promo.size * 9_000):
+                active_roster = [member for member in promo.roster if not member.retired]
+                roster_target = self.ai_roster_target(promo)
+                division_depth = sum(1 for member in active_roster if member.gender == fighter.gender and member.weight == fighter.weight)
+                cornerstone = (fighter.champion or fighter.interim_champion or fighter.overall >= 82
+                               or fighter.potential >= 90 or fighter.popularity >= 68)
+                normal_value = fighter.overall >= 75 or fighter.potential >= 86 or fighter.popularity >= 50
+                coverage_value = division_depth <= 4 or (division_depth <= 5 and (fighter.overall >= 64 or fighter.potential >= 75))
+                # A promotion below its sustainable card roster protects useful
+                # depth. An oversized company renews only genuine cornerstones
+                # or fighters needed to keep a division bookable.
+                retain = cornerstone or coverage_value or (len(active_roster) <= roster_target and normal_value)
+                renewal_runway = promo.cash > max(180_000, promo.size * 9_000)
+                # Renewing a champion or essential divisional coverage has no
+                # signing bonus. Their purses are paid only when booked, so a
+                # recovering promotion should not release and immediately
+                # replace the same depth merely because cash is temporarily low.
+                if retain and (renewal_runway or cornerstone or coverage_value):
                     fighter.contract_months = random.randint(10, 24)
                     fighter.purse = round(fighter.purse * random.uniform(1.04, 1.20))
                     continue
@@ -4922,10 +5065,36 @@ class WorldMixin:
         fighter.ai_offer_signing_bonus = 0
         fighter.ai_offer_deadline_month = 0
 
+    def ai_division_target(self, promo):
+        """Sustainable contracted depth per gender/weight bucket for an AI company."""
+        if promo.size >= 80:
+            return 8
+        if promo.size >= 60:
+            return 6
+        if promo.size >= 40:
+            return 5
+        return 4
+
+    def ai_roster_target(self, promo):
+        """Roster capacity is tied to the divisions a company must actually book."""
+        weights = list(getattr(promo, "weight_classes", None) or WEIGHTS)
+        return max(40, len(weights) * 2 * self.ai_division_target(promo))
+
+    def ai_roster_market_demand(self, promo):
+        active = [member for member in promo.roster if not member.retired]
+        weights = list(getattr(promo, "weight_classes", None) or WEIGHTS)
+        counts = {
+            (gender, weight): sum(1 for member in active if member.gender == gender and member.weight == weight)
+            for gender in ("Male", "Female") for weight in weights
+        }
+        critical = sum(max(0, 4 - count) for count in counts.values())
+        capacity = max(0, self.ai_roster_target(promo) - len(active))
+        return critical, capacity
+
     def ai_roster_division_need(self, promo, fighter):
         count = len([member for member in promo.roster if member.gender == fighter.gender and member.weight == fighter.weight])
-        target = 7 if promo.size >= 70 else 5
-        return max(-8, (target - count) * 7)
+        target = self.ai_division_target(promo)
+        return max(-24, (target - count) * 7)
 
     def ai_free_agent_value(self, promo, fighter):
         strategy = self.promotion_strategy(promo)
@@ -4958,57 +5127,82 @@ class WorldMixin:
 
     def ai_create_contract_offers(self):
         eligible_promos = [promo for promo in self.promotions if not getattr(promo, "is_regional_feeder", False) and promo.cash > max(120_000, promo.size * 7000)]
-        random.shuffle(eligible_promos)
+        eligible_promos.sort(key=lambda promo: (*self.ai_roster_market_demand(promo), random.random()), reverse=True)
         offers_created = 0
+        free_pool = len([fighter for fighter in self.free_agents if not fighter.retired])
+        offer_capacity = max(8, min(18, 8 + max(0, free_pool - 280) // 90))
+
+        def can_recruit(promo, fighter, blue_chip=False):
+            critical, capacity = self.ai_roster_market_demand(promo)
+            active = [member for member in promo.roster if not member.retired]
+            division_depth = sum(1 for member in active if member.gender == fighter.gender and member.weight == fighter.weight)
+            if capacity or (critical and division_depth < 4):
+                return True
+            # Elite prospects remain exceptional market opportunities. A full
+            # roster can still sign one and release a lower-value contract at
+            # the next expiry review instead of ignoring blue-chip talent.
+            return blue_chip
+
+        def create_offer(promo, fighter, premium=False):
+            nonlocal offers_created
+            purse, months, signing = self.ai_offer_terms(promo, fighter)
+            if premium:
+                purse = round(purse * 1.14 / 500) * 500
+                signing = round(signing * 1.2 / 500) * 500
+            reserve = max(90_000, promo.size * 7200)
+            runway_commitment = signing + purse
+            if promo.cash < reserve + runway_commitment:
+                return False
+            fighter.ai_offer_company = promo.name
+            fighter.ai_offer_purse = purse
+            fighter.ai_offer_months = months
+            fighter.ai_offer_signing_bonus = signing
+            fighter.ai_offer_deadline_month = self.month + 1
+            fighter.negotiation_heat = min(100, fighter.negotiation_heat + (16 if premium else 12))
+            offers_created += 1
+            return True
+
         # Blue chips do not disappear in the ordinary five-offer lottery.
-        priority = sorted([fighter for fighter in self.free_agents if not fighter.retired and not fighter.injured and not fighter.ai_offer_company and self.is_blue_chip_prospect(fighter) and (getattr(self, "spectator_mode", False) or fighter.player_talent_window_until < self.month)], key=lambda fighter: (fighter.potential, fighter.overall, fighter.record_w - fighter.record_l, fighter.free_agent_months), reverse=True)
+        priority = sorted([fighter for fighter in self.free_agents if not fighter.retired and not fighter.retirement_pending and not fighter.injured and not fighter.ai_offer_company and self.is_blue_chip_prospect(fighter) and (getattr(self, "spectator_mode", False) or fighter.player_talent_window_until < self.month)], key=lambda fighter: (fighter.potential, fighter.overall, fighter.record_w - fighter.record_l, fighter.free_agent_months), reverse=True)
         for fighter in priority[:3]:
-            options = sorted(eligible_promos, key=lambda promo: self.ai_free_agent_value(promo, fighter), reverse=True)
+            options = sorted([promo for promo in eligible_promos if can_recruit(promo, fighter, blue_chip=True)], key=lambda promo: self.ai_free_agent_value(promo, fighter), reverse=True)
             promo = next((item for item in options if item.cash > max(90_000, item.size * 7200)), None)
             if not promo:
                 continue
-            purse, months, signing = self.ai_offer_terms(promo, fighter)
-            purse = round(purse * 1.14 / 500) * 500
-            signing = round(signing * 1.2 / 500) * 500
-            if promo.cash < max(90_000, promo.size * 7200) + signing + purse * 2:
-                continue
-            fighter.ai_offer_company = promo.name
-            fighter.ai_offer_purse = purse
-            fighter.ai_offer_months = months
-            fighter.ai_offer_signing_bonus = signing
-            fighter.ai_offer_deadline_month = self.month + 1
-            fighter.negotiation_heat = min(100, fighter.negotiation_heat + 16)
-            offers_created += 1
+            create_offer(promo, fighter, premium=True)
         for promo in eligible_promos:
-            if offers_created >= 8 or random.random() > (0.24 + promo.reputation_score / 420):
-                continue
-            candidates = [
-                fighter for fighter in self.free_agents
-                if not fighter.retired and not fighter.injured and not fighter.ai_offer_company
-                and fighter.fatigue < 55 and fighter.age >= 18
-                and (getattr(self, "spectator_mode", False) or fighter.player_talent_window_until < self.month)
-            ]
-            if not candidates:
+            if offers_created >= offer_capacity:
                 break
-            candidates.sort(key=lambda fighter: self.ai_free_agent_value(promo, fighter), reverse=True)
-            fighter = candidates[0]
-            purse, months, signing = self.ai_offer_terms(promo, fighter)
-            reserve = max(90_000, promo.size * 7200)
-            commitment = signing + purse * 2
-            if promo.cash < reserve + commitment:
+            critical, capacity = self.ai_roster_market_demand(promo)
+            if not (critical or capacity):
                 continue
-            fighter.ai_offer_company = promo.name
-            fighter.ai_offer_purse = purse
-            fighter.ai_offer_months = months
-            fighter.ai_offer_signing_bonus = signing
-            fighter.ai_offer_deadline_month = self.month + 1
-            fighter.negotiation_heat = min(100, fighter.negotiation_heat + 12)
-            offers_created += 1
-            self.news.insert(0, f"Contract market: {promo.name} offered {fighter.name} ${purse:,}/fight for {months} months. The offer is live until next month.")
+            attempts = 2 if critical >= 2 or capacity >= 10 else 1
+            demand_chance = min(0.96, 0.46 + critical * 0.10 + capacity / 90 + free_pool / 3200)
+            if random.random() > demand_chance:
+                continue
+            for _ in range(attempts):
+                if offers_created >= offer_capacity:
+                    break
+                candidates = [
+                    fighter for fighter in self.free_agents
+                    if not fighter.retired and not fighter.retirement_pending and not fighter.injured and not fighter.ai_offer_company
+                    and fighter.fatigue < 55 and fighter.age >= 18
+                    and (getattr(self, "spectator_mode", False) or fighter.player_talent_window_until < self.month)
+                    and can_recruit(promo, fighter)
+                ]
+                if not candidates:
+                    break
+                candidates.sort(key=lambda fighter: self.ai_free_agent_value(promo, fighter), reverse=True)
+                fighter = candidates[0]
+                if create_offer(promo, fighter):
+                    self.news.insert(0, f"Contract market: {promo.name} offered {fighter.name} ${fighter.ai_offer_purse:,}/fight for {fighter.ai_offer_months} months. The offer is live until next month.")
 
     def resolve_ai_contract_offers(self):
         for fighter in list(self.free_agents):
             if not fighter.ai_offer_company or fighter.ai_offer_deadline_month > self.month:
+                continue
+            if fighter.retired or fighter.retirement_pending:
+                self.clear_ai_contract_offer(fighter)
                 continue
             promo = next((item for item in self.promotions if item.name == fighter.ai_offer_company and not getattr(item, "is_regional_feeder", False)), None)
             if not promo:
@@ -5021,11 +5215,15 @@ class WorldMixin:
             offer_score += 6 if fighter.age <= 26 and fighter.potential - fighter.overall >= 8 else 0
             offer_score += 18 if self.is_blue_chip_prospect(fighter) else 0
             offer_score += random.uniform(-12, 12)
-            commitment = fighter.ai_offer_signing_bonus + fighter.ai_offer_purse * 2
+            runway_commitment = fighter.ai_offer_signing_bonus + fighter.ai_offer_purse
             reserve = max(90_000, promo.size * 7200)
-            if offer_score >= 64 and promo.cash >= reserve + commitment:
+            if offer_score >= 64 and promo.cash >= reserve + runway_commitment:
                 self.free_agents.remove(fighter)
-                promo.cash -= commitment
+                signing_bonus = fighter.ai_offer_signing_bonus
+                # Only the signing bonus is paid immediately. Fight purses are
+                # already charged to event costs, so deducting two purses here
+                # charged AI companies twice for the same future bouts.
+                promo.cash -= signing_bonus
                 fighter.purse = fighter.ai_offer_purse
                 fighter.contract_months = fighter.ai_offer_months
                 fighter.exclusive = True
@@ -5036,7 +5234,7 @@ class WorldMixin:
                 fighter.morale = min(100, fighter.morale + random.randint(3, 8))
                 self.clear_ai_contract_offer(fighter)
                 promo.roster.append(fighter)
-                self.news.insert(0, f"{promo.name} completed a negotiated signing with {fighter.name}: ${fighter.purse:,}/fight, {fighter.contract_months} months, ${commitment:,} committed up front.")
+                self.news.insert(0, f"{promo.name} completed a negotiated signing with {fighter.name}: ${fighter.purse:,}/fight, {fighter.contract_months} months, ${signing_bonus:,} signing bonus.")
                 self.record_world_story("Major Signing", f"{promo.name} signs {fighter.name}.", f"${fighter.purse:,}/fight for {fighter.contract_months} months.", [promo.name], [fighter.name], 3)
             else:
                 rejected_company = fighter.ai_offer_company

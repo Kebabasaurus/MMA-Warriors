@@ -1463,7 +1463,26 @@ class FightEngineMixin:
                   - recovery / 4200
                   + low_level_chaos * 0.0045
                   - elite_control * 0.004)
-        return max(0.0016, min(0.12, chance)) * self.engine_settings.get("ko_power", 1.0)
+        return (max(0.0016, min(0.12, chance))
+                * self.engine_settings.get("ko_power", 1.0)
+                * self.competitive_finish_conversion(actor, defender))
+
+    def competitive_finish_conversion(self, actor, defender):
+        """Scale dangerous-moment conversion for evenly matched skilled fighters.
+
+        Low-level bouts keep their established volatility.  In competitive mid-
+        and high-level bouts, better composure, recovery, and layered defence
+        make a clean opening less likely to become an immediate finish.  Clear
+        matchmaking mismatches deliberately retain the full conversion rate.
+        """
+        if abs(actor.overall - defender.overall) > 6:
+            return 1.0
+        average_level = (actor.overall + defender.overall) / 2
+        if average_level < 68:
+            return 1.0
+        if average_level < 80:
+            return 0.46
+        return 0.56
 
     def signature_technique(self, actor, action):
         """Pick a highlight-reel technique name; creative fighters unlock spinning /
@@ -1586,7 +1605,8 @@ class FightEngineMixin:
                 state["damage"][defender.name] += 8
                 state["knockdowns"][defender.name] += 1
                 state["finish_category"] = "head_kick_ko" if kick_type == "high" else "injury_stoppage"
-                clean_ko_chance = max(0.08, min(0.8, (kick_power + kick_speed + impact * 7.4 - defender.chin - self.ds(defender, "stun_recovery", defender.recovery) * 0.42) / 122))
+                clean_ko_chance = (max(0.08, min(0.8, (kick_power + kick_speed + impact * 7.4 - defender.chin - self.ds(defender, "stun_recovery", defender.recovery) * 0.42) / 122))
+                                   * self.competitive_finish_conversion(actor, defender))
                 if kick_type == "high" and random.random() < clean_ko_chance:
                     detail = self.fight_phrase("head_kick_ko", actor, defender)
                     state["instant_finish"] = (actor.name, defender.name, "KO", self.finish_sequence(actor, defender, "KO", detail, state))
@@ -1644,7 +1664,9 @@ class FightEngineMixin:
             state["damage"][defender.name] += 8
             state["knockdowns"][defender.name] += 1
             state["finish_category"] = "walkoff_ko" if action == "power_punch" and impact > 9 and random.random() < 0.25 else "ko_finish"
-            if action in ("power_punch", "dirty_boxing") and random.random() < max(0.04, min(0.58, (impact * 7.4 + actor.power - defender.chin - self.ds(defender, "stun_recovery", defender.recovery) * 0.25) / 112)):
+            clean_ko_chance = (max(0.04, min(0.58, (impact * 7.4 + actor.power - defender.chin - self.ds(defender, "stun_recovery", defender.recovery) * 0.25) / 112))
+                               * self.competitive_finish_conversion(actor, defender))
+            if action in ("power_punch", "dirty_boxing") and random.random() < clean_ko_chance:
                 detail = self.fight_phrase(state["finish_category"], actor, defender)
                 state["instant_finish"] = (actor.name, defender.name, "KO", self.finish_sequence(actor, defender, "KO", detail, state))
             return self.fight_phrase("knockdown", actor, defender, technique=self.action_label(action))
@@ -1737,7 +1759,10 @@ class FightEngineMixin:
             hunter_boost = 1.12 if actor.behaviour == "Submission Hunter" else 1.0
             position_finish = 1.2 if state["position"] in ("mount", "back control") else 1.08 if state["position"] == "side control" else 0.92
             exhaustion_finish = 1 + max(0, 18 - state["gas"][defender.name]) / 100
-            finish_chance = (0.085 + max(0, margin + danger_bonus) / 240) * finish_boost * hunter_boost * position_finish * exhaustion_finish * self.engine_settings.get("submission_finish", 1.0)
+            finish_chance = ((0.085 + max(0, margin + danger_bonus) / 240)
+                             * finish_boost * hunter_boost * position_finish * exhaustion_finish
+                             * self.engine_settings.get("submission_finish", 1.0)
+                             * self.competitive_finish_conversion(actor, defender))
             if random.random() < min(0.56, finish_chance):
                 technical = technique["choke"] and random.random() < max(0.08, (self.ds(defender, "toughness", defender.toughness) - self.ds(defender, "composure", defender.fight_iq)) / 360)
                 state["submission_finish"] = (actor.name, defender.name, self.submission_finish_text(actor, defender, technique, technical), "Technical Submission" if technical else "Submission")
@@ -1828,14 +1853,18 @@ class FightEngineMixin:
             pacing_mod = (-0.08 if state.get("championship_pacing") else 0) + (-0.145 if championship_late else 0)
             low_mod = low_level_chaos * 0.065
             elite_mod = -elite_control * 0.16
-            ko_chance = (0.108 + low_mod + pacing_mod + elite_mod + (damage - ko_threshold) / 240 + finisher_bonus * 1.08 + exhaustion_bonus + knockdowns * 0.085 + ref_mod) * self.engine_settings.get("ko_power", 1.0)
+            finish_conversion = self.competitive_finish_conversion(opponent, fighter)
+            ko_chance = ((0.108 + low_mod + pacing_mod + elite_mod + (damage - ko_threshold) / 240 + finisher_bonus * 1.08 + exhaustion_bonus + knockdowns * 0.085 + ref_mod)
+                         * self.engine_settings.get("ko_power", 1.0) * finish_conversion)
             if damage > ko_threshold and random.random() < ko_chance:
                 clean = knockdowns >= 1 and unanswered < 5 and random.random() < 0.88
                 method = "KO" if clean else "TKO"
                 detail = self.finish_strike_text(opponent, fighter, state, clean=clean)
                 return opponent, fighter, method, self.finish_sequence(opponent, fighter, method, detail, state)
             unanswered_trigger = 5 if low_level_chaos >= 0.08 else 6
-            unanswered_chance = 0.07 + ref_mod + unanswered * 0.014 + low_level_chaos * 0.035 - elite_control * 0.105 + (-0.06 if state.get("championship_pacing") else 0) + (-0.115 if championship_late else 0)
+            unanswered_chance = ((0.07 + ref_mod + unanswered * 0.014 + low_level_chaos * 0.035 - elite_control * 0.105
+                                  + (-0.06 if state.get("championship_pacing") else 0) + (-0.115 if championship_late else 0))
+                                 * finish_conversion)
             if unanswered >= unanswered_trigger and (damage > fighter.toughness * (0.58 if low_level_chaos >= 0.08 else 0.62) or gas < 20) and random.random() < unanswered_chance:
                 method = "TKO"
                 category = "ground_tko" if state["position"] in ("guard", "half guard", "side control", "mount", "back control") else "standing_tko"

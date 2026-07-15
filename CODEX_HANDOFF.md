@@ -65,6 +65,10 @@ Core competitive promotions are BAMMA, UFC, PFL, ONE, RIZIN, KSW, Cage Warriors,
 - Auto-renew exists on the contracts screen and uses morale, role, potential, reserve cash, and payroll checks.
 - Popularity changes are contextual: stakes, finish, upset, rivalry, previous popularity, and inactivity all matter.
 - Promotions have weekly finance history; event revenues/costs and monthly overhead are tracked.
+- AI roster demand now scales by promotion size and thin divisions; renewal logic protects champions and necessary card depth without double-charging future purses at signing.
+- Distressed promotions still receive the requested buyout/cash injection and lose most fighters, but new ownership has a six-year protected rebuild with lender workouts instead of annual roster purges.
+- Independent and overdue farewell bouts now complete retirement, including paired pending veterans and long-waiting medical clearances.
+- Late worlds maintain an age-structured youth pipeline in thin divisions instead of relying only on a raw population floor.
 - World news, inbox, results, and finance screens are more interactive than their original static versions.
 
 ### Fight engine
@@ -72,6 +76,7 @@ Core competitive promotions are BAMMA, UFC, PFL, ONE, RIZIN, KSW, Cage Warriors,
 - Three judge cards are simulated with mildly different judging priorities: damage-first, balanced, and control-sensitive.
 - Round scoring supports draws correctly; fight output includes cards and round detail.
 - The calibration target is competitive matchmaking, not random mismatches. See the fight-engine section in `AGENTS.md` before tuning.
+- Controlled competitive finish rates are approximately low 53%, mid 42%, high 42%, and realistic mixed cards 49%. Ordinary AI bouts are constrained to a six-point OVR gap; title/rivalry/retirement exceptions remain possible.
 - Existing engine requirements: attributes should affect the relevant actions, stamina/momentum must matter, commentary cannot continue after a finish, and score totals must agree with the announced result.
 
 ### Fighters and development
@@ -79,7 +84,7 @@ Core competitive promotions are BAMMA, UFC, PFL, ONE, RIZIN, KSW, Cage Warriors,
 - Fighters have career archetypes: Early Maturation, Balanced Development, Late Maturation, and Durable Career.
 - Player profiles present an upside assessment and career stage rather than exposing a confusing exact "standard prime" label.
 - Normal development is gated by prime window; durable careers get a small tail, while rare late resurgence remains possible.
-- Generated fighters now randomize archetypes correctly. Before the fix, they were effectively all balanced.
+- Generated fighters now randomize archetypes correctly and use age-aware starting ability, credible age-based record caps, and larger young-prospect potential gaps.
 - Fighter profile/editor work has recently expanded to expose many career, body, market, contract, and relationship fields.
 
 ### UI and usability
@@ -94,13 +99,11 @@ Core competitive promotions are BAMMA, UFC, PFL, ONE, RIZIN, KSW, Cage Warriors,
 
 These are intentional next tasks, not reasons to undo recent work.
 
-1. **Development tuning:** career archetypes now work but feel too subtle in long tests. Young generated fighters can also debut too highly rated. Make early/late/durable paths more visible without making growth deterministic or forcing decline.
-2. **Old-save normalization:** legacy fighters can still carry the internal archetype string `Standard Prime`. The profile translates it, but a save-repair migration would clean the data.
-3. **Finance completeness:** weekly history captures event and overhead flows, but some direct cash actions may not yet be recorded as transactions.
-4. **Inbox preferences:** hidden mail types currently work during the running session but have not been verified as serialized into saves.
-5. **Long-run audit:** run a fresh 100- and 200-year audit after recent AI-card, feeder, retirement, and showcase changes. Earlier audits exposed too-high long-term company reputation, title/Hall-of-Fame counts, and weak late-world free-agent throughput.
-6. **UI sweep:** highest-value interactive upgrades are Companies, Regions, Personal Assistant, Staff/Scouting, and the Chronicle. Many links now exist, but these still contain static information surfaces.
-7. **Fresh build:** recent result-card negotiation and database-editor field additions were syntax-checked, but the portable EXE should be rebuilt after a full smoke test.
+1. **Old-save normalization:** legacy fighters can still carry the internal archetype string `Standard Prime`. The profile translates it, but a save-repair migration would clean the data.
+2. **Finance completeness:** weekly history captures event and overhead flows, but some direct cash actions may not yet be recorded as transactions.
+3. **Inbox preferences:** hidden mail types currently work during the running session but have not been verified as serialized into saves.
+4. **Extreme-horizon audit:** the 30-year play-level audit is complete; a future overnight 100-year audit can validate the new youth/retirement equilibrium beyond three generations.
+5. **UI sweep:** highest-value interactive upgrades are Companies, Regions, Personal Assistant, Staff/Scouting, and the Chronicle. Many links now exist, but these still contain static information surfaces.
 
 ## Testing and Build
 
