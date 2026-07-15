@@ -144,6 +144,22 @@ def main():
         assert_true(any(line.startswith("Fight-night readiness:") for line in sport_result.get("log", [])), "Combat-sport readiness metrics are not visible")
         assert_true(sport_result.get("condition") and sport_result.get("readiness"), "Combat-sport condition/readiness telemetry missing")
         assert_true(all(log.get("heading") and log.get("lines") for log in player_card.get("fight_logs", [])), "Combat-sport live replay contract incomplete")
+        for replay in player_card.get("fight_logs", []):
+            assert_true(replay.get("sport") == "Boxing", "Combat-sport replay lost its sport identity")
+            assert_true(replay.get("a_record") and replay.get("b_record"), "Combat-sport replay records missing")
+            assert_true(replay.get("a_start_gas") is not None and replay.get("b_start_gas") is not None, "Combat-sport starting condition missing")
+            assert_true(sum(1 for line in replay["lines"] if line.startswith("Result:")) == 1, "Combat-sport replay needs one official terminal result")
+            assert_true(replay["lines"][-1].startswith("Result:"), "Combat-sport replay continued after its official result")
+        for sport, sport_world in app.combat_sport_worlds.items():
+            roster = sport_world.get("roster", [])
+            a = roster[0]
+            b = next((candidate for candidate in roster[1:] if candidate.gender == a.gender), roster[1])
+            playback = app.simulate_combat_sport_bout(sport, a, b)
+            lines = playback.get("log", [])
+            assert_true(any(line.lstrip().startswith("[") for line in lines), f"{sport} replay has no clocked live exchanges")
+            expected_phase = "MATCH CLOCK" if sport == "Brazilian Jiu-Jitsu" else "PERIOD " if sport == "Wrestling" else "ROUND "
+            assert_true(any(line.startswith(expected_phase) for line in lines), f"{sport} replay has no visible round/match start")
+            assert_true(playback.get("start_stamina") and playback.get("condition"), f"{sport} replay condition telemetry missing")
         feeder_promotions = [promotion for promotion in app.promotions if promotion.is_regional_feeder]
         assert_true(len(feeder_promotions) == 10, "Regional feeder promotions missing")
         assert_true(all(promotion.cash == 0 and all(fighter.age >= 16 for fighter in promotion.roster) for promotion in feeder_promotions), "Regional feeders must be non-financial and age-16 minimum")

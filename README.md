@@ -22,6 +22,8 @@ Quick saves are atomic and retain one previous version as `savegame.previous.jso
 
 Before moving a build to another laptop, run `Portable Check.bat` from the packaged folder. It confirms that the EXE is present and tells you whether runtime data will be stored beside it or in the user profile fallback.
 
+Fight Night uses one live broadcast viewer for MMA, boxing, kickboxing, Muay Thai, wrestling, and Brazilian jiu-jitsu. Other-sport replays include sport-native round/period/match starts, clocked exchanges, cumulative scoring, stamina and condition reads, and an official result. The viewer is laptop-sized, has visible scrollbars, adjustable text size, a Follow live toggle, round/period navigation, and paced holds for round summaries and finishes.
+
 ## Smoke Test
 
 Before shipping a build, run:

@@ -310,12 +310,22 @@ class EventMixin:
         window = tk.Toplevel(self.root)
         window.title(f"Live Fight - {event['name']}")
         self.root.update_idletasks()
-        width, height = 1120, 740
-        x = max(0, self.root.winfo_rootx() + (self.root.winfo_width() - width) // 2)
-        y = max(0, self.root.winfo_rooty() + (self.root.winfo_height() - height) // 2)
+        screen_w, screen_h = window.winfo_screenwidth(), window.winfo_screenheight()
+        width = min(1180, max(820, screen_w - 80))
+        height = min(800, max(560, screen_h - 120))
+        x = max(0, min(screen_w - width, self.root.winfo_rootx() + (self.root.winfo_width() - width) // 2))
+        y = max(0, min(screen_h - height - 40, self.root.winfo_rooty() + (self.root.winfo_height() - height) // 2))
         window.geometry(f"{width}x{height}+{x}+{y}")
-        window.minsize(1000, 640)
+        window.minsize(min(820, width), min(560, height))
         window.configure(bg=self.colors["chrome"])
+        canvas_hex = self.colors["cream"].lstrip("#")
+        canvas_rgb = tuple(int(canvas_hex[index:index + 2], 16) for index in (0, 2, 4)) if len(canvas_hex) == 6 else (32, 32, 32)
+        light_canvas = sum(canvas_rgb) > 430
+        heading_color = "#6b4b00" if light_canvas else self.colors["gold"]
+        round_color = "#005a78" if light_canvas else "#7dd3fc"
+        result_color = "#8b1010" if light_canvas else "#ff8a8a"
+        impact_color = "#8a4500" if light_canvas else "#ffb454"
+        cut_color = "#8a2d1a" if light_canvas else "#ffb4a2"
 
         header = ttk.Frame(window, style="Header.TFrame")
         header.pack(fill="x", padx=8, pady=(8, 0))
@@ -329,8 +339,10 @@ class EventMixin:
         # Tale-of-the-tape scoreboard that updates as each bout begins.
         tote = tk.Frame(window, bg=self.colors["chrome"])
         tote.pack(fill="x", padx=8, pady=(6, 0))
-        label_chip = tk.Label(tote, text="", font=("Tahoma", 9, "bold"), bg=self.colors["chrome"], fg=self.colors["gold"])
+        label_chip = tk.Label(tote, text="", font=("Tahoma", 9, "bold"), bg=self.colors["chrome"], fg=heading_color)
         label_chip.pack()
+        phase_label = tk.Label(tote, text="CARD READY", font=("Tahoma", 12, "bold"), bg=self.colors["chrome"], fg=round_color)
+        phase_label.pack(pady=(1, 0))
         matchup_row = tk.Frame(tote, bg=self.colors["chrome"])
         matchup_row.pack(fill="x")
         left_name = tk.Label(matchup_row, text="", font=("Tahoma", 13, "bold"), bg=self.colors["chrome"], fg=self.colors["text"], anchor="e", width=28)
@@ -339,9 +351,9 @@ class EventMixin:
         vs_label.pack(side="left")
         right_name = tk.Label(matchup_row, text="", font=("Tahoma", 13, "bold"), bg=self.colors["chrome"], fg=self.colors["text"], anchor="w", width=28)
         right_name.pack(side="left", expand=True, fill="x", padx=(4, 6))
-        score_label = tk.Label(window, text="", font=("Consolas", 10, "bold"), bg=self.colors["chrome"], fg=self.colors["gold"])
+        score_label = tk.Label(window, text="", font=("Consolas", 10, "bold"), bg=self.colors["chrome"], fg=heading_color)
         score_label.pack(fill="x", padx=8, pady=(0, 2))
-        fight_read_label = tk.Label(window, text="", font=("Tahoma", 9, "bold"), bg=self.colors["chrome"], fg=self.colors["text"])
+        fight_read_label = tk.Label(window, text="", font=("Tahoma", 9, "bold"), bg=self.colors["chrome"], fg=self.colors["text"], wraplength=max(600, width - 80), justify="center")
         fight_read_label.pack(fill="x", padx=8, pady=(0, 4))
         condition_row = tk.Frame(window, bg=self.colors["chrome"])
         condition_row.pack(fill="x", padx=28, pady=(0, 5))
@@ -361,30 +373,54 @@ class EventMixin:
         controls = ttk.Frame(controls_area, style="Chrome.TFrame")
         controls.pack(fill="x", pady=(0, 2))
         controls2 = ttk.Frame(controls_area, style="Chrome.TFrame")
-        controls2.pack(fill="x")
+        controls2.pack(fill="x", pady=(0, 2))
+        controls3 = ttk.Frame(controls_area, style="Chrome.TFrame")
+        controls3.pack(fill="x")
 
         body = ttk.Frame(window, style="Chrome.TFrame")
         body.pack(side="top", fill="both", expand=True, padx=8, pady=8)
-        fight_list = tk.Listbox(body, width=34, font=("Tahoma", 9), bg=self.colors["tree"], fg=self.colors["text"], selectbackground=self.colors["red"], selectforeground="#ffffff")
-        fight_list.pack(side="left", fill="y", padx=(0, 8))
+        list_frame = ttk.Frame(body, style="Chrome.TFrame")
+        list_frame.pack(side="left", fill="y", padx=(0, 8))
+        fight_list = tk.Listbox(list_frame, width=29, font=("Tahoma", 9), bg=self.colors["tree"], fg=self.colors["text"], selectbackground=self.colors["red"], selectforeground="#ffffff", activestyle="none")
+        fight_list.pack(side="left", fill="y")
+        fight_scroll = ttk.Scrollbar(list_frame, orient="vertical", command=fight_list.yview)
+        fight_scroll.pack(side="right", fill="y")
+        fight_list.configure(yscrollcommand=fight_scroll.set)
         for index, fight_log in enumerate(package.get("fight_logs", []), 1):
             heading = fight_log.get("heading", fight_log.get("fight", f"Bout {index}"))
             fight_list.insert("end", f"{index}. PENDING - {heading[:28]}")
 
-        text = tk.Text(body, wrap="word", font=("Courier New", 11), bg=self.colors["cream"], fg=self.colors["text"], insertbackground=self.colors["text"], padx=14, pady=14, spacing1=3, spacing2=2, spacing3=8)
+        text_frame = ttk.Frame(body, style="Chrome.TFrame")
+        text_frame.pack(side="left", fill="both", expand=True)
+        text = tk.Text(text_frame, wrap="word", font=("Tahoma", 11), bg=self.colors["cream"], fg=self.colors["text"], insertbackground=self.colors["text"], padx=16, pady=12, spacing1=2, spacing2=1, spacing3=3)
         text.pack(side="left", fill="both", expand=True)
-        text.tag_configure("heading", font=("Courier New", 12, "bold"), foreground=self.colors["gold"])
-        text.tag_configure("result", font=("Courier New", 12, "bold"), foreground=self.colors["red"])
-        text.tag_configure("round", font=("Courier New", 11, "bold"))
+        text_scroll = ttk.Scrollbar(text_frame, orient="vertical")
+        text_scroll.pack(side="right", fill="y")
+        text.configure(yscrollcommand=text_scroll.set)
+        text.tag_configure("heading", font=("Tahoma", 12, "bold"), foreground=heading_color, spacing1=7, spacing3=5)
+        text.tag_configure("result", font=("Tahoma", 12, "bold"), foreground=result_color, spacing1=10, spacing3=8)
+        text.tag_configure("round", font=("Tahoma", 11, "bold"), foreground=round_color, spacing1=8, spacing3=5)
+        text.tag_configure("clock", font=("Consolas", 10, "bold"), foreground=heading_color)
+        text.tag_configure("analysis", font=("Tahoma", 10, "italic"), foreground=self.colors["muted"], lmargin1=12, lmargin2=12, spacing1=5, spacing3=5)
+        text.tag_configure("separator", font=("Consolas", 9), foreground=self.colors["muted"])
         # Bright event-critical colors remain readable on the UFC theme's near-black canvas.
-        text.tag_configure("knockdown", font=("Courier New", 11, "bold"), foreground="#ffb454")
-        text.tag_configure("finish", font=("Courier New", 12, "bold"), foreground="#ff6b6b")
-        text.tag_configure("cut", foreground="#ffb4a2")
-        text.tag_configure("referee", font=("Courier New", 11, "bold"), foreground="#7dd3fc")
+        text.tag_configure("knockdown", font=("Tahoma", 11, "bold"), foreground=impact_color)
+        text.tag_configure("finish", font=("Tahoma", 12, "bold"), foreground=result_color, spacing1=7, spacing3=6)
+        text.tag_configure("cut", foreground=cut_color)
+        text.tag_configure("referee", font=("Tahoma", 11, "bold"), foreground=round_color)
         text.config(state="disabled")
 
-        state = {"fight": -1, "line": 0, "delay": max(120, min(3000, self.fight_timer_delay.get() if hasattr(self, "fight_timer_delay") else 2150)), "running": False, "finished": False}
+        state = {"fight": -1, "line": 0, "delay": max(300, min(3000, self.fight_timer_delay.get() if hasattr(self, "fight_timer_delay") else 1600)), "running": False, "finished": False, "after_id": None, "phase": "", "result_shown": False}
         fight_logs = package.get("fight_logs", [{"heading": "Event Report", "lines": package["log"]}])
+        follow_var = tk.BooleanVar(value=True)
+        font_size = tk.IntVar(value=11)
+
+        def scroll_text(*args):
+            follow_var.set(False)
+            text.yview(*args)
+
+        text_scroll.configure(command=scroll_text)
+        text.bind("<MouseWheel>", lambda _event: follow_var.set(False), add="+")
 
         def condition_word(gas):
             if gas >= 70:
@@ -404,51 +440,81 @@ class EventMixin:
             right_condition.config(text=f"{gas_b}%  {condition_word(gas_b)} BLUE")
 
         def append_line(value):
+            value = str(value or "").strip("\n")
+            if not value:
+                return
             text.config(state="normal")
             tag = None
             lowered = value.lower()
+            upper = value.upper()
+            clock_match = re.match(r"^\s*(\[\d{1,2}:\d{2}\])\s*(.*)$", value)
+            phase_match = re.match(r"^(ROUND\s+\d+|PERIOD\s+\d+|MATCH CLOCK)", upper)
+            is_phase_start = bool(phase_match) and ("—" in value or ":" in value[:20])
             if value.startswith(("MAIN", "TITLE", "INTERIM", "BOUT")) or value.endswith(":"):
                 tag = "heading"
             elif value.startswith("Result:"):
                 tag = "result"
-            elif (value.startswith("Round ") and "summary:" in value) or (value.startswith("R") and ":" in value[:5]):
+                state["result_shown"] = True
+                phase_label.config(text="OFFICIAL RESULT")
+            elif is_phase_start or " summary:" in lowered or (value.startswith("R") and ":" in value[:5]) or value.startswith("Match:"):
                 tag = "round"
+                if is_phase_start:
+                    state["phase"] = phase_match.group(1)
+                    phase_label.config(text=state["phase"])
+            elif value.startswith(("Corner read:", "Mat-side read:", "Broadcast read:", "Fight-night readiness:")):
+                tag = "analysis"
             elif "referee" in lowered or "official" in lowered:
                 tag = "referee"
-            elif any(k in lowered for k in ("taps to", "and it's all over", "unconscious", "stops the fight", "by ko", "by tko", "by submission")):
+            elif any(k in lowered for k in ("taps to", "has to tap", "gets the tap", "and it's all over", "unconscious", "stops the fight", "by ko", "by tko", "by submission", "technical fall", "secures the pin", "referee has seen enough", "stoppage comes")):
                 tag = "finish"
             elif any(k in lowered for k in ("drops", "hits the mat", "stumbles badly", "knocked down", "wobbl", "buckl", "rocked", "hurt")):
                 tag = "knockdown"
             elif "cut" in lowered or "swelling" in lowered:
                 tag = "cut"
-            if tag:
-                text.insert("end", value + "\n\n", tag)
+            elif value and set(value) <= {"-", "=", " "}:
+                tag = "separator"
+            if clock_match:
+                text.insert("end", clock_match.group(1) + "  ", "clock")
+                text.insert("end", clock_match.group(2) + "\n", tag or ())
+                if state.get("phase"):
+                    phase_label.config(text=f"{state['phase']}  •  {clock_match.group(1).strip('[]')}")
+            elif tag:
+                text.insert("end", value + ("\n\n" if tag in ("heading", "round", "result", "finish") else "\n"), tag)
             else:
-                text.insert("end", value + "\n\n")
-            text.see("end")
+                text.insert("end", value + "\n")
+            if follow_var.get():
+                text.see("end")
             text.config(state="disabled")
-            # Keep the scoreboard live off the round summaries.
-            if value.startswith("Round ") and "Live score" in value:
+            # Keep the shared scoreboard live for MMA rounds, boxing/kickboxing/
+            # Thai rounds, wrestling periods and BJJ matches.
+            if "Live score" in value:
                 fragment = value.split("Live score", 1)[1]
-                score_label.config(text="Live score:  " + fragment.split(". Gas", 1)[0].strip())
-                if "Gas" in value:
-                    fight_read_label.config(text="Corner read: " + value.split("Gas", 1)[1].strip(" ."))
-                    current_log = fight_logs[state["fight"]] if 0 <= state["fight"] < len(fight_logs) else {}
-                    a_name, b_name = current_log.get("a", ""), current_log.get("b", "")
-                    match = re.search(rf"Gas:\s*{re.escape(a_name)}\s+(\d+),\s*{re.escape(b_name)}\s+(\d+)", value) if a_name and b_name else None
-                    if match:
-                        set_condition(match.group(1), match.group(2))
+                live_score = re.split(r"\.\s*(?:Gas|Stamina):", fragment, maxsplit=1)[0].strip(" .")
+                score_label.config(text="Live score:  " + live_score)
             elif value.startswith("R") and "Scores " in value:
                 score_label.config(text="Live score:  " + value.split("Scores ", 1)[1].strip())
-            elif value.startswith(("Corner read:", "Mat-side read:")):
+            if value.startswith(("Corner read:", "Mat-side read:", "Broadcast read:")):
                 fight_read_label.config(text=value)
-            elif value.startswith("Result:"):
+            if value.startswith("Result:"):
                 score_label.config(text=value.replace("Result: ", "").split(" | ")[0])
                 fight_read_label.config(text=value.replace("Result: ", "").split(" | ")[-1])
+            current_log = fight_logs[state["fight"]] if 0 <= state["fight"] < len(fight_logs) else {}
+            a_name, b_name = current_log.get("a", ""), current_log.get("b", "")
+            if a_name and b_name:
+                condition_match = re.search(
+                    rf"(?:Gas|Stamina):\s*{re.escape(a_name)}\s+([\d.]+),\s*{re.escape(b_name)}\s+([\d.]+)", value, re.IGNORECASE,
+                )
+                if not condition_match and value.startswith(("Corner read:", "Mat-side read:")):
+                    condition_match = re.search(
+                        rf"{re.escape(a_name)}\s+stamina\s+([\d.]+).*?{re.escape(b_name)}\s+stamina\s+([\d.]+)", value, re.IGNORECASE,
+                    )
+                if condition_match:
+                    set_condition(float(condition_match.group(1)), float(condition_match.group(2)))
 
         def finish_live_event():
             if state["finished"]:
                 return
+            cancel_timer()
             state["finished"] = True
             event_progress["value"] = max(1, len(fight_logs))
             event_progress_label.config(text=f"Card complete - {len(fight_logs)} fights")
@@ -490,11 +556,14 @@ class EventMixin:
         def start_next_fight():
             if state["finished"]:
                 return
+            cancel_timer()
             state["running"] = False
             if 0 <= state["fight"] < len(fight_logs):
                 mark_fight_done(state["fight"])
             state["fight"] += 1
             state["line"] = 0
+            state["phase"] = ""
+            state["result_shown"] = False
             if state["fight"] >= len(fight_logs):
                 finish_live_event()
                 return
@@ -515,6 +584,43 @@ class EventMixin:
             text.config(state="disabled")
             append_line(log["heading"])
             append_line("-" * 72)
+            lines = log.get("lines", [])
+            if lines and str(lines[0]).strip() == str(heading).strip():
+                state["line"] = 1
+
+        def cancel_timer():
+            after_id = state.get("after_id")
+            state["after_id"] = None
+            if after_id:
+                try:
+                    window.after_cancel(after_id)
+                except tk.TclError:
+                    pass
+
+        def schedule_next(delay=None):
+            cancel_timer()
+            if not state["running"] or state["finished"]:
+                return
+            def callback():
+                state["after_id"] = None
+                if state["running"] and not state["finished"] and window.winfo_exists():
+                    append_next()
+            state["after_id"] = window.after(max(100, int(delay if delay is not None else state["delay"])), callback)
+
+        def show_result_if_needed():
+            if state["result_shown"] or not (0 <= state["fight"] < len(fight_logs)):
+                return
+            result = fight_logs[state["fight"]].get("result", "")
+            if result:
+                append_line(f"Result: {result}")
+
+        def is_round_boundary(line):
+            lowered = str(line).lower()
+            return (
+                " summary:" in lowered
+                or str(line).startswith(("Match:", "Result:"))
+                or (str(line).startswith("R") and ":" in str(line)[:5])
+            )
 
         def append_next():
             if state["finished"]:
@@ -523,32 +629,51 @@ class EventMixin:
                 start_next_fight()
             lines = fight_logs[state["fight"]]["lines"]
             if state["line"] >= len(lines):
+                show_result_if_needed()
                 if state.get("auto") and not state["finished"]:
-                    def auto_continue():
-                        if state["finished"]:
+                    def continue_card():
+                        state["after_id"] = None
+                        if state["finished"] or not window.winfo_exists():
                             return
                         start_next_fight()
                         if not state["finished"]:
                             state["running"] = True
                             append_next()
-                    window.after(max(600, state["delay"] * 2), auto_continue)
+                    cancel_timer()
+                    state["after_id"] = window.after(max(600, state["delay"] * 2), continue_card)
                     return
                 state["running"] = False
                 append_line("\n[Fight complete. Press Start Next Fight.]")
                 return
-            append_line(lines[state["line"]])
+            line = lines[state["line"]]
+            append_line(line)
             state["line"] += 1
             if state["running"]:
-                window.after(state["delay"], append_next)
+                lowered = str(line).lower()
+                hold = state["delay"]
+                if str(line).upper().startswith(("ROUND ", "PERIOD ", "MATCH CLOCK")):
+                    hold = round(hold * 1.25)
+                elif " summary:" in lowered or str(line).startswith(("Result:", "Corner read:", "Mat-side read:")):
+                    hold = round(hold * 1.35)
+                elif any(word in lowered for word in ("stops the fight", "submission", "technical fall", "secures the pin", "ko/tko")):
+                    hold = round(hold * 1.55)
+                schedule_next(hold)
 
         def start():
             if state["finished"]:
                 return
+            if state["running"]:
+                return
+            if state["fight"] < 0:
+                start_next_fight()
+            if state["finished"]:
+                return
             state["running"] = True
+            pause_button.config(text="Pause")
             append_next()
 
         def faster():
-            state["delay"] = max(120, state["delay"] - 150)
+            state["delay"] = max(300, state["delay"] - 200)
             self.fight_timer_delay.set(state["delay"])
             speed_var.set(state["delay"])
 
@@ -558,28 +683,29 @@ class EventMixin:
             speed_var.set(state["delay"])
 
         def apply_speed():
-            state["delay"] = max(120, min(3000, int(speed_var.get())))
+            state["delay"] = max(300, min(3000, int(speed_var.get())))
             self.fight_timer_delay.set(state["delay"])
 
         def pause_resume():
             if state["finished"]:
                 return
             state["running"] = not state["running"]
-            pause_button.config(text="Pause Timer" if state["running"] else "Resume Timer")
+            pause_button.config(text="Pause" if state["running"] else "Resume")
             if state["running"]:
                 append_next()
+            else:
+                cancel_timer()
 
         def next_round():
             if state["fight"] < 0:
                 start_next_fight()
             state["running"] = False
+            cancel_timer()
             lines = fight_logs[state["fight"]]["lines"]
             while state["line"] < len(lines):
                 line = lines[state["line"]]
                 append_next()
-                if "Round " in line and "summary:" in line:
-                    break
-                if "Result:" in line:
+                if is_round_boundary(line):
                     break
 
         def skip_current_fight():
@@ -588,19 +714,23 @@ class EventMixin:
             if state["fight"] < 0:
                 start_next_fight()
             state["running"] = False
+            cancel_timer()
             lines = fight_logs[state["fight"]]["lines"]
             while state["line"] < len(lines):
                 append_line(lines[state["line"]])
                 state["line"] += 1
+            show_result_if_needed()
             append_line("\n[Fight complete. Press Start Next Fight.]")
 
         def skip_to_end():
             state["running"] = False
+            cancel_timer()
             for index in range(fight_list.size()):
                 mark_fight_done(index)
             finish_live_event()
 
         def close_window():
+            cancel_timer()
             if not state["finished"]:
                 action = "apply the complete event results and close" if apply_results else "close this simulation"
                 if not messagebox.askyesno("Fight Night in progress", f"The card is not finished.\n\nDo you want to {action}?", parent=window):
@@ -610,7 +740,7 @@ class EventMixin:
 
         ttk.Button(controls, text="Start Next Fight", style="Accent.TButton", command=start_next_fight).pack(side="left", padx=4)
         ttk.Button(controls, text="Play Fight", command=start).pack(side="left", padx=4)
-        pause_button = ttk.Button(controls, text="Pause Timer", command=pause_resume)
+        pause_button = ttk.Button(controls, text="Pause", command=pause_resume)
         pause_button.pack(side="left", padx=4)
         auto_var = tk.BooleanVar(value=False)
 
@@ -627,14 +757,32 @@ class EventMixin:
         # Second row: speed and event controls.
         ttk.Button(controls2, text="Slower", command=slower).pack(side="left", padx=4)
         ttk.Button(controls2, text="Faster", command=faster).pack(side="left", padx=4)
-        ttk.Label(controls2, text="Timer ms", style="Panel.TLabel").pack(side="left", padx=(12, 2))
+        ttk.Label(controls2, text="Beat pace (ms)", style="Panel.TLabel").pack(side="left", padx=(12, 2))
         speed_var = tk.IntVar(value=state["delay"])
-        ttk.Spinbox(controls2, from_=120, to=3000, increment=50, textvariable=speed_var, width=6, command=apply_speed).pack(side="left", padx=2)
-        ttk.Button(controls2, text="Apply Speed", command=apply_speed).pack(side="left", padx=4)
-        ttk.Button(controls2, text="Skip Event", command=skip_to_end).pack(side="left", padx=4)
+        ttk.Spinbox(controls2, from_=300, to=3000, increment=100, textvariable=speed_var, width=6, command=apply_speed).pack(side="left", padx=2)
+        ttk.Button(controls2, text="Apply", command=apply_speed).pack(side="left", padx=4)
+
+        def change_font(delta):
+            size = max(9, min(16, font_size.get() + delta))
+            font_size.set(size)
+            text.configure(font=("Tahoma", size))
+            text.tag_configure("heading", font=("Tahoma", size + 1, "bold"))
+            text.tag_configure("result", font=("Tahoma", size + 1, "bold"))
+            text.tag_configure("round", font=("Tahoma", size, "bold"))
+            text.tag_configure("analysis", font=("Tahoma", max(9, size - 1), "italic"))
+            text.tag_configure("knockdown", font=("Tahoma", size, "bold"))
+            text.tag_configure("finish", font=("Tahoma", size + 1, "bold"))
+            text.tag_configure("referee", font=("Tahoma", size, "bold"))
+
+        ttk.Button(controls2, text="Text -", command=lambda: change_font(-1)).pack(side="left", padx=(12, 2))
+        ttk.Button(controls2, text="Text +", command=lambda: change_font(1)).pack(side="left", padx=2)
+        ttk.Checkbutton(controls2, text="Follow live", variable=follow_var, command=lambda: text.see("end") if follow_var.get() else None).pack(side="left", padx=8)
+
+        ttk.Button(controls3, text="Skip Event", command=skip_to_end).pack(side="left", padx=4)
         if package.get("tournament_brackets"):
-            ttk.Button(controls2, text="View Bracket", command=lambda: self.open_event_tournament_bracket(package, window)).pack(side="left", padx=4)
-        ttk.Button(controls2, text="Close", style="Accent.TButton", command=close_window).pack(side="right", padx=4)
+            ttk.Button(controls3, text="View Bracket", command=lambda: self.open_event_tournament_bracket(package, window)).pack(side="left", padx=4)
+        ttk.Label(controls3, text="Clocked exchanges • live score • condition tracking", style="Panel.TLabel").pack(side="left", padx=12)
+        ttk.Button(controls3, text="Close", style="Accent.TButton", command=close_window).pack(side="right", padx=4)
         window.protocol("WM_DELETE_WINDOW", close_window)
 
     def sign_fighter(self):

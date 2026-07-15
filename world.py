@@ -3208,6 +3208,22 @@ class WorldMixin:
             line += random.choice([" The momentum is beginning to shift.", " That is the clearest sequence of the round so far.", " The pressure is building now."])
         return line
 
+    def combat_sport_round_seconds(self, sport):
+        """Return the broadcast clock used by a standard round/match."""
+        return {
+            "Boxing": 180,
+            "Kickboxing": 180,
+            "Muay Thai": 180,
+            "Wrestling": 120,
+            "Brazilian Jiu-Jitsu": 600,
+        }.get(sport, 180)
+
+    def combat_sport_clock(self, sport, beat_no, beat_count):
+        """Space narrated exchanges across the live clock without changing simulation RNG."""
+        duration = self.combat_sport_round_seconds(sport)
+        remaining = max(1, round(duration * (beat_count + 1 - beat_no) / (beat_count + 1)))
+        return f"{remaining // 60}:{remaining % 60:02d}"
+
     def simulate_combat_sport_live_beats(self, sport, a, b, round_no, margin, stamina, damage, body=None, leg=None, cuts=None):
         """Simulate and narrate the exchanges inside one non-MMA round."""
         body = body if body is not None else {a.name: 0.0, b.name: 0.0}
@@ -3257,7 +3273,9 @@ class WorldMixin:
                 line = self.combat_sport_live_line(sport, action_name, actor, defender, success, momentum=momentum)
             if line == previous_line:
                 line += " The position changes before they engage again."
-            lines.append(line)
+            # Other-sport cards use the same genuine playback rhythm as MMA:
+            # every exchange is placed on a visible round or match clock.
+            lines.append(f"  [{self.combat_sport_clock(sport, beat_no, beat_count)}] {line}")
             previous_line = line
             previous_actor = actor if success else previous_actor
         return lines, successful
@@ -3481,6 +3499,15 @@ class WorldMixin:
             a_perf = a_attack + a.momentum * 2.6 + a_energy * 0.20 + a_readiness - b_defense * 0.42 + random.gauss(0, 10)
             b_perf = b_attack + b.momentum * 2.6 + b_energy * 0.20 + b_readiness - a_defense * 0.42 + random.gauss(0, 10)
 
+            round_seconds = self.combat_sport_round_seconds(sport)
+            round_clock = f"{round_seconds // 60}:{round_seconds % 60:02d}"
+            if sport == "Brazilian Jiu-Jitsu":
+                log.append(f"MATCH CLOCK — {round_clock} | The referee starts the contest.")
+            elif sport == "Wrestling":
+                log.append(f"PERIOD {round_no} — {round_clock} | The whistle sounds and both wrestlers take the centre.")
+            else:
+                log.append(f"ROUND {round_no} — {round_clock} | The bell sounds.")
+
             if sport == "Wrestling":
                 a_rp = max(0, round((a_perf - b_perf) / 9 + random.choice([0, 1, 2, 3])))
                 b_rp = max(0, round((b_perf - a_perf) / 9 + random.choice([0, 1, 2, 3])))
@@ -3499,8 +3526,9 @@ class WorldMixin:
                     end_round = round_no
                     log.append(self.combat_sport_finish_commentary(sport, round_no, winner, loser, method))
                     break
-                log.append(self.combat_sport_round_commentary(sport, round_no, leader, trailer, abs(margin), points_text=f"{a.name} {a_rp}, {b.name} {b_rp}"))
-                log.append(self.combat_sport_round_status(sport, a, b, stamina, damage, body_damage, leg_damage, cuts))
+                # Generate the recap before the pin roll to retain the established
+                # RNG/order and balance, but only display it if the period survives.
+                period_commentary = self.combat_sport_round_commentary(sport, round_no, leader, trailer, abs(margin), points_text=f"{a.name} {a_rp}, {b.name} {b_rp}")
                 pin_chance = max(0.006, min(0.14, (max(a_finish - b_defense, b_finish - a_defense) - 16) / 230))
                 if random.random() < pin_chance:
                     winner, loser = (a, b) if a_perf + a_finish >= b_perf + b_finish else (b, a)
@@ -3508,6 +3536,13 @@ class WorldMixin:
                     end_round = round_no
                     log.append(self.combat_sport_finish_commentary(sport, round_no, winner, loser, method))
                     break
+                log.append(period_commentary)
+                log.append(
+                    f"Period {round_no} summary: {a.name} {a_rp}-{b_rp} {b.name}. "
+                    f"Live score {a.name} {a_points}-{b_points} {b.name}. "
+                    f"Stamina: {a.name} {round(stamina[a.name])}, {b.name} {round(stamina[b.name])}."
+                )
+                log.append(self.combat_sport_round_status(sport, a, b, stamina, damage, body_damage, leg_damage, cuts))
             elif sport == "Brazilian Jiu-Jitsu":
                 a_rp = max(0, round((a_perf - b_perf) / 10 + random.choice([0, 2, 2, 3])))
                 b_rp = max(0, round((b_perf - a_perf) / 10 + random.choice([0, 2, 2, 3])))
@@ -3526,6 +3561,11 @@ class WorldMixin:
                     log.append(self.combat_sport_finish_commentary(sport, round_no, winner, loser, method))
                     break
                 log.append(self.combat_sport_round_commentary(sport, round_no, leader, trailer, abs(margin), points_text=f"{a.name} {a_rp}, {b.name} {b_rp}"))
+                log.append(
+                    f"Match summary: {a.name} {a_rp}-{b_rp} {b.name}. "
+                    f"Live score {a.name} {a_points}-{b_points} {b.name}. "
+                    f"Stamina: {a.name} {round(stamina[a.name])}, {b.name} {round(stamina[b.name])}."
+                )
                 log.append(self.combat_sport_round_status(sport, a, b, stamina, damage, body_damage, leg_damage, cuts))
             else:
                 margin = a_perf - b_perf
@@ -3595,6 +3635,13 @@ class WorldMixin:
                     log.append(self.combat_sport_finish_commentary(sport, round_no, winner, loser, method))
                     break
                 log.append(self.combat_sport_round_commentary(sport, round_no, round_winner, trailer, margin, score_text=score_text))
+                a_total_live = sum(score[0] for score in round_scores)
+                b_total_live = sum(score[1] for score in round_scores)
+                log.append(
+                    f"Round {round_no} summary: {a.name} {a_score}-{b_score} {b.name}. "
+                    f"Live score {a.name} {a_total_live}-{b_total_live} {b.name}. "
+                    f"Stamina: {a.name} {round(stamina[a.name])}, {b.name} {round(stamina[b.name])}."
+                )
                 log.append(self.combat_sport_round_status(sport, a, b, stamina, damage, body_damage, leg_damage, cuts))
 
         if not winner and method != "Draw":
@@ -3633,7 +3680,7 @@ class WorldMixin:
             a.name: {"stamina": round(stamina[a.name], 1), "damage": round(damage[a.name], 1), "body": round(body_damage[a.name], 1), "leg": round(leg_damage[a.name], 1), "cuts": round(cuts[a.name], 1)},
             b.name: {"stamina": round(stamina[b.name], 1), "damage": round(damage[b.name], 1), "body": round(body_damage[b.name], 1), "leg": round(leg_damage[b.name], 1), "cuts": round(cuts[b.name], 1)},
         }
-        return {"winner": winner, "loser": loser, "method": method, "round": end_round, "score": score_text, "log": log, "condition": condition, "readiness": {a.name: round(a_readiness, 1), b.name: round(b_readiness, 1)}}
+        return {"winner": winner, "loser": loser, "method": method, "round": end_round, "score": score_text, "log": log, "condition": condition, "start_stamina": {a.name: round(a_stamina, 1), b.name: round(b_stamina, 1)}, "readiness": {a.name: round(a_readiness, 1), b.name: round(b_readiness, 1)}}
 
     def develop_after_combat_sport_bout(self, sport, fighter, won=False, finished=False):
         focus = {
@@ -3718,6 +3765,7 @@ class WorldMixin:
         return True
 
     def apply_combat_sport_result(self, sport, world, a, b, title=False, player_owned=False, title_key="", employer=""):
+        a_record_before, b_record_before = a.record, b.record
         state = self.ensure_combat_sport_circuit_state(sport, world, employer or a.sport_employer, player_owned)
         preparation = self.prepare_combat_sport_bout(sport, a, b, title=title)
         effective_title = bool(title and preparation["title_valid"])
@@ -3763,6 +3811,7 @@ class WorldMixin:
                 state["champion"] = winner.name
             round_note = f" R{sim.get('round')}" if method not in ("Decision", "Majority Decision", "Points", "Referee Criteria") else ""
             result_line = f"Month {self.month}: {winner.name} def. {loser.name} by {method}{round_note} in {sport} ({sim.get('score', '-')})"
+        sim.setdefault("log", []).append(f"Result: {result_line}")
         retired_after = []
         for fighter in (a, b):
             fighter.multi_sport_records = fighter.multi_sport_records or {}
@@ -3796,7 +3845,7 @@ class WorldMixin:
         self.record_combat_sport_season_result(state, a, b, winner, method, title_key if effective_title else "", previous_champion)
         for fighter in retired_after:
             self.consider_combat_sport_hall_of_fame(sport, world, fighter, state)
-        return {"a": a.name, "b": b.name, "winner": winner.name if winner else "Draw", "method": method, "round": sim.get("round"), "score": sim.get("score", "-"), "weight": self.combat_sport_competition_class(sport, a), "title_key": title_key if effective_title else "", "title": effective_title, "scheduled_title": title, "result": result_line, "log": sim.get("log", []), "condition": sim.get("condition", {}), "readiness": sim.get("readiness", {})}
+        return {"a": a.name, "b": b.name, "a_record": a_record_before, "b_record": b_record_before, "winner": winner.name if winner else "Draw", "method": method, "round": sim.get("round"), "score": sim.get("score", "-"), "weight": self.combat_sport_competition_class(sport, a), "title_key": title_key if effective_title else "", "title": effective_title, "scheduled_title": title, "result": result_line, "log": sim.get("log", []), "condition": sim.get("condition", {}), "start_stamina": sim.get("start_stamina", {}), "readiness": sim.get("readiness", {})}
 
     def create_combat_sport_guest_opponent(self, sport, fighter, employer, reserved_names=None):
         """Supply a credible independent opponent for an isolated sport athlete."""
@@ -3976,8 +4025,16 @@ class WorldMixin:
             "heading": f"{'TITLE' if item.get('title') else 'BOUT'}: {item['a']} vs {item['b']}",
             "fight": f"{item['a']} vs {item['b']}",
             "label": f"{sport} {self.combat_sport_division_label(item.get('title_key')) + ' Title Bout' if item.get('title') else 'Bout'}",
+            "sport": sport,
             "a": item["a"],
             "b": item["b"],
+            "a_record": item.get("a_record", ""),
+            "b_record": item.get("b_record", ""),
+            "a_start_gas": item.get("start_stamina", {}).get(item["a"], 100),
+            "b_start_gas": item.get("start_stamina", {}).get(item["b"], 100),
+            "a_condition": item.get("condition", {}).get(item["a"], {}),
+            "b_condition": item.get("condition", {}).get(item["b"], {}),
+            "readiness": item.get("readiness", {}),
             "weight": item.get("weight", next((fighter.weight for fighter in world.get("roster", []) if fighter.name == item["a"]), "")),
             "method": item.get("method", ""),
             "score": item.get("score", "-"),
