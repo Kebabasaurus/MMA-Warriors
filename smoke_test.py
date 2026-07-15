@@ -164,6 +164,22 @@ def main():
         for sport in ("Boxing", "Kickboxing", "Muay Thai", "Lethwei"):
             assert_true(sport in situation_bank and len(situation_bank[sport]) >= 8, f"{sport} striking situation bank missing")
             assert_true(all(len(pool.get("land", [])) >= 50 and len(pool.get("defended", [])) >= 50 for pool in situation_bank[sport].values()), f"{sport} striking situation variety regressed")
+        bjj_bank = app.combat_sport_bjj_situation_bank()
+        assert_true(len(bjj_bank) >= 16, "BJJ live action families missing")
+        assert_true(all(len(pool.get("land", [])) >= 50 and len(pool.get("defended", [])) >= 50 for pool in bjj_bank.values()), "BJJ commentary variety regressed")
+        bjj_roster = app.combat_sport_worlds["Brazilian Jiu-Jitsu"]["roster"]
+        bjj_a = bjj_roster[0]
+        bjj_b = next(candidate for candidate in bjj_roster[1:] if candidate.gender == bjj_a.gender)
+        bjj_actions = app.combat_sport_live_actions("Brazilian Jiu-Jitsu")
+        bjj_state = {"position": "standing", "top": None, "bottom": None}
+        app.combat_sport_bjj_apply_transition(bjj_state, "guard pull", bjj_a, bjj_b, True)
+        assert_true(bjj_state == {"position": "guard", "top": bjj_b.name, "bottom": bjj_a.name}, "BJJ guard-pull transition failed")
+        legal_bottom = {action[0] for action in app.combat_sport_bjj_legal_actions(bjj_actions, bjj_a, bjj_state)}
+        assert_true("sweep" in legal_bottom and "guard pass" not in legal_bottom, "BJJ bottom-position action gating failed")
+        app.combat_sport_bjj_apply_transition(bjj_state, "sweep", bjj_a, bjj_b, True)
+        assert_true(bjj_state["top"] == bjj_a.name and bjj_state["position"] == "guard", "BJJ sweep transition failed")
+        terminal = app.combat_sport_bjj_terminal_line(bjj_a, bjj_b, bjj_state)
+        assert_true(bjj_a.name in terminal and bjj_b.name in terminal and "taps" in terminal, "BJJ finish commentary is not linked to the result")
         mma_striking = app.mma_striking_commentary_expansion()
         for category in ("jab_land", "power_land", "dirty_boxing_miss", "ground_strikes_miss", "body_kick_land", "leg_kick_hurt", "kick_checked", "knockdown"):
             assert_true(len(mma_striking.get(category, [])) >= 6, f"MMA {category} commentary variety regressed")

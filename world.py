@@ -2897,6 +2897,14 @@ class WorldMixin:
                     "{stakes}: {A} meets {B}. Expect patient grips until one scramble opens the match.",
                     "{stakes}: {A} vs {B}. Guard retention and back exposure are the key tells.",
                     "{stakes}: {A} and {B} start measured, both hunting the first meaningful grip.",
+                    "{stakes}: {A} vs {B}. Watch whether the first takedown becomes passing pressure or an active guard.",
+                    "{stakes}: {A} meets {B}. The hand fight will decide who builds the first real positional chain.",
+                    "{stakes}: {A} and {B} square up. Neither wants to concede the underhook or the first hip angle.",
+                    "{stakes}: {A} vs {B}. One clean sweep could change the score and expose the back immediately.",
+                    "{stakes}: {A} faces {B}. The key is not reaching position; it is holding it long enough to score.",
+                    "{stakes}: {A} meets {B}. Expect guard retention to be tested against sustained passing pressure.",
+                    "{stakes}: {A} vs {B}. Submission threats may create the positional points rather than end the match.",
+                    "{stakes}: {A} and {B} begin cautiously, each hiding their preferred guard and passing direction.",
                 ],
                 "close": [
                     "Match: {points_text} - {A} wins the positional battle through sweeps, pressure and advantage threats.",
@@ -3011,10 +3019,21 @@ class WorldMixin:
                 frame.format(tool=tool, score=score, A="{A}", B="{B}", round_no="{round_no}", score_text="{score_text}")
                 for frame in close_frames for tool in data["close_tools"] for score in data["scoring"][:3]
             ]
-            if sport in ("Wrestling", "Brazilian Jiu-Jitsu"):
+            if sport == "Wrestling":
                 close_templates = [
-                    ("R{round_no}: {points_text} - {A} edges the period with " if sport == "Wrestling" else "Match: {points_text} - {A} edges the exchange with ") + tool + " and " + score + "."
+                    "R{round_no}: {points_text} - {A} edges the period with " + tool + " and " + score + "."
                     for tool in data["close_tools"] for score in data["scoring"][:3]
+                ]
+            elif sport == "Brazilian Jiu-Jitsu":
+                bjj_close_frames = [
+                    "Match: {points_text} - {A} edges the exchange with {tool} and {score}.",
+                    "Match: {points_text} - A narrow positional phase; {A}'s {tool} creates the better {score}.",
+                    "Match: {points_text} - {B} defends well, but {A} turns {tool} into the clearest {score}.",
+                    "Match: {points_text} - The grips are finely balanced until {A} finds {tool} and meaningful {score}.",
+                ]
+                close_templates = [
+                    frame.format(tool=tool, score=score, A="{A}", B="{B}", points_text="{points_text}")
+                    for frame in bjj_close_frames for tool in data["close_tools"] for score in data["scoring"][:3]
                 ]
             dominant_frames = [
                 "R{round_no}: {A} takes over through {tool}, forcing {B} to deal with {score}. {score_text}",
@@ -3026,10 +3045,21 @@ class WorldMixin:
                 frame.format(tool=tool, score=score, A="{A}", B="{B}", round_no="{round_no}", score_text="{score_text}")
                 for frame in dominant_frames for tool in data["dominant_tools"] for score in data.get("dominant_results", data["scoring"][:3])
             ]
-            if sport in ("Wrestling", "Brazilian Jiu-Jitsu"):
+            if sport == "Wrestling":
                 dominant_templates = [
-                    ("R{round_no}: {points_text} - {A} takes over with " if sport == "Wrestling" else "Match: {points_text} - {A} takes over with ") + tool + ", turning it into " + score + "."
+                    "R{round_no}: {points_text} - {A} takes over with " + tool + ", turning it into " + score + "."
                     for tool in data["dominant_tools"] for score in data.get("dominant_results", data["scoring"][:3])
+                ]
+            elif sport == "Brazilian Jiu-Jitsu":
+                bjj_dominant_frames = [
+                    "Match: {points_text} - {A} takes over with {tool}, turning it into {score}.",
+                    "Match: {points_text} - {B} is stuck defending layers as {A}'s {tool} builds sustained {score}.",
+                    "Match: {points_text} - A commanding phase for {A}: {tool}, positional consolidation, then {score}.",
+                    "Match: {points_text} - {A} denies every reset and uses {tool} to maintain {score}.",
+                ]
+                dominant_templates = [
+                    frame.format(tool=tool, score=score, A="{A}", B="{B}", points_text="{points_text}")
+                    for frame in bjj_dominant_frames for tool in data["dominant_tools"] for score in data.get("dominant_results", data["scoring"][:3])
                 ]
             finish_frames = [
                 "R{round_no}: {A} finds {tool}; {B} cannot recover and the result is {method}.",
@@ -3042,7 +3072,16 @@ class WorldMixin:
                 for frame in finish_frames for tool in data["finish_tools"]
             ]
             if sport == "Brazilian Jiu-Jitsu":
-                finish_templates = ["Match: {A} finds " + tool + "; {B} has to tap." for tool in data["finish_tools"]]
+                bjj_finish_frames = [
+                    "Match: {A} finds {tool}; {B} has to tap.",
+                    "Match: {A} uses {tool} to force the defensive turn, follows the reaction and gets the submission.",
+                    "Match: The finish grows from {tool}. {A} adjusts the angle until {B} can no longer defend.",
+                    "Match: {B} survives the first threat, but {A} reconnects through {tool} and forces the tap.",
+                ]
+                finish_templates = [
+                    frame.format(tool=tool, A="{A}", B="{B}")
+                    for frame in bjj_finish_frames for tool in data["finish_tools"]
+                ]
             elif sport == "Wrestling":
                 finish_templates = ["R{round_no}: {A} finishes through " + tool + ". The official records it as {method}." for tool in data["finish_tools"]]
             bank[sport]["close"].extend(close_templates)
@@ -3151,14 +3190,22 @@ class WorldMixin:
                 ("pinning attack", "ride_control", "toughness", 4.2, 2.2),
             ],
             "Brazilian Jiu-Jitsu": [
+                ("grip exchange", "transitions", "composure", 1.2, 0.1),
+                ("takedown", "takedowns", "sprawl", 3.2, 0.8),
                 ("guard pull", "guard_work", "balance", 1.8, 0.3),
+                ("off-balance attempt", "guard_work", "top_control", 1.8, 0.2),
                 ("sweep", "transitions", "base", 3.0, 0.8),
                 ("guard pass", "positional_ability", "guard_work", 3.2, 0.9),
+                ("pressure adjustment", "top_control", "scrambles", 1.7, 0.2),
+                ("defensive framing", "guard_work", "top_control", 1.6, 0.1),
+                ("guard recovery", "guard_work", "ride_control", 2.8, 0.5),
+                ("positional escape", "scrambles", "top_control", 3.0, 0.5),
                 ("back take", "back_control", "scrambles", 3.5, 1.0),
                 ("mount advance", "mount_control", "get_ups", 3.3, 0.9),
                 ("arm attack", "submissions", "submission_defence_detail", 3.6, 1.3),
                 ("choke attack", "back_control", "submission_defence_detail", 3.8, 1.4),
                 ("leg entanglement", "leg_locks", "submission_defence_detail", 3.9, 1.2),
+                ("front headlock", "submission_attack", "submission_defence_detail", 3.5, 1.1),
             ],
         }
         return actions.get(sport, actions["Kickboxing"])
@@ -3282,6 +3329,111 @@ class WorldMixin:
         self._combat_sport_striking_situation_cache = bank
         return bank
 
+    def combat_sport_bjj_situation_bank(self):
+        """Create action-specific BJJ calls for attacks, transitions and defences."""
+        cached = getattr(self, "_combat_sport_bjj_situation_cache", None)
+        if cached is not None:
+            return cached
+        success_cores = {
+            "grip exchange": ["peels the controlling grip and replaces it with a strong two-on-one", "wins inside wrist position before reconnecting to the hips", "clears the collar-and-elbow control and establishes preferred grips"],
+            "takedown": ["changes level and finishes a clean takedown into top position", "wins the hand fight before running the hips to the mat", "connects the upper body and trips {B} into guard"],
+            "guard pull": ["secures two useful grips and pulls into an active guard", "sits underneath {B} with immediate off-balancing control", "uses the entry to establish guard without conceding posture"],
+            "off-balance attempt": ["loads {B}'s weight over the hands and forces a wide recovery step", "uses the hooks to break {B}'s posture and threaten the base", "changes the angle underneath and makes {B} post to stay on top"],
+            "sweep": ["loads {B}'s weight onto the wrong post and comes up on top", "uses the hook and far-side grip to complete the sweep", "redirects the passing pressure and reverses the position"],
+            "guard pass": ["clears the knee line and settles chest-to-chest beyond the legs", "wins the inside position before circling into side control", "staples the hips and completes a measured guard pass"],
+            "pressure adjustment": ["switches the hip pressure and closes the space around {B}'s frames", "repositions the cross-face and settles the weight before attacking", "walks the knees closer and makes {B} carry the pressure"],
+            "defensive framing": ["connects an elbow-to-knee frame and prevents the next advance", "builds a strong inside frame that creates a pocket of breathing room", "keeps the forearms inside and redirects {B}'s chest pressure"],
+            "guard recovery": ["creates a frame, hip-escapes and brings both knees back inside", "uses the near-side elbow frame to rebuild guard", "threads a shin back into the space and recovers the defensive structure"],
+            "positional escape": ["wins the inside frame and escapes the pinning pressure", "turns onto the side, clears the cross-face and creates separation", "times the weight shift and scrambles out of the bad position"],
+            "back take": ["follows the exposed hip and secures both hooks on the back", "uses the scramble to climb behind {B} and establish back control", "wins the seat-belt grip before settling onto the back"],
+            "mount advance": ["isolates the near arm and slides the knee through into mount", "walks the trapped leg free and settles into a stable mount", "uses shoulder pressure to climb from side control into mount"],
+            "arm attack": ["separates the elbow and extends into a dangerous armbar", "switches from the shoulder lock threat into an armbar angle", "traps the wrist and builds a tight triangle-armbar dilemma"],
+            "choke attack": ["wins the head-and-arm position and builds a tight choke threat", "connects the control grips before closing space around the neck", "forces an urgent hand fight as the choke begins to tighten"],
+            "leg entanglement": ["controls the knee line and isolates the foot inside the entanglement", "sits beneath the base and connects to the far hip", "uses a controlled entry to expose a clean leg-lock angle"],
+            "front headlock": ["snaps the posture and wraps a dangerous front headlock", "uses the sprawl to connect hands beneath the chin", "circles from the head-and-arm control into a guillotine threat"],
+        }
+        defence_cores = {
+            "grip exchange": ["keeps the stronger grip and circles the wrist away from danger", "re-pummels inside before the two-on-one can settle", "breaks the grip sequence and returns both hands to safe position"],
+            "takedown": ["sprawls the hips back and squares to the shot", "wins the underhook before the takedown can turn the corner", "posts on the shoulder and remains standing"],
+            "guard pull": ["keeps posture, clears the dangerous grips and refuses the preferred guard", "steps around the pulling leg before the guard can settle", "controls the ankles and prevents an immediate attacking structure"],
+            "off-balance attempt": ["shifts the base before the hooks can load the hips", "keeps the posture aligned and refuses to post a hand", "floats over the angle change and remains balanced on top"],
+            "sweep": ["widens the base and removes the lifting hook", "posts beyond the sweep line and stays on top", "floats with the off-balance attempt before settling the hips again"],
+            "guard pass": ["recovers the knee shield before the hips can be pinned", "frames across the shoulder and keeps the legs between them", "wins the near-side underhook and blocks the passing angle"],
+            "pressure adjustment": ["keeps the frame in place and prevents the weight from settling", "turns onto the side before the cross-face can control the shoulders", "uses the knee shield to hold the pressure at a safe distance"],
+            "defensive framing": ["swims inside the frame and reconnects chest-to-chest", "pins the near elbow before the defensive structure can settle", "changes the angle of pressure and collapses the frame"],
+            "guard recovery": ["controls the hips and keeps the knees outside the frame", "switches the cross-face before the guard can rebuild", "follows the hip escape and denies the returning leg"],
+            "positional escape": ["adjusts the weight and closes the escape route", "follows the turn with chest pressure and keeps the pin", "controls the far hip before the scramble can develop"],
+            "back take": ["keeps the shoulders to the mat and denies the back exposure", "wins the hand fight before either hook can settle", "turns safely into the attack and clears the seat-belt grip"],
+            "mount advance": ["blocks the advancing knee and traps a leg in half guard", "frames at the hip and stops the climb into mount", "turns onto the side before the top pressure can settle"],
+            "arm attack": ["connects the hands and pulls the elbow back to safety", "stacks the hips before the arm can be extended", "reads the grip switch and clears the threatened limb"],
+            "choke attack": ["wins the two-on-one hand fight and protects the neck", "tucks the chin while peeling the control hand", "turns toward the choking side and creates breathing room"],
+            "leg entanglement": ["clears the knee line before the foot can be isolated", "turns the toes safely and removes the controlling hook", "keeps the heel hidden while extracting the trapped leg"],
+            "front headlock": ["rebuilds posture and hand-fights out of the front headlock", "peels the choking grip before circling free", "keeps the neck safe and drives back to a neutral position"],
+        }
+        attack_setups = [
+            "After winning a grip exchange, {A}",
+            "As {B} shifts their base, {A}",
+            "{A} chains the previous reaction into the next attack and",
+            "With patient hip and head position, {A}",
+            "{A} changes direction at exactly the right moment and",
+        ]
+        attack_reads = [
+            "{A} consolidates the position before hunting the next layer.",
+            "{B} is forced to defend position before thinking about offence.",
+            "The mat-side team marks that as a meaningful attacking sequence.",
+            "{A} stays connected and denies an easy reset.",
+        ]
+        defence_setups = [
+            "{A} begins the transition, but {B}",
+            "As {A} tries to advance, {B}",
+            "{B} recognizes the grip sequence early and",
+            "{A} appears to have the angle; {B}",
+            "The attack develops for {A}, yet {B}",
+        ]
+        defence_reads = [
+            "The position remains competitive.",
+            "{A} has to rebuild the attack from the grips.",
+            "{B} earns a valuable defensive reset.",
+            "Neither athlete receives a clean positional score from the exchange.",
+        ]
+        recovery_setups = [
+            "Under sustained pressure from {B}, {A}",
+            "Before {B} can stabilize the position, {A}",
+            "Working patiently from underneath, {A}",
+            "As {B} shifts their weight to advance, {A}",
+            "With the immediate attack contained, {A}",
+        ]
+        recovery_reads = [
+            "{A} has bought enough room to rebuild safely.",
+            "{B} must establish control again before attacking.",
+            "That is composed defensive work from a difficult position.",
+            "The immediate danger is gone, but the positional battle continues.",
+        ]
+        recovery_denied_setups = [
+            "{A} tries to create an escape, but {B}",
+            "As {A} frames to recover, {B}",
+            "{A} begins to turn toward safety; {B}",
+            "The defensive opening appears for {A}, yet {B}",
+            "{A} tries to make space underneath, but {B}",
+        ]
+        recovery_denied_reads = [
+            "{B} keeps the controlling position.",
+            "{A} remains pinned beneath disciplined pressure.",
+            "The escape route closes before {A} can use it.",
+            "{B} denies the reset and stays attached.",
+        ]
+        bank = {}
+        for action, cores in success_cores.items():
+            if action in ("guard recovery", "positional escape", "defensive framing"):
+                land = [f"{setup} {core}. {read}" for setup in recovery_setups for core in cores for read in recovery_reads]
+                defended = [f"{setup} {core}. {read}" for setup in recovery_denied_setups for core in defence_cores[action] for read in recovery_denied_reads]
+            else:
+                land = [f"{setup} {core}. {read}" for setup in attack_setups for core in cores for read in attack_reads]
+                defended = [f"{setup} {core}. {read}" for setup in defence_setups for core in defence_cores[action] for read in defence_reads]
+            bank[action] = {"land": land, "defended": defended}
+        self._combat_sport_bjj_situation_cache = bank
+        return bank
+
     def combat_sport_live_line(self, sport, action, actor, defender, success, momentum=False):
         """Create one sport-native live call for a simulated exchange."""
         success_lines = {
@@ -3344,7 +3496,11 @@ class WorldMixin:
             "Brazilian Jiu-Jitsu": ["{B} recognizes the transition, rebuilds the frames and denies {A}'s advance.", "{A} threatens, but {B} stays calm and pummels back to a safe position."],
         }
         presentation_sport = "Lethwei" if sport == "Muay Thai" and getattr(actor, "primary_discipline", "") == "Lethwei" else sport
-        generated = self.combat_sport_striking_situation_bank().get(presentation_sport, {}).get(action, {})
+        generated = (
+            self.combat_sport_bjj_situation_bank().get(action, {})
+            if sport == "Brazilian Jiu-Jitsu"
+            else self.combat_sport_striking_situation_bank().get(presentation_sport, {}).get(action, {})
+        )
         if success:
             pool = list(success_lines.get(sport, {}).get(action, [])) + list(generated.get("land", []))
         else:
@@ -3353,8 +3509,105 @@ class WorldMixin:
             pool = ["{A} creates an opening, but {B} closes it before the attack develops."]
         line = random.choice(pool).format(A=actor.name, B=defender.name)
         if momentum and success:
-            line += random.choice([" The momentum is beginning to shift.", " That is the clearest sequence of the round so far.", " The pressure is building now."])
+            if sport == "Brazilian Jiu-Jitsu":
+                if action in ("arm attack", "choke attack", "leg entanglement", "front headlock"):
+                    line += random.choice([" The submission pressure is building now.", " That is the most dangerous threat of the match so far."])
+                elif action in ("guard recovery", "positional escape", "defensive framing"):
+                    line += random.choice([" That recovery could change the shape of the match.", " Composed defence keeps the match competitive."])
+                else:
+                    line += random.choice([" The positional initiative is beginning to shift.", " That is the clearest positional sequence of the match so far."])
+            else:
+                line += random.choice([" The momentum is beginning to shift.", " That is the clearest sequence of the round so far.", " The pressure is building now."])
         return line
+
+    def combat_sport_bjj_legal_actions(self, actions, actor, state):
+        """Limit BJJ narration to actions that make sense from the current position."""
+        position = state.get("position", "standing")
+        actor_name = actor.name
+        if position == "standing":
+            legal = {"grip exchange", "takedown", "guard pull", "front headlock"}
+        elif actor_name == state.get("top"):
+            legal = {
+                "guard": {"grip exchange", "pressure adjustment", "guard pass", "arm attack", "leg entanglement"},
+                "half guard": {"grip exchange", "pressure adjustment", "guard pass", "back take", "mount advance", "arm attack", "front headlock"},
+                "side control": {"grip exchange", "pressure adjustment", "mount advance", "back take", "arm attack", "choke attack"},
+                "mount": {"grip exchange", "pressure adjustment", "arm attack", "choke attack", "back take"},
+                "back control": {"grip exchange", "pressure adjustment", "choke attack", "arm attack"},
+            }.get(position, {"arm attack", "choke attack", "front headlock"})
+        else:
+            legal = {
+                "guard": {"grip exchange", "off-balance attempt", "sweep", "arm attack", "choke attack", "leg entanglement"},
+                "half guard": {"grip exchange", "off-balance attempt", "sweep", "guard recovery", "positional escape", "leg entanglement", "front headlock"},
+                "side control": {"grip exchange", "defensive framing", "guard recovery", "positional escape"},
+                "mount": {"grip exchange", "defensive framing", "guard recovery", "positional escape"},
+                "back control": {"grip exchange", "defensive framing", "guard recovery", "positional escape"},
+            }.get(position, {"guard recovery", "positional escape"})
+        filtered = [action for action in actions if action[0] in legal]
+        return filtered or actions
+
+    def combat_sport_bjj_apply_transition(self, state, action, actor, defender, success):
+        """Apply a successful, commentary-only BJJ position transition."""
+        if not success:
+            return ""
+        actor_name, defender_name = actor.name, defender.name
+        previous = (state.get("position"), state.get("top"), state.get("bottom"))
+        position = state.get("position", "standing")
+        if action == "takedown":
+            state.update(position="guard", top=actor_name, bottom=defender_name)
+        elif action == "guard pull":
+            state.update(position="guard", top=defender_name, bottom=actor_name)
+        elif action == "sweep" and actor_name == state.get("bottom"):
+            state.update(position="guard", top=actor_name, bottom=defender_name)
+        elif action == "guard pass" and actor_name == state.get("top"):
+            state["position"] = "side control"
+        elif action == "guard recovery" and actor_name == state.get("bottom"):
+            state["position"] = "guard"
+        elif action == "positional escape" and actor_name == state.get("bottom"):
+            state.update(position="standing", top=None, bottom=None)
+        elif action == "back take":
+            state.update(position="back control", top=actor_name, bottom=defender_name)
+        elif action == "mount advance" and actor_name == state.get("top"):
+            state["position"] = "mount"
+        current = (state.get("position"), state.get("top"), state.get("bottom"))
+        if current == previous:
+            return ""
+        if state["position"] == "standing":
+            return "They separate and return to standing after the escape."
+        labels = {
+            "guard": "guard",
+            "half guard": "half guard",
+            "side control": "side control",
+            "mount": "mount",
+            "back control": "back control",
+        }
+        return f"Position settles: {state['top']} controls from {labels.get(state['position'], state['position'])}, with {state['bottom']} working underneath."
+
+    def combat_sport_bjj_position_update(self, state):
+        """Return a concise mat-side position read without consuming simulation RNG."""
+        if state.get("position") == "standing":
+            return "Mat-side update: both athletes are standing and hand-fighting for the next clean entry."
+        if state.get("position") == "guard":
+            return (
+                f"Mat-side update: {state.get('top')} is working to open and pass the guard; "
+                f"{state.get('bottom')} remains active underneath with sweeps and submissions available."
+            )
+        return (
+            f"Mat-side update: {state.get('top')} is controlling {state.get('position')}; "
+            f"{state.get('bottom')} must recover position before opening up safely."
+        )
+
+    def combat_sport_bjj_terminal_line(self, winner, loser, state):
+        """Make a BJJ submission result the final visible action of the match."""
+        position = state.get("position", "standing")
+        if state.get("top") == winner.name and position == "back control":
+            return f"{winner.name} wins the final hand fight from the back, slides the forearm under the chin and locks the choke. {loser.name} taps."
+        if state.get("top") == winner.name and position == "mount":
+            return f"{winner.name} isolates an arm from mount, steps over the head and extends the armbar. {loser.name} taps."
+        if state.get("bottom") == winner.name and position in ("guard", "half guard"):
+            return f"{winner.name} breaks the posture from underneath, closes the triangle and adjusts the angle. {loser.name} taps."
+        if state.get("top") == winner.name and position in ("guard", "side control"):
+            return f"{winner.name} traps the far arm during the final transition and tightens the shoulder lock. {loser.name} taps."
+        return f"{winner.name} wins the last scramble, wraps the front headlock and finishes the guillotine. {loser.name} taps."
 
     def combat_sport_round_seconds(self, sport):
         """Return the broadcast clock used by a standard round/match."""
@@ -3383,15 +3636,17 @@ class WorldMixin:
         successful = {a.name: 0, b.name: 0}
         previous_actor = None
         recent_lines = []
+        bjj_state = {"position": "standing", "top": None, "bottom": None}
         for beat_no in range(1, beat_count + 1):
             a_share = max(0.22, min(0.78, 0.50 + margin / 115))
             actor, defender = (a, b) if random.random() < a_share else (b, a)
             actor_overall = actor.overall
+            available_actions = self.combat_sport_bjj_legal_actions(actions, actor, bjj_state) if sport == "Brazilian Jiu-Jitsu" else actions
             action_weights = [
                 max(8, self.ds(actor, item[1], actor_overall)) * self.combat_sport_action_multiplier(sport, actor, item[0], stamina[actor.name])
-                for item in actions
+                for item in available_actions
             ]
-            action = random.choices(actions, weights=action_weights, k=1)[0]
+            action = random.choices(available_actions, weights=action_weights, k=1)[0]
             action_name, attack_key, defense_key, cost, base_damage = action
             attack_fallback = actor.wrestling if sport == "Wrestling" else actor.grappling if sport == "Brazilian Jiu-Jitsu" else actor.striking
             defense_fallback = defender.takedown_defence if sport == "Wrestling" else defender.submission_defence if sport == "Brazilian Jiu-Jitsu" else defender.striking
@@ -3421,18 +3676,36 @@ class WorldMixin:
                 line = self.combat_sport_live_line(sport, action_name, actor, defender, success, momentum=momentum)
             if line in recent_lines:
                 line += " The position changes before they engage again."
+            if sport == "Brazilian Jiu-Jitsu":
+                transition = self.combat_sport_bjj_apply_transition(bjj_state, action_name, actor, defender, success)
+                if transition:
+                    line += f" {transition}"
             # Other-sport cards use the same genuine playback rhythm as MMA:
             # every exchange is placed on a visible round or match clock.
             lines.append(f"  [{self.combat_sport_clock(sport, beat_no, beat_count)}] {line}")
+            if sport == "Brazilian Jiu-Jitsu" and beat_no in (beat_count // 3, (beat_count * 2) // 3):
+                lines.append(f"  [{self.combat_sport_clock(sport, beat_no, beat_count)}] {self.combat_sport_bjj_position_update(bjj_state)}")
             recent_lines.append(line)
             del recent_lines[:-16]
             previous_actor = actor if success else previous_actor
-        return lines, successful
+        return lines, successful, bjj_state
 
     def combat_sport_round_status(self, sport, a, b, stamina, damage, body=None, leg=None, cuts=None):
-        if sport in ("Wrestling", "Brazilian Jiu-Jitsu"):
-            physical = "grip and scramble pace" if sport == "Brazilian Jiu-Jitsu" else "hand-fighting pace"
-            return f"Mat-side read: {a.name} stamina {round(stamina[a.name])}, {b.name} stamina {round(stamina[b.name])}; the {physical} is beginning to matter."
+        if sport == "Brazilian Jiu-Jitsu":
+            a_gas, b_gas = round(stamina[a.name]), round(stamina[b.name])
+            if min(a_gas, b_gas) < 35:
+                tired = a if a_gas < b_gas else b
+                read = f"{tired.name}'s grip endurance is fading, making every frame and hand fight more expensive."
+            elif abs(a_gas - b_gas) >= 12:
+                fresher = a if a_gas > b_gas else b
+                read = f"{fresher.name} looks fresher in the scrambles and is reaching each second effort first."
+            elif min(a_gas, b_gas) >= 70:
+                read = "Both athletes have managed the ten-minute pace well; the technical decisions remain sharp."
+            else:
+                read = "The accumulated grip fighting is slowing the transitions, so efficient frames and pressure matter more now."
+            return f"Mat-side condition: {a.name} stamina {a_gas}, {b.name} stamina {b_gas}. {read}"
+        if sport == "Wrestling":
+            return f"Mat-side read: {a.name} stamina {round(stamina[a.name])}, {b.name} stamina {round(stamina[b.name])}; the hand-fighting pace is beginning to matter."
         a_state = "marked up" if damage[a.name] >= 7 else "under pressure" if damage[a.name] >= 3.5 else "composed"
         b_state = "marked up" if damage[b.name] >= 7 else "under pressure" if damage[b.name] >= 3.5 else "composed"
         body = body or {a.name: 0, b.name: 0}
@@ -3667,7 +3940,7 @@ class WorldMixin:
                 b_points += b_rp
                 margin = a_rp - b_rp
                 leader, trailer = (a, b) if margin >= 0 else (b, a)
-                live_lines, _successful = self.simulate_combat_sport_live_beats(sport, a, b, round_no, a_perf - b_perf, stamina, damage, body_damage, leg_damage, cuts)
+                live_lines, _successful, _position_state = self.simulate_combat_sport_live_beats(sport, a, b, round_no, a_perf - b_perf, stamina, damage, body_damage, leg_damage, cuts)
                 log.extend(live_lines)
                 if abs(a_points - b_points) >= rules.get("tech_gap", 10) and round_no >= 2:
                     winner, loser = (a, b) if a_points > b_points else (b, a)
@@ -3701,14 +3974,16 @@ class WorldMixin:
                 leader, trailer = (a, b) if margin >= 0 else (b, a)
                 sub_a = max(0.015, min(0.62, ((a_finish - b_defense) * 1.05 + (a_perf - b_perf) * 1.35 + 16) / 165))
                 sub_b = max(0.015, min(0.62, ((b_finish - a_defense) * 1.05 + (b_perf - a_perf) * 1.35 + 16) / 165))
-                live_lines, _successful = self.simulate_combat_sport_live_beats(sport, a, b, round_no, a_perf - b_perf, stamina, damage, body_damage, leg_damage, cuts)
+                live_lines, _successful, position_state = self.simulate_combat_sport_live_beats(sport, a, b, round_no, a_perf - b_perf, stamina, damage, body_damage, leg_damage, cuts)
                 log.extend(live_lines)
                 if random.random() < max(sub_a, sub_b):
                     winner, loser = (a, b) if sub_a >= sub_b else (b, a)
                     method = "Submission"
                     end_round = round_no
-                    log.append(self.combat_sport_finish_commentary(sport, round_no, winner, loser, method))
+                    log.append(f"  [0:05] {self.combat_sport_bjj_terminal_line(winner, loser, position_state)}")
+                    log.append(f"Submission confirmed: {winner.name} forces the tap from {loser.name} before time expires.")
                     break
+                log.append("  [0:00] Time expires. Both athletes release their grips and await the official score.")
                 log.append(self.combat_sport_round_commentary(sport, round_no, leader, trailer, abs(margin), points_text=f"{a.name} {a_rp}, {b.name} {b_rp}"))
                 log.append(
                     f"Match summary: {a.name} {a_rp}-{b_rp} {b.name}. "
@@ -3719,7 +3994,7 @@ class WorldMixin:
             else:
                 margin = a_perf - b_perf
                 fight_edge += margin
-                live_lines, _successful = self.simulate_combat_sport_live_beats(sport, a, b, round_no, margin, stamina, damage, body_damage, leg_damage, cuts)
+                live_lines, _successful, _position_state = self.simulate_combat_sport_live_beats(sport, a, b, round_no, margin, stamina, damage, body_damage, leg_damage, cuts)
                 log.extend(live_lines)
                 round_winner = a if margin >= 0 else b
                 if round_winner is a:
