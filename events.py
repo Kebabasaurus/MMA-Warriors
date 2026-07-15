@@ -1005,13 +1005,24 @@ class EventMixin:
                 return index
         return None
 
+    def player_division_rank_map(self):
+        """Build all player-roster division ranks in one pass for dense tables."""
+        groups = {}
+        for fighter in self.roster:
+            groups.setdefault((fighter.gender, fighter.weight), []).append(fighter)
+        ranks = {}
+        for fighters in groups.values():
+            for index, fighter in enumerate(sorted(fighters, key=self.rank_value, reverse=True), 1):
+                ranks[fighter.name] = index
+        return ranks
+
     def division_rank_label(self, fighter):
         if fighter.champion:
             return "C"
         rank = self.division_rank_number(fighter)
         return f"#{rank}" if rank else "-"
 
-    def fight_build_score(self, fighter):
+    def fight_build_score(self, fighter, rank=None):
         trait_bonus = {
             "Fan Favourite": 12,
             "Marketable": 14,
@@ -1035,7 +1046,7 @@ class EventMixin:
         }.get(fighter.trait, 0)
         media = fighter.media_heat * 0.7 + fighter.media_presence * 0.35 + fighter.negotiation_heat * 0.15
         streak = max(-10, min(15, fighter.momentum * 3))
-        rank = self.division_rank_number(fighter) or 25
+        rank = rank or self.division_rank_number(fighter) or 25
         rank_bonus = 12 if fighter.champion else max(0, 12 - rank)
         finish_bonus = max(0, fighter.power + fighter.submissions - 130) * 0.12
         return max(1, min(99, round(fighter.popularity * 0.5 + fighter.star_quality * 0.22 + fighter.charisma * 0.12 + media + streak + rank_bonus + trait_bonus + finish_bonus)))

@@ -68,6 +68,8 @@ class FightEmpireApp(
         self.player_reputation = "Regional Player Company"
         self.month = 1
         self.week = 1
+        self._advance_in_progress = False
+        self._advance_job = None
         self.name_counts = {}
         self.belts = self.blank_belts()
         self.interim_belts = self.blank_belts()
@@ -96,7 +98,7 @@ class FightEmpireApp(
         self.inbox = []
         self.inbox_hidden_types = set()
         self.owner_goals = self.seed_owner_goals()
-        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "active_fighter_target": 1200, "auto_renew_enabled": False, "scouting_mode": False, "autosave_enabled": True, "autosave_weekly_keep": 8, "autosave_monthly_keep": 6, "save_backup_keep": 12, "save_retention_version": 2}
+        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "active_fighter_target": 1200, "auto_renew_enabled": False, "scouting_mode": False, "autosave_enabled": True, "autosave_interval_months": 2, "autosave_weekly_keep": 8, "autosave_monthly_keep": 6, "save_backup_keep": 12, "save_retention_version": 3}
         self.rules["allow_mixed_gender"] = False
         self.broadcasters = [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}]
         self.weight_classes = list(WEIGHTS)
@@ -161,7 +163,7 @@ class FightEmpireApp(
 
         self.configure_style()
         self.build_layout()
-        self.refresh_all()
+        self.refresh_all(full=True)
 
 
 

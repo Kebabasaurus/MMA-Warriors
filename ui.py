@@ -113,34 +113,53 @@ class UIMixin:
         inner = ttk.Frame(canvas, style=style)
         window_id = canvas.create_window((0, 0), window=inner, anchor="nw")
 
-        def update_scrollregion(_event=None):
-            canvas.configure(scrollregion=canvas.bbox("all"))
+        fit_pending = [False]
 
-        def fit_width(event):
-            # Fill the viewport when content fits, but preserve the natural
-            # requested width of dense tables/toolbars so laptop users can
-            # scroll to controls instead of having them clipped off-screen.
-            canvas.itemconfigure(window_id, width=max(event.width, inner.winfo_reqwidth()))
-            update_scrollregion()
+        def fit_content_to_viewport():
+            fit_pending[0] = False
+            # Expand ordinary pages to the complete visible viewport so children
+            # packed with expand=True (especially Treeviews) receive the unused
+            # height. Preserve larger natural dimensions for genuinely long or
+            # wide pages, which remain reachable through the page scrollbars.
+            width = max(1, canvas.winfo_width(), inner.winfo_reqwidth())
+            height = max(1, canvas.winfo_height(), inner.winfo_reqheight())
+            canvas.itemconfigure(window_id, width=width, height=height)
+            canvas.configure(scrollregion=(0, 0, width, height))
+
+        def schedule_fit(_event=None):
+            if not fit_pending[0]:
+                fit_pending[0] = True
+                canvas.after_idle(fit_content_to_viewport)
 
         def wheel(event):
             delta = -1 if event.delta > 0 else 1
             if sys.platform == "darwin":
                 delta = -event.delta
+            # Treeviews, text boxes and listboxes already have correct native
+            # wheel behaviour. Do not also move the containing page beneath them.
+            if isinstance(event.widget, (ttk.Treeview, tk.Text, tk.Listbox)):
+                return None
             canvas.yview_scroll(delta, "units")
+            return "break"
+
+        def linux_wheel(event, delta):
+            if isinstance(event.widget, (ttk.Treeview, tk.Text, tk.Listbox)):
+                return None
+            canvas.yview_scroll(delta, "units")
+            return "break"
 
         def bind_wheel(_event=None):
             canvas.bind_all("<MouseWheel>", wheel)
-            canvas.bind_all("<Button-4>", lambda _e: canvas.yview_scroll(-1, "units"))
-            canvas.bind_all("<Button-5>", lambda _e: canvas.yview_scroll(1, "units"))
+            canvas.bind_all("<Button-4>", lambda event: linux_wheel(event, -1))
+            canvas.bind_all("<Button-5>", lambda event: linux_wheel(event, 1))
 
         def unbind_wheel(_event=None):
             canvas.unbind_all("<MouseWheel>")
             canvas.unbind_all("<Button-4>")
             canvas.unbind_all("<Button-5>")
 
-        inner.bind("<Configure>", update_scrollregion)
-        canvas.bind("<Configure>", fit_width)
+        inner.bind("<Configure>", schedule_fit)
+        canvas.bind("<Configure>", schedule_fit)
         shell.bind("<Enter>", bind_wheel)
         shell.bind("<Leave>", unbind_wheel)
         canvas.configure(yscrollcommand=scroll.set, xscrollcommand=horizontal.set)
@@ -152,6 +171,8 @@ class UIMixin:
         if not hasattr(self, "scrollable_canvases"):
             self.scrollable_canvases = []
         self.scrollable_canvases.append(canvas)
+        shell._scroll_canvas = canvas
+        shell._scroll_inner = inner
         return shell, inner
 
     def create_main_tab(self):
@@ -175,12 +196,27 @@ class UIMixin:
 
         self.statusbar = ttk.Frame(shell, style="Chrome.TFrame")
         self.statusbar.pack(fill="x", padx=8, pady=(0, 4))
-        self.stat_month = ttk.Label(self.statusbar, width=18, anchor="center", style="Stat.TLabel")
-        self.stat_cash = ttk.Label(self.statusbar, width=24, anchor="center", style="Stat.TLabel")
-        self.stat_pop = ttk.Label(self.statusbar, width=24, anchor="center", style="Stat.TLabel")
-        self.stat_stability = ttk.Label(self.statusbar, width=18, anchor="center", style="Stat.TLabel")
+        self.stat_month = ttk.Label(self.statusbar, width=16, anchor="center", style="Stat.TLabel")
+        self.stat_cash = ttk.Label(self.statusbar, width=18, anchor="center", style="Stat.TLabel")
+        self.stat_pop = ttk.Label(self.statusbar, width=20, anchor="center", style="Stat.TLabel")
+        self.stat_stability = ttk.Label(self.statusbar, width=13, anchor="center", style="Stat.TLabel")
         for label in (self.stat_month, self.stat_cash, self.stat_pop, self.stat_stability):
             label.pack(side="left", padx=2, ipady=4)
+
+        # Advancing is always visible here, even when the left navigation needs
+        # scrolling on a laptop-sized display. Spectator fast-forward remains in
+        # the Game Menu; this normal one-week button is hidden in observer saves.
+        self.advance_activity = ttk.Frame(self.statusbar, style="Chrome.TFrame")
+        self.advance_activity.pack(side="right", padx=(6, 2))
+        self.advance_button = ttk.Button(
+            self.advance_activity,
+            text="Advance Week",
+            style="Accent.TButton",
+            command=self.request_advance_week,
+        )
+        self.advance_button.pack(side="right", padx=(6, 0), ipady=2)
+        self.advance_progress = ttk.Progressbar(self.advance_activity, mode="determinate", maximum=100, length=105)
+        self.advance_status = ttk.Label(self.advance_activity, text="", width=26, anchor="e", style="Chrome.TLabel")
 
         work = ttk.Frame(shell, style="Chrome.TFrame")
         work.pack(fill="both", expand=True, padx=8, pady=(0, 8))
@@ -214,7 +250,6 @@ class UIMixin:
         ttk.Separator(nav).pack(fill="x", padx=10, pady=10)
         ttk.Button(nav, text="Quick Save", command=self.save_game).pack(fill="x", padx=10, pady=3)
         ttk.Button(nav, text="Quick Load", command=self.load_game).pack(fill="x", padx=10, pady=3)
-        ttk.Button(nav, text="Advance Week", command=self.advance_month).pack(fill="x", padx=10, pady=3)
 
         main = ttk.Frame(work, style="Panel.TFrame")
         main.pack(side="left", fill="both", expand=True)
@@ -327,7 +362,10 @@ class UIMixin:
             "sim_lab": self.tab_pages["sim_lab"],
             "log": self.tab_pages["log"],
         }
+        self.current_tab_name = name
         self.tabs.select(lookup[name])
+        if hasattr(self, "refresh_current_screen"):
+            self.refresh_current_screen(name)
         # Highlight the active screen in the sidebar so the player always knows where they are.
         for tab_name, button in getattr(self, "nav_buttons", {}).items():
             button.configure(style="NavActive.TButton" if tab_name == name else "Nav.TButton")
@@ -411,13 +449,11 @@ class UIMixin:
         autosave_row = ttk.Frame(save_inner, style="Inset.TFrame")
         autosave_row.pack(fill="x", pady=(0, 6))
         self.autosave_status_label = ttk.Label(autosave_row, text="Autosaves loading...", style="Inset.TLabel")
-        self.autosave_status_label.grid(row=0, column=0, columnspan=7, sticky="ew", padx=4, pady=2)
+        self.autosave_status_label.grid(row=0, column=0, columnspan=5, sticky="ew", padx=4, pady=2)
         for col, (text, command) in enumerate((
             ("Auto", self.toggle_autosaves),
-            ("W-", lambda: self.change_autosave_keep("autosave_weekly_keep", -1)),
-            ("W+", lambda: self.change_autosave_keep("autosave_weekly_keep", 1)),
-            ("M-", lambda: self.change_autosave_keep("autosave_monthly_keep", -1)),
-            ("M+", lambda: self.change_autosave_keep("autosave_monthly_keep", 1)),
+            ("Keep -", lambda: self.change_autosave_keep("autosave_monthly_keep", -1)),
+            ("Keep +", lambda: self.change_autosave_keep("autosave_monthly_keep", 1)),
             ("B-", lambda: self.change_autosave_keep("save_backup_keep", -5)),
             ("B+", lambda: self.change_autosave_keep("save_backup_keep", 5)),
         )):
@@ -433,6 +469,7 @@ class UIMixin:
         ttk.Entry(dbrow, textvariable=self.database_name, width=20).pack(side="left", fill="x", expand=True, padx=4)
         db_actions = ttk.Frame(db_inner, style="Inset.TFrame")
         db_actions.pack(fill="x", pady=(0, 4))
+        self.spectator_sim_buttons = []
         for col, (text, command, style) in enumerate((
             ("Export", self.export_database, None),
             ("Import Quick", self.import_quick_save_as_database, None),
@@ -482,6 +519,7 @@ class UIMixin:
         )):
             button = ttk.Button(spectator_actions, text=text, command=command, style=style) if style else ttk.Button(spectator_actions, text=text, command=command)
             button.grid(row=col // 2, column=col % 2, sticky="ew", padx=3, pady=2)
+            self.spectator_sim_buttons.append(button)
         spectator_actions.columnconfigure(0, weight=1)
         spectator_actions.columnconfigure(1, weight=1)
         date_row = ttk.Frame(spectator, style="Inset.TFrame")
@@ -493,9 +531,59 @@ class UIMixin:
         ttk.Spinbox(date_row, from_=1, to=240, textvariable=self.spectator_target_month, width=5).grid(row=1, column=1, sticky="ew", padx=(0, 4), pady=2)
         ttk.Label(date_row, text="Week", style="Inset.TLabel").grid(row=1, column=2, sticky="w", padx=(4, 2), pady=2)
         ttk.Spinbox(date_row, from_=1, to=4, textvariable=self.spectator_target_week, width=4).grid(row=1, column=3, sticky="ew", padx=(0, 4), pady=2)
-        ttk.Button(date_row, text="Sim To Date", command=self.spectator_sim_to_date).grid(row=2, column=0, columnspan=4, sticky="ew", padx=4, pady=(2, 4))
+        sim_to_date_button = ttk.Button(date_row, text="Sim To Date", command=self.spectator_sim_to_date)
+        sim_to_date_button.grid(row=2, column=0, columnspan=4, sticky="ew", padx=4, pady=(2, 4))
+        self.spectator_sim_buttons.append(sim_to_date_button)
         date_row.columnconfigure(1, weight=1)
         date_row.columnconfigure(3, weight=1)
+
+    def set_advance_ui_progress(self, status, progress):
+        """Update the persistent simulation status without forcing nested events."""
+        if hasattr(self, "advance_status"):
+            self.advance_status.config(text=str(status))
+        if hasattr(self, "advance_progress"):
+            self.advance_progress["value"] = max(0, min(100, float(progress)))
+        if hasattr(self, "stat_month"):
+            year = 2026 + (self.month - 1) // 12
+            self.stat_month.config(text=f"W{self.week} M{self.month} / {year}")
+        if hasattr(self, "spectator_sim_status") and getattr(self, "spectator_mode", False):
+            self.spectator_sim_status.config(text=f"{status} | Month {self.month}, Week {self.week}")
+
+    def set_advance_ui_busy(self, busy, status="", progress=0):
+        """Show activity, prevent re-entry, and keep the native window responsive."""
+        if not hasattr(self, "advance_activity"):
+            return
+        state = "disabled" if busy else "normal"
+        if hasattr(self, "advance_button"):
+            self.advance_button.config(state=state)
+        for button in getattr(self, "spectator_sim_buttons", []):
+            try:
+                button.config(state=state)
+            except tk.TclError:
+                pass
+        if busy:
+            if not self.advance_status.winfo_manager():
+                self.advance_status.pack(side="left", padx=(0, 5))
+            if not self.advance_progress.winfo_manager():
+                self.advance_progress.pack(side="left", padx=(0, 2))
+            self.root.configure(cursor="watch")
+            try:
+                self.root.tk.call("tk", "busy", "hold", self.root)
+                self._advance_busy_held = True
+            except tk.TclError:
+                self._advance_busy_held = False
+            self.set_advance_ui_progress(status, progress)
+        else:
+            if getattr(self, "_advance_busy_held", False):
+                try:
+                    self.root.tk.call("tk", "busy", "forget", self.root)
+                except tk.TclError:
+                    pass
+            self._advance_busy_held = False
+            self.root.configure(cursor="")
+            self.advance_progress.pack_forget()
+            self.advance_status.pack_forget()
+            self.refresh_spectator_controls()
 
     def build_website_tab(self):
         self.screen_header(self.website_tab, "MEDIA DESK", "Manage narrative, press activity, rivalries, and public interest")
@@ -513,7 +601,6 @@ class UIMixin:
         ttk.Button(actions, text="Call Out", command=self.media_desk_callout).pack(side="left", padx=3)
         ttk.Button(actions, text="Interview", command=self.media_desk_interview).pack(side="left", padx=3)
         ttk.Button(actions, text="Press Tour", style="Accent.TButton", command=self.media_desk_press_tour).pack(side="left", padx=3)
-        ttk.Button(actions, text="Open Story Context", command=self.open_selected_story_context).pack(side="right", padx=3)
         left_panel, left = self.section(body, "FEATURED STORY / UPCOMING EVENTS")
         left_panel.pack(side="left", fill="both", expand=True, padx=(0, 6))
         self.website_story = tk.Text(left, wrap="word", font=("Tahoma", 9, "bold"), bg=self.colors["cream"], fg=self.colors["text"], insertbackground=self.colors["text"], height=9, padx=10, pady=10)
@@ -523,9 +610,31 @@ class UIMixin:
         self.website_calendar.pack(fill="both", expand=True)
         right_panel, right = self.section(body, "TODAY'S MAJOR STORIES")
         right_panel.pack(side="left", fill="both", expand=True)
-        self.website_news = tk.Listbox(right, font=("Tahoma", 9), bg="#c9c9c9")
-        self.website_news.pack(fill="both", expand=True)
-        self.website_news.bind("<Double-1>", lambda _event: self.open_selected_story_context())
+        news_table = ttk.Frame(right, style="Panel.TFrame")
+        news_table.pack(fill="both", expand=True)
+        self.website_news = ttk.Treeview(news_table, columns=("type", "headline", "date"), show="headings", height=14)
+        for column, label, width, anchor in (
+            ("type", "Type", 105, "w"), ("headline", "Headline", 430, "w"), ("date", "Date", 105, "center"),
+        ):
+            self.website_news.heading(column, text=label)
+            self.website_news.column(column, width=width, minwidth=65, anchor=anchor, stretch=column == "headline")
+        news_y = ttk.Scrollbar(news_table, orient="vertical", command=self.website_news.yview)
+        news_x = ttk.Scrollbar(news_table, orient="horizontal", command=self.website_news.xview)
+        self.website_news.configure(yscrollcommand=news_y.set, xscrollcommand=news_x.set)
+        news_table.rowconfigure(0, weight=1); news_table.columnconfigure(0, weight=1)
+        self.website_news.grid(row=0, column=0, sticky="nsew")
+        news_y.grid(row=0, column=1, sticky="ns"); news_x.grid(row=1, column=0, sticky="ew")
+        self.website_news.bind("<<TreeviewSelect>>", self.show_selected_media_story)
+        self.website_news.bind("<Double-1>", lambda _event: self.open_selected_news_story())
+        self.website_news.bind("<Return>", lambda _event: self.open_selected_news_story())
+        self.website_news_preview = tk.Text(right, wrap="word", height=6, font=("Tahoma", 9), bg=self.colors["panel_dark"], fg=self.colors["text"], insertbackground=self.colors["text"], padx=10, pady=8)
+        self.website_news_preview.pack(fill="x", pady=(6, 0))
+        self.website_news_preview.config(state="disabled")
+        news_buttons = ttk.Frame(right, style="Inset.TFrame")
+        news_buttons.pack(fill="x", pady=(5, 0))
+        ttk.Button(news_buttons, text="Read Selected Story", style="Accent.TButton", command=self.open_selected_news_story).pack(side="left", padx=3, pady=3)
+        ttk.Button(news_buttons, text="Open Story Context", command=self.open_selected_story_context).pack(side="left", padx=3, pady=3)
+        ttk.Button(news_buttons, text="World Chronicle", command=self.open_world_chronicle).pack(side="right", padx=3, pady=3)
 
     def build_assistant_tab(self):
         self.screen_header(self.assistant_tab, "PERSONAL ASSISTANT", "Warnings, upcoming shows, quick roster, finance, birthdays, and recommendations")
@@ -789,6 +898,7 @@ class UIMixin:
         actions.pack(fill="x", pady=(0, 6))
         ttk.Button(actions, text="Pitch Sponsors", command=self.pitch_sponsors).pack(side="left", padx=4)
         ttk.Button(actions, text="Negotiate Media Rights", command=self.negotiate_media_rights).pack(side="left", padx=4)
+        ttk.Button(actions, text="Academy Management", command=self.open_academy_window).pack(side="left", padx=4)
         ttk.Button(actions, text="Raise Ticket Price", command=lambda: self.adjust_ticket_price(5)).pack(side="right", padx=4)
         ttk.Button(actions, text="Lower Ticket Price", command=lambda: self.adjust_ticket_price(-5)).pack(side="right", padx=4)
         self.finance_summary = ttk.Label(inner, text="", style="Panel.TLabel", justify="left")
@@ -1064,19 +1174,9 @@ class UIMixin:
         ttk.Checkbutton(filters, text="Scouting Mode", variable=self.scouting_mode_var, command=self.toggle_scouting_mode).pack(side="left", padx=(0, 8))
         ttk.Button(filters, text="Basic Scout (2 wk)", command=lambda: self.start_selected_scout_report("basic")).pack(side="left", padx=2)
         ttk.Button(filters, text="Full Scout (6 wk)", command=lambda: self.start_selected_scout_report("full")).pack(side="left", padx=2)
-        self.market_tree = ttk.Treeview(inner, columns=("name", "tag", "gender", "weight", "record", "age", "overall", "popularity", "star", "media", "pro", "style", "purse", "offer"), show="headings")
-        for col, text, width in (("name", "Name", 155), ("tag", "Scout", 88), ("gender", "G", 38), ("weight", "Weight", 100), ("record", "Record", 65), ("age", "Age", 45), ("overall", "OVR", 50), ("popularity", "Pop", 50), ("star", "Star", 50), ("media", "Media", 55), ("pro", "Pro", 45), ("style", "Style", 90), ("purse", "Asking", 80), ("offer", "Rival Offer", 145)):
-            self.market_tree.heading(col, text=text)
-            self.market_tree.column(col, width=width, anchor="center")
-        self.market_tree.column("name", anchor="w")
-        self.make_tree_sortable(self.market_tree)
-        market_scroll = ttk.Scrollbar(inner, orient="vertical", command=self.market_tree.yview)
-        self.market_tree.configure(yscrollcommand=market_scroll.set)
-        market_scroll.pack(side="right", fill="y")
-        self.market_tree.pack(side="left", fill="both", expand=True)
-        self.market_tree.bind("<Double-1>", lambda _e: self.open_tree_fighter_profile(self.market_tree, "name"))
-        self.market_tree.bind("<<TreeviewSelect>>", lambda _e: self.refresh_market_scout_panel())
-        scout_panel = tk.Frame(inner, bg=self.colors["panel_dark"], width=300, highlightthickness=1, highlightbackground=self.colors["line"])
+        market_body = ttk.Frame(inner, style="Inset.TFrame")
+        market_body.pack(fill="both", expand=True)
+        scout_panel = tk.Frame(market_body, bg=self.colors["panel_dark"], width=300, highlightthickness=1, highlightbackground=self.colors["line"])
         scout_panel.pack(side="right", fill="y", padx=(8, 0))
         scout_panel.pack_propagate(False)
         tk.Label(scout_panel, text="SCOUTING READ", font=("Impact", 15), bg=self.colors["panel_dark"], fg=self.colors["gold"]).pack(anchor="w", padx=10, pady=(8, 2))
@@ -1084,7 +1184,23 @@ class UIMixin:
         self.market_scout_text.pack(fill="both", expand=True, padx=6, pady=(0, 6))
         self.market_scout_text.insert("end", "Select a free agent to see scouting confidence, risk, and action advice.")
         self.market_scout_text.config(state="disabled")
-        ttk.Button(self.market_tab, text="Negotiate", command=self.open_negotiation).pack(anchor="e")
+        tree_frame = ttk.Frame(market_body, style="Inset.TFrame")
+        tree_frame.pack(side="left", fill="both", expand=True)
+        self.market_tree = ttk.Treeview(tree_frame, columns=("name", "tag", "gender", "weight", "record", "age", "overall", "popularity", "star", "media", "pro", "style", "purse", "offer"), show="headings")
+        for col, text, width in (("name", "Name", 155), ("tag", "Scout", 88), ("gender", "G", 38), ("weight", "Weight", 100), ("record", "Record", 65), ("age", "Age", 45), ("overall", "OVR", 50), ("popularity", "Pop", 50), ("star", "Star", 50), ("media", "Media", 55), ("pro", "Pro", 45), ("style", "Style", 90), ("purse", "Asking", 80), ("offer", "Rival Offer", 145)):
+            self.market_tree.heading(col, text=text)
+            self.market_tree.column(col, width=width, anchor="center")
+        self.market_tree.column("name", anchor="w")
+        self.make_tree_sortable(self.market_tree)
+        market_scroll = ttk.Scrollbar(tree_frame, orient="vertical", command=self.market_tree.yview)
+        self.market_tree.configure(yscrollcommand=market_scroll.set)
+        market_scroll.pack(side="right", fill="y")
+        self.market_tree.pack(side="left", fill="both", expand=True)
+        self.market_tree.bind("<Double-1>", lambda _e: self.open_tree_fighter_profile(self.market_tree, "name"))
+        self.market_tree.bind("<<TreeviewSelect>>", lambda _e: self.refresh_market_scout_panel())
+        actions = ttk.Frame(self.market_tab, style="TFrame")
+        actions.pack(fill="x")
+        ttk.Button(actions, text="Negotiate", style="Accent.TButton", command=self.open_negotiation).pack(side="right")
 
     def build_world_tab(self):
         self.screen_header(self.world_tab, "WORLD HUB", "Promotions, news, market churn, and the wider MMA economy")
@@ -1107,11 +1223,13 @@ class UIMixin:
         self.world_news_list = tk.Listbox(right, font=("Tahoma", 9), bg=self.colors["tree"], fg=self.colors["text"], selectbackground=self.colors["red"], selectforeground="#ffffff", activestyle="none", height=10)
         self.world_news_list.pack(fill="both", expand=True, pady=(0, 5))
         self.world_news_list.bind("<<ListboxSelect>>", self.show_selected_world_story)
+        self.world_news_list.bind("<Double-1>", lambda _event: self.open_selected_world_story_reader())
         self.world_news_detail = tk.Text(right, wrap="word", font=("Tahoma", 9), bg=self.colors["panel_dark"], fg=self.colors["text"], height=5, padx=10, pady=8)
         self.world_news_detail.pack(fill="x", pady=(0, 5))
         self.world_news_detail.config(state="disabled")
         news_actions = ttk.Frame(right, style="Inset.TFrame")
         news_actions.pack(fill="x", pady=(0, 6))
+        ttk.Button(news_actions, text="Read Full Story", style="Accent.TButton", command=self.open_selected_world_story_reader).pack(side="left", padx=4, pady=3)
         ttk.Button(news_actions, text="Open Story Context", command=self.open_selected_world_story_context).pack(side="left", padx=4, pady=3)
         ttk.Button(news_actions, text="Combat Sports", command=self.open_combat_sports_window).pack(side="left", padx=4, pady=3)
         ttk.Button(news_actions, text="World Chronicle", command=self.open_world_chronicle).pack(side="right", padx=4, pady=3)
@@ -1198,7 +1316,7 @@ class UIMixin:
         for col in range(1, 5):
             action_row.columnconfigure(col, weight=1)
         for variable in (self.editor_search, self.editor_company_filter, self.editor_weight_filter, self.editor_gender_filter):
-            variable.trace_add("write", lambda *_args: self.refresh_database_editor())
+            variable.trace_add("write", lambda *_args: self.schedule_database_editor_refresh())
 
         body = ttk.Frame(self.editor_tab, style="Chrome.TFrame")
         body.pack(fill="both", expand=True)
@@ -1260,8 +1378,8 @@ class UIMixin:
             ("Age", "age", "spin:16:55"), ("Region", "region", "combo:" + "|".join(REGIONS)), ("Nationality", "nationality", "entry"),
             ("Style", "style", "combo:" + "|".join(STYLES)), ("Stance", "stance", "combo:Orthodox|Southpaw|Switch"),
             ("Trait", "trait", "combo:" + "|".join(TRAITS)), ("Behaviour", "behaviour", "combo:" + "|".join(BEHAVIOURS)),
-            ("Camp", "camp", "combo:" + "|".join(CAMPS)), ("Record Wins", "record_w", "spin:0:120"),
-            ("Record Losses", "record_l", "spin:0:120"), ("Record Draws", "record_d", "spin:0:30"),
+            ("Camp", "camp", "combo:" + "|".join(CAMPS)), ("Record Wins", "record_w", "spin:0:999"),
+            ("Record Losses", "record_l", "spin:0:500"), ("Record Draws", "record_d", "spin:0:250"),
         ])
         self.build_editor_form(combat, [
             ("Striking", "striking", "spin:1:99"), ("Wrestling", "wrestling", "spin:1:99"), ("Grappling", "grappling", "spin:1:99"),

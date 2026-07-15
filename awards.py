@@ -47,17 +47,17 @@ class AwardsMixin:
             fighter.career_achievements = (getattr(fighter, "career_achievements", None) or [])
             fighter.career_achievements.append(title)
             fighter.career_achievements = fighter.career_achievements[-30:]
-        if company == getattr(self, "player_company_name", "") or (fighter and fighter in getattr(self, "roster", [])):
+        if company == getattr(self, "player_company_name", "") or (fighter and any(member is fighter for member in getattr(self, "roster", []))):
             headline = f"Achievement unlocked: {title} — {target}"
             self.news.insert(0, headline)
             self.inbox.append({"subject": f"Achievement — {title}", "body": f"{target}: {description}", "type": "Awards", "fighter": target if fighter else "", "resolved": False})
         return True
 
     def fighter_company_name(self, fighter):
-        if fighter in getattr(self, "roster", []):
+        if any(member is fighter for member in getattr(self, "roster", [])):
             return self.player_company_name
         for promo in getattr(self, "promotions", []):
-            if fighter in promo.roster:
+            if any(member is fighter for member in promo.roster):
                 return promo.name
         return "Independent"
 

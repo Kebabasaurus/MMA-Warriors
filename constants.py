@@ -44,6 +44,188 @@ WEIGHT_LIMITS = {
     "Light Heavyweight": 205,
     "Heavyweight": 265,
 }
+
+# Non-MMA circuits do not share MMA's eight-division ladder.  The value is the
+# maximum competition weight in pounds; ``None`` means an open-ended class.
+# These keys are also the canonical, save-stable labels used by sport titles,
+# rankings and matchmaking.
+COMBAT_SPORT_WEIGHT_CLASSES = {
+    "Boxing": {
+        "Male": [
+            ("Minimumweight", 105), ("Light Flyweight", 108), ("Flyweight", 112),
+            ("Super Flyweight", 115), ("Bantamweight", 118), ("Super Bantamweight", 122),
+            ("Featherweight", 126), ("Super Featherweight", 130), ("Lightweight", 135),
+            ("Super Lightweight", 140), ("Welterweight", 147), ("Super Welterweight", 154),
+            ("Middleweight", 160), ("Super Middleweight", 168), ("Light Heavyweight", 175),
+            ("Cruiserweight", 200), ("Heavyweight", None),
+        ],
+    },
+    "Kickboxing": {
+        "Male": [
+            ("Flyweight", 121), ("Bantamweight", 132), ("Featherweight", 143),
+            ("Lightweight", 154), ("Welterweight", 170), ("Middleweight", 187),
+            ("Light Heavyweight", 209), ("Heavyweight", None),
+        ],
+    },
+    "Muay Thai": {
+        "Male": [
+            ("Mini Flyweight", 105), ("Flyweight", 112), ("Bantamweight", 118),
+            ("Super Bantamweight", 122), ("Featherweight", 126), ("Super Featherweight", 130),
+            ("Lightweight", 135), ("Super Lightweight", 140), ("Welterweight", 147),
+            ("Middleweight", 160), ("Heavyweight", None),
+        ],
+    },
+    "Lethwei": {
+        "Male": [
+            ("Flyweight", 112), ("Bantamweight", 119), ("Featherweight", 126),
+            ("Lightweight", 132), ("Welterweight", 148), ("Middleweight", 165),
+            ("Cruiserweight", 185), ("Openweight", None),
+        ],
+    },
+    "Wrestling": {
+        "Male": [("57 kg", 126), ("65 kg", 143), ("70 kg", 154), ("74 kg", 163), ("79 kg", 174), ("86 kg", 190), ("97 kg", 214), ("130 kg", 287)],
+        "Female": [("50 kg", 110), ("53 kg", 117), ("57 kg", 126), ("59 kg", 130), ("62 kg", 137), ("68 kg", 150), ("72 kg", 159), ("76 kg", 168)],
+    },
+    "Brazilian Jiu-Jitsu": {
+        "Male": [
+            ("Roosterweight", 127), ("Light Featherweight", 141), ("Featherweight", 154),
+            ("Lightweight", 168), ("Middleweight", 182), ("Medium Heavyweight", 195),
+            ("Heavyweight", 208), ("Super Heavyweight", 222), ("Ultra Heavyweight", None),
+        ],
+        "Female": [
+            ("Roosterweight", 107), ("Light Featherweight", 118), ("Featherweight", 129),
+            ("Lightweight", 141), ("Middleweight", 152), ("Medium Heavyweight", 163),
+            ("Heavyweight", 175), ("Super Heavyweight", None),
+        ],
+    },
+}
+
+# Striking circuits use the same ladder for women.  Keeping the alias in the
+# source of truth avoids UI-only exceptions and makes generated women eligible
+# for the same real championships.
+for _sport in ("Boxing", "Kickboxing", "Muay Thai", "Lethwei"):
+    COMBAT_SPORT_WEIGHT_CLASSES[_sport]["Female"] = list(COMBAT_SPORT_WEIGHT_CLASSES[_sport]["Male"])
+
+COMBAT_SPORT_REAL_DIVISIONS = {
+    "Boxing": {
+        "Floyd Mayweather Jr": "Super Featherweight", "Manny Pacquiao": "Featherweight",
+        "Canelo Alvarez": "Super Middleweight", "Terence Crawford": "Welterweight",
+        "Oleksandr Usyk": "Cruiserweight", "Vasiliy Lomachenko": "Super Featherweight",
+        "Naoya Inoue": "Super Bantamweight", "Gennady Golovkin": "Middleweight",
+        "Wladimir Klitschko": "Heavyweight", "Vitali Klitschko": "Heavyweight", "Lennox Lewis": "Heavyweight",
+        "Roy Jones Jr": "Light Heavyweight", "Bernard Hopkins": "Middleweight", "Oscar De La Hoya": "Welterweight",
+        "Juan Manuel Marquez": "Lightweight", "Erik Morales": "Featherweight", "Marco Antonio Barrera": "Featherweight",
+        "Miguel Cotto": "Welterweight", "Felix Trinidad": "Welterweight", "Shane Mosley": "Lightweight",
+        "Andre Ward": "Super Middleweight", "Sergey Kovalev": "Light Heavyweight",
+        "Artur Beterbiev": "Light Heavyweight", "Dmitry Bivol": "Light Heavyweight",
+        "Tyson Fury": "Heavyweight", "Anthony Joshua": "Heavyweight", "Deontay Wilder": "Heavyweight",
+        "Andy Ruiz Jr": "Heavyweight", "Zhilei Zhang": "Heavyweight", "Joseph Parker": "Heavyweight",
+        "Jermell Charlo": "Super Welterweight", "Jermall Charlo": "Middleweight", "Errol Spence Jr": "Welterweight",
+        "Keith Thurman": "Welterweight", "Shawn Porter": "Welterweight", "Danny Garcia": "Super Lightweight",
+        "Amir Khan": "Super Lightweight", "Kell Brook": "Welterweight", "Timothy Bradley": "Super Lightweight",
+        "Devon Alexander": "Super Lightweight", "Roman Gonzalez": "Flyweight", "Nonito Donaire": "Bantamweight",
+        "Juan Francisco Estrada": "Super Flyweight", "Srisaket Sor Rungvisai": "Super Flyweight",
+        "Kazuto Ioka": "Super Flyweight", "Donnie Nietes": "Light Flyweight", "Mikey Garcia": "Lightweight",
+        "Gervonta Davis": "Lightweight", "Shakur Stevenson": "Super Featherweight", "Devin Haney": "Lightweight",
+    },
+    "Kickboxing": {
+        "Ernesto Hoost": "Heavyweight", "Giorgio Petrosyan": "Lightweight", "Semmy Schilt": "Heavyweight",
+        "Peter Aerts": "Heavyweight", "Remy Bonjasky": "Heavyweight", "Badr Hari": "Heavyweight",
+        "Buakaw Banchamek": "Lightweight", "Andy Hug": "Heavyweight", "Ramon Dekkers": "Featherweight",
+        "Rob Kaman": "Middleweight", "Rico Verhoeven": "Heavyweight", "Tenshin Nasukawa": "Bantamweight",
+        "Sitthichai Sitsongpeenong": "Lightweight", "Superbon Singha Mawynn": "Lightweight",
+        "Chingiz Allazov": "Lightweight", "Artem Levin": "Middleweight", "Nieky Holzken": "Welterweight",
+        "Masato Kobayashi": "Lightweight", "Andy Souwer": "Lightweight", "Mike Zambidis": "Lightweight",
+        "Mirko Cro Cop": "Heavyweight", "Alexey Ignashov": "Heavyweight", "Gokhan Saki": "Light Heavyweight",
+        "Tyrone Spong": "Light Heavyweight", "Jerome Le Banner": "Heavyweight", "Branko Cikatic": "Heavyweight",
+        "Peter Graham": "Heavyweight", "Jorina Baars": "Featherweight", "Lucia Rijker": "Featherweight",
+        "Denise Kielholtz": "Bantamweight", "Jemyma Betrian": "Bantamweight", "Anissa Meksen": "Flyweight",
+        "Petchpanomrung Kiatmookao": "Featherweight", "Cedric Doumbe": "Welterweight",
+        "Marat Grigorian": "Lightweight", "Robin van Roosmalen": "Lightweight", "Albert Kraus": "Lightweight",
+        "Kaoklai Kaennorsing": "Middleweight", "Ray Sefo": "Heavyweight", "Mark Hunt": "Heavyweight",
+        "Francisco Filho": "Heavyweight", "Kyotaro Fujimoto": "Heavyweight", "Daniel Ghita": "Heavyweight",
+        "Hesdy Gerges": "Heavyweight", "Jamal Ben Saddik": "Heavyweight", "Murthel Groenhart": "Welterweight",
+        "Alistair Overeem": "Heavyweight", "Sam Greco": "Heavyweight", "Stan Longinidis": "Heavyweight",
+        "Joseph Valtellini": "Welterweight",
+    },
+    "Muay Thai": {
+        "Samart Payakaroon": "Featherweight", "Dieselnoi Chor Thanasukarn": "Lightweight",
+        "Saenchai": "Super Featherweight", "Buakaw Banchamek": "Middleweight",
+        "Rodtang Jitmuangnon": "Super Featherweight", "Nong-O Gaiyanghadao": "Lightweight",
+        "Sam-A Gaiyanghadao": "Bantamweight", "Petchmorakot Petchyindee": "Middleweight",
+        "Superbon Singha Mawynn": "Middleweight", "Superlek Kiatmuu9": "Super Featherweight",
+        "Yodsanklai Fairtex": "Middleweight", "Ramon Dekkers": "Super Lightweight",
+        "Apidej Sit-Hirun": "Welterweight", "Sagat Petchyindee": "Welterweight",
+        "Namsaknoi Yudthagarngamtorn": "Lightweight", "Namkabuan Nongkeepahuyuth": "Super Featherweight",
+        "Kaensak Sor Ploenjit": "Bantamweight", "Somrak Khamsing": "Featherweight",
+        "Pud Pad Noy Worawoot": "Lightweight", "Karuhat Sor Supawan": "Super Bantamweight",
+        "Jomhod Kiatadisak": "Lightweight", "Orono Por Muang Ubon": "Lightweight",
+        "Lerdsila Chumpairtour": "Bantamweight", "Petchboonchu FA Group": "Lightweight",
+        "Singdam Kiatmuu9": "Lightweight", "Anuwat Kaewsamrit": "Featherweight",
+        "Yodwicha Por Boonsit": "Super Lightweight", "Sangmanee Sor Tienpo": "Bantamweight",
+        "Panpayak Jitmuangnon": "Bantamweight", "Tawanchai PK Saenchai": "Welterweight",
+        "Seksan Or Kwanmuang": "Lightweight", "Liam Harrison": "Super Lightweight",
+        "John Wayne Parr": "Middleweight", "Dany Bill": "Super Lightweight",
+        "Coban Lookchaomaesaitong": "Lightweight", "Sakmongkol Sithchuchok": "Middleweight",
+        "Kongtoranee Payakaroon": "Bantamweight", "Boonlai Sor Thanikul": "Super Bantamweight",
+        "Oley Kiatoneway": "Super Bantamweight", "Hippy Singmanee": "Mini Flyweight",
+        "Chamuakpetch Haphalung": "Featherweight", "Veeraphol Sahaprom": "Bantamweight",
+        "Khaosai Galaxy": "Bantamweight", "Attachai Fairtex": "Super Featherweight",
+        "Petchtanong Petchfergus": "Welterweight", "Petchdam Petchyindee": "Super Featherweight",
+        "Capitan Petchyindee": "Welterweight", "Kulabdam Sor Jor Piek Uthai": "Super Lightweight",
+        "Nadaka Yoshinari": "Bantamweight", "Somratsamee Manopgym": "Bantamweight",
+    },
+    "Lethwei": {
+        "Tun Tun Min": "Openweight", "Dave Leduc": "Openweight", "Saw Nga Man": "Openweight",
+        "Too Too": "Middleweight", "Tway Ma Shaung": "Openweight", "Soe Lin Oo": "Welterweight",
+        "Cyrus Washington": "Middleweight", "Lone Chaw": "Openweight", "Shwe Sai": "Openweight",
+        "Tun Lwin Moe": "Welterweight", "Mite Yine": "Featherweight", "Saw Ba Oo": "Welterweight",
+        "Wan Chai": "Middleweight", "Kyar Ba Nyein": "Bantamweight", "Phoe Kay": "Cruiserweight",
+        "Artur Saladiak": "Middleweight", "Sasha Moisa": "Middleweight", "Naimjon Tuhtaboyev": "Middleweight",
+        "Akitoshi Tamura": "Welterweight", "Shunichi Shimizu": "Welterweight",
+    },
+    "Wrestling": {
+        "Aleksandr Karelin": "130 kg", "Buvaisar Saitiev": "74 kg", "John Smith": "65 kg",
+        "Jordan Burroughs": "74 kg", "Abdulrashid Sadulaev": "97 kg", "Mijain Lopez": "130 kg",
+        "Sergei Beloglazov": "57 kg", "Arsen Fadzaev": "70 kg", "Hamid Sourian": "57 kg",
+        "Artur Taymazov": "130 kg", "Valentin Yordanov": "57 kg", "Dan Gable": "70 kg",
+        "Cael Sanderson": "86 kg", "Kyle Snyder": "97 kg", "David Taylor": "86 kg",
+        "Hassan Yazdani": "86 kg", "Gable Steveson": "130 kg", "Geno Petriashvili": "130 kg",
+        "Taha Akgul": "130 kg", "Rulon Gardner": "130 kg", "Bruce Baumgartner": "130 kg",
+        "Makharbek Khadartsev": "97 kg", "Ivan Yarygin": "130 kg", "Yojiro Uetake": "57 kg",
+        "Osamu Watanabe": "65 kg", "Levan Tediashvili": "97 kg", "Sushil Kumar": "70 kg",
+        "Bajrang Punia": "65 kg", "Yogeshwar Dutt": "65 kg", "Saori Yoshida": "57 kg",
+        "Kaori Icho": "68 kg", "Helen Maroulis": "57 kg", "Adeline Gray": "76 kg",
+        "Tamyra Mensah-Stock": "68 kg", "Iryna Merleni": "50 kg", "Aleksandr Medved": "97 kg",
+        "Elbrus Tedeyev": "70 kg", "Besik Kudukhov": "65 kg", "Zaurbek Sidakov": "74 kg",
+        "Roman Vlasov": "79 kg", "Frank Chamizo": "74 kg", "Reza Yazdani": "97 kg",
+        "Ghasem Rezaei": "97 kg", "Komeil Ghasemi": "130 kg", "Henry Cejudo": "57 kg",
+        "Daniel Cormier": "97 kg", "Yoel Romero": "86 kg", "Ben Askren": "74 kg",
+        "Bo Nickal": "86 kg", "Kenny Monday": "74 kg",
+    },
+    "Brazilian Jiu-Jitsu": {
+        "Roger Gracie": "Ultra Heavyweight", "Marcelo Garcia": "Middleweight", "Marcus Almeida": "Ultra Heavyweight",
+        "Leandro Lo": "Medium Heavyweight", "Andre Galvao": "Medium Heavyweight", "Gordon Ryan": "Ultra Heavyweight",
+        "Rafael Mendes": "Featherweight", "Guilherme Mendes": "Light Featherweight",
+        "Rubens Charles Maciel": "Featherweight", "Bruno Malfacine": "Roosterweight",
+        "Roberto Cyborg Abreu": "Ultra Heavyweight", "Rodolfo Vieira": "Heavyweight",
+        "Alexandre Ribeiro": "Heavyweight", "Saulo Ribeiro": "Medium Heavyweight",
+        "Romulo Barral": "Medium Heavyweight", "Bernardo Faria": "Ultra Heavyweight",
+        "Lucas Lepri": "Lightweight", "Robson Moura": "Light Featherweight", "Royler Gracie": "Featherweight",
+        "Rickson Gracie": "Medium Heavyweight", "Royce Gracie": "Middleweight", "Carlos Gracie Jr": "Featherweight",
+        "Carlson Gracie": "Medium Heavyweight", "Rolls Gracie": "Middleweight", "Jean Jacques Machado": "Middleweight",
+        "Rigan Machado": "Heavyweight", "Vitor Shaolin Ribeiro": "Lightweight",
+        "Murilo Bustamante": "Medium Heavyweight", "Mario Sperry": "Ultra Heavyweight",
+        "Fabio Gurgel": "Medium Heavyweight", "Fernando Terere": "Middleweight", "Marcio Feitosa": "Featherweight",
+        "Ronaldo Jacare Souza": "Medium Heavyweight", "Demian Maia": "Medium Heavyweight", "Kron Gracie": "Middleweight",
+        "Mikey Musumeci": "Roosterweight", "Nicholas Meregali": "Ultra Heavyweight",
+        "Felipe Pena": "Ultra Heavyweight", "Kaynan Duarte": "Ultra Heavyweight", "Mica Galvao": "Middleweight",
+        "Tainan Dalpra": "Middleweight", "Craig Jones": "Medium Heavyweight", "Lachlan Giles": "Middleweight",
+        "Garry Tonon": "Lightweight", "Eddie Bravo": "Lightweight", "Keenan Cornelius": "Medium Heavyweight",
+        "Paulo Miyao": "Light Featherweight", "Joao Miyao": "Light Featherweight",
+        "Gabi Garcia": "Super Heavyweight", "Beatriz Mesquita": "Lightweight",
+    },
+}
 REGIONS = ["USA", "Canada", "Brazil", "Mexico", "UK", "Europe", "Japan", "Australia", "Asia"]
 # These are world-market buckets rather than passports.  They keep generated
 # fighters rooted in a believable local scene while still allowing realistic

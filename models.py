@@ -29,6 +29,7 @@ class Fighter:
     primary_discipline: str = "MMA"
     combat_background: str = "Mixed martial arts"
     sport_employer: str = ""
+    sport_weight_class: str = ""
     multi_sport_records: dict = None
     crossover_history: list = None
     birth_country: str = ""
@@ -121,6 +122,7 @@ class Fighter:
     title_shot_clause: bool = False
     owed_title_shot: bool = False
     rating_profile_version: int = 0
+    sport_profile_version: int = 0
     legend_prime_age_version: int = 0
     career_arc_version: int = 0
     feeder_origin: str = ""
@@ -242,3 +244,4 @@ class Promotion:
     executive: dict = None
     era_history: list = None
     legacy_score: int = 0
+    academy: dict = None

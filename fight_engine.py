@@ -1166,7 +1166,8 @@ class FightEngineMixin:
         return skills.get(key, fallback)
 
     def ds_avg(self, fighter, keys, fallback=50):
-        return round(sum(self.ds(fighter, key, fallback) for key in keys) / max(1, len(keys)))
+        skills = fighter.detailed_skills or {}
+        return round(sum(skills.get(key, fallback) for key in keys) / max(1, len(keys)))
 
     def skill_bundle(self, fighter, bundle):
         bundles = {
@@ -1188,7 +1189,15 @@ class FightEngineMixin:
             "mental": ("composure", "consistency", "adaptability", "discipline", "confidence"),
         }
         keys = bundles.get(bundle, ())
-        return self.ds_avg(fighter, keys, fighter.overall)
+        if not keys:
+            return fighter.overall
+        skills = fighter.detailed_skills or {}
+        # Avoid calculating the multi-group overall on every exchange when all
+        # detailed keys are present (the normal case). Missing legacy keys still
+        # receive exactly the same overall fallback as before.
+        missing = any(key not in skills for key in keys)
+        fallback = fighter.overall if missing else 50
+        return round(sum(skills.get(key, fallback) for key in keys) / len(keys))
 
     def resolve_exchange(self, actor, defender, action, state, round_stats):
         position = state["position"]
@@ -1316,23 +1325,41 @@ class FightEngineMixin:
         fatigue = (gas - 50) * 0.32
         low_gas_penalty = max(0, 32 - gas) * 0.45 + max(0, 12 - gas) * 0.9
         burst_actions = {"power_punch", "kick", "shoot", "takedown", "submission", "bottom_submission", "sweep", "stand_up"}
-        base = {
-            "jab": self.skill_bundle(fighter, "boxing") * 0.85 + self.ds(fighter, "reach", 50) * 0.18 + fighter.fight_iq * 0.18,
-            "power_punch": self.skill_bundle(fighter, "power_boxing") * 0.65 + fighter.power * 0.55 + self.ds(fighter, "killer_instinct", 50) * 0.16,
-            "kick": self.skill_bundle(fighter, "kick_game") * 0.85 + self.ds(fighter, "mobility", 50) * 0.22,
-            "dirty_boxing": self.skill_bundle(fighter, "clinch_attack") * 0.75 + fighter.toughness * 0.2 + self.ds(fighter, "strength", 50) * 0.18,
-            "ground_strikes": self.ds_avg(fighter, ("ground_striking", "top_control", "elbows", "punch_power"), fighter.ground_control) * 0.75 + fighter.power * 0.25,
-            "shoot": self.skill_bundle(fighter, "shot") * 0.82 + self.ds(fighter, "conditioning", fighter.cardio) * 0.18,
-            "takedown": self.ds_avg(fighter, ("clinch_takedowns", "throws", "chain_wrestling", "strength"), fighter.wrestling) * 0.78 + fighter.ground_control * 0.2,
-            "cage_control": self.ds_avg(fighter, ("cage_pressure", "cage_wrestling", "clinch_control", "strength"), fighter.wrestling) * 0.78 + fighter.fight_iq * 0.22,
-            "break_clinch": self.skill_bundle(fighter, "clinch_defence") * 0.75 + fighter.fight_iq * 0.22,
-            "advance_position": self.ds_avg(fighter, ("transitions", "positional_ability", "scrambles", "mount_control"), fighter.grappling) * 0.72 + fighter.ground_control * 0.25,
-            "recover_guard": self.skill_bundle(fighter, "bottom_game") * 0.8 + fighter.submission_defence * 0.2,
-            "submission": self.skill_bundle(fighter, "submission_game") * 0.68 + fighter.grappling * 0.14,
-            "bottom_submission": self.ds_avg(fighter, ("submission_attack", "guard_work", "leg_locks", "confidence"), fighter.submissions) * 0.66 + fighter.fight_iq * 0.14,
-            "sweep": self.ds_avg(fighter, ("scrambles", "bottom_control", "transitions", "strength"), fighter.grappling) * 0.78 + fighter.wrestling * 0.18,
-            "stand_up": self.ds_avg(fighter, ("get_ups", "scrambles", "sprawl", "conditioning"), fighter.takedown_defence) * 0.82 + fighter.cardio * 0.15,
-        }.get(action, fighter.overall)
+        # The former dict literal evaluated all fifteen formulas for every one
+        # action. Dispatching only the selected action is mathematically and
+        # randomly identical, while removing most fight-engine busywork.
+        if action == "jab":
+            base = self.skill_bundle(fighter, "boxing") * 0.85 + self.ds(fighter, "reach", 50) * 0.18 + fighter.fight_iq * 0.18
+        elif action == "power_punch":
+            base = self.skill_bundle(fighter, "power_boxing") * 0.65 + fighter.power * 0.55 + self.ds(fighter, "killer_instinct", 50) * 0.16
+        elif action == "kick":
+            base = self.skill_bundle(fighter, "kick_game") * 0.85 + self.ds(fighter, "mobility", 50) * 0.22
+        elif action == "dirty_boxing":
+            base = self.skill_bundle(fighter, "clinch_attack") * 0.75 + fighter.toughness * 0.2 + self.ds(fighter, "strength", 50) * 0.18
+        elif action == "ground_strikes":
+            base = self.ds_avg(fighter, ("ground_striking", "top_control", "elbows", "punch_power"), fighter.ground_control) * 0.75 + fighter.power * 0.25
+        elif action == "shoot":
+            base = self.skill_bundle(fighter, "shot") * 0.82 + self.ds(fighter, "conditioning", fighter.cardio) * 0.18
+        elif action == "takedown":
+            base = self.ds_avg(fighter, ("clinch_takedowns", "throws", "chain_wrestling", "strength"), fighter.wrestling) * 0.78 + fighter.ground_control * 0.2
+        elif action == "cage_control":
+            base = self.ds_avg(fighter, ("cage_pressure", "cage_wrestling", "clinch_control", "strength"), fighter.wrestling) * 0.78 + fighter.fight_iq * 0.22
+        elif action == "break_clinch":
+            base = self.skill_bundle(fighter, "clinch_defence") * 0.75 + fighter.fight_iq * 0.22
+        elif action == "advance_position":
+            base = self.ds_avg(fighter, ("transitions", "positional_ability", "scrambles", "mount_control"), fighter.grappling) * 0.72 + fighter.ground_control * 0.25
+        elif action == "recover_guard":
+            base = self.skill_bundle(fighter, "bottom_game") * 0.8 + fighter.submission_defence * 0.2
+        elif action == "submission":
+            base = self.skill_bundle(fighter, "submission_game") * 0.68 + fighter.grappling * 0.14
+        elif action == "bottom_submission":
+            base = self.ds_avg(fighter, ("submission_attack", "guard_work", "leg_locks", "confidence"), fighter.submissions) * 0.66 + fighter.fight_iq * 0.14
+        elif action == "sweep":
+            base = self.ds_avg(fighter, ("scrambles", "bottom_control", "transitions", "strength"), fighter.grappling) * 0.78 + fighter.wrestling * 0.18
+        elif action == "stand_up":
+            base = self.ds_avg(fighter, ("get_ups", "scrambles", "sprawl", "conditioning"), fighter.takedown_defence) * 0.82 + fighter.cardio * 0.15
+        else:
+            base = fighter.overall
         trait = 6 if fighter.trait == "Clutch" and gas < 45 else 0
         if fighter.trait == "Comeback Artist" and damage > fighter.toughness * 0.45:
             trait += 7

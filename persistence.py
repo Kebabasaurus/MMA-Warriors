@@ -40,13 +40,18 @@ def atomic_write_json(path, data):
     atomic_write_text(path, json.dumps(data, indent=2))
 
 
-def atomic_write_json_gzip(path, data):
+def atomic_write_json_compact(path, data):
+    """Atomic compact JSON for runtime saves; editable databases stay indented."""
+    atomic_write_text(path, json.dumps(data, separators=(",", ":")))
+
+
+def atomic_write_json_gzip(path, data, compresslevel=6):
     """Atomically write a compressed JSON backup/autosave."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".tmp")
-    with gzip.open(temporary, "wt", encoding="utf-8", compresslevel=6) as handle:
-        json.dump(data, handle, separators=(",", ":"))
+    payload = json.dumps(data, separators=(",", ":")).encode("utf-8")
+    temporary.write_bytes(gzip.compress(payload, compresslevel=max(1, min(9, int(compresslevel)))))
     os.replace(temporary, path)
 
 
@@ -166,7 +171,7 @@ class PersistenceMixin:
             data = self.serialize_world()
             SAVE_DIR.mkdir(parents=True, exist_ok=True)
             autosave_path = SAVE_DIR / f"crash_autosave_{_crash_stamp()}.json"
-            atomic_write_json(autosave_path, data)
+            atomic_write_json_compact(autosave_path, data)
             crash_note += f"\nAn emergency autosave was written to {autosave_path}."
         except Exception as autosave_error:
             LOGGER.exception("Emergency crash autosave failed: %s", autosave_error)
@@ -189,7 +194,7 @@ class PersistenceMixin:
             if SAVE_FILE.exists():
                 shutil.copy2(SAVE_FILE, backup_path)
                 self.backup_save_file(SAVE_FILE, "before_quick_save")
-            atomic_write_json(SAVE_FILE, data)
+            atomic_write_json_compact(SAVE_FILE, data)
             self.prune_save_backups()
         except Exception as exc:
             LOGGER.exception("Quick save failed: %s", exc)
@@ -226,12 +231,12 @@ class PersistenceMixin:
         with path.open("rb") as source, gzip.open(target, "wb", compresslevel=6) as destination:
             shutil.copyfileobj(source, destination)
         manifest = target.with_suffix(".manifest.json")
-        manifest.write_text(json.dumps({
+        atomic_write_json(manifest, {
             "created_at": datetime.now().isoformat(timespec="seconds"),
             "source": str(path),
             "backup": str(target),
             "reason": reason,
-        }, indent=2), encoding="utf-8")
+        })
         return target
 
     def prune_save_backups(self, keep=None):
@@ -257,7 +262,7 @@ class PersistenceMixin:
         path.mkdir(parents=True, exist_ok=True)
         return path
 
-    def write_rolling_autosave(self, kind="weekly"):
+    def write_rolling_autosave(self, kind="weekly", snapshot=None):
         if getattr(self, "suppress_autosaves", False):
             return None
         if hasattr(self, "ensure_rule_defaults"):
@@ -269,13 +274,15 @@ class PersistenceMixin:
         stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         label = f"{kind.title()} Autosave Y{year} M{getattr(self, 'month', 1):02d} W{getattr(self, 'week', 1)}"
         path = self.autosave_dir(kind) / f"{kind}_Y{year}_M{getattr(self, 'month', 1):02d}_W{getattr(self, 'week', 1)}_{stamp}.json.gz"
-        data = self.serialize_world()
+        data = dict(snapshot) if snapshot is not None else self.serialize_world()
         data["_save_meta"] = self.save_metadata(label)
         data["_save_meta"]["autosave_kind"] = kind
         try:
-            atomic_write_json_gzip(path, data)
+            # Level 3 materially shortens the UI pause on long saves while
+            # retaining ordinary gzip compatibility and bounded retention.
+            atomic_write_json_gzip(path, data, compresslevel=3)
             manifest = path.with_suffix(".manifest.json")
-            manifest.write_text(json.dumps({
+            atomic_write_json(manifest, {
                 "created_at": datetime.now().isoformat(timespec="seconds"),
                 "source": "automatic rolling autosave",
                 "kind": kind,
@@ -283,7 +290,7 @@ class PersistenceMixin:
                 "month": getattr(self, "month", 1),
                 "week": getattr(self, "week", 1),
                 "company": getattr(self, "player_company_name", PLAYER_PROMOTION_NAME),
-            }, indent=2), encoding="utf-8")
+            })
             keep_key = "autosave_monthly_keep" if kind == "monthly" else "autosave_weekly_keep"
             self.prune_rolling_autosaves(kind, int(self.rules.get(keep_key, 6 if kind == "monthly" else 8)))
             return path
@@ -293,6 +300,13 @@ class PersistenceMixin:
 
     def prune_rolling_autosaves(self, kind="weekly", keep=12):
         folder = self.autosave_dir(kind)
+        now = datetime.now().timestamp()
+        for temporary in folder.glob("*.tmp"):
+            try:
+                if now - temporary.stat().st_mtime > 86_400:
+                    temporary.unlink()
+            except Exception:
+                LOGGER.exception("Could not clean stale autosave temporary file: %s", temporary)
         candidates = list(folder.glob("*.json")) + list(folder.glob("*.json.gz"))
         saves = sorted([item for item in candidates if not item.name.endswith(".manifest.json")], key=lambda item: item.stat().st_mtime, reverse=True)
         for old in saves[max(1, keep):]:
@@ -305,16 +319,58 @@ class PersistenceMixin:
                 LOGGER.exception("Could not prune old %s autosave: %s", kind, old)
 
     def run_automatic_save_cycle(self, month_changed=False):
-        weekly = self.write_rolling_autosave("weekly")
-        monthly = self.write_rolling_autosave("monthly") if month_changed else None
-        if weekly or monthly:
-            bits = []
-            if weekly:
-                bits.append(f"weekly autosave {weekly.name}")
-            if monthly:
-                bits.append(f"monthly autosave {monthly.name}")
-            self.event_log.insert(0, f"Save system: wrote {', '.join(bits)}.")
-        return weekly, monthly
+        if getattr(self, "suppress_autosaves", False) or not self.rules.get("autosave_enabled", True):
+            return None, None
+        if not month_changed:
+            return None, None
+        if hasattr(self, "ensure_rule_defaults"):
+            self.ensure_rule_defaults()
+        interval = max(1, int(self.rules.get("autosave_interval_months", 2)))
+        completed_month = max(0, int(getattr(self, "month", 1)) - 1)
+        if completed_month < 1 or completed_month % interval:
+            return None, None
+        snapshot = self.serialize_world()
+        rolling = self.write_rolling_autosave("monthly", snapshot=snapshot)
+        if rolling:
+            self.event_log.insert(0, f"Save system: wrote two-month rolling autosave {rolling.name}.")
+        return None, rolling
+
+    def serialized_result_records(self):
+        """Losslessly reference AI replay detail already stored in the archive.
+
+        Runtime viewers still receive full logs. The compact on-disk record avoids
+        writing identical commentary twice for the latest archived world events.
+        """
+        archive = {
+            (item.get("date", ""), item.get("company", ""), item.get("event_name", "")): item
+            for item in getattr(self, "ai_event_archive", [])
+        }
+        rows = []
+        for record in self.result_records:
+            saved = dict(record)
+            key = (record.get("date", ""), record.get("company", ""), record.get("event", ""))
+            package = archive.get(key)
+            if package and record.get("log") == package.get("log") and record.get("fight_logs") == package.get("fight_logs"):
+                saved.pop("log", None)
+                saved.pop("fight_logs", None)
+                saved["_archive_ref"] = {"date": key[0], "company": key[1], "event": key[2]}
+            rows.append(saved)
+        return rows
+
+    def relink_archived_result_records(self):
+        """Restore de-duplicated save records to the normal full runtime shape."""
+        archive = {
+            (item.get("date", ""), item.get("company", ""), item.get("event_name", "")): item
+            for item in getattr(self, "ai_event_archive", [])
+        }
+        for record in self.result_records:
+            ref = record.pop("_archive_ref", None)
+            if not isinstance(ref, dict):
+                continue
+            package = archive.get((ref.get("date", ""), ref.get("company", ""), ref.get("event", "")))
+            if package:
+                record["log"] = package.get("log", [])
+                record["fight_logs"] = package.get("fight_logs", [])
 
     def serialize_world(self):
         self.ensure_all_company_champions()
@@ -337,7 +393,7 @@ class PersistenceMixin:
             "regions": self.regions,
             "gyms": [asdict(g) for g in getattr(self, "gyms", [])],
             "result_history": self.result_history,
-            "result_records": self.result_records,
+            "result_records": self.serialized_result_records(),
             "ai_event_archive": self.ai_event_archive,
             "independent_showcase_counter": getattr(self, "independent_showcase_counter", 1),
             "retired_fighters": [asdict(f) for f in self.retired_fighters],
@@ -464,6 +520,7 @@ class PersistenceMixin:
         self.result_history = data.get("result_history", [])
         self.result_records = data.get("result_records", [])
         self.ai_event_archive = data.get("ai_event_archive", [])
+        self.relink_archived_result_records()
         self.combat_sport_worlds = data.get("combat_sport_worlds", self.seed_combat_sport_worlds()) or self.seed_combat_sport_worlds()
         for world in self.combat_sport_worlds.values():
             world["roster"] = [fighter if isinstance(fighter, Fighter) else Fighter(**fighter) for fighter in world.get("roster", [])]
@@ -521,7 +578,9 @@ class PersistenceMixin:
             event.setdefault("week", 1)
         self.repair_booking_conflicts()
         self.news = data.get("news", [])
-        self.world_chronicle = data.get("world_chronicle", [])[-800:]
+        # Chronicle entries are newest-first; retain the newest 800 from older,
+        # oversized saves rather than accidentally keeping their oldest stories.
+        self.world_chronicle = data.get("world_chronicle", [])[:800]
         self.event_log = data.get("event_log", [])
         self.season_stats = data.get("season_stats", {})
         self.awards_history = data.get("awards_history", [])
@@ -549,7 +608,7 @@ class PersistenceMixin:
         profiles = self.real_fighter_profiles()
         recalibrated = 0
         for fighter in fighters:
-            if fighter.name not in real_names or getattr(fighter, "rating_profile_version", 0) >= 2:
+            if fighter.name not in real_names or getattr(fighter, "rating_profile_version", 0) >= 3:
                 continue
             baseline = profiles.get(fighter.name, {}).get("rating", fighter.overall)
             self.apply_real_fighter_profile(fighter, baseline)
@@ -691,14 +750,25 @@ class PersistenceMixin:
         current_db = self.database_list.curselection()
         self.save_slot_list.delete(0, "end")
         self.save_slot_files = []
+        metadata_cache = getattr(self, "_save_metadata_cache", {})
+        live_cache_keys = set()
         for file in sorted(SAVE_DIR.glob("*.json")):
             if file.name == SAVE_FILE.name:
                 label = f"{file.stem} | Quick Save"
             else:
                 label = file.stem
             try:
-                data = json.loads(file.read_text(encoding="utf-8"))
-                meta = data.get("_save_meta", {}) if isinstance(data, dict) else {}
+                stat = file.stat()
+                cache_key = str(file.resolve())
+                signature = (stat.st_mtime_ns, stat.st_size)
+                live_cache_keys.add(cache_key)
+                cached = metadata_cache.get(cache_key)
+                if cached and cached[0] == signature:
+                    meta = cached[1]
+                else:
+                    data = json.loads(file.read_text(encoding="utf-8"))
+                    meta = data.get("_save_meta", {}) if isinstance(data, dict) else {}
+                    metadata_cache[cache_key] = (signature, meta)
                 if meta:
                     company = meta.get("company", "Unknown")
                     month = meta.get("month", "?")
@@ -711,17 +781,18 @@ class PersistenceMixin:
                 pass
             self.save_slot_files.append(file)
             self.save_slot_list.insert("end", label)
+        self._save_metadata_cache = {key: value for key, value in metadata_cache.items() if key in live_cache_keys}
         self.database_list.delete(0, "end")
         self.database_files = []
         if hasattr(self, "ensure_default_universe_database"):
             self.ensure_default_universe_database()
+        try:
+            active_database_name = self.active_universe_database_path().name
+        except Exception:
+            active_database_name = ""
         for file in sorted(DATABASE_DIR.glob("*.universe.json")):
             self.database_files.append(file)
-            active = ""
-            try:
-                active = " *ACTIVE*" if file.name == self.active_universe_database_path().name else ""
-            except Exception:
-                active = ""
+            active = " *ACTIVE*" if file.name == active_database_name else ""
             self.database_list.insert("end", f"[Universe] {file.stem.replace('.universe', '')}{active}")
         for file in sorted(path for path in DATABASE_DIR.glob("*.json") if not path.name.endswith(".universe.json")):
             self.database_files.append(file)
@@ -734,11 +805,13 @@ class PersistenceMixin:
             if hasattr(self, "ensure_rule_defaults"):
                 self.ensure_rule_defaults()
             status = "ON" if self.rules.get("autosave_enabled", True) else "OFF"
-            weekly_count = len([item for item in self.autosave_dir("weekly").glob("*.json") if not item.name.endswith(".manifest.json")]) if hasattr(self, "autosave_dir") else 0
-            monthly_count = len([item for item in self.autosave_dir("monthly").glob("*.json") if not item.name.endswith(".manifest.json")]) if hasattr(self, "autosave_dir") else 0
-            backup_count = len([item for item in self.save_backup_dir().glob("*.json") if not item.name.endswith(".manifest.json")]) if hasattr(self, "save_backup_dir") else 0
+            weekly_count = len([item for pattern in ("*.json", "*.json.gz") for item in self.autosave_dir("weekly").glob(pattern) if not item.name.endswith(".manifest.json")]) if hasattr(self, "autosave_dir") else 0
+            monthly_count = len([item for pattern in ("*.json", "*.json.gz") for item in self.autosave_dir("monthly").glob(pattern) if not item.name.endswith(".manifest.json")]) if hasattr(self, "autosave_dir") else 0
+            backup_count = len([item for pattern in ("*.json", "*.json.gz") for item in self.save_backup_dir().glob(pattern) if not item.name.endswith(".manifest.json")]) if hasattr(self, "save_backup_dir") else 0
+            interval = self.rules.get("autosave_interval_months", 2)
+            legacy = f" | Legacy W {weekly_count}" if weekly_count else ""
             self.autosave_status_label.config(
-                text=f"Autosaves {status} | Weekly {weekly_count}/{self.rules.get('autosave_weekly_keep', 12)} | Monthly {monthly_count}/{self.rules.get('autosave_monthly_keep', 24)} | Backups {backup_count}/{self.rules.get('save_backup_keep', 60)}"
+                text=f"Auto {status} | Every {interval} months | Rolling {monthly_count}/{self.rules.get('autosave_monthly_keep', 6)}{legacy} | Backups {backup_count}/{self.rules.get('save_backup_keep', 12)}"
             )
 
     def player_company_as_promotion(self):
@@ -773,6 +846,7 @@ class PersistenceMixin:
             strategy=self.seed_promotion_strategy(self.player_company_name, "Balanced"),
             executive=self.seed_promotion_executive(self.player_company_name),
             era_history=[],
+            academy=json.loads(json.dumps(self.repair_academy(getattr(self, "academy", {})))) if hasattr(self, "repair_academy") else {},
         )
 
     def enter_spectator_mode(self):
@@ -840,6 +914,7 @@ class PersistenceMixin:
         self.company_pop = promo.reputation_score
         self.company_stability = promo.stability
         self.roster = promo.roster
+        self.academy = self.repair_academy(promo.academy or self.academy_defaults()) if hasattr(self, "repair_academy") else (promo.academy or {})
         self.belts, self.interim_belts, self.belt_history = self.ensure_company_champions(self.roster, promo.belts or {}, promo.name, promo.region, promo.reputation_score, player_owned=True, interim_belts=promo.interim_belts or {}, belt_history=promo.belt_history or {})
         self.rules = promo.rules or {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "active_fighter_target": 1200}
         self.ensure_rule_defaults()
@@ -965,6 +1040,10 @@ class PersistenceMixin:
             except Exception as exc:
                 messagebox.showerror("Invalid JSON", f"Section was not saved.\n\n{type(exc).__name__}: {exc}")
                 return
+            issues = self.validate_universe_section(section, edited)
+            if issues:
+                messagebox.showwarning("Section Not Saved", "Fix these validation issues first:\n\n" + "\n".join(issues[:40]))
+                return
             current_path, current_pack = self.active_universe_pack_with_path()
             self.backup_universe_pack(current_path)
             current_pack.setdefault("sections", {})[section] = edited
@@ -1011,12 +1090,68 @@ class PersistenceMixin:
             if duplicates:
                 issues.append("Duplicate named fighters: " + ", ".join(duplicates[:12]))
         elif section == "combat_sports":
-            rosters = value.get("rosters", value) if isinstance(value, dict) else {}
-            for sport in ("Boxing", "Kickboxing", "Muay Thai", "Wrestling", "Brazilian Jiu-Jitsu"):
+            if not isinstance(value, dict):
+                return ["combat_sports section must be an object."]
+            rosters = value.get("rosters", value)
+            prime_divisions = value.get("prime_divisions", {})
+            profiles = value.get("profiles", {})
+            if not isinstance(rosters, dict):
+                return ["combat_sports.rosters must be an object."]
+            if not isinstance(prime_divisions, dict):
+                issues.append("combat_sports.prime_divisions must be an object.")
+                prime_divisions = {}
+            if not isinstance(profiles, dict):
+                issues.append("combat_sports.profiles must be an object.")
+                profiles = {}
+            all_skill_keys = {key for keys in DETAILED_SKILL_GROUPS.values() for key in keys}
+            for sport in ("Boxing", "Kickboxing", "Muay Thai", "Lethwei", "Wrestling", "Brazilian Jiu-Jitsu"):
                 if sport not in rosters:
                     issues.append(f"Missing combat sport roster: {sport}")
-                elif len(rosters.get(sport, [])) < 12:
-                    issues.append(f"{sport} roster is thin ({len(rosters.get(sport, []))})")
+                    continue
+                names = rosters.get(sport, [])
+                if not isinstance(names, list):
+                    issues.append(f"{sport} roster must be a list.")
+                    continue
+                if len(names) < 12:
+                    issues.append(f"{sport} roster is thin ({len(names)})")
+                duplicates = [name for name, count in Counter(names).items() if name and count > 1]
+                if duplicates:
+                    issues.append(f"Duplicate {sport} athletes: " + ", ".join(duplicates[:10]))
+                valid = {label for gender_ladder in COMBAT_SPORT_WEIGHT_CLASSES.get(sport, {}).values() for label, _limit in gender_ladder}
+                for name, division in prime_divisions.get(sport, {}).items():
+                    if division not in valid:
+                        issues.append(f"Invalid {sport} division for {name}: {division}")
+                sport_profiles = profiles.get(sport, {})
+                if not isinstance(sport_profiles, dict):
+                    issues.append(f"profiles.{sport} must be an object keyed by athlete name.")
+                    continue
+                missing = [name for name in names if name not in sport_profiles]
+                if missing:
+                    issues.append(f"Missing {sport} profiles: " + ", ".join(missing[:10]))
+                orphans = [name for name in sport_profiles if name not in names]
+                if orphans:
+                    issues.append(f"Orphan {sport} profiles: " + ", ".join(orphans[:10]))
+                for name in names:
+                    profile = sport_profiles.get(name)
+                    if not isinstance(profile, dict):
+                        continue
+                    for field in ("version", "rating", "prime_age", "record_w", "record_l", "record_d"):
+                        if not isinstance(profile.get(field), int):
+                            issues.append(f"{sport}/{name}: {field} must be an integer.")
+                    rating = profile.get("rating", 0)
+                    if isinstance(rating, int) and not 1 <= rating <= 99:
+                        issues.append(f"{sport}/{name}: rating must be 1-99.")
+                    if any(isinstance(profile.get(field), int) and profile[field] < 0 for field in ("record_w", "record_l", "record_d")):
+                        issues.append(f"{sport}/{name}: records cannot be negative.")
+                    if profile.get("style") not in STYLES:
+                        issues.append(f"{sport}/{name}: invalid style {profile.get('style')}.")
+                    if profile.get("trait") not in TRAITS:
+                        issues.append(f"{sport}/{name}: invalid trait {profile.get('trait')}.")
+                    if profile.get("behaviour") not in BEHAVIOURS:
+                        issues.append(f"{sport}/{name}: invalid behaviour {profile.get('behaviour')}.")
+                    bad_keys = [key for key in (profile.get("skill_mods", {}) or {}) if key not in all_skill_keys]
+                    if bad_keys:
+                        issues.append(f"{sport}/{name}: unknown skill modifiers " + ", ".join(bad_keys[:8]))
         elif section == "companies":
             if not isinstance(value, dict):
                 return ["companies section must be an object."]
@@ -1058,7 +1193,7 @@ class PersistenceMixin:
                 self.backup_save_file(path, "before_slot_save")
             data = self.serialize_world()
             data["_save_meta"] = self.save_metadata(name)
-            atomic_write_json(path, data)
+            atomic_write_json_compact(path, data)
             self.prune_save_backups()
         except Exception as exc:
             LOGGER.exception("Save slot failed: %s", exc)
@@ -1302,7 +1437,7 @@ class PersistenceMixin:
         self.belts = self.blank_belts()
         self.interim_belts = self.blank_belts()
         self.belt_history = self.blank_belt_history()
-        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "allow_mixed_gender": False, "active_fighter_target": 1200, "auto_renew_enabled": False, "scouting_mode": False, "autosave_enabled": True, "autosave_weekly_keep": 8, "autosave_monthly_keep": 6, "save_backup_keep": 12, "save_retention_version": 2}
+        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "allow_mixed_gender": False, "active_fighter_target": 1200, "auto_renew_enabled": False, "scouting_mode": False, "autosave_enabled": True, "autosave_interval_months": 2, "autosave_weekly_keep": 8, "autosave_monthly_keep": 6, "save_backup_keep": 12, "save_retention_version": 3}
         media_section = self.universe_section("media", {}) if hasattr(self, "universe_section") else {}
         self.broadcasters = media_section.get("player_broadcasters", self.default_player_media() if hasattr(self, "default_player_media") else [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}])
         self.weight_classes = list(WEIGHTS)

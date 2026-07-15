@@ -10,6 +10,7 @@ from tkinter import messagebox, ttk
 
 from constants import *
 from models import Fighter, Gym, Promotion
+from real_sport_profiles import SPORT_PROFILE_VERSION, build_fallback_sport_profile, build_real_sport_profiles
 
 
 class SeedMixin:
@@ -42,7 +43,7 @@ class SeedMixin:
         fighter_db = self.build_seed_fighter_database()
         combat_db = self.build_combat_sport_database()
         return {
-            "schema": 2,
+            "schema": 3,
             "type": "universe_database",
             "database_name": name,
             "notes": "Editable universe database pack. Clone this file for real-life, fake, fantasy, or historic universes. Sections are intentionally enclosed so companies, fighters, combat sports, media, and regions can evolve independently.",
@@ -96,6 +97,27 @@ class SeedMixin:
             data = json.loads(Path(path).read_text(encoding="utf-8"))
             if data.get("type") != "universe_database" or "sections" not in data:
                 raise ValueError("not a universe database pack")
+            combat_section = data.get("sections", {}).get("combat_sports")
+            if isinstance(combat_section, dict):
+                changed = False
+                if "prime_divisions" not in combat_section:
+                    combat_section["prime_divisions"] = COMBAT_SPORT_REAL_DIVISIONS
+                    changed = True
+                rosters = combat_section.get("rosters", combat_section)
+                if isinstance(rosters, dict) and "Boxing" in rosters:
+                    profiles = self.normalized_combat_sport_profiles(rosters, combat_section.get("profiles", {}))
+                    if profiles != combat_section.get("profiles"):
+                        combat_section["profiles"] = profiles
+                        changed = True
+                schema = max(3, int(combat_section.get("schema", 1)))
+                if combat_section.get("schema") != schema:
+                    combat_section["schema"] = schema
+                    changed = True
+                if data.get("schema", 1) < 3:
+                    data["schema"] = 3
+                    changed = True
+                if changed:
+                    self.write_seed_database_file(Path(path), data)
             return data
         except Exception as exc:
             backup = Path(path).with_suffix(f".broken_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
@@ -157,17 +179,43 @@ class SeedMixin:
             return data
 
     def build_combat_sport_database(self):
+        rosters = self.builtin_combat_sport_real_roster_data()
         return {
-            "schema": 1,
-            "notes": "Canonical combat-sport seed database. Muay Thai also imports the Lethwei list as a linked striking roster.",
-            "rosters": self.builtin_combat_sport_real_roster_data(),
+            "schema": 3,
+            "notes": "Canonical combat-sport seed database. Edit rosters, profiles, and prime_divisions to change new-game athletes. Muay Thai also imports the Lethwei list as a linked striking roster.",
+            "rosters": rosters,
+            "prime_divisions": COMBAT_SPORT_REAL_DIVISIONS,
+            "profiles": build_real_sport_profiles(rosters),
         }
+
+    def normalized_combat_sport_profiles(self, rosters, supplied_profiles=None):
+        """Fill profile gaps without overwriting edits in a custom universe."""
+        supplied_profiles = supplied_profiles if isinstance(supplied_profiles, dict) else {}
+        builtin_profiles = build_real_sport_profiles(self.builtin_combat_sport_real_roster_data())
+        normalized = {}
+        for sport, names in rosters.items():
+            if not isinstance(names, list) or sport not in ("Boxing", "Kickboxing", "Muay Thai", "Lethwei", "Wrestling", "Brazilian Jiu-Jitsu"):
+                continue
+            source = supplied_profiles.get(sport, {}) if isinstance(supplied_profiles.get(sport, {}), dict) else {}
+            sport_profiles = {}
+            for index, name in enumerate(names):
+                current = source.get(name)
+                if isinstance(current, dict):
+                    sport_profiles[name] = dict(current)
+                elif name in builtin_profiles.get(sport, {}):
+                    sport_profiles[name] = dict(builtin_profiles[sport][name])
+                else:
+                    sport_profiles[name] = build_fallback_sport_profile(sport, name, index=index)
+            normalized[sport] = sport_profiles
+        return normalized
 
     def load_combat_sport_database(self):
         section = self.universe_section("combat_sports", None)
         if section:
             rosters = section.get("rosters", section)
             if isinstance(rosters, dict) and "Boxing" in rosters:
+                self.combat_sport_seed_divisions = section.get("prime_divisions", {}) if isinstance(section, dict) else {}
+                self.combat_sport_seed_profiles = self.normalized_combat_sport_profiles(rosters, section.get("profiles", {}))
                 return rosters
         path = self.seed_database_file("combat_sport_database.json")
         if not path.exists():
@@ -177,6 +225,15 @@ class SeedMixin:
             rosters = data.get("rosters", data)
             if not isinstance(rosters, dict) or "Boxing" not in rosters:
                 raise ValueError("combat sport database is missing rosters")
+            self.combat_sport_seed_divisions = data.get("prime_divisions", {})
+            profiles = self.normalized_combat_sport_profiles(rosters, data.get("profiles", {}))
+            if not self.combat_sport_seed_divisions or profiles != data.get("profiles") or data.get("schema", 1) < 3:
+                data = {"schema": 3, "notes": self.build_combat_sport_database()["notes"],
+                        "rosters": rosters, "prime_divisions": self.combat_sport_seed_divisions or COMBAT_SPORT_REAL_DIVISIONS,
+                        "profiles": profiles}
+                self.write_seed_database_file(path, data)
+                self.combat_sport_seed_divisions = data["prime_divisions"]
+            self.combat_sport_seed_profiles = profiles
             return rosters
         except Exception as exc:
             backup = path.with_suffix(f".broken_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
@@ -187,6 +244,8 @@ class SeedMixin:
             data = self.build_combat_sport_database()
             data["repair_note"] = f"Database was regenerated after load failure: {type(exc).__name__}: {exc}"
             self.write_seed_database_file(path, data)
+            self.combat_sport_seed_divisions = data["prime_divisions"]
+            self.combat_sport_seed_profiles = data["profiles"]
             return data["rosters"]
 
     def seed_roster(self):
@@ -224,11 +283,12 @@ class SeedMixin:
             fighter.contract_type = "Non-Exclusive"
             fighter.contract_months = 0
             if fighter.age >= 40:
-                fighter.trait = random.choice(["Fan Favourite", "Marketable", "Clutch", "Big Finisher"])
-                fighter.media_heat = random.randint(20, 55)
-                fighter.popularity = min(100, fighter.popularity + random.randint(2, 8))
+                seed = sum((index + 3) * ord(char) for index, char in enumerate(fighter.name))
+                fighter.media_heat = 20 + seed % 36
+                fighter.popularity = min(100, fighter.popularity + 2 + seed % 7)
             else:
-                fighter.popularity = max(8, fighter.popularity - random.randint(4, 14))
+                seed = sum((index + 3) * ord(char) for index, char in enumerate(fighter.name))
+                fighter.popularity = max(8, fighter.popularity - 4 - seed % 11)
         while len(fighters) < 220:
             fighter = self.create_generated_fighter(5, 42, 38, 80)
             self.avoid_name_collision(fighter, existing_names)
@@ -451,7 +511,7 @@ class SeedMixin:
             "Kayla Harrison", "Irene Aldana", "Yana Santos", "Germaine de Randamie",
             "Dakota Ditcheva", "Taila Santos", "Liz Carmouche", "Kana Watanabe",
             "Aspen Ladd", "Julia Budd", "Michelle Montague", "Denise Kielholtz",
-            "Mandy Bohm", "Lone'er Kavanagh", "Kennedy Freeman", "Awa Sow",
+            "Mandy Bohm", "Kennedy Freeman", "Awa Sow",
             "Paige VanZant", "Miesha Tate", "Cat Zingano", "Julia Avila",
             "Pearl Gonzalez", "Vanessa Demopoulos", "Denise Gomes", "Rin Nakai",
             "Seo Hee Ham", "Ayaka Hamasaki", "Amanda Lemos", "Fatima Kline",
@@ -644,6 +704,62 @@ class SeedMixin:
             "Nikita Bagley": {"rating": 78, "style": "Boxer", "trait": "Prospect Mindset", "behaviour": "Pressure"},
             "Ieuan Davies": {"rating": 77, "style": "Well-Rounded", "trait": "Prospect Mindset", "behaviour": "Dynamic Attacker"},
             "Sean Clancy Jr.": {"rating": 78, "style": "Wrestler", "trait": "Gym Rat", "behaviour": "Control"},
+            "Anderson Silva": {"rating": 91, "style": "Muay Thai", "trait": "Counter Specialist", "behaviour": "Counter", "skills": {"head_movement": 10, "punch_technique": 8, "creative_kicks": 8, "clinch_control": 6, "composure": 9}},
+            "Demetrious Johnson": {"rating": 93, "style": "Well-Rounded", "trait": "Adaptable", "behaviour": "Dynamic Attacker", "skills": {"adaptability": 10, "scrambles": 9, "takedown_setup": 8, "back_control": 8, "conditioning": 9}},
+            "Jose Aldo": {"rating": 90, "style": "Muay Thai", "trait": "Leg Kicker", "behaviour": "Counter", "skills": {"low_kick_power": 10, "low_kick_technique": 10, "takedown_defence_detail": 9, "punch_power": 7}},
+            "Daniel Cormier": {"rating": 90, "style": "Wrestler", "trait": "Title Mentality", "behaviour": "Pressure", "skills": {"chain_wrestling": 9, "clinch_control": 9, "dirty_boxing": 8, "conditioning": 8}},
+            "Fedor Emelianenko": {"rating": 92, "style": "Sambo", "trait": "Fight Finisher", "behaviour": "Dynamic Attacker", "skills": {"punch_power": 9, "throws": 9, "ground_striking": 9, "submission_attack": 8, "composure": 9}},
+            "Ronda Rousey": {"rating": 87, "style": "Judo", "trait": "Submission Ace", "behaviour": "Submission Hunter", "skills": {"throws": 10, "clinch_takedowns": 10, "submission_attack": 10, "killer_instinct": 9}},
+            "Amanda Nunes": {"rating": 92, "style": "Well-Rounded", "trait": "Knockout Artist", "behaviour": "Pressure", "skills": {"punch_power": 10, "punch_technique": 8, "takedown_defence_detail": 8, "ground_striking": 8, "killer_instinct": 9}},
+            "Nate Diaz": {"rating": 83, "style": "BJJ", "trait": "Cardio Machine", "behaviour": "Volume", "skills": {"punch_technique": 7, "hand_speed": 6, "conditioning": 10, "chin_strength": 9, "submission_attack": 8}},
+            "BJ Penn": {"rating": 88, "style": "BJJ", "trait": "Veteran Savvy", "behaviour": "Dynamic Attacker", "skills": {"takedown_defence_detail": 9, "guard_work": 9, "back_control": 9, "punch_technique": 7}},
+            "Frankie Edgar": {"rating": 88, "style": "Wrestler", "trait": "Comeback Artist", "behaviour": "Volume", "skills": {"takedown_setup": 8, "footwork": 8, "conditioning": 9, "stun_recovery": 8}},
+            "Urijah Faber": {"rating": 86, "style": "Wrestler", "trait": "Fight Finisher", "behaviour": "Pressure", "skills": {"scrambles": 9, "back_control": 8, "submission_attack": 8, "conditioning": 8}},
+            "Lyoto Machida": {"rating": 89, "style": "Karate", "trait": "Counter Specialist", "behaviour": "Counter", "skills": {"footwork": 10, "high_kick_speed": 9, "head_movement": 8, "composure": 9}},
+            "Mauricio Rua": {"rating": 88, "style": "Muay Thai", "trait": "Big Finisher", "behaviour": "Pressure", "skills": {"low_kick_power": 9, "punch_power": 9, "ground_striking": 8, "killer_instinct": 8}},
+            "Quinton Jackson": {"rating": 87, "style": "Boxer", "trait": "Knockout Artist", "behaviour": "Pressure", "skills": {"punch_power": 10, "strength": 9, "takedown_defence_detail": 7, "chin_strength": 8}},
+            "Mirko Cro Cop": {"rating": 89, "style": "Kickboxer", "trait": "Knockout Artist", "behaviour": "Counter", "skills": {"high_kick_power": 10, "high_kick_speed": 9, "takedown_defence_detail": 8, "punch_power": 8}},
+            "Wanderlei Silva": {"rating": 87, "style": "Muay Thai", "trait": "Warrior Spirit", "behaviour": "Pressure", "skills": {"punch_power": 9, "knees": 9, "thai_plum": 8, "killer_instinct": 9}},
+            "Matt Hughes": {"rating": 88, "style": "Wrestler", "trait": "Title Mentality", "behaviour": "Control", "skills": {"takedowns": 9, "ride_control": 9, "top_control": 9, "strength": 9}},
+            "Robbie Lawler": {"rating": 87, "style": "Boxer", "trait": "Warrior Spirit", "behaviour": "Pressure", "skills": {"punch_power": 9, "takedown_defence_detail": 8, "chin_strength": 9, "killer_instinct": 8}},
+            "Demian Maia": {"rating": 88, "style": "BJJ", "trait": "Submission Ace", "behaviour": "Submission Hunter", "skills": {"submission_attack": 10, "back_control": 10, "transitions": 9, "takedown_setup": 7}},
+            "Joanna Jedrzejczyk": {"rating": 89, "style": "Muay Thai", "trait": "Cardio Machine", "behaviour": "Volume", "skills": {"punch_technique": 9, "low_kick_technique": 8, "conditioning": 10, "takedown_defence_detail": 8}},
+            "Jiri Prochazka": {"rating": 88, "style": "Kickboxer", "trait": "Warrior Spirit", "behaviour": "Dynamic Attacker", "skills": {"creative_punches": 10, "creative_kicks": 8, "punch_power": 9, "killer_instinct": 9}},
+            "Jack Della Maddalena": {"rating": 90, "style": "Boxer", "trait": "Body Hunter", "behaviour": "Pressure", "skills": {"punch_technique": 9, "punch_power": 8, "footwork": 8, "creative_punches": 7}},
+            "Carlos Prates": {"rating": 88, "style": "Muay Thai", "trait": "Knockout Artist", "behaviour": "Counter", "skills": {"punch_power": 10, "knees": 8, "reach": 8, "composure": 7}},
+            "Michael Morales": {"rating": 88, "style": "Boxer", "trait": "Prospect Mindset", "behaviour": "Dynamic Attacker", "skills": {"punch_power": 8, "hand_speed": 8, "takedown_defence_detail": 7, "confidence": 7}},
+            "Sean Brady": {"rating": 87, "style": "Grappler", "trait": "Gym Rat", "behaviour": "Control", "skills": {"takedowns": 8, "top_control": 9, "submission_attack": 8, "strength": 8}},
+            "Nassourdine Imavov": {"rating": 89, "style": "Kickboxer", "trait": "Technical Learner", "behaviour": "Counter", "skills": {"footwork": 8, "punch_technique": 8, "kick_defence": 7, "composure": 7}},
+            "Caio Borralho": {"rating": 87, "style": "Well-Rounded", "trait": "Technical Learner", "behaviour": "Control", "skills": {"takedowns": 7, "top_control": 7, "punch_technique": 6, "adaptability": 7}},
+            "Carlos Ulberg": {"rating": 87, "style": "Kickboxer", "trait": "Knockout Artist", "behaviour": "Counter", "skills": {"punch_power": 9, "footwork": 8, "high_kick_technique": 7, "head_movement": 7}},
+            "Alexander Volkov": {"rating": 87, "style": "Kickboxer", "trait": "Veteran Savvy", "behaviour": "Volume", "skills": {"reach": 9, "punch_technique": 8, "knees": 7, "conditioning": 7}},
+            "Sergei Pavlovich": {"rating": 86, "style": "Boxer", "trait": "Knockout Artist", "behaviour": "Pressure", "skills": {"punch_power": 10, "hand_speed": 8, "killer_instinct": 9, "strength": 8}},
+            "Lerone Murphy": {"rating": 87, "style": "Boxer", "trait": "Technical Learner", "behaviour": "Counter", "skills": {"punch_technique": 8, "footwork": 8, "head_movement": 7, "takedown_defence_detail": 7}},
+            "Tatsuro Taira": {"rating": 86, "style": "BJJ", "trait": "Prospect Mindset", "behaviour": "Submission Hunter", "skills": {"back_control": 9, "submission_attack": 8, "takedown_setup": 7, "scrambles": 7}},
+            "Gillian Robertson": {"rating": 84, "style": "BJJ", "trait": "Submission Ace", "behaviour": "Submission Hunter", "skills": {"submission_attack": 9, "back_control": 8, "top_control": 7, "transitions": 8}},
+        }
+
+    def real_fighter_stances(self):
+        return {
+            "Islam Makhachev": "Southpaw", "Conor McGregor": "Southpaw", "Leon Edwards": "Southpaw",
+            "Magomed Ankalaev": "Southpaw", "Paddy Pimblett": "Southpaw", "Anderson Silva": "Southpaw",
+            "Nate Diaz": "Southpaw", "Lyoto Machida": "Southpaw", "Mirko Cro Cop": "Southpaw",
+            "Robbie Lawler": "Southpaw", "Demian Maia": "Southpaw", "Darren Till": "Southpaw",
+            "Anthony Pettis": "Orthodox", "Max Holloway": "Orthodox", "Ilia Topuria": "Orthodox",
+            "Alex Pereira": "Orthodox", "Israel Adesanya": "Switch", "Jon Jones": "Orthodox",
+            "Sean O'Malley": "Switch", "Petr Yan": "Switch", "Shavkat Rakhmonov": "Orthodox",
+            "Khabib Nurmagomedov": "Orthodox", "Georges St-Pierre": "Orthodox", "Fedor Emelianenko": "Orthodox",
+            "Amanda Nunes": "Orthodox", "Jose Aldo": "Orthodox", "Demetrious Johnson": "Orthodox",
+            "Daniel Cormier": "Orthodox", "Ronda Rousey": "Orthodox", "Joanna Jedrzejczyk": "Orthodox",
+            "Oleksandr Usyk": "Southpaw", "Manny Pacquiao": "Southpaw", "Terence Crawford": "Switch",
+        }
+
+    def real_fighter_draws(self):
+        return {
+            "Demetrious Johnson": 1, "Fedor Emelianenko": 1, "Frankie Edgar": 1,
+            "Brandon Moreno": 2, "Jan Blachowicz": 1, "Wanderlei Silva": 1,
+            "Deiveson Figueiredo": 1, "Paul Craig": 1, "Niko Price": 2,
+            "Rodrigo Nascimento": 1, "Ion Cutelaba": 1, "Marcin Held": 0,
         }
 
     def apply_real_fighter_profile(self, fighter, base_skill):
@@ -662,7 +778,11 @@ class SeedMixin:
         }
         fighter.trait = profile.get("trait", trait_by_style.get(fighter.style, "Gym Rat"))
         fighter.behaviour = profile.get("behaviour", behaviour_by_style.get(fighter.style, "Dynamic Attacker"))
-        fighter.stance = profile.get("stance", fighter.stance)
+        default_stance = self.real_fighter_stances().get(fighter.name)
+        if not default_stance:
+            stance_roll = sum((index + 1) * ord(char) for index, char in enumerate(fighter.name)) % 100
+            default_stance = "Orthodox" if stance_roll < 64 else "Southpaw" if stance_roll < 91 else "Switch"
+        fighter.stance = profile.get("stance", default_stance)
         group_bias = {
             "Boxer": (8, -6, -7, 2, 2, 1), "Kickboxer": (8, -5, -6, 3, 1, 1),
             "Karate": (7, -6, -7, 2, 1, 2), "Muay Thai": (8, -3, -4, 5, 1, 1),
@@ -714,7 +834,19 @@ class SeedMixin:
             self.sync_broad_skills_from_details(fighter)
         fighter.finishing_instinct = max(fighter.finishing_instinct, min(99, rating + (8 if fighter.trait in ("Knockout Artist", "Big Finisher", "Submission Ace") else 2)))
         fighter.fight_iq = max(fighter.fight_iq, min(99, rating + mental - 2))
-        fighter.rating_profile_version = 2
+        business_seed = sum((index + 7) * ord(char) for index, char in enumerate(fighter.name))
+        fighter.star_quality = max(1, min(99, round(fighter.popularity * 0.62 + rating * 0.28 + business_seed % 11)))
+        fighter.charisma = max(1, min(99, round(fighter.popularity * 0.60 + 22 + business_seed % 19)))
+        pro_bonus = 8 if fighter.trait in ("Title Mentality", "Technical Learner", "Quiet Professional", "Gym Rat") else 0
+        fighter.professionalism = max(35, min(99, 66 + business_seed % 22 + pro_bonus))
+        fighter.injury_proneness = max(4, min(70, 10 + business_seed % 22 + max(0, fighter.age - 34)))
+        fighter.media_presence = max(1, min(99, round(fighter.popularity * 0.62 + fighter.charisma * 0.28)))
+        fighter.sponsor_appeal = max(1, min(99, round(fighter.star_quality * 0.42 + fighter.charisma * 0.24 + fighter.professionalism * 0.20 + fighter.popularity * 0.14)))
+        fighter.motivation = max(35, min(99, 72 + business_seed % 18 - max(0, fighter.age - 36)))
+        fighter.record_d = self.real_fighter_draws().get(fighter.name, fighter.record_d)
+        fighter.multi_sport_records = dict(fighter.multi_sport_records or {})
+        fighter.multi_sport_records["MMA"] = f"{fighter.record_w}-{fighter.record_l}-{fighter.record_d}"
+        fighter.rating_profile_version = 3
 
     def cage_empire_fighter_data(self):
         return [
@@ -1522,13 +1654,205 @@ class SeedMixin:
         }
         if name in region_by_name:
             return region_by_name[name]
-        if sport in ("Muay Thai", "Lethwei", "Kickboxing"):
+        europe = set("""Oleksandr Usyk|Vasiliy Lomachenko|Gennady Golovkin|Wladimir Klitschko|Vitali Klitschko|Lennox Lewis|Sergey Kovalev|Artur Beterbiev|Dmitry Bivol|Tyson Fury|Anthony Joshua|Amir Khan|Kell Brook|Ernesto Hoost|Giorgio Petrosyan|Semmy Schilt|Peter Aerts|Remy Bonjasky|Badr Hari|Ramon Dekkers|Rob Kaman|Rico Verhoeven|Andy Hug|Chingiz Allazov|Artem Levin|Nieky Holzken|Andy Souwer|Mike Zambidis|Mirko Cro Cop|Alexey Ignashov|Gokhan Saki|Jerome Le Banner|Branko Cikatic|Jorina Baars|Lucia Rijker|Denise Kielholtz|Jemyma Betrian|Anissa Meksen|Cedric Doumbe|Marat Grigorian|Robin van Roosmalen|Albert Kraus|Daniel Ghita|Hesdy Gerges|Jamal Ben Saddik|Murthel Groenhart|Alistair Overeem|Stan Longinidis|Joseph Valtellini|Dany Bill|Artur Saladiak|Sasha Moisa|Aleksandr Karelin|Buvaisar Saitiev|Abdulrashid Sadulaev|Sergei Beloglazov|Arsen Fadzaev|Hamid Sourian|Artur Taymazov|Valentin Yordanov|Hassan Yazdani|Geno Petriashvili|Taha Akgul|Makharbek Khadartsev|Ivan Yarygin|Levan Tediashvili|Iryna Merleni|Aleksandr Medved|Elbrus Tedeyev|Besik Kudukhov|Zaurbek Sidakov|Roman Vlasov|Frank Chamizo|Reza Yazdani|Ghasem Rezaei|Komeil Ghasemi""".split("|"))
+        usa = set("""Floyd Mayweather Jr|Terence Crawford|Roy Jones Jr|Bernard Hopkins|Oscar De La Hoya|Shane Mosley|Andre Ward|Deontay Wilder|Andy Ruiz Jr|Jermell Charlo|Jermall Charlo|Errol Spence Jr|Keith Thurman|Shawn Porter|Danny Garcia|Timothy Bradley|Devon Alexander|Mikey Garcia|Gervonta Davis|Shakur Stevenson|Devin Haney|Cyrus Washington|John Smith|Jordan Burroughs|Dan Gable|Cael Sanderson|Kyle Snyder|David Taylor|Gable Steveson|Rulon Gardner|Bruce Baumgartner|Helen Maroulis|Adeline Gray|Tamyra Mensah-Stock|Henry Cejudo|Daniel Cormier|Ben Askren|Bo Nickal|Kenny Monday|Gordon Ryan|Mikey Musumeci|Garry Tonon|Eddie Bravo|Keenan Cornelius""".split("|"))
+        japan = set("""Naoya Inoue|Kazuto Ioka|Tenshin Nasukawa|Masato Kobayashi|Kyotaro Fujimoto|Francisco Filho|Kaoklai Kaennorsing|Nadaka Yoshinari|Akitoshi Tamura|Shunichi Shimizu|Yojiro Uetake|Osamu Watanabe|Saori Yoshida|Kaori Icho""".split("|"))
+        australia = set("""Joseph Parker|Peter Graham|Tyrone Spong|Ray Sefo|Mark Hunt|Sam Greco|John Wayne Parr|Craig Jones|Lachlan Giles""".split("|"))
+        uk = set("""Liam Harrison|Anthony Joshua|Tyson Fury|Lennox Lewis|Amir Khan|Kell Brook""".split("|"))
+        asia = set("""Gennady Golovkin|Zhilei Zhang|Nonito Donaire|Srisaket Sor Rungvisai|Donnie Nietes|Buakaw Banchamek|Sitthichai Sitsongpeenong|Superbon Singha Mawynn|Petchpanomrung Kiatmookao|Kaoklai Kaennorsing|Naimjon Tuhtaboyev|Sushil Kumar|Bajrang Punia|Yogeshwar Dutt""".split("|"))
+        mexico = set("""Canelo Alvarez|Juan Manuel Marquez|Erik Morales|Marco Antonio Barrera|Andy Ruiz Jr|Juan Francisco Estrada|Roman Gonzalez""".split("|"))
+        brazil = {"Francisco Filho"}
+        if name in usa:
+            return "USA"
+        if name in asia:
             return "Asia"
+        if name in mexico:
+            return "Mexico"
+        if name in brazil:
+            return "Brazil"
+        if name in japan:
+            return "Japan"
+        if name in australia:
+            return "Australia"
+        if name in uk:
+            return "UK"
+        if name in europe:
+            return "Europe"
+        if sport in ("Muay Thai", "Lethwei", "Kickboxing"):
+            return "Europe" if sport == "Kickboxing" else "Asia"
         if sport == "Brazilian Jiu-Jitsu":
             return "Brazil"
         if sport == "Wrestling":
-            return random.choice(["USA", "Europe", "Asia"])
-        return random.choice(REGIONS)
+            return "Europe"
+        return "USA"
+
+    def combat_sport_weight_ladder(self, sport, gender="Male"):
+        """Return the canonical ladder for a child combat sport.
+
+        Lethwei retains its own historic divisions even though those athletes
+        appear inside the linked Muay Thai world.
+        """
+        ladders = COMBAT_SPORT_WEIGHT_CLASSES.get(sport, {})
+        return list(ladders.get(gender) or ladders.get("Male") or ())
+
+    def combat_sport_weight_limit(self, sport, division, gender="Male"):
+        return next((limit for label, limit in self.combat_sport_weight_ladder(sport, gender) if label == division), None)
+
+    def combat_sport_mma_equivalent(self, sport, division, gender="Male"):
+        """Keep a valid MMA division ready for athletes who later cross over."""
+        limit = self.combat_sport_weight_limit(sport, division, gender)
+        if limit is None:
+            return "Heavyweight"
+        return min(WEIGHTS, key=lambda weight: abs(WEIGHT_LIMITS[weight] - limit))
+
+    def combat_sport_competition_class(self, sport, fighter):
+        """Translate an athlete's native class onto the circuit's ladder.
+
+        This mainly lets Lethwei athletes keep an authentic native class while
+        being ranked and matched in the shared Muay Thai circuit.
+        """
+        source_sport = getattr(fighter, "primary_discipline", sport)
+        native = getattr(fighter, "sport_weight_class", "") or self.infer_combat_sport_weight_class(source_sport, fighter)
+        if source_sport == sport and native in {label for label, _ in self.combat_sport_weight_ladder(sport, fighter.gender)}:
+            return native
+        source_limit = self.combat_sport_weight_limit(source_sport, native, fighter.gender)
+        ladder = self.combat_sport_weight_ladder(sport, fighter.gender)
+        if not ladder:
+            return native or fighter.weight
+        if source_limit is None:
+            return ladder[-1][0]
+        return next((label for label, limit in ladder if limit is None or source_limit <= limit), ladder[-1][0])
+
+    def infer_combat_sport_weight_class(self, sport, fighter):
+        ladder = self.combat_sport_weight_ladder(sport, fighter.gender)
+        if not ladder:
+            return fighter.weight
+        current = getattr(fighter, "sport_weight_class", "")
+        valid = {label for label, _limit in ladder}
+        if current in valid:
+            return current
+        seed_divisions = getattr(self, "combat_sport_seed_divisions", {}) or {}
+        known = seed_divisions.get(getattr(fighter, "primary_discipline", sport), {}).get(fighter.name)
+        if not known:
+            known = COMBAT_SPORT_REAL_DIVISIONS.get(getattr(fighter, "primary_discipline", sport), {}).get(fighter.name)
+        if known not in valid:
+            known = seed_divisions.get(sport, {}).get(fighter.name) or COMBAT_SPORT_REAL_DIVISIONS.get(sport, {}).get(fighter.name)
+        if known in valid:
+            return known
+        # Old saves only have an MMA division.  Treat that former limit as the
+        # athlete's competition weight and move it onto the first legal class.
+        target = WEIGHT_LIMITS.get(fighter.weight, getattr(fighter, "walk_weight", 170) or 170)
+        return next((label for label, limit in ladder if limit is None or target <= limit), ladder[-1][0])
+
+    def assign_combat_sport_weight(self, sport, fighter, division="", reset_walk_weight=False):
+        ladder = self.combat_sport_weight_ladder(sport, fighter.gender)
+        valid = {label for label, _limit in ladder}
+        if division not in valid:
+            division = self.infer_combat_sport_weight_class(sport, fighter)
+        fighter.sport_weight_class = division
+        fighter.weight = self.combat_sport_mma_equivalent(sport, division, fighter.gender)
+        limit = self.combat_sport_weight_limit(sport, division, fighter.gender)
+        if reset_walk_weight or not getattr(fighter, "walk_weight", 0):
+            seed = sum((index + 1) * ord(char) for index, char in enumerate(f"{sport}:{fighter.name}:{division}"))
+            if limit is None:
+                base = max(210, WEIGHT_LIMITS.get(fighter.weight, 225))
+                fighter.walk_weight = min(295, base + 5 + seed % 24)
+            else:
+                spread = max(3, round(limit * (0.035 if sport == "Wrestling" else 0.055)))
+                fighter.walk_weight = min(295, limit + 2 + seed % (spread + 1))
+        return division
+
+    def combat_sport_seed_profile(self, sport, name, index=0):
+        profiles = getattr(self, "combat_sport_seed_profiles", {}) or {}
+        profile = profiles.get(sport, {}).get(name)
+        if isinstance(profile, dict):
+            return profile
+        builtin = build_real_sport_profiles(self.builtin_combat_sport_real_roster_data())
+        return builtin.get(sport, {}).get(name) or build_fallback_sport_profile(sport, name, index=index)
+
+    def stable_sport_skill_offset(self, sport, name, key):
+        seed = sum((index + 5) * ord(char) for index, char in enumerate(f"{sport}:{name}:{key}"))
+        return seed % 5 - 2
+
+    def apply_real_combat_sport_profile(self, fighter, sport, profile, preserve_career=False):
+        """Apply one deterministic, editable child-sport athlete profile.
+
+        Existing careers keep their dynamic age, ledger, popularity, employer,
+        health and history. Their formerly randomized combat identity is repaired
+        once, while a new universe receives the complete prime profile.
+        """
+        def profile_int(key, default, low=1, high=99):
+            try:
+                value = int(profile.get(key, default))
+            except (TypeError, ValueError):
+                value = int(default)
+            return max(low, min(high, value))
+
+        rating = profile_int("rating", 75)
+        group_bases = {
+            "Boxing": {"Standing": rating, "Ground": rating - 29, "Wrestling": rating - 25, "Muay Thai Clinch": rating - 14, "Mental": rating - 3, "Physical": rating - 4},
+            "Kickboxing": {"Standing": rating, "Ground": rating - 25, "Wrestling": rating - 21, "Muay Thai Clinch": rating - 8, "Mental": rating - 3, "Physical": rating - 3},
+            "Muay Thai": {"Standing": rating - 1, "Ground": rating - 24, "Wrestling": rating - 18, "Muay Thai Clinch": rating + 1, "Mental": rating - 3, "Physical": rating - 2},
+            "Lethwei": {"Standing": rating - 1, "Ground": rating - 25, "Wrestling": rating - 19, "Muay Thai Clinch": rating, "Mental": rating - 3, "Physical": rating},
+            "Wrestling": {"Standing": rating - 29, "Ground": rating - 7, "Wrestling": rating + 1, "Muay Thai Clinch": rating - 3, "Mental": rating - 3, "Physical": rating - 1},
+            "Brazilian Jiu-Jitsu": {"Standing": rating - 31, "Ground": rating + 1, "Wrestling": rating - 8, "Muay Thai Clinch": rating - 11, "Mental": rating - 3, "Physical": rating - 3},
+        }.get(sport, {group: rating - 4 for group in DETAILED_SKILL_GROUPS})
+        details = {}
+        for group, keys in DETAILED_SKILL_GROUPS.items():
+            base = group_bases.get(group, rating - 4)
+            for key in keys:
+                value = base + self.stable_sport_skill_offset(sport, fighter.name, key)
+                if sport == "Boxing" and key in ("high_kick_power", "high_kick_technique", "high_kick_speed", "low_kick_power", "low_kick_technique", "low_kick_speed", "creative_kicks", "kick_defence"):
+                    value -= 24
+                if sport in ("Wrestling", "Brazilian Jiu-Jitsu") and key in ("high_kick_power", "high_kick_technique", "low_kick_power", "low_kick_technique", "creative_kicks"):
+                    value -= 8
+                details[key] = max(25, min(99, round(value)))
+        modifiers = profile.get("skill_mods", {})
+        modifiers = modifiers if isinstance(modifiers, dict) else {}
+        for key, adjustment in modifiers.items():
+            if key in details:
+                try:
+                    details[key] = max(25, min(99, details[key] + int(adjustment)))
+                except (TypeError, ValueError):
+                    continue
+        fighter.detailed_skills = details
+        fighter.style = profile.get("style", fighter.style) if profile.get("style") in STYLES else fighter.style
+        fighter.trait = profile.get("trait", fighter.trait) if profile.get("trait") in TRAITS else fighter.trait
+        fighter.behaviour = profile.get("behaviour", fighter.behaviour) if profile.get("behaviour") in BEHAVIOURS else fighter.behaviour
+        fighter.stance = profile.get("stance", fighter.stance) if profile.get("stance") in ("Orthodox", "Southpaw", "Switch") else fighter.stance
+        fighter.career_archetype = profile.get("career_archetype", "Balanced Development")
+        self.sync_broad_skills_from_details(fighter)
+        if sport in ("Boxing", "Kickboxing", "Muay Thai", "Lethwei"):
+            fighter.striking = rating
+        elif sport == "Wrestling":
+            fighter.wrestling = rating
+        elif sport == "Brazilian Jiu-Jitsu":
+            fighter.grappling = rating
+        fighter.finishing_instinct = profile_int("finishing_instinct", fighter.finishing_instinct)
+        if not preserve_career:
+            fighter.age = profile_int("prime_age", fighter.age, 18, 45)
+            fighter.record_w = profile_int("record_w", fighter.record_w, 0, 999)
+            fighter.record_l = profile_int("record_l", fighter.record_l, 0, 500)
+            fighter.record_d = profile_int("record_d", fighter.record_d, 0, 250)
+            fighter.popularity = profile_int("popularity", fighter.popularity)
+            for key in ("star_quality", "charisma", "professionalism", "media_presence", "sponsor_appeal", "injury_proneness"):
+                if key in profile:
+                    setattr(fighter, key, profile_int(key, getattr(fighter, key)))
+        fighter.prime_start = profile_int("prime_start", max(21, fighter.age - 4), 18, 39)
+        fighter.prime_end = max(fighter.prime_start + 3, profile_int("prime_end", fighter.prime_start + 8, 21, 45))
+        fighter.career_arc_version = max(2, getattr(fighter, "career_arc_version", 0))
+        fighter.sport_profile_version = max(SPORT_PROFILE_VERSION, profile_int("version", SPORT_PROFILE_VERSION, 1, 999))
+        fighter.primary_discipline = sport
+        fighter.combat_background = sport
+        fighter.multi_sport_records = dict(fighter.multi_sport_records or {})
+        fighter.multi_sport_records[sport] = f"{fighter.record_w}-{fighter.record_l}-{fighter.record_d}"
+        if sport == "Lethwei":
+            fighter.multi_sport_records.setdefault("Muay Thai", "0-0-0")
+        fighter.potential = max(fighter.overall, min(99, rating + (1 if fighter.age >= fighter.prime_start else 4)))
+        fighter.annual_overalls = dict(fighter.annual_overalls or {})
+        fighter.annual_overalls.setdefault("2026", fighter.overall)
+        fighter.rank_score = self.rank_value(fighter)
+        return fighter
 
     def create_real_combat_sport_athlete(self, name, sport, promotion, index):
         women = {
@@ -1544,13 +1868,12 @@ class SeedMixin:
             "Wrestling": "Wrestler",
             "Brazilian Jiu-Jitsu": "BJJ",
         }
-        rating = max(68, 96 - index // 3 + random.randint(-2, 2))
-        if index < 5:
-            rating = max(rating, 94 - index)
-        age = 27 + (index % 7)
-        wins = max(8, 62 - index + random.randint(-4, 8))
-        losses = max(0, min(18, index // 4 + random.randint(0, 4)))
-        draws = random.randint(0, 3 if sport in ("Muay Thai", "Lethwei", "Boxing") else 1)
+        profile = self.combat_sport_seed_profile(sport, name, index)
+        rating = max(1, min(99, int(profile.get("rating", 75))))
+        age = int(profile.get("prime_age", 28))
+        wins = int(profile.get("record_w", 0))
+        losses = int(profile.get("record_l", 0))
+        draws = int(profile.get("record_d", 0))
         region = self.combat_sport_region_for_name(name, sport)
         striking = rating
         wrestling = max(55, rating - 13)
@@ -1565,7 +1888,9 @@ class SeedMixin:
             striking, wrestling, grappling = max(52, rating - 22), max(64, rating - 8), rating
         fighter = Fighter(
             name=name,
-            weight=random.choice(WEIGHTS),
+            # The exact child-sport class is assigned below.  ``weight`` stays
+            # as its MMA equivalent so a later crossover is immediately valid.
+            weight="Welterweight",
             age=age,
             record_w=wins,
             record_l=losses,
@@ -1573,19 +1898,20 @@ class SeedMixin:
             striking=max(25, min(99, striking)),
             wrestling=max(25, min(99, wrestling)),
             grappling=max(25, min(99, grappling)),
-            cardio=max(45, min(99, rating + random.randint(-4, 5))),
-            chin=max(45, min(99, rating + random.randint(-5, 7))),
-            popularity=max(18, min(99, rating + 2 - index // 2 + random.randint(-4, 6))),
-            momentum=random.randint(0, 5),
-            morale=random.randint(62, 92),
+            cardio=max(45, min(99, rating - 2)),
+            chin=max(45, min(99, rating - 3)),
+            popularity=max(18, min(99, int(profile.get("popularity", rating)))),
+            momentum=2,
+            morale=78,
             purse=max(4000, (rating - 45) * 1800),
             gender="Female" if name in women else "Male",
             region=region,
             nationality=self.infer_nationality(name, region),
             style=style_by_sport.get(sport, "Well-Rounded"),
-            trait=random.choice(["Title Mentality", "Veteran Savvy", "Warrior Spirit", "Clutch", "Technical Learner"]),
-            behaviour=random.choice(["Pressure Fighter", "Technical Counter", "Dynamic Attacker", "Patient Finisher"]),
-            camp=random.choice(CAMPS),
+            trait=profile.get("trait", "Technical Learner"),
+            behaviour=profile.get("behaviour", "Dynamic Attacker"),
+            stance=profile.get("stance", "Orthodox"),
+            camp="Independent",
             primary_discipline=sport,
             combat_background=sport,
             sport_employer=promotion,
@@ -1594,38 +1920,25 @@ class SeedMixin:
             contract_months=0,
             exclusive=False,
             contract_type="Sport Contract",
-            star_quality=max(20, min(99, rating + random.randint(-5, 8))),
-            charisma=max(20, min(99, rating - 8 + random.randint(-7, 12))),
-            professionalism=random.randint(58, 96),
-            media_presence=max(15, min(99, rating - 4 + random.randint(-8, 10))),
-            sponsor_appeal=max(15, min(99, rating - 3 + random.randint(-6, 10))),
-            finishing_instinct=max(35, min(99, rating + random.randint(-7, 10))),
-            injury_proneness=random.randint(8, 34),
+            star_quality=int(profile.get("star_quality", rating)),
+            charisma=int(profile.get("charisma", max(20, rating - 8))),
+            professionalism=int(profile.get("professionalism", 78)),
+            media_presence=int(profile.get("media_presence", max(15, rating - 4))),
+            sponsor_appeal=int(profile.get("sponsor_appeal", max(15, rating - 3))),
+            finishing_instinct=int(profile.get("finishing_instinct", rating)),
+            injury_proneness=int(profile.get("injury_proneness", 18)),
         )
         if sport == "Lethwei":
             fighter.power = min(99, rating + 5)
             fighter.toughness = min(99, rating + 7)
             fighter.multi_sport_records["Muay Thai"] = "0-0-0"
+        self.assign_combat_sport_weight(sport, fighter, reset_walk_weight=True)
         fighter.portrait_bg, fighter.portrait_accent = self.generate_portrait_palette(fighter.name)
-        fighter.walk_weight = self.default_walk_weight(fighter)
         fighter.fight_history = []
-        fighter.annual_overalls = {"2026": fighter.overall}
-        fighter.motivation = random.randint(64, 94)
+        fighter.annual_overalls = {}
+        fighter.motivation = 82
         fighter.camp_quality = self.gym_quality(fighter.camp)
-        fighter.fight_iq = max(45, min(99, rating + random.randint(-5, 6)))
-        fighter.power = max(getattr(fighter, "power", 65), min(99, round(fighter.striking * 0.72 + fighter.chin * 0.14 + random.randint(-4, 8))))
-        fighter.takedown_defence = max(40, min(99, round(fighter.wrestling * 0.7 + fighter.cardio * 0.15 + random.randint(-6, 8))))
-        fighter.ground_control = max(40, min(99, round((fighter.wrestling + fighter.grappling) / 2 + random.randint(-5, 7))))
-        fighter.submissions = max(35, min(99, round(fighter.grappling * 0.84 + random.randint(-8, 8))))
-        fighter.submission_defence = max(38, min(99, round(fighter.grappling * 0.62 + fighter.wrestling * 0.18 + random.randint(-6, 8))))
-        fighter.recovery = max(40, min(99, round(fighter.chin * 0.58 + random.randint(-6, 8))))
-        fighter.toughness = max(getattr(fighter, "toughness", 65), min(99, round(fighter.chin * 0.74 + fighter.cardio * 0.16 + random.randint(-4, 8))))
-        self.generate_detailed_skills(fighter)
-        self.sync_broad_skills_from_details(fighter)
-        fighter.potential = max(fighter.overall, min(99, fighter.overall + random.randint(1, 9)))
-        self.assign_career_arc(fighter)
-        fighter.rank_score = self.rank_value(fighter)
-        return fighter
+        return self.apply_real_combat_sport_profile(fighter, sport, profile, preserve_career=False)
 
     def seed_combat_sport_worlds(self):
         worlds = {}
@@ -1648,7 +1961,8 @@ class SeedMixin:
             ranked = sorted(roster, key=lambda fighter: (fighter.overall, fighter.popularity, fighter.record_w - fighter.record_l), reverse=True)
             division_groups = {}
             for fighter in ranked:
-                division_groups.setdefault(f"{fighter.gender}|{fighter.weight}", []).append(fighter)
+                division = self.combat_sport_competition_class(sport, fighter)
+                division_groups.setdefault(f"{fighter.gender}|{division}", []).append(fighter)
             rankings_by_division = {key: [fighter.name for fighter in fighters[:10]] for key, fighters in division_groups.items()}
             titles = {key: fighters[0].name for key, fighters in division_groups.items() if len(fighters) >= 2}
             worlds[sport] = {
@@ -1697,6 +2011,16 @@ class SeedMixin:
                     continue
                 self.ensure_detailed_skills(fighter)
                 self.ensure_fighter_business_stats(fighter)
+                native_sport = getattr(fighter, "primary_discipline", sport)
+                profiles = getattr(self, "combat_sport_seed_profiles", {}) or {}
+                profile = profiles.get(native_sport, {}).get(fighter.name)
+                if isinstance(profile, dict) and getattr(fighter, "sport_profile_version", 0) < int(profile.get("version", SPORT_PROFILE_VERSION)):
+                    preserve_career = bool(
+                        getattr(fighter, "fight_history", None)
+                        or getattr(fighter, "last_fight_month", 0)
+                        or getattr(self, "month", 1) > 1
+                    )
+                    self.apply_real_combat_sport_profile(fighter, native_sport, profile, preserve_career=preserve_career)
                 repaired_roster.append(fighter)
                 seen.add(fighter.name)
             for name, fighter in seeded_by_name.items():
@@ -2304,13 +2628,15 @@ class SeedMixin:
         return bonus
 
     def sync_gym_membership(self):
-        for gym in getattr(self, "gyms", []):
+        gyms = getattr(self, "gyms", [])
+        gym_lookup = {gym.name: gym for gym in gyms}
+        for gym in gyms:
             gym.member_count = 0
         all_fighters = list(getattr(self, "roster", [])) + list(getattr(self, "free_agents", []))
         for promo in getattr(self, "promotions", []):
             all_fighters.extend(promo.roster)
         for fighter in all_fighters:
-            gym = self.gym_by_name(fighter.camp)
+            gym = gym_lookup.get(fighter.camp)
             if gym:
                 gym.member_count += 1
 

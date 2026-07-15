@@ -1,4 +1,5 @@
 import importlib.util
+import random
 import sys
 import tkinter as tk
 from dataclasses import asdict
@@ -63,7 +64,61 @@ def main():
                 known_names.update(real_roster_names.get("Lethwei", []))
             assert_true(len(roster) >= minimum, f"{sport} real roster too small")
             assert_true(sum(fighter.name in known_names for fighter in roster) >= minimum, f"{sport} roster is not real-name seeded")
+            app.ensure_combat_sport_circuit_state(sport, world, world.get("promotion", ""), False)
+            for fighter in roster:
+                native_sport = fighter.primary_discipline if fighter.primary_discipline in game.COMBAT_SPORT_WEIGHT_CLASSES else sport
+                valid_classes = {label for label, _limit in app.combat_sport_weight_ladder(native_sport, fighter.gender)}
+                assert_true(fighter.sport_weight_class in valid_classes, f"{fighter.name} has invalid {native_sport} class {fighter.sport_weight_class}")
+                key = app.combat_sport_division_key(fighter, sport)
+                assert_true(key.endswith(app.combat_sport_competition_class(sport, fighter)), f"{fighter.name} circuit division key is stale")
+        sport_examples = {
+            ("Boxing", "Oleksandr Usyk"): "Cruiserweight",
+            ("Muay Thai", "Rodtang Jitmuangnon"): "Super Featherweight",
+            ("Wrestling", "Henry Cejudo"): "57 kg",
+            ("Brazilian Jiu-Jitsu", "Gabi Garcia"): "Super Heavyweight",
+        }
+        for (sport, name), expected_class in sport_examples.items():
+            fighter = next(candidate for candidate in app.combat_sport_worlds[sport]["roster"] if candidate.name == name)
+            assert_true(fighter.sport_weight_class == expected_class, f"{name} should be {expected_class}, not {fighter.sport_weight_class}")
+        profiled_sport_fighters = [fighter for world in app.combat_sport_worlds.values() for fighter in world.get("roster", []) if fighter.name in set(real_roster_names.get(fighter.primary_discipline, []))]
+        assert_true(len(profiled_sport_fighters) >= 270, "Real child-sport profile coverage is incomplete")
+        assert_true(all(fighter.sport_profile_version >= 1 for fighter in profiled_sport_fighters), "Real child-sport profile migration was not applied")
+        assert_true(all(fighter.prime_start <= fighter.age <= fighter.prime_end for fighter in profiled_sport_fighters), "A starting real child-sport athlete is outside their prime")
+        assert_true(all(fighter.style in game.STYLES and fighter.trait in game.TRAITS and fighter.behaviour in game.BEHAVIOURS for fighter in profiled_sport_fighters), "Real child-sport identity contains invalid values")
+        sport_checks = {
+            ("Boxing", "Floyd Mayweather Jr"): (50, 0, 0, "Counter Specialist", "Counter"),
+            ("Boxing", "Oleksandr Usyk"): (24, 0, 0, "Adaptable", "Dynamic Attacker"),
+            ("Muay Thai", "Rodtang Jitmuangnon"): (272, 43, 10, "Knockout Artist", "Pressure"),
+            ("Wrestling", "Aleksandr Karelin"): (887, 2, 0, "Title Mentality", "Control"),
+            ("Brazilian Jiu-Jitsu", "Roger Gracie"): (76, 7, 3, "Pressure Fighter", "Control"),
+        }
+        for (sport, name), expected in sport_checks.items():
+            fighter = next(candidate for candidate in app.combat_sport_worlds[sport]["roster"] if candidate.name == name)
+            actual = (fighter.record_w, fighter.record_l, fighter.record_d, fighter.trait, fighter.behaviour)
+            assert_true(actual == expected, f"{name} profile mismatch: {actual} != {expected}")
+        random.seed(1)
+        usyk_a = app.create_real_combat_sport_athlete("Oleksandr Usyk", "Boxing", "Test", 4)
+        random.seed(999)
+        usyk_b = app.create_real_combat_sport_athlete("Oleksandr Usyk", "Boxing", "Test", 4)
+        deterministic_a = (usyk_a.age, usyk_a.record, usyk_a.stance, usyk_a.trait, usyk_a.behaviour, usyk_a.detailed_skills, usyk_a.walk_weight)
+        deterministic_b = (usyk_b.age, usyk_b.record, usyk_b.stance, usyk_b.trait, usyk_b.behaviour, usyk_b.detailed_skills, usyk_b.walk_weight)
+        assert_true(deterministic_a == deterministic_b, "Real child-sport profiles still depend on random seed")
+        floyd = next(candidate for candidate in app.combat_sport_worlds["Boxing"]["roster"] if candidate.name == "Floyd Mayweather Jr")
+        floyd.age, floyd.record_w, floyd.record_l, floyd.record_d = 41, 61, 2, 1
+        floyd.fight_history = ["Evolved save test"]
+        floyd.sport_profile_version = 0
+        floyd.trait = "Erratic"
+        app.repair_combat_sport_worlds()
+        assert_true((floyd.age, floyd.record_w, floyd.record_l, floyd.record_d) == (41, 61, 2, 1), "Sport-profile migration reset an evolved career ledger")
+        assert_true(floyd.trait == "Counter Specialist" and floyd.sport_profile_version >= 1, "Sport-profile migration did not repair the combat identity")
+        all_mma = list(app.roster) + list(app.free_agents) + [fighter for promotion in app.promotions for fighter in promotion.roster]
+        sean = next(fighter for fighter in all_mma if fighter.name == "Sean O'Malley")
+        loneer = next(fighter for fighter in all_mma if fighter.name == "Lone'er Kavanagh")
+        assert_true(sean.stance == "Switch" and sean.trait == "Showman" and sean.rating_profile_version >= 3, "Sean O'Malley's authored MMA identity was not applied")
+        assert_true(loneer.gender == "Male", "Lone'er Kavanagh gender regression")
         assert_true(any(fighter.primary_discipline == "Lethwei" and fighter.name == "Dave Leduc" for fighter in app.combat_sport_worlds["Muay Thai"]["roster"]), "Lethwei legends were not added to Muay Thai")
+        dave = next(fighter for fighter in app.combat_sport_worlds["Muay Thai"]["roster"] if fighter.name == "Dave Leduc")
+        assert_true(dave.sport_weight_class == "Openweight" and app.combat_sport_competition_class("Muay Thai", dave) == "Heavyweight", "Lethwei-to-Muay-Thai class translation failed")
         boxing_names = {fighter.name for fighter in app.combat_sport_worlds["Boxing"]["roster"]}
         assert_true("Muhammad Ali" not in boxing_names and "Sugar Ray Robinson" not in boxing_names and "Floyd Mayweather Jr" in boxing_names, "Boxing roster should be modern-era focused")
         kickboxing_world = app.combat_sport_worlds["Kickboxing"]
@@ -170,7 +225,7 @@ def main():
         assert_true(app.rules.get("active_fighter_target") == 1200, "Legacy active-fighter floor was not migrated")
         assert_true(app.gym_by_name("American Top Team") is not None, "Gym load repair failed")
         yair = app.find_fighter_anywhere("Yair Rodriguez")
-        assert_true(yair and yair.style == "Karate" and yair.rating_profile_version == 2, "Real-fighter rating migration failed")
+        assert_true(yair and yair.style == "Karate" and yair.rating_profile_version >= 3, "Real-fighter rating migration failed")
         gsp = app.find_fighter_anywhere("Georges St-Pierre")
         assert_true(gsp and gsp.age == 31 and gsp.legend_prime_age_version == 1, "Legend prime-age migration failed")
         active_fighters = app.roster + app.free_agents + [fighter for promo in app.promotions for fighter in promo.roster]
