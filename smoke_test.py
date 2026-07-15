@@ -160,6 +160,13 @@ def main():
             expected_phase = "MATCH CLOCK" if sport == "Brazilian Jiu-Jitsu" else "PERIOD " if sport == "Wrestling" else "ROUND "
             assert_true(any(line.startswith(expected_phase) for line in lines), f"{sport} replay has no visible round/match start")
             assert_true(playback.get("start_stamina") and playback.get("condition"), f"{sport} replay condition telemetry missing")
+        situation_bank = app.combat_sport_striking_situation_bank()
+        for sport in ("Boxing", "Kickboxing", "Muay Thai", "Lethwei"):
+            assert_true(sport in situation_bank and len(situation_bank[sport]) >= 8, f"{sport} striking situation bank missing")
+            assert_true(all(len(pool.get("land", [])) >= 50 and len(pool.get("defended", [])) >= 50 for pool in situation_bank[sport].values()), f"{sport} striking situation variety regressed")
+        mma_striking = app.mma_striking_commentary_expansion()
+        for category in ("jab_land", "power_land", "dirty_boxing_miss", "ground_strikes_miss", "body_kick_land", "leg_kick_hurt", "kick_checked", "knockdown"):
+            assert_true(len(mma_striking.get(category, [])) >= 6, f"MMA {category} commentary variety regressed")
         feeder_promotions = [promotion for promotion in app.promotions if promotion.is_regional_feeder]
         assert_true(len(feeder_promotions) == 10, "Regional feeder promotions missing")
         assert_true(all(promotion.cash == 0 and all(fighter.age >= 16 for fighter in promotion.roster) for promotion in feeder_promotions), "Regional feeders must be non-financial and age-16 minimum")

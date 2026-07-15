@@ -3001,27 +3001,45 @@ class WorldMixin:
             },
         }
         for sport, data in generators.items():
+            close_frames = [
+                "R{round_no}: {A} edges the frame with {tool} and {score}. {score_text}",
+                "R{round_no}: Very little separates them, but {tool} gives {A} the cleaner {score}. {score_text}",
+                "R{round_no}: {B} has moments, yet {A}'s {tool} is the clearest example of {score}. {score_text}",
+                "R{round_no}: The margins are thin; {A} steals it late through {tool} and {score}. {score_text}",
+            ]
             close_templates = [
-                "R{round_no}: {A} edges the frame with " + tool + " and " + score + ". {score_text}"
-                for tool in data["close_tools"] for score in data["scoring"][:3]
+                frame.format(tool=tool, score=score, A="{A}", B="{B}", round_no="{round_no}", score_text="{score_text}")
+                for frame in close_frames for tool in data["close_tools"] for score in data["scoring"][:3]
             ]
             if sport in ("Wrestling", "Brazilian Jiu-Jitsu"):
                 close_templates = [
                     ("R{round_no}: {points_text} - {A} edges the period with " if sport == "Wrestling" else "Match: {points_text} - {A} edges the exchange with ") + tool + " and " + score + "."
                     for tool in data["close_tools"] for score in data["scoring"][:3]
                 ]
+            dominant_frames = [
+                "R{round_no}: {A} takes over through {tool}, forcing {B} to deal with {score}. {score_text}",
+                "R{round_no}: This is becoming one-way: {A}'s {tool} keeps turning into {score}. {score_text}",
+                "R{round_no}: {B} cannot find a safe reset while {A} builds everything from {tool} and {score}. {score_text}",
+                "R{round_no}: A commanding frame for {A}, whose {tool} creates sustained {score}. {score_text}",
+            ]
             dominant_templates = [
-                "R{round_no}: {A} takes over through " + tool + ", forcing {B} to deal with " + score + ". {score_text}"
-                for tool in data["dominant_tools"] for score in data.get("dominant_results", data["scoring"][:3])
+                frame.format(tool=tool, score=score, A="{A}", B="{B}", round_no="{round_no}", score_text="{score_text}")
+                for frame in dominant_frames for tool in data["dominant_tools"] for score in data.get("dominant_results", data["scoring"][:3])
             ]
             if sport in ("Wrestling", "Brazilian Jiu-Jitsu"):
                 dominant_templates = [
                     ("R{round_no}: {points_text} - {A} takes over with " if sport == "Wrestling" else "Match: {points_text} - {A} takes over with ") + tool + ", turning it into " + score + "."
                     for tool in data["dominant_tools"] for score in data.get("dominant_results", data["scoring"][:3])
                 ]
+            finish_frames = [
+                "R{round_no}: {A} finds {tool}; {B} cannot recover and the result is {method}.",
+                "R{round_no}: The opening appears for {tool}. {A} commits and forces the {method}.",
+                "R{round_no}: {B} is hurt by {tool}; {A} stays composed and closes the show by {method}.",
+                "R{round_no}: One decisive sequence—{tool}—ends with {A} winning by {method}.",
+            ]
             finish_templates = [
-                "R{round_no}: {A} finds " + tool + "; {B} cannot recover and the result is {method}."
-                for tool in data["finish_tools"]
+                frame.format(tool=tool, A="{A}", B="{B}", round_no="{round_no}", method="{method}")
+                for frame in finish_frames for tool in data["finish_tools"]
             ]
             if sport == "Brazilian Jiu-Jitsu":
                 finish_templates = ["Match: {A} finds " + tool + "; {B} has to tap." for tool in data["finish_tools"]]
@@ -3030,9 +3048,15 @@ class WorldMixin:
             bank[sport]["close"].extend(close_templates)
             bank[sport]["dominant"].extend(dominant_templates)
             bank[sport]["finish"].extend(finish_templates)
+            decision_frames = [
+                "{A} wins because {score} decided the fight. ({score_text})",
+                "The cards reward {A}'s {score} across the full contest. ({score_text})",
+                "{B} had competitive spells, but {A} owned the more meaningful {score}. ({score_text})",
+                "The official decision goes to {A}; the lasting difference was {score}. ({score_text})",
+            ]
             bank[sport]["decision"].extend([
-                "{A} wins because " + score + " decided the fight. ({score_text})"
-                for score in data["scoring"]
+                frame.format(score=score, A="{A}", B="{B}", score_text="{score_text}")
+                for frame in decision_frames for score in data["scoring"]
             ])
 
     def combat_sport_phrase(self, sport, category, actor=None, opponent=None, **context):
@@ -3139,6 +3163,125 @@ class WorldMixin:
         }
         return actions.get(sport, actions["Kickboxing"])
 
+    def combat_sport_striking_situation_bank(self):
+        """Build large action-specific broadcast pools for the striking sports.
+
+        The combinations are assembled once and cached.  Each finished line is
+        still a coherent sport/action situation, while the simulator continues
+        to make exactly the same mechanical action and success decisions.
+        """
+        cached = getattr(self, "_combat_sport_striking_situation_cache", None)
+        if cached is not None:
+            return cached
+        success_cores = {
+            "Boxing": {
+                "jab": ["threads a jab between {B}'s gloves", "stabs the lead hand into {B}'s chest", "touches low and snaps the jab upstairs"],
+                "double jab": ["steps behind a double jab that moves {B}'s guard", "jabs to the body before doubling upstairs", "uses the second jab to catch {B} on the exit"],
+                "body shot": ["digs a left hook underneath {B}'s elbow", "drives a straight shot into {B}'s solar plexus", "shifts close enough to bury a shovel hook in the ribs"],
+                "right hand": ["drives the rear hand straight through the centre", "pulls just outside the jab and fires the right hand back", "pins {B}'s lead glove and lands the cross"],
+                "check hook": ["takes a half-step back and turns {B} with the check hook", "meets the rush with a compact lead hook", "pivots around {B}'s front foot while landing the hook"],
+                "combination": ["layers a body-head combination before changing angle", "puts a straight-hook-straight sequence through the guard", "touches with the jab and finishes the combination downstairs"],
+                "uppercut": ["splits {B}'s elbows with a short uppercut", "catches {B} dipping with the rear uppercut", "rolls under the hook and answers up the middle"],
+                "rope attack": ["cuts off the rope-side exit and works in combination", "keeps {B} in the corner with hooks to both levels", "steps across the escape route and unloads without smothering the work"],
+            },
+            "Kickboxing": {
+                "jab-cross": ["steps through a sharp jab-cross", "paws with the lead hand before spearing the cross", "changes rhythm and lands both straight punches"],
+                "low kick": ["finishes the punches with an outside low kick", "chops the inside thigh as {B} plants", "waits for the weight transfer and kicks through the lead leg"],
+                "body kick": ["wraps the rear kick around {B}'s elbow", "switches and drives the shin across the open ribs", "draws the guard high before turning over the body kick"],
+                "head kick": ["hides the head kick behind the straight punches", "changes levels with the eyes and whips the kick upstairs", "steps outside the lead foot and sends the shin around the guard"],
+                "counter cross": ["checks the kick and shoots the cross down the middle", "leans away from the entry and fires the rear hand back", "catches {B} resetting with a straight counter"],
+                "kick-punch combination": ["goes low-high with the kick before punching through the reaction", "kicks the body and follows the retreat with straight punches", "uses the hands to hide a final kick on the exit"],
+                "spinning attack": ["turns off the centre line with a spinning back kick", "draws the pressure and whips a spinning strike into the opening", "uses the missed lead hand to disguise the spin"],
+                "clinch knee": ["catches the head and drives a knee through the middle", "frames on the collarbone before landing the knee", "meets {B}'s forward step with a compact clinch knee"],
+            },
+            "Muay Thai": {
+                "teep": ["spears the teep into {B}'s body", "lifts the lead leg and pushes {B} off balance", "times the forward step with a stabbing teep to the hip"],
+                "body kick": ["turns the shin over across {B}'s ribs", "catches the arm and body together with a heavy round kick", "steps outside and lands the open-side body kick"],
+                "low kick": ["chops through {B}'s supporting leg", "waits for the punch and cracks the exposed thigh", "steps deep before driving the shin into the inside leg"],
+                "elbow": ["frames across {B}'s guard and slices the elbow through", "steps into the pocket with a horizontal elbow", "turns out of the clinch while landing the elbow on the break"],
+                "straight knee": ["wins inside position and drives the knee through the body", "breaks {B}'s posture before lifting the straight knee", "pulls the head into a knee up the centre"],
+                "clinch turn": ["swims to inside control and turns {B} sharply", "uses head position to off-balance {B} in the clinch", "pins an arm and rotates {B} into the ropes"],
+                "dump": ["catches the kick and runs {B} across the supporting leg", "steps behind the base and dumps {B} from the clinch", "times the turn as {B} knees and sends them to the canvas"],
+                "high kick": ["wraps the high kick over {B}'s long guard", "shows the body kick before sending the shin upstairs", "arches the kick around the glove and onto the head"],
+            },
+        }
+        defence_cores = {
+            "Boxing": {
+                "jab": ["parries the jab outside", "pulls the head beyond the lead hand", "catches the jab on the rear glove"],
+                "double jab": ["blocks the first jab and slips the second", "gives ground before either jab can settle", "meets the double jab with a tight high guard"],
+                "body shot": ["drops the elbow onto the body shot", "turns the hip away from the hook", "frames off before the punch reaches the ribs"],
+                "right hand": ["slips outside the right hand", "rolls the cross across the shoulder", "steps off line and lets the rear hand miss"],
+                "check hook": ["stays balanced through the hook and squares up", "keeps the rear glove home to block the counter", "halts the entry before the check hook can turn them"],
+                "combination": ["shells through the combination", "uses small slips to take the force off each punch", "ties up before the final shot can land"],
+                "uppercut": ["keeps the elbows connected and smothers the uppercut", "leans away before the punch splits the guard", "crowds the shot so it cannot extend"],
+                "rope attack": ["slides along the ropes and escapes the corner", "clinches before the rope-side flurry develops", "blocks the first wave and pivots back to open space"],
+            },
+            "Kickboxing": {
+                "jab-cross": ["parries the jab and slips outside the cross", "catches both straight shots on the gloves", "exits before the one-two reaches full range"],
+                "low kick": ["turns the shin out and checks the low kick", "withdraws the lead leg before impact", "sits down on the stance and absorbs the kick safely"],
+                "body kick": ["braces the forearm and ribs behind a tight block", "slides beyond the arc of the body kick", "catches the kick before it can score cleanly"],
+                "head kick": ["sees the high kick and gets both gloves to it", "leans outside the kick's arc", "steps inside before the shin can gather force"],
+                "counter cross": ["recovers the guard before the counter arrives", "rolls under the returning cross", "uses the kick to exit beyond the counter"],
+                "kick-punch combination": ["blocks low and moves before the punches follow", "breaks the combination with a stiff frame", "changes angle and makes the layered attack fall short"],
+                "spinning attack": ["reads the turn and steps safely off line", "crowds the spin before it can extend", "retreats beyond the spinning strike"],
+                "clinch knee": ["wins the frame and prevents the knee lane", "turns the hips away from the clinch knee", "pummels inside and forces a clean break"],
+            },
+            "Muay Thai": {
+                "teep": ["scoops the teep aside", "steps off line before the push kick lands", "parries the foot and keeps advancing"],
+                "body kick": ["checks the body kick across the forearms", "leans away from the shin", "catches the kick and denies the score"],
+                "low kick": ["checks shin against shin", "takes the weight off the targeted leg", "steps inside the low kick before it turns over"],
+                "elbow": ["frames across the biceps and stops the elbow", "leans outside the slicing elbow", "ties up the arms before the elbow can clear the guard"],
+                "straight knee": ["turns the hips and takes the knee off line", "locks the posture down before the knee rises", "wins inside position and blocks the knee lane"],
+                "clinch turn": ["widens the base and refuses the turn", "recovers head position before being off-balanced", "pummels back inside and squares the clinch"],
+                "dump": ["hops free and recovers the trapped leg", "posts on the shoulder to stay upright", "reads the reap and keeps the base underneath them"],
+                "high kick": ["raises the long guard and blocks the high kick", "leans back beyond the shin", "steps under the kick and forces a clinch"],
+            },
+        }
+        situations = {
+            "Boxing": {
+                "setups": ["{A} feints low, then", "As {B} steps into range, {A}", "After taking the centre, {A}", "{A} changes rhythm and", "With {B} near the ropes, {A}"],
+                "endings": ["The angle takes {A} away from the return.", "{A} resets behind a disciplined guard.", "{B} is left reacting rather than leading.", "{A} slides back to the centre line."],
+                "defence_starts": ["{A} shows the lead hand, but {B}", "As {A} commits, {B}", "{B} reads the boxing entry and", "{A} tries to trap the exit; {B}", "The crowd reacts as {A} steps in, but {B}"],
+                "defence_endings": ["{B} circles back to centre.", "{B} resets without taking a clean scoring shot.", "A short counter discourages the follow-up.", "{A} has to build the attack again."],
+            },
+            "Kickboxing": {
+                "setups": ["{A} uses a stance feint and", "As {B} plants to answer, {A}", "After touching with the lead hand, {A}", "{A} changes levels and", "With {B} backed toward the ropes, {A}"],
+                "endings": ["{A} exits outside the lead leg.", "{A} returns to a balanced kicking stance.", "{B} has to defend hands and feet together.", "{A} takes the centre on the reset."],
+                "defence_starts": ["{A} starts the combination, but {B}", "As {A} enters kicking range, {B}", "{B} recognizes the setup and", "{A} tries to layer the attack; {B}", "The exchange opens for {A}, yet {B}"],
+                "defence_endings": ["{B} angles safely out of range.", "{B} is ready for the next layer.", "The stance remains intact on the reset.", "There is no clean scoring impact."],
+            },
+            "Muay Thai": {
+                "setups": ["{A} posts with the long guard and", "As {B} steps square, {A}", "After a measured feint, {A}", "{A} claims the centre and", "With the clinch threat drawing the guard, {A}"],
+                "endings": ["{A} finishes the exchange in balance.", "{A} reclaims the centre with the long guard.", "The judges get a clear view of the effect.", "{A} resets without giving {B} a free return."],
+                "defence_starts": ["{A} looks for the scoring weapon, but {B}", "As {A} closes behind the long guard, {B}", "{B} reads the Thai entry and", "{A} tries to break the posture; {B}", "The opening appears for {A}, yet {B}"],
+                "defence_endings": ["{B} takes the centre back.", "{B} remains balanced through the exchange.", "Posture and position win out over chasing a return.", "The action has to start again."],
+            },
+            "Lethwei": {
+                "setups": ["{A} presses forward behind the bare-knuckle guard and", "As {B} braces for the rough entry, {A}", "{A} gives ground for a beat, then", "With knockout urgency building, {A}", "{A} crowds the pocket and"],
+                "endings": ["{A} stays close enough to continue the exchange.", "{A} immediately retakes the centre.", "{B} cannot settle into a comfortable Thai rhythm.", "{A} squares up for another bare-knuckle exchange."],
+                "defence_starts": ["{A} charges into the exchange, but {B}", "As {A} loads the bare-knuckle attack, {B}", "{B} reads the aggressive entry and", "{A} tries to turn it into a brawl; {B}", "The knockout opening seems available to {A}, yet {B}"],
+                "defence_endings": ["{B} returns to the centre.", "The clean knockout impact is denied.", "{B} braces for the next close-range exchange.", "{A} has to reset the attack."],
+            },
+        }
+        bank = {}
+        for sport, action_map in success_cores.items():
+            sport_bank = {}
+            context = situations[sport]
+            for action, cores in action_map.items():
+                land = [f"{setup} {core}. {ending}" for setup in context["setups"] for core in cores for ending in context["endings"]]
+                defended = [f"{start} {core}. {ending}" for start in context["defence_starts"] for core in defence_cores[sport][action] for ending in context["defence_endings"]]
+                sport_bank[action] = {"land": land, "defended": defended}
+            bank[sport] = sport_bank
+        lethwei_bank = {}
+        for action, cores in success_cores["Muay Thai"].items():
+            context = situations["Lethwei"]
+            land = [f"{setup} {core}. {ending}" for setup in context["setups"] for core in cores for ending in context["endings"]]
+            defended = [f"{start} {core}. {ending}" for start in context["defence_starts"] for core in defence_cores["Muay Thai"][action] for ending in context["defence_endings"]]
+            lethwei_bank[action] = {"land": land, "defended": defended}
+        bank["Lethwei"] = lethwei_bank
+        self._combat_sport_striking_situation_cache = bank
+        return bank
+
     def combat_sport_live_line(self, sport, action, actor, defender, success, momentum=False):
         """Create one sport-native live call for a simulated exchange."""
         success_lines = {
@@ -3200,7 +3343,12 @@ class WorldMixin:
             "Wrestling": ["{B} gets the hips back, squares to the shot and forces a neutral reset.", "{A} attacks, but {B} wins the scramble and clears the danger."],
             "Brazilian Jiu-Jitsu": ["{B} recognizes the transition, rebuilds the frames and denies {A}'s advance.", "{A} threatens, but {B} stays calm and pummels back to a safe position."],
         }
-        pool = success_lines.get(sport, {}).get(action, []) if success else defended_lines.get(sport, [])
+        presentation_sport = "Lethwei" if sport == "Muay Thai" and getattr(actor, "primary_discipline", "") == "Lethwei" else sport
+        generated = self.combat_sport_striking_situation_bank().get(presentation_sport, {}).get(action, {})
+        if success:
+            pool = list(success_lines.get(sport, {}).get(action, [])) + list(generated.get("land", []))
+        else:
+            pool = list(generated.get("defended", [])) or defended_lines.get(sport, [])
         if not pool:
             pool = ["{A} creates an opening, but {B} closes it before the attack develops."]
         line = random.choice(pool).format(A=actor.name, B=defender.name)
@@ -3234,7 +3382,7 @@ class WorldMixin:
         lines = []
         successful = {a.name: 0, b.name: 0}
         previous_actor = None
-        previous_line = ""
+        recent_lines = []
         for beat_no in range(1, beat_count + 1):
             a_share = max(0.22, min(0.78, 0.50 + margin / 115))
             actor, defender = (a, b) if random.random() < a_share else (b, a)
@@ -3267,16 +3415,17 @@ class WorldMixin:
                     cuts[defender.name] += max(0, impact * (0.18 + cut_skill / 500) - 0.15)
             momentum = previous_actor is not actor and success and successful[actor.name] >= 2
             line = self.combat_sport_live_line(sport, action_name, actor, defender, success, momentum=momentum)
-            for _ in range(3):
-                if line != previous_line:
+            for _ in range(8):
+                if line not in recent_lines:
                     break
                 line = self.combat_sport_live_line(sport, action_name, actor, defender, success, momentum=momentum)
-            if line == previous_line:
+            if line in recent_lines:
                 line += " The position changes before they engage again."
             # Other-sport cards use the same genuine playback rhythm as MMA:
             # every exchange is placed on a visible round or match clock.
             lines.append(f"  [{self.combat_sport_clock(sport, beat_no, beat_count)}] {line}")
-            previous_line = line
+            recent_lines.append(line)
+            del recent_lines[:-16]
             previous_actor = actor if success else previous_actor
         return lines, successful
 

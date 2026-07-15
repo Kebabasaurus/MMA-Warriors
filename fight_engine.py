@@ -67,12 +67,17 @@ class FightEngineMixin:
             clean = line.strip()
             if not clean:
                 return
-            # A long watched fight should not echo the same event line every few ticks.
-            if clean in recent_commentary or (lines and lines[-1].strip() == clean):
+            # Compare the spoken call, not its clock.  Normalising both fighter
+            # names also catches the same template repeated with the corners
+            # reversed a few beats later.
+            memory_key = clean.split("] ", 1)[1] if clean.startswith("[") and "] " in clean else clean
+            for fighter_name in sorted((a.name, b.name), key=len, reverse=True):
+                memory_key = memory_key.replace(fighter_name, "{fighter}")
+            if memory_key in recent_commentary:
                 return
             lines.append(line)
-            recent_commentary.append(clean)
-            del recent_commentary[:-12]
+            recent_commentary.append(memory_key)
+            del recent_commentary[:-18]
 
         for round_no in range(1, max_rounds + 1):
             round_stats = {a.name: {"impact": 0, "control": 0, "danger": 0}, b.name: {"impact": 0, "control": 0, "danger": 0}}
@@ -1158,8 +1163,235 @@ class FightEngineMixin:
                 "The cards are level at {score}; this one is officially a draw.",
             ],
         }
+        extra_templates = self.mma_striking_commentary_expansion().get(category, ())
+        if extra_templates:
+            templates.setdefault(category, []).extend(extra_templates)
         template = random.choice(templates.get(category, ["{A} continues to work against {B}."]))
         return template.format(A=actor.name, B=defender.name, **context)
+
+    def mma_striking_commentary_expansion(self):
+        """Additional reachable striking situations for the live MMA broadcast."""
+        cached = getattr(self, "_mma_striking_commentary_cache", None)
+        if cached is not None:
+            return cached
+        expanded = {
+            "round_start": [
+                "{A} probes with the lead hand while {B} keeps changing the target picture.",
+                "{A} takes the outside angle and {B} answers by claiming the centre.",
+                "both fighters show level-change feints before either commits to a strike.",
+                "{A} pressures behind a long guard while {B} looks ready to counter.",
+                "{B} paws at range and {A} tests the reactions with a quick stance switch.",
+                "the corners call for patience as {A} and {B} begin hand-fighting at range.",
+                "{A} edges toward the fence-cutting angle; {B} refuses to stand still.",
+                "a tense opening exchange of feints, shoulder rolls and half-steps develops.",
+            ],
+            "jab_land": [
+                "{A} stabs the jab into {B}'s chest and takes the angle outside.",
+                "{A} touches the body, then brings the jab back upstairs.",
+                "{A} intercepts {B}'s forward step with a sharp lead hand.",
+                "{A} paws the guard open and threads the jab through the gap.",
+                "{A} triples the jab, forcing {B} to retreat behind the guard.",
+                "{A} feints the level change and lands the jab over {B}'s lowered hands.",
+                "{A} lands the jab while circling away from {B}'s power side.",
+                "{A} uses a body jab to freeze {B}, then scores cleanly to the head.",
+                "{A} catches {B} resetting with a straight lead hand.",
+                "{A} steps off line after the jab and denies {B} the return.",
+            ],
+            "jab_miss": [
+                "{B} catches the jab on the rear glove and stays in position to answer.",
+                "{B} pulls just beyond the jab and makes {A} reach.",
+                "{B} bats the lead hand down before it reaches the target.",
+                "{A} tries to jab on the entry, but {B} pivots off the centre line.",
+                "{B} rolls the shoulder and lets the straight punch skim past.",
+                "{A} shows the body jab; {B} reads it and withdraws the target.",
+                "{B} changes stance mid-entry and the jab loses its lane.",
+                "{A}'s double jab meets a disciplined high guard.",
+            ],
+            "power_land": [
+                "{A} slips outside and fires a clean cross down the middle.",
+                "{A} digs a hook to the body before bringing the next punch upstairs.",
+                "{A} lands a shovel hook under {B}'s elbow at close range.",
+                "{A} catches {B} exiting with a tight lead hook.",
+                "{A} steps through with a rear uppercut as {B} changes levels.",
+                "{A} uses the jab to hide an overhand that lands behind the ear.",
+                "{A} lands a pull counter and is gone before {B} can reload.",
+                "{A} shifts stance through the combination and finishes with the cross.",
+                "{A} frames with the lead hand and drives a short right into the pocket.",
+                "{A} feints to the body and whips the hook around {B}'s guard.",
+                "{A} lands a compact three-punch sequence without falling out of stance.",
+                "{A} pins {B}'s lead glove and punches through the exposed centre.",
+            ],
+            "power_miss": [
+                "{B} leans outside the hook and watches it pass.",
+                "{A} throws the cross, but {B} pivots beyond the rear shoulder.",
+                "{B} catches the power shot across both forearms.",
+                "{A} tries the uppercut and {B} crowds it before it can extend.",
+                "{B} pulls away from the overhand and returns to a safe stance.",
+                "{A}'s body hook is smothered by {B}'s elbow.",
+                "{B} shells through the combination and slips out after the final punch.",
+                "{A} commits to the counter, but {B} never gives the expected opening.",
+            ],
+            "dirty_boxing_land": [
+                "{A} controls the biceps and lands two short punches inside.",
+                "{A} frames on the collarbone and clips {B} with an elbow.",
+                "{A} pulls the head into a knee before {B} can pummel free.",
+                "{A} punches on the break and catches {B} before the guard resets.",
+                "{A} digs a hook to the body from the collar tie.",
+                "{A} wins head position and sneaks an uppercut through the clinch.",
+                "{A} pins one wrist and works short punches with the free hand.",
+                "{A} turns {B} toward the fence and lands an elbow over the top.",
+            ],
+            "dirty_boxing_miss": [
+                "{B} wins the inside frame and smothers {A}'s short punches.",
+                "{A} looks for the elbow, but {B} pummels underneath and removes the lane.",
+                "{B} turns the hips away from the knee and forces a clean reset.",
+                "{A} punches on the break; {B} is already outside the pocket.",
+                "{B} keeps forehead position and denies {A} room for the uppercut.",
+                "{A} tries to work inside, but {B} ties up both wrists.",
+            ],
+            "ground_strikes_land": [
+                "{A} pins an arm and lands a clean elbow from top position.",
+                "{A} postures just enough to drive a straight punch through the guard.",
+                "{A} uses shoulder pressure to open space for short punches.",
+                "{A} lands to the body, then brings an elbow back to the head.",
+                "{A} follows the hip escape and keeps scoring with compact shots.",
+                "{A} traps {B} against the fence and lands measured ground strikes.",
+                "{A} floats with the movement and punches during the transition.",
+                "{A} keeps the base wide and lands without surrendering control.",
+            ],
+            "ground_strikes_miss": [
+                "{B} controls the wrists and prevents {A} from posturing to strike.",
+                "{A} tries to create punching room, but {B} closes the distance from bottom.",
+                "{B} frames at the hips and makes {A}'s elbow miss the target.",
+                "{A} postures for ground-and-pound; {B} uses the opening to move.",
+                "{B} keeps an active guard and blocks the short punches.",
+                "{A} swings from top, but {B} rolls with the shot and stays responsible.",
+            ],
+            "low_kick_land": [
+                "{A} times the weight transfer and kicks through {B}'s lead thigh.",
+                "{A} finishes the punching exchange with an outside low kick.",
+                "{A} chops the inside leg as {B} settles into stance.",
+                "{A} hides the calf kick behind a level-change feint.",
+                "{A} steps deep and turns the shin over into the thigh.",
+                "{A} catches {B} circling with a kick to the trailing leg.",
+                "{A} kicks the base and exits before {B} can plant to counter.",
+                "{A} doubles up on the low line after drawing the guard high.",
+            ],
+            "leg_kick_hurt": [
+                "{A} lands another low kick and {B} immediately changes stance.",
+                "{B}'s lead leg buckles as {A} drives through another calf kick.",
+                "{A} attacks the damaged leg; {B} can no longer hide the reaction.",
+                "{B} tries to check, but the compromised base gives way under {A}'s kick.",
+                "{A} finds the thigh again and {B}'s lateral movement visibly slows.",
+                "{A} pounds the lead leg, forcing {B} to square up uncomfortably.",
+            ],
+            "body_kick_land": [
+                "{A} wraps the shin around {B}'s elbow and into the ribs.",
+                "{A} draws the guard high before turning over a kick to the body.",
+                "{A} lands the open-side body kick and exits on an angle.",
+                "{A} switches smoothly and drives the rear kick into the midsection.",
+                "{A} catches {B} breathing with a thudding kick beneath the elbow.",
+                "{A} feints low and lands the body kick across the far side.",
+                "{A} punches into the kick and makes {B} absorb the full shin.",
+                "{A} lands to the body without losing balance or position.",
+            ],
+            "body_kick_hurt": [
+                "{A} slams another kick into the body and {B} folds around the impact.",
+                "{B}'s elbow is dropping now; {A} finds the damaged ribs again.",
+                "{A} lands flush to the body and {B} retreats with a guarded breath.",
+                "{A} attacks the accumulated body damage and forces {B} to shell low.",
+                "{B} winces as {A}'s shin lands across the same tender side.",
+                "{A} drives the kick through the midsection and takes away more of {B}'s gas.",
+            ],
+            "high_kick_land": [
+                "{A} uses the cross to hide a high kick around {B}'s rear glove.",
+                "{A} shows the body kick before whipping the shin upstairs.",
+                "{A} steps outside and lands the open-side kick to the head.",
+                "{A} changes rhythm, then fires the high kick without a tell.",
+                "{A} arcs the kick over {B}'s lowered lead hand.",
+                "{A} catches {B} circling toward the power kick.",
+                "{A} lands the high kick at the end of a punching combination.",
+                "{A} raises the knee late and turns a body read into a head kick.",
+            ],
+            "kick_miss": [
+                "{B} leans beyond the kick and lets {A} spin back to stance.",
+                "{A} fires to the body, but {B} slides outside the arc.",
+                "{B} withdraws the leg and makes the low kick fall short.",
+                "{A} tries the open-side kick; {B} has already changed the angle.",
+                "{B} steps inside the kick before {A} can extend it.",
+                "{A} shows the high kick, but {B} reads the hip turn early.",
+            ],
+            "kick_checked": [
+                "{B} turns the shin out and checks {A}'s low kick cleanly.",
+                "{A} kicks the leg, but {B}'s check meets it shin-to-shin.",
+                "{B} braces behind the forearms and blocks the body kick.",
+                "{B} raises a tight double guard and absorbs the high kick safely.",
+                "{A} attacks the base; {B} checks and stays balanced.",
+                "{B} reads the kick and takes the impact on a disciplined block.",
+            ],
+            "low_kick_checked": [
+                "{B} turns the shin outward and checks {A}'s low kick cleanly.",
+                "{A} attacks the thigh, but {B} meets the kick shin-to-shin.",
+                "{B} lifts the lead leg in time and takes the force out of the low kick.",
+                "{A} kicks the base; {B}'s check is already waiting.",
+                "{B} reads the hip turn and checks before {A} can kick through the target.",
+                "{A}'s calf kick lands on the point of {B}'s raised shin.",
+            ],
+            "body_kick_checked": [
+                "{B} braces the elbow and forearm together to block {A}'s body kick.",
+                "{A} turns the kick toward the ribs, but {B} catches it on a tight frame.",
+                "{B} slides back and takes the body kick across both forearms.",
+                "{A}'s shin reaches the midsection, but {B}'s elbow absorbs the scoring impact.",
+                "{B} reads the body kick and closes the guard before it lands cleanly.",
+                "{A} kicks beneath the punches; {B} braces and stays balanced.",
+            ],
+            "high_kick_checked": [
+                "{B} raises a tight double guard and blocks {A}'s high kick.",
+                "{A} sends the shin upstairs, but {B} gets both gloves to the impact.",
+                "{B} leans away while the forearm takes the edge off {A}'s head kick.",
+                "{A}'s high kick wraps around the guard without reaching the head cleanly.",
+                "{B} sees the kick rise and builds a solid wall around the temple.",
+                "{A} tries to finish the combination high; {B}'s guard is in position.",
+            ],
+            "knockdown": [
+                "{A} lands {technique}; {B}'s balance disappears and they fall to the canvas!",
+                "{B} tries to recover stance, but {A}'s {technique} sends them down!",
+                "{A} catches the entry with {technique} and puts {B} on the floor!",
+                "{A}'s {technique} lands at the end of the exchange—{B} is dropped!",
+                "{B}'s legs give way after {A} connects with {technique}!",
+                "{A} times {technique} perfectly and {B} crashes backward!",
+                "A sudden {technique} from {A} drops {B} in the centre!",
+                "{A} finds the opening for {technique}; {B} hits the mat hard!",
+            ],
+            "cut": [
+                "{A}'s strike opens a cut along {B}'s eyebrow.",
+                "A clean shot from {A} splits the skin beneath {B}'s eye.",
+                "{B} wipes at fresh blood after {A}'s strike finds the brow.",
+                "{A} lands through the guard and a cut starts to open on {B}.",
+                "The impact from {A} leaves visible damage across {B}'s cheek.",
+                "{B}'s corner takes notice as {A} opens a cut near the eye.",
+            ],
+            "survive": [
+                "{A} circles away, resets the feet and buys a few seconds to recover.",
+                "{A} frames into the clinch and slows {B}'s follow-up attack.",
+                "{A} keeps the guard tight and moves laterally out of immediate danger.",
+                "{A} fires a short counter to make {B} hesitate before swarming.",
+                "{A} changes levels defensively and forces {B} to respect the takedown threat.",
+                "{A} breathes behind the high guard and refuses to stay on the fence.",
+                "{A} ties up a wrist and uses the lull to recover composure.",
+                "{A} retreats in good stance, giving {B} no clean finishing lane.",
+            ],
+            "standing_tko": [
+                "{A} cuts off both exits and lands a sustained unanswered flurry.",
+                "{B} is trapped behind the guard as {A} keeps finding clean shots.",
+                "{A} attacks head and body until {B} can no longer return fire.",
+                "{A} stays measured during the barrage and forces the referee closer.",
+                "{B} tries to circle free, but {A} steps across every escape route.",
+                "{A} pours on accurate punches while {B} remains stuck on the fence.",
+            ],
+        }
+        self._mma_striking_commentary_cache = expanded
+        return expanded
 
     def ds(self, fighter, key, fallback=50):
         skills = fighter.detailed_skills or {}
@@ -1604,7 +1836,12 @@ class FightEngineMixin:
                     state["bottom"] = actor.name
                     round_stats[defender.name]["control"] += 4
                     return self.fight_phrase("kick_caught", actor, defender)
-                return self.fight_phrase("kick_miss", actor, defender)
+                defended_category = {
+                    "high": "high_kick_checked",
+                    "body": "body_kick_checked",
+                    "leg": "low_kick_checked",
+                }.get(kick_type, "kick_checked") if defence >= kick_tech + 4 else "kick_miss"
+                return self.fight_phrase(defended_category, actor, defender)
             if kick_margin < 4 and random.random() < catch_risk * 0.35:
                 state["position"] = "guard"
                 state["top"] = defender.name
@@ -1641,10 +1878,18 @@ class FightEngineMixin:
             if kick_type == "high":
                 return self.fight_phrase("high_kick_land", actor, defender)
             if kick_type == "body":
-                return f"{actor.name} lands {label} and forces {defender.name} to protect the body."
-            return f"{actor.name} lands {label}; {defender.name}'s movement is starting to slow."
+                category = "body_kick_hurt" if state["body"][defender.name] >= 10 else "body_kick_land"
+                return self.fight_phrase(category, actor, defender, technique=label)
+            category = "leg_kick_hurt" if state["leg"][defender.name] >= 10 else "low_kick_land"
+            return self.fight_phrase(category, actor, defender, technique=label)
         if margin < -12:
-            return self.fight_phrase("jab_miss" if action == "jab" else "power_miss", actor, defender)
+            miss_category = {
+                "jab": "jab_miss",
+                "power_punch": "power_miss",
+                "dirty_boxing": "dirty_boxing_miss",
+                "ground_strikes": "ground_strikes_miss",
+            }.get(action, "power_miss")
+            return self.fight_phrase(miss_category, actor, defender)
         impact = max(1, round((margin + actor.power * 0.34 + 2.3) / 8.5 * self.engine_settings.get("damage", 1.0)))
         if action == "jab":
             impact = max(1, impact - 2)
@@ -1662,16 +1907,42 @@ class FightEngineMixin:
                 cut_chance = max(0.04, (elbow + impact * 3 - self.ds(defender, "cut_immunity", 50)) / 180)
                 if random.random() < cut_chance:
                     state["cuts"][defender.name] += 1
-                    clinch_detail = f"{actor.name} slices {defender.name} with a short elbow in the clinch; a cut opens."
+                    clinch_detail = random.choice([
+                        f"{actor.name} slices {defender.name} with a short elbow in the clinch; a cut opens.",
+                        f"{actor.name} frames across the guard and an elbow opens a cut on {defender.name}.",
+                        f"A compact elbow from {actor.name} splits the skin near {defender.name}'s eye.",
+                        f"{actor.name} turns {defender.name} into the fence and lands a cutting elbow over the top.",
+                    ])
                 else:
-                    clinch_detail = f"{actor.name} lands a compact elbow over the top in the clinch."
+                    clinch_detail = random.choice([
+                        f"{actor.name} lands a compact elbow over the top in the clinch.",
+                        f"{actor.name} frames on the collarbone and clips {defender.name} with a short elbow.",
+                        f"{actor.name} wins head position and sneaks an elbow across {defender.name}'s guard.",
+                        f"{actor.name} lands the elbow on the break before {defender.name} can reset.",
+                        f"{actor.name} pins one of {defender.name}'s arms and scores with the free elbow.",
+                        f"{actor.name} turns inside the tie-up and lands an upward elbow through the middle.",
+                    ])
             elif weapon == "knee":
                 body_gain = max(2, round((knee + max(0, margin)) / 34))
                 state["body"][defender.name] += body_gain
                 state["gas"][defender.name] = max(3, state["gas"][defender.name] - body_gain)
-                clinch_detail = f"{actor.name} drives a knee into {defender.name}'s body and makes them fold their elbows in."
+                clinch_detail = random.choice([
+                    f"{actor.name} drives a knee into {defender.name}'s body and makes them fold their elbows in.",
+                    f"{actor.name} pulls the head down and lands a straight knee through the centre.",
+                    f"{actor.name} wins the collar tie and drives a knee beneath {defender.name}'s elbow.",
+                    f"{actor.name} meets {defender.name}'s pummel with a short knee to the body.",
+                    f"{actor.name} turns {defender.name} toward the fence and lands a knee before the break.",
+                    f"{actor.name} creates just enough space in the clinch to spear the knee upstairs.",
+                ])
             else:
-                clinch_detail = f"{actor.name} lands short punches while controlling the inside position."
+                clinch_detail = random.choice([
+                    f"{actor.name} lands short punches while controlling the inside position.",
+                    f"{actor.name} pins a wrist and works two compact punches with the free hand.",
+                    f"{actor.name} sneaks an uppercut through the clinch before {defender.name} can pummel free.",
+                    f"{actor.name} digs a hook to the body, then punches on the break.",
+                    f"{actor.name} uses shoulder pressure to open a lane for dirty boxing.",
+                    f"{actor.name} keeps forehead position and lands a tight pair of inside punches.",
+                ])
         if action == "kick":
             state["body"][defender.name] += random.randint(1, 4)
         state["damage"][defender.name] += impact

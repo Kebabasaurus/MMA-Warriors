@@ -24,6 +24,8 @@ Before moving a build to another laptop, run `Portable Check.bat` from the packa
 
 Fight Night uses one live broadcast viewer for MMA, boxing, kickboxing, Muay Thai, wrestling, and Brazilian jiu-jitsu. Other-sport replays include sport-native round/period/match starts, clocked exchanges, cumulative scoring, stamina and condition reads, and an official result. The viewer is laptop-sized, has visible scrollbars, adjustable text size, a Follow live toggle, round/period navigation, and paced holds for round summaries and finishes.
 
+Striking commentary uses action-specific situation banks rather than shared generic calls. Boxing, kickboxing, Muay Thai, Lethwei presentation, and MMA distinguish entries, counters, body work, leg damage, kick checks, pocket/clinch work, rope or fence pressure, defensive exits, knockdowns, cuts, and damage-aware follow-up attacks. Recent-line memory prevents the same broadcast template from cycling repeatedly during a watched fight.
+
 ## Smoke Test
 
 Before shipping a build, run:
