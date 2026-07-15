@@ -103,6 +103,57 @@ def main():
         deterministic_a = (usyk_a.age, usyk_a.record, usyk_a.stance, usyk_a.trait, usyk_a.behaviour, usyk_a.detailed_skills, usyk_a.walk_weight)
         deterministic_b = (usyk_b.age, usyk_b.record, usyk_b.stance, usyk_b.trait, usyk_b.behaviour, usyk_b.detailed_skills, usyk_b.walk_weight)
         assert_true(deterministic_a == deterministic_b, "Real child-sport profiles still depend on random seed")
+        development_probe = game.Fighter(**asdict(usyk_a))
+        development_probe.name = "Sport Development Probe"
+        development_probe.age = 20
+        development_probe.prime_start = 27
+        development_probe.prime_end = 36
+        development_probe.injured = 0
+        development_probe.potential = 92
+        development_probe.striking = development_probe.power = development_probe.chin = 55
+        development_probe.cardio = development_probe.fight_iq = 55
+        development_probe.detailed_skills = dict(development_probe.detailed_skills or {})
+        for key in app.combat_sport_development_profile("Boxing")["growth"]:
+            development_probe.detailed_skills[key] = 55
+        before_rating = app.combat_sport_display_rating(development_probe, "Boxing")
+        before_kicks = development_probe.detailed_skills.get("high_kick_technique", 50)
+        random.seed(42)
+        changed = app.adjust_combat_sport_skill_bundle(development_probe, "Boxing", 1, "Smoke-test native training", key_count=5)
+        after_rating = app.combat_sport_display_rating(development_probe, "Boxing")
+        assert_true(changed and after_rating > before_rating, "Native child-sport training did not increase the readable sport rating")
+        assert_true(development_probe.detailed_skills.get("high_kick_technique", 50) == before_kicks, "Boxing development incorrectly trained kick technique")
+        incompatible_probe = game.Fighter(**asdict(development_probe))
+        incompatible_probe.name = "Incompatible Focus Probe"
+        incompatible_probe.camp_focus = "Grappling"
+        incompatible_probe.potential = 95
+        random.seed(12)
+        incompatible_changed = app.adjust_combat_sport_skill_bundle(incompatible_probe, "Boxing", 1, "Incompatible-focus test", key_count=5)
+        boxing_keys = set(app.combat_sport_development_profile("Boxing")["growth"])
+        assert_true(incompatible_changed and set(incompatible_changed) <= boxing_keys, "Incompatible child-sport focus trained non-native skills")
+        development_probe.potential = int(after_rating)
+        capped_rating = app.combat_sport_display_rating(development_probe, "Boxing")
+        assert_true(not app.combat_sport_growth_allowed(development_probe, "Boxing"), "Child-sport potential ceiling was not enforced")
+        capped_broad = (development_probe.striking, development_probe.power, development_probe.cardio, development_probe.fight_iq)
+        capped_details = dict(development_probe.detailed_skills)
+        capped_changed = app.adjust_combat_sport_skill_bundle(development_probe, "Boxing", 1, "Blocked above potential", key_count=5)
+        assert_true(not capped_changed and app.combat_sport_display_rating(development_probe, "Boxing") == capped_rating, "Child-sport training exceeded potential")
+        assert_true(capped_broad == (development_probe.striking, development_probe.power, development_probe.cardio, development_probe.fight_iq) and capped_details == development_probe.detailed_skills, "Blocked child-sport training still mutated skills")
+        capped_key_probe = game.Fighter(**asdict(incompatible_probe))
+        capped_key_probe.detailed_skills["hand_speed"] = 99
+        capped_key_before = (capped_key_probe.striking, app.combat_sport_display_rating(capped_key_probe, "Boxing"))
+        assert_true(not app.adjust_combat_sport_training_key(capped_key_probe, "Boxing", "hand_speed", 1, "Capped key test"), "Capped detailed skill reported a false gain")
+        assert_true(capped_key_before == (capped_key_probe.striking, app.combat_sport_display_rating(capped_key_probe, "Boxing")), "Capped detailed skill silently raised broad rating")
+        medical_probe = game.Fighter(**asdict(development_probe))
+        medical_probe.name = "Player Child-Sport Medical Probe"
+        medical_probe.sport_employer = app.player_company_name
+        medical_probe.serious_injury = ""
+        medical_probe.serious_injury_pending = False
+        random.seed(81)
+        assert_true(app.apply_serious_injury(medical_probe, "smoke test") and medical_probe.serious_injury_pending, "Player child-sport athlete did not receive a medical decision")
+        app.resolve_serious_injury(medical_probe, "surgery")
+        assert_true(not medical_probe.serious_injury_pending, "Player child-sport medical decision did not resolve")
+        app.record_combat_sport_rating_snapshot(usyk_a, "Boxing")
+        assert_true(usyk_a.sport_rating_history.get("Boxing"), "Child-sport rating history was not recorded")
         floyd = next(candidate for candidate in app.combat_sport_worlds["Boxing"]["roster"] if candidate.name == "Floyd Mayweather Jr")
         floyd.age, floyd.record_w, floyd.record_l, floyd.record_d = 41, 61, 2, 1
         floyd.fight_history = ["Evolved save test"]
@@ -250,6 +301,9 @@ def main():
         assert_true((draw_a.record_d, draw_b.record_d) == (draws_before[0] + 1, draws_before[1] + 1), "Draws did not update both fighter records")
         assert_true(draw_stats[draw_a.name].get("draws") and not draw_stats[draw_a.name]["wins"], "Draw was incorrectly recorded as a win")
 
+        sport_history_probe = app.combat_sport_worlds["Boxing"]["roster"][0]
+        app.record_combat_sport_rating_snapshot(sport_history_probe, "Boxing")
+        sport_history_probe_name = sport_history_probe.name
         data = app.serialize_world()
         data["rules"]["active_fighter_target"] = 560
         for promotion in data["promotions"]:
@@ -263,6 +317,8 @@ def main():
         app.apply_world_data(data)
         assert_true(app.rules.get("active_fighter_target") == 1200, "Legacy active-fighter floor was not migrated")
         assert_true(app.gym_by_name("American Top Team") is not None, "Gym load repair failed")
+        loaded_sport_history_probe = next(fighter for fighter in app.combat_sport_worlds["Boxing"]["roster"] if fighter.name == sport_history_probe_name)
+        assert_true(loaded_sport_history_probe.sport_rating_history.get("Boxing"), "Child-sport development history did not survive save/load")
         yair = app.find_fighter_anywhere("Yair Rodriguez")
         assert_true(yair and yair.style == "Karate" and yair.rating_profile_version >= 3, "Real-fighter rating migration failed")
         gsp = app.find_fighter_anywhere("Georges St-Pierre")

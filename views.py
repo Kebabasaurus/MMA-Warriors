@@ -372,6 +372,10 @@ class ViewMixin:
         return fighter.weight
 
     def portrait_badge_text(self, fighter):
+        sport = self.combat_sport_for_fighter(fighter) if getattr(fighter, "sport_employer", "") else ""
+        if sport:
+            label = {"Brazilian Jiu-Jitsu": "BJJ", "Kickboxing": "KB", "Muay Thai": "MT", "Wrestling": "WRE", "Boxing": "BOX"}.get(sport, sport[:3].upper())
+            return f"{label} | RTG {round(self.combat_sport_display_rating(fighter, sport))}"
         return f"{self.weight_abbreviation(self.fighter_display_division(fighter))} | OVR {fighter.overall}"
 
     def fit_canvas_text(self, canvas, x, y, text, fill, max_width, base_size=9, weight="bold"):
@@ -406,6 +410,23 @@ class ViewMixin:
         company = fighter.sport_employer if getattr(fighter, "sport_employer", "") else next((name for name, candidate in self.all_database_fighters_with_companies() if candidate.name == fighter.name), "Unknown")
         company_rank = self.rank_label_for_fighter(fighter, company, world=False)
         world_rank = self.rank_label_for_fighter(fighter, company, world=True)
+        sport = self.combat_sport_for_fighter(fighter) if getattr(fighter, "sport_employer", "") else ""
+        sport_block = ""
+        if sport:
+            rating = self.combat_sport_display_rating(fighter, sport)
+            gap = max(0, round(min(99, fighter.potential) - rating, 1))
+            trend = self.combat_sport_rating_trend(fighter, sport, 12)
+            stage = self.combat_sport_development_stage(fighter, sport)
+            recent = (getattr(fighter, "sport_development_log", None) or [{}])[0]
+            latest = "No recorded development change yet."
+            if recent:
+                skills = ", ".join(str(key).replace("_", " ").title() for key in recent.get("skills", [])[:3]) or "native skills"
+                latest = f"{recent.get('reason', 'Training')}: {recent.get('change', 0):+} ({skills})"
+            sport_block = (
+                f"\n{sport} Development: Rating {rating:.1f} | Potential {fighter.potential} | Runway +{gap:.1f}\n"
+                f"Career Stage: {stage} | 12-month trend {trend:+.1f} | Latest: {latest}\n"
+            )
+        peaks_line = "" if sport else f"Annual Peaks: {self.annual_overall_chart(fighter)}\n"
         return (
             f"{fighter.name}\n"
             f"{fighter.gender} {self.fighter_display_division(fighter)} | {company}\n"
@@ -422,7 +443,8 @@ class ViewMixin:
             f"Walk Weight: {fighter.walk_weight or self.default_walk_weight(fighter)} lb | Last Scale: {fighter.scale_weight or '-'} lb | Cut Penalty: {fighter.weight_cut_penalty}\n"
             f"Fatigue: {fighter.fatigue} | Injury: {fighter.injured or 'None'} | {self.fighter_return_label(fighter)} | Status: {fighter.status}\n"
             f"Camp Boost: +{fighter.camp_boost} ({fighter.camp_weeks} wk, Q{fighter.camp_quality})\n"
-            f"Annual Peaks: {self.annual_overall_chart(fighter)}\n"
+            f"{sport_block}"
+            f"{peaks_line}"
         )
 
     def rivalry_summary(self, fighter):
@@ -560,6 +582,8 @@ class ViewMixin:
         self.ensure_detailed_skills(fighter)
         self.ensure_fighter_business_stats(fighter)
         company = fighter.sport_employer if getattr(fighter, "sport_employer", "") else next((name for name, candidate in self.all_database_fighters_with_companies() if candidate.name == fighter.name), "Unknown")
+        sport = self.combat_sport_for_fighter(fighter) if getattr(fighter, "sport_employer", "") else ""
+        sport_rating = self.combat_sport_display_rating(fighter, sport) if sport else None
         company_rank = self.rank_label_for_fighter(fighter, company, world=False)
         world_rank = self.rank_label_for_fighter(fighter, company, world=True)
         window = tk.Toplevel(self.root)
@@ -570,8 +594,8 @@ class ViewMixin:
         header.pack(fill="x", padx=8, pady=(8, 0))
         ttk.Label(header, text=fighter.name.upper(), style="ScreenTitle.TLabel").pack(side="left", padx=10, pady=5)
         ttk.Label(header, text=f"{fighter.gender} {self.fighter_display_division(fighter)} | {company} | Company {company_rank} | World {world_rank}", style="ScreenTitle.TLabel").pack(side="right", padx=10, pady=5)
-        body = ttk.Frame(window, style="Chrome.TFrame")
-        body.pack(fill="both", expand=True, padx=8, pady=8)
+        body_shell, body = self.create_scrollable_frame(window, style="Chrome.TFrame")
+        body_shell.pack(fill="both", expand=True, padx=8, pady=8)
 
         left = ttk.Frame(body, style="Panel.TFrame")
         left.pack(side="left", fill="y", padx=(0, 8), ipadx=2)
@@ -581,7 +605,7 @@ class ViewMixin:
 
         badge_row = tk.Frame(left, bg=self.colors["panel"])
         badge_row.pack(fill="x", padx=8, pady=(0, 6))
-        self.profile_badge(badge_row, "OVR", fighter.overall)
+        self.profile_badge(badge_row, "SPORT RTG" if sport else "OVR", f"{sport_rating:.1f}" if sport else fighter.overall)
         self.profile_badge(badge_row, "ELO", fighter.elo_rating)
         self.profile_badge(badge_row, "P4P", world_rank)
 
@@ -589,7 +613,7 @@ class ViewMixin:
         identity.pack(fill="x", padx=8, pady=(0, 8))
         rows = [
             ("Record", fighter.record),
-            ("Age", f"{fighter.age} ({self.fighter_career_stage(fighter)})"),
+            ("Age", f"{fighter.age} ({self.combat_sport_development_stage(fighter, sport) if sport else self.fighter_career_stage(fighter)})"),
             ("Height", fighter.height or "-"),
             ("Nationality", fighter.nationality),
             ("Born", f"{getattr(fighter, 'birth_country', '') or fighter.region} - {getattr(fighter, 'hometown', '') or '-'}"),
@@ -656,14 +680,29 @@ class ViewMixin:
         self.profile_section_label(center, "Career & Camp")
         camp = tk.Frame(center, bg=self.colors["panel"])
         camp.pack(fill="x", padx=6, pady=(0, 8))
-        for idx, (label, value) in enumerate([
+        career_rows = [
             ("Popularity", fighter.popularity), ("Momentum", fighter.momentum), ("Morale", fighter.morale),
-            ("Motivation", fighter.motivation), ("Upside", self.upside_assessment(fighter)), ("Fatigue", fighter.fatigue),
+            ("Motivation", fighter.motivation), ("Fatigue", fighter.fatigue),
             ("Camp Boost", f"+{fighter.camp_boost} ({fighter.camp_weeks} wk, Q{fighter.camp_quality})"),
             ("Development Profile", fighter.career_archetype.replace("Standard Prime", "Balanced Development")),
-            ("Career Stage", self.fighter_career_stage(fighter)),
-            ("Annual Peaks", self.annual_overall_chart(fighter)),
-        ]):
+        ]
+        if sport:
+            recent = (getattr(fighter, "sport_development_log", None) or [{}])[0]
+            latest = "No recorded change yet"
+            if recent:
+                latest = f"{recent.get('change', 0):+} - {recent.get('reason', 'Training')}"
+            career_rows.extend([
+                ("Sport Rating", f"{sport_rating:.1f} / Potential {fighter.potential} (+{max(0, min(99, fighter.potential) - sport_rating):.1f})"),
+                ("Career Stage", f"{self.combat_sport_development_stage(fighter, sport)} | 12m {self.combat_sport_rating_trend(fighter, sport, 12):+.1f}"),
+                ("Latest Development", latest),
+            ])
+        else:
+            career_rows.extend([
+                ("Upside", self.upside_assessment(fighter)),
+                ("Career Stage", self.fighter_career_stage(fighter)),
+                ("Annual Peaks", self.annual_overall_chart(fighter)),
+            ])
+        for idx, (label, value) in enumerate(career_rows):
             self.profile_info_row(camp, label, value, idx)
 
         notebook = ttk.Notebook(body)
@@ -1484,10 +1523,10 @@ class ViewMixin:
         summary_var = tk.StringVar(value="")
         strategy_var = tk.StringVar(value=division.get("strategy", "Balanced"))
         ttk.Label(header, textvariable=summary_var, style="ScreenTitle.TLabel").pack(side="right", padx=10)
-        body = ttk.Frame(window, style="Chrome.TFrame")
-        body.pack(fill="both", expand=True, padx=8, pady=8)
+        body_shell, body = self.create_scrollable_frame(window, style="Chrome.TFrame")
+        body_shell.pack(fill="both", expand=True, padx=8, pady=8)
         roster_tree = ttk.Treeview(body, columns=("rank", "name", "division", "discipline", "record", "age", "ovr", "dev", "pop", "status"), show="headings", height=16)
-        for column, label, width in (("rank", "#", 38), ("name", "Athlete", 155), ("division", "Division", 120), ("discipline", "Discipline", 92), ("record", "Record", 70), ("age", "Age", 40), ("ovr", "OVR", 46), ("dev", "Dev", 55), ("pop", "Pop", 44), ("status", "Status", 85)):
+        for column, label, width in (("rank", "#", 38), ("name", "Athlete", 150), ("division", "Division", 112), ("discipline", "Discipline", 86), ("record", "Record", 68), ("age", "Age", 38), ("ovr", "Sport RTG", 66), ("dev", "Career / 12m", 122), ("pop", "Pop", 42), ("status", "Status", 80)):
             roster_tree.heading(column, text=label); roster_tree.column(column, width=width, anchor="w")
         roster_tree.pack(side="left", fill="both", expand=True, padx=(0, 8))
         side = ttk.Frame(body, style="Panel.TFrame")
@@ -1499,7 +1538,7 @@ class ViewMixin:
         events.pack(fill="both", expand=True, padx=8, pady=8)
         ttk.Label(side, text="SIGNABLE FLAGSHIP ATHLETES", style="Section.TLabel").pack(fill="x")
         sign_tree = ttk.Treeview(side, columns=("name", "division", "record", "age", "ovr", "cost"), show="headings", height=9)
-        for column, label, width in (("name", "Athlete", 145), ("division", "Division", 105), ("record", "Record", 65), ("age", "Age", 38), ("ovr", "OVR", 42), ("cost", "Cost", 68)):
+        for column, label, width in (("name", "Athlete", 140), ("division", "Division", 100), ("record", "Record", 62), ("age", "Age", 36), ("ovr", "Sport RTG", 64), ("cost", "Cost", 68)):
             sign_tree.heading(column, text=label); sign_tree.column(column, width=width, anchor="w")
         sign_tree.pack(fill="both", expand=True, padx=8, pady=(0, 8))
 
@@ -1525,14 +1564,12 @@ class ViewMixin:
             roster_tree.delete(*roster_tree.get_children())
             for index, fighter in enumerate(members, 1):
                 rank = "C" if fighter.name in champions else index
-                dev_gap = max(0, fighter.potential - fighter.overall)
-                trend = ""
-                if getattr(fighter, "annual_overalls", None):
-                    years = sorted(fighter.annual_overalls)
-                    if len(years) >= 2:
-                        trend = fighter.annual_overalls[years[-1]] - fighter.annual_overalls[years[-2]]
-                dev_text = f"+{dev_gap}" if not trend else f"+{dev_gap} ({trend:+})"
-                roster_tree.insert("", "end", iid=fighter.name, values=(rank, fighter.name, self.combat_sport_competition_class(sport, fighter), fighter.primary_discipline, fighter.record, fighter.age, fighter.overall, dev_text, fighter.popularity, fighter.status))
+                sport_rating = self.combat_sport_display_rating(fighter, sport)
+                dev_gap = max(0, min(99, fighter.potential) - sport_rating)
+                trend = self.combat_sport_rating_trend(fighter, sport, 12)
+                stage = self.combat_sport_development_stage(fighter, sport).replace("Early decline", "Early dec.").replace("Deep decline", "Deep dec.")
+                dev_text = f"{stage} | {trend:+.1f} | +{dev_gap:.1f}"
+                roster_tree.insert("", "end", iid=fighter.name, values=(rank, fighter.name, self.combat_sport_competition_class(sport, fighter), fighter.primary_discipline, fighter.record, fighter.age, f"{sport_rating:.1f}", dev_text, fighter.popularity, fighter.status))
             events.delete(0, "end")
             for event in division.get("events", [])[:25]:
                 events.insert("end", event.get("recap") or event.get("headline", "Completed card"))
@@ -1541,8 +1578,9 @@ class ViewMixin:
             sign_tree.delete(*sign_tree.get_children())
             prospects = [fighter for fighter in self.combat_sport_ranked(sport, world.get("promotion", ""))[10:] if fighter.sport_employer == world.get("promotion", "") and not fighter.retired]
             for fighter in prospects[:40]:
-                cost = max(8000, fighter.popularity * 450 + fighter.overall * 260)
-                sign_tree.insert("", "end", iid=fighter.name, values=(fighter.name, self.combat_sport_competition_class(sport, fighter), fighter.record, fighter.age, fighter.overall, f"${cost:,}"))
+                sport_rating = self.combat_sport_display_rating(fighter, sport)
+                cost = max(8000, fighter.popularity * 450 + round(sport_rating) * 260)
+                sign_tree.insert("", "end", iid=fighter.name, values=(fighter.name, self.combat_sport_competition_class(sport, fighter), fighter.record, fighter.age, f"{sport_rating:.1f}", f"${cost:,}"))
 
         def run_card():
             if len(roster_members()) < 4:
@@ -1588,7 +1626,7 @@ class ViewMixin:
             fighter = next((candidate for candidate in world.get("roster", []) if candidate.name == selected[0]), None)
             if not fighter:
                 return
-            cost = max(8000, fighter.popularity * 450 + fighter.overall * 260)
+            cost = max(8000, fighter.popularity * 450 + round(self.combat_sport_display_rating(fighter, sport)) * 260)
             if self.cash < cost:
                 messagebox.showwarning("Combat Sports", f"Need ${cost:,} to buy out/sign {fighter.name}.")
                 return

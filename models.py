@@ -83,6 +83,8 @@ class Fighter:
     portrait_accent: str = "#c3a45d"
     fight_history: list = None
     annual_overalls: dict = None
+    sport_rating_history: dict = None
+    sport_development_log: list = None
     motivation: int = 65
     retired: bool = False
     retirement_reason: str = ""

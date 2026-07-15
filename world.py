@@ -529,7 +529,10 @@ class WorldMixin:
             ("Neck injury", random.randint(8, 12), ("toughness", "grappling")),
         ])
         fighter.serious_injury = injury
-        fighter.serious_injury_pending = fighter in getattr(self, "roster", [])
+        fighter.serious_injury_pending = (
+            fighter in getattr(self, "roster", [])
+            or getattr(fighter, "sport_employer", "") == getattr(self, "player_company_name", "")
+        )
         fighter.injured = max(fighter.injured, months)
         fighter.available_week = max(getattr(fighter, "available_week", 0), self.calendar_week_index() + months * 4)
         fighter.injury_proneness = min(100, fighter.injury_proneness + random.randint(2, 5))
@@ -775,10 +778,12 @@ class WorldMixin:
             winner.popularity = min(100, winner.popularity + 2)
         if loser.trait == "Fan Favourite" and random.random() < 0.35:
             loser.popularity = min(100, loser.popularity + 1)
-        injury_chance = 0.07 + loser.injury_proneness / 420 + max(0, loser.fatigue - 35) / 500
+        recurrence = getattr(loser, "serious_injury_recurrence", 0)
+        injury_chance = 0.07 + loser.injury_proneness / 420 + max(0, loser.fatigue - 35) / 500 + recurrence / 1500
         if random.random() < injury_chance:
             loser.injured = random.randint(1, 3)
-        serious_chance = 0.0008 + loser.injury_proneness / 80_000 + max(0, loser.age - 33) / 12_000
+            loser.available_week = max(getattr(loser, "available_week", 0), self.calendar_week_index() + loser.injured * 4)
+        serious_chance = 0.0008 + loser.injury_proneness / 80_000 + max(0, loser.age - 33) / 12_000 + recurrence / 30_000
         if method == "Injury Stoppage":
             serious_chance += 0.012
         if random.random() < serious_chance:
@@ -2374,6 +2379,15 @@ class WorldMixin:
             roster = [fighter for fighter in roster if fighter.sport_employer == employer]
         return roster
 
+    def combat_sport_for_fighter(self, fighter):
+        for sport, world in getattr(self, "combat_sport_worlds", {}).items():
+            if fighter in world.get("roster", []):
+                return sport
+        native = getattr(fighter, "primary_discipline", "")
+        if native == "Lethwei":
+            return "Muay Thai"
+        return native if native in ("Boxing", "Kickboxing", "Muay Thai", "Wrestling", "Brazilian Jiu-Jitsu") else ""
+
     def combat_sport_rating(self, fighter, sport):
         if getattr(fighter, "primary_discipline", "") == "Lethwei":
             # Keep Lethwei's toughness/power identity without giving its shared
@@ -2388,6 +2402,297 @@ class WorldMixin:
         if sport == "Brazilian Jiu-Jitsu":
             return fighter.grappling * 1.30 + fighter.submissions * 0.46 + fighter.ground_control * 0.30 + fighter.cardio * 0.20 + fighter.fight_iq * 0.24
         return fighter.overall * 2.0 + fighter.popularity * 0.25
+
+    def combat_sport_rating_scale(self, sport, fighter=None):
+        """Convert each raw ranking formula to the same readable 1-99 scale."""
+        if fighter is not None and getattr(fighter, "primary_discipline", "") == "Lethwei":
+            return 2.20
+        return {
+            "Boxing": 2.41,
+            "Kickboxing": 2.20,
+            "Muay Thai": 2.20,
+            "Wrestling": 2.49,
+            "Brazilian Jiu-Jitsu": 2.50,
+        }.get(sport, 2.0)
+
+    def combat_sport_display_rating(self, fighter, sport):
+        return round(self.combat_sport_rating(fighter, sport) / self.combat_sport_rating_scale(sport, fighter), 1)
+
+    def combat_sport_development_profile(self, sport):
+        """Detailed-skill source of truth for training and age decline by sport."""
+        profiles = {
+            "Boxing": {
+                "growth": ("punch_technique", "hand_speed", "footwork", "head_movement", "guard_defence", "punch_power", "feints", "conditioning", "composure", "adaptability"),
+                "decline": ("hand_speed", "footwork", "head_movement", "reflexes", "conditioning", "stun_recovery", "punch_power"),
+                "preferred_focus": "Striking", "growth_mult": 1.03, "decline_base": 0.020, "decline_slope": 0.032,
+            },
+            "Kickboxing": {
+                "growth": ("punch_technique", "hand_speed", "footwork", "high_kick_technique", "high_kick_speed", "low_kick_technique", "low_kick_speed", "kick_defence", "conditioning", "mobility", "composure"),
+                "decline": ("hand_speed", "footwork", "high_kick_speed", "low_kick_speed", "reflexes", "conditioning", "mobility", "stun_recovery"),
+                "preferred_focus": "Striking", "growth_mult": 1.00, "decline_base": 0.022, "decline_slope": 0.034,
+            },
+            "Muay Thai": {
+                "growth": ("low_kick_technique", "high_kick_technique", "knees", "elbows", "thai_plum", "clinch_control", "kick_defence", "mobility", "conditioning", "resilience", "composure"),
+                "decline": ("high_kick_speed", "low_kick_speed", "mobility", "reflexes", "conditioning", "footwork", "stun_recovery", "resilience"),
+                "preferred_focus": "Striking", "growth_mult": 1.04, "decline_base": 0.026, "decline_slope": 0.034,
+            },
+            "Wrestling": {
+                "growth": ("takedowns", "takedown_setup", "takedown_speed", "chain_wrestling", "sprawl", "takedown_defence_detail", "throws", "ride_control", "top_control", "scrambles", "strength", "conditioning", "discipline"),
+                "decline": ("takedown_speed", "chain_wrestling", "scrambles", "mobility", "strength", "conditioning", "get_ups", "resilience"),
+                "preferred_focus": "Wrestling", "growth_mult": 1.00, "decline_base": 0.030, "decline_slope": 0.030,
+            },
+            "Brazilian Jiu-Jitsu": {
+                "growth": ("guard_work", "transitions", "positional_ability", "submission_attack", "submission_defence_detail", "back_control", "mount_control", "leg_locks", "scrambles", "bottom_control", "top_control", "flexibility", "composure", "adaptability"),
+                "decline": ("scrambles", "mobility", "conditioning", "strength", "flexibility", "get_ups", "resilience"),
+                "preferred_focus": "Grappling", "growth_mult": 0.97, "decline_base": 0.032, "decline_slope": 0.025,
+            },
+        }
+        return profiles.get(sport, profiles["Boxing"])
+
+    def combat_sport_effective_prime_end(self, fighter, sport):
+        tail = 1 if getattr(fighter, "career_archetype", "") == "Durable Career" else 0
+        if sport == "Brazilian Jiu-Jitsu":
+            tail += 1
+        return fighter.prime_end + tail
+
+    def combat_sport_development_stage(self, fighter, sport):
+        if fighter.age < fighter.prime_start:
+            return "Pre-prime"
+        end = self.combat_sport_effective_prime_end(fighter, sport)
+        if fighter.age <= end:
+            return "Prime"
+        years = fighter.age - end
+        return "Early decline" if years <= 2 else "Decline" if years <= 6 else "Deep decline"
+
+    def combat_sport_focus_keys(self, focus):
+        return {
+            "Striking": tuple(STANDING_SKILLS),
+            "Wrestling": tuple(WRESTLING_SKILLS),
+            "Grappling": tuple(GROUND_SKILLS),
+            "Conditioning": ("conditioning", "resilience", "stun_recovery", "mobility"),
+            "Game Plan": ("composure", "adaptability", "discipline", "confidence", "consistency"),
+            "Weight Management": ("weight_cutting", "conditioning", "discipline"),
+        }.get(focus, ())
+
+    def combat_sport_growth_allowed(self, fighter, sport):
+        if getattr(fighter, "retired", False) or fighter.injured:
+            return False
+        current = self.combat_sport_display_rating(fighter, sport)
+        return current < min(99, fighter.potential)
+
+    def combat_sport_weighted_skill_sample(self, pool, count):
+        chosen = []
+        candidates = list(pool)
+        while candidates and len(chosen) < count:
+            key = random.choice(candidates)
+            chosen.append(key)
+            candidates = [candidate for candidate in candidates if candidate != key]
+        return chosen
+
+    def apply_combat_sport_broad_delta(self, fighter, sport, amount, keys):
+        """Keep the readable native rating moving with its detailed source skills."""
+        primary = "striking" if sport in ("Boxing", "Kickboxing", "Muay Thai") else "wrestling" if sport == "Wrestling" else "grappling"
+        setattr(fighter, primary, max(1, min(99, getattr(fighter, primary) + amount)))
+        key_set = set(keys)
+        secondary = []
+        if key_set & {"punch_power", "high_kick_power", "low_kick_power", "strength"}:
+            secondary.append("power")
+        if key_set & {"conditioning", "resilience", "stun_recovery"}:
+            secondary.append("cardio")
+        if key_set & {"composure", "adaptability", "discipline", "confidence", "consistency"}:
+            secondary.append("fight_iq")
+        if key_set & {"chin_strength", "stun_recovery", "resilience"}:
+            secondary.append("chin")
+        if sport == "Wrestling" and key_set & {"ride_control", "top_control", "scrambles"}:
+            secondary.append("ground_control")
+        if sport == "Brazilian Jiu-Jitsu":
+            if key_set & {"submission_attack", "leg_locks", "back_control"}:
+                secondary.append("submissions")
+            if key_set & {"top_control", "positional_ability", "mount_control"}:
+                secondary.append("ground_control")
+            if key_set & {"submission_defence_detail", "guard_work"}:
+                secondary.append("submission_defence")
+        if secondary:
+            field = random.choice(list(dict.fromkeys(secondary)))
+            setattr(fighter, field, max(1, min(99, getattr(fighter, field) + amount)))
+
+    def adjust_combat_sport_training_key(self, fighter, sport, key, amount, reason):
+        """Apply one camp improvement without invoking the MMA-wide detail resync."""
+        if amount > 0 and not self.combat_sport_growth_allowed(fighter, sport):
+            return False
+        self.ensure_detailed_skills(fighter)
+        before_rating = self.combat_sport_display_rating(fighter, sport)
+        before_detail = fighter.detailed_skills.get(key, 50)
+        broad_fields = ("striking", "wrestling", "grappling", "cardio", "chin", "power", "ground_control", "submissions", "submission_defence", "fight_iq")
+        broad_before = {field: getattr(fighter, field) for field in broad_fields}
+        next_detail = max(1, min(99, before_detail + amount))
+        if next_detail == before_detail:
+            return False
+        fighter.detailed_skills[key] = next_detail
+        self.apply_combat_sport_broad_delta(fighter, sport, amount, [key])
+        after_rating = self.combat_sport_display_rating(fighter, sport)
+        if amount > 0 and after_rating > min(99, fighter.potential) + 0.01:
+            fighter.detailed_skills[key] = before_detail
+            for field, value in broad_before.items():
+                setattr(fighter, field, value)
+            return False
+        if fighter.detailed_skills[key] != before_detail:
+            self.record_combat_sport_development(fighter, sport, before_rating, after_rating, [key], reason)
+            return True
+        return False
+
+    def adjust_combat_sport_skill_bundle(self, fighter, sport, amount, reason="Training", decline=False, key_count=None):
+        """Mutate native detailed skills first, then synchronize broad ratings once."""
+        if amount > 0 and not self.combat_sport_growth_allowed(fighter, sport):
+            return []
+        self.ensure_detailed_skills(fighter)
+        profile = self.combat_sport_development_profile(sport)
+        base_pool = list(profile["decline" if decline else "growth"])
+        if not decline:
+            focus = getattr(fighter, "camp_focus", "Balanced")
+            focus_pool = list(self.combat_sport_focus_keys(focus))
+            compatible = [key for key in focus_pool if key in base_pool]
+            if compatible:
+                base_pool = compatible * 2 + base_pool
+            # An incompatible focus does not convert child-sport development
+            # into hidden MMA cross-training. Native skills remain the source
+            # of truth until the athlete actually crosses into MMA.
+        stage = self.combat_sport_development_stage(fighter, sport)
+        if key_count is None:
+            key_count = 5 if stage == "Pre-prime" and not decline else 3 if not decline else 5
+        keys = self.combat_sport_weighted_skill_sample(base_pool, key_count)
+        if not keys:
+            return []
+        before_values = {key: fighter.detailed_skills.get(key, 50) for key in keys}
+        broad_fields = ("striking", "wrestling", "grappling", "cardio", "chin", "power", "ground_control", "submissions", "submission_defence", "fight_iq")
+        broad_before = {field: getattr(fighter, field) for field in broad_fields}
+        before_rating = self.combat_sport_display_rating(fighter, sport)
+        for key in keys:
+            fighter.detailed_skills[key] = max(1, min(99, fighter.detailed_skills.get(key, 50) + amount))
+        changed = [key for key in keys if fighter.detailed_skills.get(key, 50) != before_values[key]]
+        if not changed:
+            return []
+        self.apply_combat_sport_broad_delta(fighter, sport, amount, changed)
+        after_rating = self.combat_sport_display_rating(fighter, sport)
+        if not decline and after_rating > min(99, fighter.potential) + 0.01:
+            for key, value in before_values.items():
+                fighter.detailed_skills[key] = value
+            for field, value in broad_before.items():
+                setattr(fighter, field, value)
+            return []
+        if changed:
+            self.record_combat_sport_development(fighter, sport, before_rating, self.combat_sport_display_rating(fighter, sport), changed, reason)
+        return changed
+
+    def record_combat_sport_development(self, fighter, sport, before, after, keys, reason):
+        fighter.sport_development_log = list(getattr(fighter, "sport_development_log", None) or [])
+        fighter.sport_development_log.insert(0, {
+            "month": self.month, "year": self.current_year(), "sport": sport,
+            "before": round(before, 1), "after": round(after, 1),
+            "change": round(after - before, 1), "skills": list(keys), "reason": reason,
+        })
+        fighter.sport_development_log = fighter.sport_development_log[:60]
+
+    def record_combat_sport_rating_snapshot(self, fighter, sport):
+        history = dict(getattr(fighter, "sport_rating_history", None) or {})
+        sport_history = dict(history.get(sport, {}) or {})
+        sport_history[str(self.month)] = self.combat_sport_display_rating(fighter, sport)
+        if len(sport_history) > 180:
+            for key in sorted(sport_history, key=lambda value: int(value))[:-180]:
+                sport_history.pop(key, None)
+        history[sport] = sport_history
+        fighter.sport_rating_history = history
+
+    def combat_sport_rating_trend(self, fighter, sport, months=12):
+        history = (getattr(fighter, "sport_rating_history", None) or {}).get(sport, {})
+        if not history:
+            return 0.0
+        current = self.combat_sport_display_rating(fighter, sport)
+        target = self.month - months
+        eligible = [(int(key), value) for key, value in history.items() if int(key) <= target]
+        if not eligible:
+            eligible = [(int(key), value) for key, value in history.items()]
+        _month, previous = min(eligible, key=lambda item: abs(item[0] - target))
+        return round(current - previous, 1)
+
+    def combat_sport_monthly_growth_chance(self, fighter, sport):
+        if not self.combat_sport_growth_allowed(fighter, sport):
+            return 0.0
+        stage = self.combat_sport_development_stage(fighter, sport)
+        current = self.combat_sport_display_rating(fighter, sport)
+        gap = max(0, min(99, fighter.potential) - current)
+        gym = self.gym_by_name(fighter.camp)
+        quality = self.gym_quality(fighter.camp)
+        facilities = gym.facilities if gym else quality
+        dedication = self.ds(fighter, "dedication", fighter.professionalism)
+        human = (dedication + fighter.professionalism + fighter.motivation + fighter.morale) / 4
+        specialty = self.gym_specialty_bonus(fighter, gym)
+        crowd = max(0, (gym.member_count - gym.capacity) / max(1, gym.capacity)) if gym and gym.capacity < 500 else 0
+        inactivity = self.combat_sport_inactivity_months(fighter)
+        if inactivity >= 20:
+            activity = -0.075
+        elif inactivity >= 12:
+            activity = -0.035
+        elif 1 <= inactivity <= 6:
+            activity = 0.025
+        else:
+            activity = 0.0
+        if stage == "Pre-prime":
+            base = 0.10
+            gap_bonus = min(0.12, gap * 0.006)
+        elif stage == "Prime":
+            base = 0.025
+            gap_bonus = min(0.055, gap * 0.0035)
+        else:
+            base = min(0.012, self.veteran_resurgence_chance(fighter) * 0.30)
+            gap_bonus = 0.0
+        chance = (
+            base + gap_bonus
+            + (quality + facilities - 100) / 900
+            + (human - 55) / 650
+            + specialty / 360
+            + activity
+            + max(0, fighter.momentum) * 0.006
+            - fighter.fatigue * 0.0015
+            - crowd * 0.11
+        ) * self.combat_sport_development_profile(sport)["growth_mult"]
+        ceiling = 0.40 if stage == "Pre-prime" else 0.16 if stage == "Prime" else 0.015
+        return max(0.0, min(ceiling, chance))
+
+    def combat_sport_monthly_decline_chance(self, fighter, sport):
+        years_over = fighter.age - self.combat_sport_effective_prime_end(fighter, sport)
+        if years_over <= 0:
+            return 0.0
+        profile = self.combat_sport_development_profile(sport)
+        resilience = self.ds(fighter, "resilience", fighter.toughness)
+        conditioning = self.ds(fighter, "conditioning", fighter.cardio)
+        professional_buffer = (fighter.professionalism + resilience + conditioning - 165) / 1800
+        health = fighter.injured * 0.012 + max(0, fighter.fatigue - 45) / 850 + fighter.injury_proneness / 3000
+        form = max(0, -fighter.momentum) * 0.012 + max(0, 45 - fighter.morale) / 950
+        chance = profile["decline_base"] + years_over * profile["decline_slope"] + health + form - professional_buffer
+        if years_over <= 2:
+            chance *= 0.62
+        if getattr(fighter, "career_archetype", "") == "Durable Career":
+            chance *= 0.80
+        return max(0.0, min(0.34, chance))
+
+    def apply_combat_sport_annual_age_curve(self, fighter, sport):
+        stage = self.combat_sport_development_stage(fighter, sport)
+        if stage == "Pre-prime" and self.combat_sport_growth_allowed(fighter, sport):
+            gap = max(0, min(99, fighter.potential) - self.combat_sport_display_rating(fighter, sport))
+            chance = min(0.62, 0.22 + gap * 0.016 + max(0, fighter.professionalism - 55) / 500)
+            if random.random() < chance:
+                self.adjust_combat_sport_skill_bundle(fighter, sport, 1, "Annual athletic and technical maturation", key_count=5)
+        elif stage in ("Early decline", "Decline", "Deep decline"):
+            years_over = fighter.age - self.combat_sport_effective_prime_end(fighter, sport)
+            profile = self.combat_sport_development_profile(sport)
+            chance = min(0.88, 0.10 + years_over * 0.10 + profile["decline_slope"] * 2)
+            if getattr(fighter, "career_archetype", "") == "Durable Career":
+                chance *= 0.78
+            if random.random() < chance:
+                amount = -2 if years_over >= 5 and random.random() < min(0.75, 0.25 + years_over * 0.07) else -1
+                self.adjust_combat_sport_skill_bundle(fighter, sport, amount, "Annual age-curve review", decline=True, key_count=6)
+        self.record_combat_sport_rating_snapshot(fighter, sport)
 
     def combat_sport_ranked(self, sport, employer=None):
         return sorted(
@@ -4107,21 +4412,25 @@ class WorldMixin:
         return {"winner": winner, "loser": loser, "method": method, "round": end_round, "score": score_text, "log": log, "condition": condition, "start_stamina": {a.name: round(a_stamina, 1), b.name: round(b_stamina, 1)}, "readiness": {a.name: round(a_readiness, 1), b.name: round(b_readiness, 1)}}
 
     def develop_after_combat_sport_bout(self, sport, fighter, won=False, finished=False):
-        focus = {
-            "Boxing": ("striking", "power", "cardio", "fight_iq"),
-            "Kickboxing": ("striking", "power", "cardio", "toughness"),
-            "Muay Thai": ("striking", "power", "toughness", "cardio"),
-            "Wrestling": ("wrestling", "ground_control", "cardio", "fight_iq"),
-            "Brazilian Jiu-Jitsu": ("grappling", "submissions", "ground_control", "fight_iq"),
-        }.get(sport, ("striking", "cardio", "fight_iq"))
-        growth_chance = 0.18 + (0.10 if won else 0) + (0.06 if finished else 0) + max(0, fighter.potential - fighter.overall) / 240
-        if fighter.age > fighter.prime_end:
-            growth_chance *= 0.45
-        if random.random() < growth_chance:
-            field = random.choice(focus)
-            setattr(fighter, field, max(1, min(99, getattr(fighter, field, 50) + 1)))
-            if field in ("striking", "wrestling", "grappling"):
-                self.adjust_detailed_skill(fighter, 1)
+        if not self.combat_sport_growth_allowed(fighter, sport):
+            self.record_combat_sport_rating_snapshot(fighter, sport)
+            return
+        stage = self.combat_sport_development_stage(fighter, sport)
+        gap = max(0, min(99, fighter.potential) - self.combat_sport_display_rating(fighter, sport))
+        base = 0.070 if stage == "Pre-prime" else 0.020 if stage == "Prime" else min(0.008, self.veteran_resurgence_chance(fighter) * 0.20)
+        gap_bonus = min(0.075, gap * 0.0045) if stage == "Pre-prime" else min(0.035, gap * 0.0025) if stage == "Prime" else 0
+        chance = base + gap_bonus + (0.018 if won else 0.006) + (0.010 if finished else 0)
+        chance += max(0, fighter.professionalism - 55) / 900
+        chance -= fighter.fatigue * 0.0011 + fighter.injured * 0.05
+        ceiling = 0.20 if stage == "Pre-prime" else 0.08 if stage == "Prime" else 0.010
+        if random.random() < max(0, min(ceiling, chance)):
+            reason = "Post-bout experience"
+            if won and finished:
+                reason = "Post-bout experience from a winning finish"
+            elif won:
+                reason = "Post-bout experience from a win"
+            self.adjust_combat_sport_skill_bundle(fighter, sport, 1, reason, key_count=3 if stage == "Pre-prime" else 2)
+        self.record_combat_sport_rating_snapshot(fighter, sport)
 
     def record_combat_sport_season_result(self, state, a, b, winner, method, title_key="", previous_champion=""):
         stats = state.setdefault("season_stats", {})
@@ -4252,12 +4561,14 @@ class WorldMixin:
             fighter.fatigue = min(100, fighter.fatigue + fatigue_gain)
             recovery_method = "TKO" if method == "KO/TKO" else method
             self.set_post_fight_recovery(fighter, recovery_method, lost=lost)
-            injury_chance = 0.018 + fighter.injury_proneness / 1700 + damage_load / 520 + condition.get("cuts", 0) / 380
+            recurrence = getattr(fighter, "serious_injury_recurrence", 0)
+            injury_chance = 0.018 + fighter.injury_proneness / 1700 + damage_load / 520 + condition.get("cuts", 0) / 380 + recurrence / 1500
             if lost and method in ("KO", "KO/TKO", "Technical Fall", "Pin", "Submission"):
                 injury_chance += 0.018
             if random.random() < min(0.24, injury_chance):
                 fighter.injured = max(fighter.injured, random.randint(1, 3))
-            serious_chance = 0.00045 + fighter.injury_proneness / 110_000 + max(0, fighter.age - 34) / 20_000
+                fighter.available_week = max(getattr(fighter, "available_week", 0), self.calendar_week_index() + fighter.injured * 4)
+            serious_chance = 0.00045 + fighter.injury_proneness / 110_000 + max(0, fighter.age - 34) / 20_000 + recurrence / 30_000
             if lost and method in ("KO", "KO/TKO", "Technical Fall"):
                 serious_chance += 0.0012
             if random.random() < serious_chance:
@@ -4353,7 +4664,7 @@ class WorldMixin:
             available[band_size:band_size * 2],
             available[band_size * 2:band_size * 3],
             available[band_size * 3:],
-            [fighter for fighter in available if fighter.age <= 27 or fighter.potential >= fighter.overall + 7],
+            [fighter for fighter in available if fighter.age <= 27 or fighter.potential >= self.combat_sport_display_rating(fighter, sport) + 7],
             sorted(available, key=lambda fighter: (self.combat_sport_inactivity_months(fighter), fighter.fatigue), reverse=True)[:max(8, len(available) // 3)],
         ]
         for band in bands:
@@ -4362,7 +4673,7 @@ class WorldMixin:
             card_pool.extend(band[:max(2, target_bouts // 2)])
         card_pool = sorted(
             dict((fighter.name, fighter) for fighter in card_pool if fighter.name not in used).values(),
-            key=lambda fighter: (fighter.retirement_pending, self.combat_sport_inactivity_months(fighter) if card_strategy == "Deep Roster" else 0, fighter.age <= 27, fighter.potential - fighter.overall),
+            key=lambda fighter: (fighter.retirement_pending, self.combat_sport_inactivity_months(fighter) if card_strategy == "Deep Roster" else 0, fighter.age <= 27, fighter.potential - self.combat_sport_display_rating(fighter, sport)),
             reverse=True,
         )
         fallback_pool = sorted(
@@ -4527,42 +4838,50 @@ class WorldMixin:
         return card
 
     def develop_combat_sport_roster(self, sport, roster):
-        focus = {
-            "Boxing": ("striking", "power", "chin", "cardio"),
-            "Kickboxing": ("striking", "power", "toughness", "cardio"),
-            "Muay Thai": ("striking", "power", "toughness", "cardio"),
-            "Wrestling": ("wrestling", "ground_control", "cardio", "fight_iq"),
-            "Brazilian Jiu-Jitsu": ("grappling", "submissions", "ground_control", "fight_iq"),
-        }.get(sport, ("striking", "cardio", "fight_iq"))
         year = str(2026 + (self.month - 1) // 12)
         for fighter in roster:
+            if fighter.retired:
+                continue
+            rehabbing = fighter.injured > 0
             if fighter.injured:
                 fighter.injured -= 1
             fighter.fatigue = max(0, fighter.fatigue - random.randint(8, 18))
-            if fighter.age <= fighter.prime_end and fighter.overall < fighter.potential and random.random() < 0.18:
-                field = random.choice(focus)
-                setattr(fighter, field, max(1, min(99, getattr(fighter, field, 50) + 1)))
-                if field in ("striking", "wrestling", "grappling"):
-                    self.adjust_detailed_skill(fighter, 1)
-            if fighter.age > fighter.prime_end + 2 and random.random() < 0.08:
-                field = random.choice(focus)
-                setattr(fighter, field, max(1, min(99, getattr(fighter, field, 50) - 1)))
+            if not rehabbing and random.random() < self.combat_sport_monthly_growth_chance(fighter, sport):
+                stage = self.combat_sport_development_stage(fighter, sport)
+                gap = max(0, min(99, fighter.potential) - self.combat_sport_display_rating(fighter, sport))
+                dedication = self.ds(fighter, "dedication", fighter.professionalism)
+                prodigy_chance = 0.04 + max(0, gap - 14) / 150 + max(0, dedication - 78) / 300
+                amount = 2 if stage == "Pre-prime" and random.random() < min(0.24, prodigy_chance) else 1
+                self.adjust_combat_sport_skill_bundle(fighter, sport, amount, f"{stage} monthly {sport} training")
+            decline_chance = self.combat_sport_monthly_decline_chance(fighter, sport)
+            if random.random() < decline_chance:
+                years_over = fighter.age - self.combat_sport_effective_prime_end(fighter, sport)
+                amount = -2 if years_over >= 5 and random.random() < min(0.62, 0.18 + years_over * 0.06) else -1
+                self.adjust_combat_sport_skill_bundle(fighter, sport, amount, "Age, mileage and recovery decline", decline=True)
             fighter.annual_overalls = fighter.annual_overalls or {}
             fighter.annual_overalls[year] = max(fighter.annual_overalls.get(year, 0), fighter.overall)
+            self.record_combat_sport_rating_snapshot(fighter, sport)
             fighter.rank_score = self.rank_value(fighter)
 
     def review_combat_sport_retirements(self, sport, world):
         """Stage retirement reviews while guaranteeing a final booked contest."""
         marked = 0
+        review_age = {
+            "Boxing": 38,
+            "Kickboxing": 36,
+            "Muay Thai": 35,
+            "Wrestling": 35,
+            "Brazilian Jiu-Jitsu": 39,
+        }.get(sport, 38)
         for fighter in self.combat_sport_roster(sport):
-            if fighter.retirement_pending or fighter.age < 38:
+            if fighter.retirement_pending or fighter.age < review_age:
                 continue
             annual_review_month = sum(ord(char) for char in fighter.name) % 12 + 1
             calendar_month = (self.month - 1) % 12 + 1
             if fighter.age < 50 and calendar_month != annual_review_month:
                 continue
             losses = fighter.record_l / max(1, fighter.record_w + fighter.record_l + fighter.record_d)
-            age_pressure = max(0, fighter.age - fighter.prime_end) * 0.07
+            age_pressure = max(0, fighter.age - self.combat_sport_effective_prime_end(fighter, sport)) * 0.07
             chance = 1.0 if fighter.age >= 50 else min(0.82, 0.08 + age_pressure + losses * 0.12)
             if random.random() < chance:
                 self.mark_retirement_fight_required(fighter, f"{sport} career review at age {fighter.age}")
@@ -4598,6 +4917,7 @@ class WorldMixin:
         fighter.sport_employer = promotion
         fighter.contract_type = f"{sport} Development Deal"
         fighter.exclusive = True
+        fighter.last_fight_month = self.month
         ladder = self.combat_sport_weight_ladder(sport, fighter.gender)
         counts = {
             label: sum(
@@ -4612,13 +4932,52 @@ class WorldMixin:
             weights = [1.0 / (1 + counts.get(label, 0)) for label in labels]
             division = random.choices(labels, weights=weights, k=1)[0]
             self.assign_combat_sport_weight(sport, fighter, division, reset_walk_weight=True)
+        # The original worlds are deliberately packed with all-time names, but
+        # their successors must still enter as credible national prospects. A
+        # steady diet of 40-rated replacements made every circuit collapse by
+        # roughly forty percent once the legends retired.
+        if random.random() < 0.08:
+            native_rating = random.randint(76, 86)
+        elif random.random() < 0.30:
+            native_rating = random.randint(66, 77)
+        else:
+            native_rating = random.randint(56, 69)
+        self.ensure_detailed_skills(fighter)
+        profile = self.combat_sport_development_profile(sport)
+        for key in profile["growth"]:
+            fighter.detailed_skills[key] = max(35, min(94, native_rating + random.randint(-7, 7)))
+        primary = "striking" if sport in ("Boxing", "Kickboxing", "Muay Thai") else "wrestling" if sport == "Wrestling" else "grappling"
+        setattr(fighter, primary, native_rating)
+        if sport in ("Boxing", "Kickboxing", "Muay Thai"):
+            fighter.power = max(35, min(94, native_rating + random.randint(-6, 7)))
+            fighter.chin = max(35, min(94, native_rating + random.randint(-7, 6)))
+        elif sport == "Wrestling":
+            fighter.ground_control = max(35, min(94, native_rating + random.randint(-5, 7)))
+            fighter.toughness = max(35, min(94, native_rating + random.randint(-5, 6)))
+        else:
+            fighter.submissions = max(35, min(96, native_rating + random.randint(-4, 8)))
+            fighter.submission_defence = max(35, min(95, native_rating + random.randint(-5, 7)))
+            fighter.ground_control = max(35, min(94, native_rating + random.randint(-6, 6)))
+        fighter.cardio = max(35, min(94, native_rating + random.randint(-6, 6)))
+        fighter.fight_iq = max(35, min(96, native_rating + random.randint(-5, 8)))
         for field in target_skill:
-            setattr(fighter, field, min(92, max(getattr(fighter, field, 45), fighter.overall + random.randint(5, 14))))
-        self.generate_detailed_skills(fighter)
-        self.sync_broad_skills_from_details(fighter)
-        fighter.potential = max(fighter.overall + random.randint(6, 15), fighter.potential)
-        fighter.potential = min(97, fighter.potential)
+            setattr(fighter, field, min(96, max(getattr(fighter, field, 45), native_rating + random.randint(-3, 6))))
+        prime_ranges = {
+            "Boxing": ((26, 28), (34, 37)),
+            "Kickboxing": ((24, 27), (32, 35)),
+            "Muay Thai": ((23, 26), (31, 34)),
+            "Wrestling": ((23, 26), (30, 34)),
+            "Brazilian Jiu-Jitsu": ((25, 28), (35, 39)),
+        }
+        start_range, end_range = prime_ranges.get(sport, ((24, 27), (33, 36)))
+        fighter.prime_start = random.randint(*start_range)
+        fighter.prime_end = max(fighter.prime_start + 5, random.randint(*end_range))
+        if sport == "Brazilian Jiu-Jitsu" or random.random() < 0.18:
+            fighter.career_archetype = "Durable Career"
+        fighter.potential = min(98, max(fighter.overall, native_rating + random.randint(8, 20)))
         fighter.multi_sport_records = {sport: fighter.record}
+        fighter.sport_rating_history = {sport: {str(self.month): self.combat_sport_display_rating(fighter, sport)}}
+        fighter.sport_development_log = []
         return fighter
 
     def replenish_combat_sport_world(self, sport, world):
@@ -4710,16 +5069,23 @@ class WorldMixin:
             candidates = [
                 fighter for fighter in self.combat_sport_ranked(sport, promotion)[4:28]
                 if fighter.age <= 34 and fighter.fatigue < 45 and not fighter.retirement_pending
-                and fighter.name not in champions and fighter.overall >= 58
+                and fighter.name not in champions and self.combat_sport_display_rating(fighter, sport) >= 68
             ]
             if candidates:
-                fighter = random.choices(candidates, weights=[max(1, candidate.popularity + candidate.potential - candidate.overall) for candidate in candidates], k=1)[0]
+                fighter = random.choices(candidates, weights=[max(1, candidate.popularity + candidate.potential - self.combat_sport_display_rating(candidate, sport)) for candidate in candidates], k=1)[0]
                 fighter.sport_employer = ""
                 fighter.crossover_history = (fighter.crossover_history or [])[-9:] + [f"Month {self.month}: Left {world['promotion']} to pursue MMA."]
                 fighter.multi_sport_records = fighter.multi_sport_records or {}
                 fighter.multi_sport_records[sport] = fighter.record
                 fighter.multi_sport_records["MMA"] = "0-0-0"
                 fighter.record_w = fighter.record_l = fighter.record_d = 0
+                fighter.combat_background = sport
+                fighter.primary_discipline = "MMA"
+                fighter.contract_type = "Free Agent"
+                fighter.contract_months = 0
+                fighter.exclusive = False
+                fighter.camp_focus = "Balanced"
+                fighter.last_fight_month = self.month
                 world["roster"].remove(fighter)
                 self.free_agents.append(fighter)
                 headline = f"CROSSOVER: Former {sport} standout {fighter.name} has entered the MMA free-agent market."
@@ -4732,6 +5098,7 @@ class WorldMixin:
         """Synchronous consumer retained for audits and non-UI callers."""
         worlds = getattr(self, "combat_sport_worlds", {}) or self.seed_combat_sport_worlds()
         self.combat_sport_worlds = worlds
+        self.sync_gym_membership()
         for sport, world in worlds.items():
             self.process_combat_sport_world(sport, world)
         self.combat_sport_worlds = worlds
@@ -4744,7 +5111,7 @@ class WorldMixin:
                 return False, f"Need ${startup_cost:,} to establish a {sport} division."
             self.cash -= startup_cost
             world = getattr(self, "combat_sport_worlds", {}).get(sport, {})
-            candidates = sorted(world.get("roster", []), key=lambda fighter: (fighter.overall, fighter.potential), reverse=True)
+            candidates = sorted(world.get("roster", []), key=lambda fighter: (self.combat_sport_display_rating(fighter, sport), fighter.potential), reverse=True)
             signed = candidates[12:24]
             for fighter in signed:
                 fighter.sport_employer = self.player_company_name
@@ -4894,9 +5261,9 @@ class WorldMixin:
                     continue
                 combat_aged.add(id(fighter))
                 fighter.age += 1
-                if fighter.age > fighter.prime_end + 3 and random.random() < 0.18:
-                    self.adjust_random_skill(fighter, -1)
-                    self.adjust_detailed_skill(fighter, -1)
+                sport = self.combat_sport_for_fighter(fighter)
+                if sport:
+                    self.apply_combat_sport_annual_age_curve(fighter, sport)
                 fighter.annual_overalls = fighter.annual_overalls or {}
                 fighter.annual_overalls[str(self.current_year())] = max(fighter.annual_overalls.get(str(self.current_year()), 0), fighter.overall)
         self.news.insert(0, f"A new year begins across the MMA world; every fighter is now a year older.")

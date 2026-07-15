@@ -178,9 +178,23 @@ class EventMixin:
         keys = key_map.get(getattr(fighter, "camp_focus", "Balanced"))
         if not keys:
             return
+        sport = self.combat_sport_for_fighter(fighter) if hasattr(self, "combat_sport_for_fighter") else ""
+        if sport:
+            stage = self.combat_sport_development_stage(fighter, sport)
+            if stage not in ("Pre-prime", "Prime") or (stage == "Prime" and random.random() > 0.48):
+                return
+            native_keys = set(self.combat_sport_development_profile(sport)["growth"])
+            compatible = tuple(key for key in keys if key in native_keys)
+            if not compatible:
+                return
+            keys = compatible
         key = random.choice(keys)
-        fighter.detailed_skills[key] = min(99, fighter.detailed_skills.get(key, 50) + 1)
-        self.sync_broad_skills_from_details(fighter)
+        if sport:
+            if not self.adjust_combat_sport_training_key(fighter, sport, key, 1, f"{fighter.camp_focus} camp focus"):
+                return
+        else:
+            fighter.detailed_skills[key] = min(99, fighter.detailed_skills.get(key, 50) + 1)
+            self.sync_broad_skills_from_details(fighter)
         self.news.insert(0, f"Camp report: {fighter.name}'s {fighter.camp_focus.lower()} work improved {key.replace('_', ' ')}.")
 
     def selected_due_event(self):
@@ -225,13 +239,21 @@ class EventMixin:
         lose_chance = max(0.01, (100 - fighter.professionalism + fighter.injury_proneness) / 1800)
         if random.random() < gain_chance:
             old = fighter.trait
-            fighter.trait = random.choice([
+            sport = self.combat_sport_for_fighter(fighter) if hasattr(self, "combat_sport_for_fighter") else ""
+            sport_traits = {
+                "Boxing": ["Technical Learner", "Body Hunter", "Counter Specialist", "Knockout Artist", "Cardio Machine", "Title Mentality", "Adaptable"],
+                "Kickboxing": ["Technical Learner", "Leg Kicker", "Counter Specialist", "Knockout Artist", "Cardio Machine", "Fight Finisher", "Adaptable"],
+                "Muay Thai": ["Technical Learner", "Leg Kicker", "Elbow Specialist", "Iron Chin", "Warrior Spirit", "Counter Specialist", "Fight Finisher"],
+                "Wrestling": ["Technical Learner", "Cardio Machine", "Scramble Artist", "Title Mentality", "Pressure Fighter", "Adaptable", "Gym Rat"],
+                "Brazilian Jiu-Jitsu": ["Submission Ace", "Scramble Artist", "Technical Learner", "Title Mentality", "Pressure Fighter", "Fight Finisher", "Adaptable"],
+            }
+            fighter.trait = random.choice(sport_traits.get(sport, [
                 "Gym Rat", "Clutch", "Big Finisher", "Marketable", "Fan Favourite", "Cardio Machine",
                 "Comeback Artist", "Submission Ace", "Knockout Artist", "Counter Specialist",
                 "Coach Favourite", "Gym Leader", "Title Mentality", "Late Bloomer", "Technical Learner",
                 "Warrior Spirit", "Fast Healer", "Adaptable", "Momentum Fighter", "Body Hunter",
                 "Leg Kicker", "Cage Specialist", "Elbow Specialist", "Scramble Artist", "Fight Finisher",
-            ])
+            ]))
             if fighter.trait != old:
                 self.news.insert(0, f"Camp report: {fighter.name} developed the {fighter.trait} trait during camp.")
         elif random.random() < lose_chance and fighter.trait not in ("Fan Favourite", "Marketable"):
@@ -253,8 +275,17 @@ class EventMixin:
             return
         key = random.choice(keys)
         amount = 2 if gym.quality >= 84 and fighter.age <= fighter.prime_end else 1
-        fighter.detailed_skills[key] = max(1, min(99, fighter.detailed_skills.get(key, 50) + amount))
-        self.sync_broad_skills_from_details(fighter)
+        sport = self.combat_sport_for_fighter(fighter) if hasattr(self, "combat_sport_for_fighter") else ""
+        if sport:
+            stage = self.combat_sport_development_stage(fighter, sport)
+            if stage not in ("Pre-prime", "Prime") or (stage == "Prime" and random.random() > 0.48):
+                return
+            native_keys = set(self.combat_sport_development_profile(sport)["growth"])
+            if key not in native_keys or not self.adjust_combat_sport_training_key(fighter, sport, key, amount, f"{gym.name} camp development"):
+                return
+        else:
+            fighter.detailed_skills[key] = max(1, min(99, fighter.detailed_skills.get(key, 50) + amount))
+            self.sync_broad_skills_from_details(fighter)
         if random.random() < 0.35:
             self.news.insert(0, f"Camp report: {fighter.name} sharpened {key.replace('_', ' ')} at {gym.name}.")
 

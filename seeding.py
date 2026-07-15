@@ -2635,7 +2635,13 @@ class SeedMixin:
         all_fighters = list(getattr(self, "roster", [])) + list(getattr(self, "free_agents", []))
         for promo in getattr(self, "promotions", []):
             all_fighters.extend(promo.roster)
+        for world in getattr(self, "combat_sport_worlds", {}).values():
+            all_fighters.extend(world.get("roster", []))
+        seen = set()
         for fighter in all_fighters:
+            if id(fighter) in seen or getattr(fighter, "retired", False):
+                continue
+            seen.add(id(fighter))
             gym = gym_lookup.get(fighter.camp)
             if gym:
                 gym.member_count += 1
