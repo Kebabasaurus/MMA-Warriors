@@ -49,3 +49,27 @@ career upside, and variance. The signing then deducts the AI promotion's real ca
 
 This means a player can win a deal away from an AI, an AI can be rejected, and a promotion
 that cannot afford the reserve plus commitment cannot make the offer.
+
+## Player Academy and Multi-Sport Pathways
+
+The player academy is a shared talent pipeline, rather than a separate academy for each
+combat sport. A player can build it, hire a scout, and establish one regional youth network
+at a time. Setup takes eight weeks. Once live, the network rolls for leads weekly until its
+shortlist contains eight active prospects; unsigned leads expire after 2–3 weeks.
+
+Prospects are generated in their network region at age 12–15, with 30–60 current rating.
+Potential normally tops out at 98. A 99–100 potential prospect requires an elite scout,
+academy reputation, and a deliberately low-probability generational roll. Scout quality
+controls both prospect quality and the accuracy of the current/potential range shown before
+signing.
+
+Academy members train, compete on biweekly amateur cards, and can turn professional at 16.
+Promotion at age 16–17 is explicitly confirmed as an early debut; 18 is the normal route.
+At graduation the player chooses MMA or any opened child sport. The athlete's recommended
+focus and preferred pathway guide the decision but do not override player control.
+
+Child sports are branded player-owned promotions (for example `UFC BJJ`), not invisible
+roster buckets. They begin empty, require deliberate signings, support player-booked
+matchups and smart cards, and run their own titles, rankings, records, and finances. Their
+investment, signing, and card profit/loss flow through the parent organisation's cash while
+their own financial history remains visible.

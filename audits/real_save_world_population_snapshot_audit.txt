@@ -1,0 +1,37 @@
+MMA WARRIORS - REAL SAVE POPULATION SNAPSHOT AUDIT
+
+Game 1 - 10 Years.json.gz | internal month 121
+Total active: 5862 | Player: 0 | Free agents: 261
+Major rosters: 4551 across 14 (median 320, min 317, max 399)
+Regional rosters: 1050 across 15 (median 70, min 70, max 70)
+Smallest majors: Professional Fighters League 317 | Cage Warriors 318 | KSW 319 | Absolute Championship Akhmat 319 | BAMMA 319 | ONE Championship 320
+Largest majors: Ultimate Fighting Championship 399 | ONE Championship 320 | RIZIN Fighting Federation 320 | Legacy Fighting Alliance 320 | Oktagon MMA 320 | BRAVE Combat Federation 320
+
+Game 1 - 20 Years.json.gz | internal month 241
+Total active: 5735 | Player: 0 | Free agents: 173
+Major rosters: 4524 across 14 (median 319, min 312, max 399)
+Regional rosters: 1038 across 15 (median 69, min 69, max 70)
+Smallest majors: Oktagon MMA 312 | Strikeforce 314 | World Extreme Cagefighting 314 | Professional Fighters League 316 | Absolute Championship Akhmat 316 | BRAVE Combat Federation 317
+Largest majors: Ultimate Fighting Championship 399 | ONE Championship 320 | Legacy Fighting Alliance 320 | BAMMA 320 | RIZIN Fighting Federation 319 | KSW 319
+
+Game 1 - 30 Years.json.gz | internal month 361
+Total active: 5786 | Player: 0 | Free agents: 202
+Major rosters: 4534 across 14 (median 319, min 316, max 396)
+Regional rosters: 1050 across 15 (median 70, min 70, max 70)
+Smallest majors: KSW 316 | PRIDE Fighting Championships 316 | Legacy Fighting Alliance 317 | Professional Fighters League 318 | RIZIN Fighting Federation 318 | Cage Warriors 318
+Largest majors: Ultimate Fighting Championship 396 | ONE Championship 320 | World Extreme Cagefighting 320 | Oktagon MMA 319 | BRAVE Combat Federation 319 | Absolute Championship Akhmat 319
+
+Game 1 - 40 Years.json.gz | internal month 481
+Total active: 5765 | Player: 0 | Free agents: 181
+Major rosters: 4546 across 14 (median 320, min 315, max 398)
+Regional rosters: 1038 across 15 (median 69, min 69, max 70)
+Smallest majors: BRAVE Combat Federation 315 | RIZIN Fighting Federation 318 | Professional Fighters League 319 | KSW 319 | Legacy Fighting Alliance 319 | Oktagon MMA 319
+Largest majors: Ultimate Fighting Championship 398 | ONE Championship 320 | Cage Warriors 320 | Absolute Championship Akhmat 320 | PRIDE Fighting Championships 320 | Strikeforce 320
+
+savegame.json | internal month 587
+Total active: 5755 | Player: 0 | Free agents: 182
+Major rosters: 4525 across 14 (median 318, min 314, max 394)
+Regional rosters: 1048 across 15 (median 70, min 69, max 70)
+Smallest majors: Professional Fighters League 314 | Strikeforce 316 | RIZIN Fighting Federation 317 | Absolute Championship Akhmat 317 | PRIDE Fighting Championships 317 | BAMMA 317
+Largest majors: Ultimate Fighting Championship 394 | World Extreme Cagefighting 320 | ONE Championship 319 | KSW 319 | Legacy Fighting Alliance 319 | Oktagon MMA 319
+

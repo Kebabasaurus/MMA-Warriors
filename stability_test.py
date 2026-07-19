@@ -5,6 +5,7 @@ cleanup, UI viewers, academy/card edge cases, save round-tripping and repeated
 world advancement.  It never writes a player save.
 """
 
+import copy
 import json
 import random
 import tempfile
@@ -206,7 +207,7 @@ def exercise_media_story_reader(app, root):
         app.show_selected_media_story()
         preview = app.website_news_preview.get("1.0", "end-1c")
         require(headline in preview and long_detail in preview, "Selected story preview omitted the headline or full detail")
-        require("2027 | Month 19, Week 3" in preview, "Selected story preview omitted the Chronicle date")
+        require("Jul W3 2027" in preview, "Selected story preview omitted the Chronicle date")
 
         app.website_news.selection_remove(app.website_news.selection())
         require(app.selected_media_story_entry() is None, "Empty Media Desk selection returned a story")
@@ -341,6 +342,27 @@ def exercise_normal_and_retirement_events(app, root):
         if loser.name in appearances:
             appearances[loser.name] += 1
     require(all(fighter.career_stat_fights - career_stats_before[fighter.name] == appearances[fighter.name] for fighter in field), "Tournament bout box scores were not committed once per appearance")
+    champion_name = tournament_package["tournament_brackets"][0]["champion"]
+    champion = next(fighter for fighter in field if fighter.name == champion_name)
+    expected_opponents = {
+        loser.name if winner is champion else winner.name
+        for winner, loser, _fight, _method in tournament_package["results"]
+        if champion in (winner, loser)
+    }
+    # Event completion prepends one history row per tournament appearance. A
+    # fighter may also have faced the same opponent on another card that week,
+    # so date/name filtering would incorrectly count that older bout as part of
+    # this tournament.
+    tournament_entries = list(champion.fight_history[:appearances[champion.name]])
+    resolved_opponents = {
+        app.fighter_history_card_context(champion, entry, app.fighter_history_opponent_name(champion, entry)).get("opponent_name")
+        for entry in tournament_entries
+    }
+    require(
+        len(tournament_entries) == 2 and resolved_opponents == expected_opponents,
+        f"Same-night tournament bouts collapsed into one fighter-history row: champion={champion.name}, expected={expected_opponents}, resolved={resolved_opponents}, entries={tournament_entries}",
+    )
+    require(all("scorecards" in log for log in tournament_package["fight_logs"]), "Tournament history logs omitted scorecard metadata")
     close_secondary_windows(root)
 
     pair = ready_pair(app)
@@ -439,7 +461,9 @@ def exercise_academy_and_sport_edge_cases(app):
     app.repair_academy(repaired)
     require(rng_after == rng_before == random.getstate(), "Academy legacy repair consumed the simulation RNG")
     require(json.loads(json.dumps(repaired)) == first_repair, "Academy legacy repair was not deterministic or idempotent")
-    require(repaired.get("schema_version") == 2, "Academy legacy repair did not migrate the schema version")
+    require(repaired.get("schema_version") == 4, "Academy legacy repair did not migrate the schema version")
+    require(repaired.get("auto_card_min_bouts") == 2, "Academy legacy repair did not add the auto-card fight threshold")
+    require(repaired.get("showcase_weeks") >= 6, "Legacy academy retained the overactive two-week showcase schedule")
     require(repaired["prospects"][0].get("prospect_id"), "Academy legacy repair did not create a stable prospect ID")
     require(repaired["prospects"][0].get("amateur_bout_records") == [], "Academy legacy repair did not add structured amateur records")
 
@@ -497,6 +521,13 @@ def exercise_academy_and_sport_edge_cases(app):
     totals_before_cooldown = (full_academy["total_cards"], full_academy["total_bouts"])
     require(app.run_academy_showcase_card(full_academy) == [], "Academy prospects were allowed to fight twice in the same week")
     require((full_academy["total_cards"], full_academy["total_bouts"]) == totals_before_cooldown, "A blocked same-week academy card changed career totals")
+    saved_date = (app.month, app.week)
+    first_card_week = app.calendar_week_index()
+    app.month, app.week = (first_card_week + 5 - 1) // 4 + 1, (first_card_week + 5 - 1) % 4 + 1
+    require(app.run_academy_showcase_card(full_academy) == [], "Academy prospects bypassed the six-week individual bout recovery rule")
+    app.month, app.week = (first_card_week + 6 - 1) // 4 + 1, (first_card_week + 6 - 1) % 4 + 1
+    require(len(app.run_academy_showcase_card(full_academy)) == 4, "Recovered academy prospects were not eligible after six weeks")
+    app.month, app.week = saved_date
 
     # Scout quality should affect the distribution, not guarantee an elite lead
     # on each individual roll.  Fixed seeds keep this statistical check stable.
@@ -515,10 +546,10 @@ def exercise_academy_and_sport_edge_cases(app):
     require(elite_scout["rating"] >= low_scout["rating"] + 2, "Elite scout did not improve the current-ability distribution")
     require(elite_scout["confidence"] >= low_scout["confidence"] + 25, "Elite scout reports were not materially more confident")
 
-    # Age is a domain rule, not merely a disabled UI button.  Once eligible,
+    # The 16-year minimum is a domain rule, not merely a disabled UI button. Once eligible,
     # conversion must preserve the identity and skill profile the player built.
     graduate = {
-        "name": "Stability Academy Graduate", "age": 17, "potential": 91,
+        "name": "Stability Academy Graduate", "age": 15, "potential": 91,
         "region": app.player_region, "gender": "Male", "weight": "Welterweight",
         "rating": 68, "style": "Pressure Wrestler", "stance": "Southpaw", "trait": "Iron Will",
         "striking": 64, "wrestling": 78, "grappling": 73, "cardio": 76,
@@ -531,9 +562,9 @@ def exercise_academy_and_sport_edge_cases(app):
     roster_before = len(app.roster)
     graduates_before = full_academy["total_graduates"]
     ok, _message, fighter = app.promote_academy_prospect_to_sport(graduate, "MMA")
-    require(not ok and fighter is None, "Under-18 academy prospect bypassed the professional graduation guard")
-    require(len(app.roster) == roster_before and full_academy["total_graduates"] == graduates_before, "Rejected under-18 graduation changed the professional world")
-    graduate["age"] = 18
+    require(not ok and fighter is None, "Under-16 academy prospect bypassed the professional graduation guard")
+    require(len(app.roster) == roster_before and full_academy["total_graduates"] == graduates_before, "Rejected under-16 graduation changed the professional world")
+    graduate["age"] = 16
     ok, _message, fighter = app.promote_academy_prospect_to_sport(graduate, "MMA")
     require(ok and fighter is app.roster[-1], "Eligible academy prospect did not graduate into MMA")
     require((fighter.style, fighter.stance, fighter.trait) == (graduate["style"], graduate["stance"], graduate["trait"]), "Academy graduation lost style, stance, or trait")
@@ -570,8 +601,8 @@ def exercise_save_roundtrip(app):
     app.rules.update({"autosave_weekly_keep": 12, "autosave_monthly_keep": 24, "save_backup_keep": 60, "save_retention_version": 1})
     app.ensure_rule_defaults()
     require(
-        (app.rules["autosave_weekly_keep"], app.rules["autosave_monthly_keep"], app.rules["save_backup_keep"]) == (8, 6, 12),
-        "Legacy oversized save retention defaults were not migrated",
+        (app.rules["autosave_weekly_keep"], app.rules["autosave_monthly_keep"], app.rules["save_backup_keep"]) == (2, 2, 2),
+        "Legacy save retention was not migrated to two rolling slots",
     )
     replay_package = {
         "date": "Month 1 Week 1", "company": "Stability AI", "event_name": "Archive Link Test",
@@ -585,12 +616,19 @@ def exercise_save_roundtrip(app):
     })
     serialized = app.serialize_world()
     serialized_academy = serialized.get("academy", {})
-    require(serialized_academy.get("schema_version") == 2, "Academy schema version was omitted from the save payload")
+    require(serialized_academy.get("schema_version") == 4, "Academy schema version was omitted from the save payload")
     require(len(serialized_academy.get("prospects", [])) == 8, "Full academy roster was omitted from the save payload")
     require(all(item.get("prospect_id") for item in serialized_academy["prospects"]), "Academy prospect IDs were omitted from the save payload")
     require(all(item.get("amateur_bout_records") for item in serialized_academy["prospects"]), "Structured amateur records were omitted from the save payload")
     require(serialized_academy.get("development_events"), "Academy development events were omitted from the save payload")
-    require(serialized_academy.get("last_showcase_week") == app.calendar_week_index(), "Academy showcase timing was omitted from the save payload")
+    latest_academy_bout_week = max(
+        int(item.get("last_amateur_week", -99) or -99)
+        for item in serialized_academy["prospects"]
+    )
+    require(
+        serialized_academy.get("last_showcase_week") == latest_academy_bout_week,
+        "Academy showcase timing was omitted from the save payload",
+    )
     expected_academy_ids = [item["prospect_id"] for item in serialized_academy["prospects"]]
     expected_academy_records = {
         item["prospect_id"]: list(item["amateur_bout_records"])
@@ -615,7 +653,7 @@ def exercise_save_roundtrip(app):
         restored_replay = loaded.result_records[0]
         require(restored_replay.get("log") == replay_package["log"] and restored_replay.get("fight_logs") == replay_package["fight_logs"], "Archived replay detail was not restored after load")
         loaded_academy = loaded.academy
-        require(loaded_academy.get("schema_version") == 2, "Academy schema version did not survive save roundtrip")
+        require(loaded_academy.get("schema_version") == 4, "Academy schema version did not survive save roundtrip")
         require([item.get("prospect_id") for item in loaded_academy.get("prospects", [])] == expected_academy_ids, "Academy prospect identity changed after save roundtrip")
         require(
             {item["prospect_id"]: item.get("amateur_bout_records", []) for item in loaded_academy["prospects"]} == expected_academy_records,
@@ -631,6 +669,64 @@ def exercise_save_roundtrip(app):
         require(not callback_errors, f"Save roundtrip UI callback error: {callback_errors[0][1] if callback_errors else ''}")
     finally:
         destroy_root(root2)
+
+
+def exercise_talent_ecosystem_balance(app):
+    """Protect the long-save talent distribution without scripting fight results."""
+    random_state = random.getstate()
+    saved_date = (app.month, app.week)
+    saved_free_agents = app.free_agents
+    try:
+        random.seed(77241)
+        used_names = app.active_fighter_names()
+        sample = [
+            app.create_regional_feeder_fighter(
+                "USA", used_names, "Female" if index % 4 == 0 else "Male"
+            )
+            for index in range(400)
+        ]
+        potentials = [fighter.potential for fighter in sample]
+        mean_potential = sum(potentials) / len(potentials)
+        require(76 <= mean_potential <= 82, "Regional intake potential distribution is too weak or inflated")
+        require(8 <= sum(value >= 90 for value in potentials) <= 40, "Elite regional ceilings are missing or too common")
+        require(2 <= sum(value >= 95 for value in potentials) <= 16, "Generational regional ceilings are missing or too common")
+        require(all(17 <= fighter.age <= 21 and fighter.overall < fighter.potential for fighter in sample), "Regional intake age or development runway is invalid")
+
+        cohort = sample[:160]
+        starting = [fighter.overall for fighter in cohort]
+        for month in range(1, 121):
+            app.month, app.week = month, 1
+            app.age_and_develop_fighters(cohort)
+            if month % 12 == 0:
+                for fighter in cohort:
+                    fighter.age += 1
+        ending = [fighter.overall for fighter in cohort]
+        mean_gain = sum(end - start for start, end in zip(starting, ending)) / len(cohort)
+        require(12 <= mean_gain <= 23, "Ten-year regional development is stagnant or excessively fast")
+        require(sum(value >= 70 for value in ending) >= len(cohort) * 0.70, "Too few regional fighters mature into credible professionals")
+        require(len(cohort) * 0.08 <= sum(value >= 80 for value in ending) <= len(cohort) * 0.35, "High-level regional development is missing or overproduced")
+        require(sum(value >= 90 for value in ending) <= len(cohort) * 0.05, "Elite development has become commonplace")
+        require(all(fighter.overall <= fighter.potential for fighter in cohort), "Development exceeded a fighter's potential ceiling")
+
+        retirement_probes = [copy.deepcopy(fighter) for fighter in sample[:3]]
+        for fighter, age, waiting in zip(retirement_probes, (39, 40, 43), (11, 6, 3)):
+            fighter.age = age
+            fighter.free_agent_months = waiting
+            fighter.retirement_pending = True
+            fighter.injured = 0
+            fighter.fatigue = 0
+            fighter.ai_offer_company = ""
+            fighter.available_week = 0
+            fighter.showcase_last_month = -99
+        app.free_agents = retirement_probes
+        eligible_ids = {fighter.fighter_id for fighter in app.eligible_free_agent_retirement_card_fighters()}
+        require(retirement_probes[0].fighter_id not in eligible_ids, "Under-40 retirement card bypassed its twelve-month market wait")
+        require(retirement_probes[1].fighter_id in eligible_ids, "Age-40 retirement card did not use the six-month market limit")
+        require(retirement_probes[2].fighter_id in eligible_ids, "Age-43 retirement card did not use the three-month market limit")
+    finally:
+        app.month, app.week = saved_date
+        app.free_agents = saved_free_agents
+        random.setstate(random_state)
 
 
 def exercise_optimized_autosave_cycle(app):
@@ -676,6 +772,177 @@ def exercise_optimized_autosave_cycle(app):
     require([item[0] for item in writes] == ["monthly"], "Two-month autosave wrote more than one rolling file")
 
 
+def exercise_retirement_card_pipeline():
+    """Long-waiting retirees receive limited, legal farewell cards and no renewals."""
+    root, app, callback_errors = new_app(7724)
+    try:
+        app.month, app.week = 40, 4
+        template = app.free_agents[0]
+        cohort = []
+        for index in range(26):
+            fighter = copy.deepcopy(template)
+            fighter.name = f"Retirement Card Probe {index:02d}"
+            fighter.gender = "Male"
+            fighter.weight = "Welterweight"
+            fighter.popularity = 100 - index
+            skill_shift = index % 4
+            fighter.striking = max(35, min(95, fighter.striking + skill_shift))
+            fighter.wrestling = max(35, min(95, fighter.wrestling + skill_shift))
+            fighter.grappling = max(35, min(95, fighter.grappling + skill_shift))
+            fighter.retired = False
+            fighter.age = 39
+            fighter.retirement_pending = True
+            fighter.retirement_fight_completed = False
+            fighter.retirement_requested_month = app.month - 12
+            fighter.retirement_reason = "Stability retirement-card test; final fight required."
+            fighter.free_agent_months = 11
+            fighter.injured = 0
+            fighter.fatigue = 0
+            fighter.available_week = 0
+            fighter.showcase_last_month = -99
+            fighter.ai_offer_company = ""
+            fighter.champion = False
+            fighter.interim_champion = False
+            cohort.append(fighter)
+        app.free_agents = cohort
+        app.retired_fighters = []
+        app.result_records = []
+        app.ai_event_archive = []
+
+        require(app.retirement_card_weekly_limit(9) == 0, "Fewer than ten retirees enabled a retirement card")
+        require(app.retirement_card_weekly_limit(10) == 1, "Normal retirement queue did not allow one weekly card")
+        require(app.retirement_card_weekly_limit(47) == 1, "Normal retirement queue allowed too many weekly cards")
+        require(app.retirement_card_weekly_limit(48) == 2, "Severe retirement queue did not allow a second weekly card")
+        require(app.retirement_card_weekly_limit(500) == 2, "Retirement-card weekly cap exceeded two")
+        require(not app.simulate_due_free_agent_retirement_cards(), "An under-40 retirement card ran before the twelve-month wait")
+
+        for fighter in cohort[:9]:
+            fighter.free_agent_months = 12
+        require(not app.simulate_due_free_agent_retirement_cards(), "Nine eligible retirees triggered a retirement card")
+        for fighter in cohort:
+            fighter.free_agent_months = 12
+
+        packages = app.simulate_due_free_agent_retirement_cards()
+        require(len(packages) == 1, "A 26-fighter queue should create exactly one card this week")
+        package = packages[0]
+        require(package["fight_count"] == 12, "Retirement card exceeded or failed to fill the 12-fight cap")
+        require(len(package["retired_names"]) == 24, "Retirement card did not retire both participants in every bout")
+        require("Retirement Card Probe 00" in {package["fight_logs"][0]["a"], package["fight_logs"][0]["b"]}, "Most popular retiree did not appear in the main event")
+        participants = [name for fight in package["fight_logs"] for name in (fight["a"], fight["b"])]
+        require(len(participants) == len(set(participants)) == 24, "Retirement card reused a fighter")
+        require(all(fight["weight"] == "Welterweight" for fight in package["fight_logs"]), "Retirement card crossed weight classes")
+        require(all(fighter.retired and not fighter.retirement_pending and fighter.retirement_fight_completed for fighter in app.retired_fighters), "Retirement-card participant retained an invalid career state")
+        require(len(app.free_agents) == 2 and all(fighter.retirement_pending for fighter in app.free_agents), "Unselected retirement candidates were not preserved")
+        require(app.retirement_cards_already_run_this_week() == 1, "Retirement card was not archived once for the current week")
+        require(not app.simulate_due_free_agent_retirement_cards(), "A sub-threshold remainder created another retirement card")
+
+        # A severe backlog may create a second card, but never a third on the
+        # same date even when enough eligible fighters remain.
+        app.month = 41
+        severe_queue = []
+        for index in range(60):
+            fighter = copy.deepcopy(template)
+            fighter.name = f"Severe Retirement Queue Probe {index:02d}"
+            fighter.gender = "Female"
+            fighter.weight = "Lightweight"
+            fighter.popularity = max(10, 100 - index)
+            fighter.retired = False
+            fighter.retirement_pending = True
+            fighter.retirement_fight_completed = False
+            fighter.retirement_requested_month = app.month - 30
+            fighter.free_agent_months = 30
+            fighter.injured = 0
+            fighter.fatigue = 0
+            fighter.available_week = 0
+            fighter.showcase_last_month = -99
+            fighter.ai_offer_company = ""
+            fighter.champion = False
+            fighter.interim_champion = False
+            severe_queue.append(fighter)
+        app.free_agents = severe_queue
+        app.retired_fighters = []
+        packages = app.simulate_due_free_agent_retirement_cards()
+        require(len(packages) == 2 and sum(package["fight_count"] for package in packages) == 24, "Severe queue did not produce exactly two full retirement cards")
+        require(app.retirement_cards_already_run_this_week() == 2, "Severe queue was not capped at two retirement cards for the week")
+        require(len(app.free_agents) == 12, "Two retirement cards did not retire exactly 48 fighters")
+        require(not app.simulate_due_free_agent_retirement_cards(), "A third retirement card ran in the same week")
+
+        ai_promo = copy.deepcopy(next(promo for promo in app.promotions if not promo.is_regional_feeder))
+        ai_retiree = copy.deepcopy(template)
+        ai_retiree.name = "AI Contract Retirement Probe"
+        ai_retiree.contract_months = 0
+        ai_retiree.retirement_pending = True
+        ai_retiree.champion = True
+        ai_retiree.popularity = 100
+        ai_promo.roster = [ai_retiree]
+        app.promotions = [ai_promo]
+        app.free_agents = []
+        app.update_ai_contracts()
+        require(ai_retiree in app.free_agents and ai_retiree not in ai_promo.roster and ai_retiree.contract_months == 0, "AI renewed a retirement-pending fighter")
+
+        # Solvent companies below their roster plan must not dump opening depth
+        # deals en masse when those short contracts first expire.
+        renewal_promo = copy.deepcopy(next(promo for promo in app.promotions if promo.name == "Ultimate Fighting Championship"))
+        renewal_promo.cash = 100_000_000
+        renewal_promo.roster = []
+        require(app.ai_division_target(renewal_promo, "Male") == 40, "UFC male division plan does not match its 80% roster share")
+        require(app.ai_division_target(renewal_promo, "Female") == 10, "UFC female division plan does not match its 20% roster share")
+        for gender, target in (("Male", 40), ("Female", 10)):
+            for weight in renewal_promo.weight_classes:
+                for index in range(target):
+                    member = copy.deepcopy(template)
+                    member.name = f"Opening Depth Renewal Probe {gender} {weight} {index}"
+                    member.gender = gender
+                    member.weight = weight
+                    member.striking = member.wrestling = member.grappling = member.cardio = member.chin = 58
+                    member.detailed_skills = None
+                    member.potential = 72
+                    member.popularity = 12
+                    member.contract_type = "Depth Contract"
+                    member.contract_months = 8
+                    renewal_promo.roster.append(member)
+        require(len(renewal_promo.roster) == app.ai_roster_target(renewal_promo) == 400,
+                "Gender-weighted UFC division plan does not reconcile to its company roster target")
+        expiring_depth = renewal_promo.roster[0]
+        expiring_depth.contract_months = 0
+        app.promotions = [renewal_promo]
+        app.free_agents = []
+        app.update_ai_contracts()
+        require(expiring_depth in renewal_promo.roster and expiring_depth.contract_months > 0,
+                "AI released usable male opening depth from a correctly balanced full roster")
+
+        # Temporary divisional imbalance is corrected by recruitment and the
+        # gradual roster review, not a mass expiry dump while the company has
+        # hundreds of vacant jobs elsewhere.
+        extra_depth = copy.deepcopy(renewal_promo.roster[:6])
+        renewal_promo.roster = renewal_promo.roster[:344] + extra_depth
+        for index, member in enumerate(extra_depth):
+            member.name = f"Over-plan Division Renewal Probe {index}"
+            member.fighter_id = f"OVER-PLAN-RENEWAL-{index}"
+            member.contract_months = 8
+        over_plan_depth = renewal_promo.roster[0]
+        over_plan_depth.contract_months = 0
+        app.update_ai_contracts()
+        require(over_plan_depth in renewal_promo.roster and over_plan_depth.contract_months > 0,
+                "AI released usable divisional depth while the company remained below its overall roster target")
+
+        player_retiree = copy.deepcopy(template)
+        player_retiree.name = "Player Contract Retirement Probe"
+        player_retiree.contract_months = 0
+        player_retiree.retirement_pending = True
+        player_retiree.champion = True
+        player_retiree.popularity = 100
+        player_retiree.morale = 100
+        app.roster = [player_retiree]
+        app.free_agents = []
+        app.belts, app.interim_belts, app.belt_history = app.blank_belts(), app.blank_belts(), app.blank_belt_history()
+        app.update_contracts()
+        require(player_retiree in app.free_agents and player_retiree not in app.roster and player_retiree.contract_months == 0, "Player expiry logic renewed a retirement-pending fighter")
+        require(not callback_errors, f"Retirement-card Tk callback error: {callback_errors[0][1] if callback_errors else ''}")
+    finally:
+        destroy_root(root)
+
+
 def exercise_repeated_world_loops():
     summaries = []
     for seed in (2201, 2202, 2203):
@@ -693,6 +960,114 @@ def exercise_repeated_world_loops():
     return summaries
 
 
+def exercise_sim_lab_population_tool(app):
+    before = len(app.free_agents)
+    created = app.create_sim_lab_free_agents(
+        12,
+        age=21,
+        ability=74,
+        gender="Female",
+        weight="Flyweight",
+    )
+    require(len(created) == 12 and len(app.free_agents) == before + 12,
+            "Sim Lab population tool did not add the requested number of free agents")
+    require(len({fighter.fighter_id for fighter in created}) == 12,
+            "Sim Lab population tool created duplicate fighter IDs")
+    require(len({fighter.name for fighter in created}) == 12,
+            "Sim Lab population tool created duplicate fighter names")
+    require(all(fighter.age == 21 and fighter.overall == 74 for fighter in created),
+            "Sim Lab population tool did not honor fixed age and ability")
+    require(all(fighter.gender == "Female" and fighter.weight == "Flyweight" for fighter in created),
+            "Sim Lab population tool did not honor fixed gender and division")
+    require(all(fighter.record == "0-0-0" and fighter.contract_months == 0
+                and fighter.contract_type == "Free Agent" and not fighter.exclusive for fighter in created),
+            "Sim Lab population tool created malformed free-agent careers")
+    # Invalid programmatic input must clamp at the legal minimum, and spectator
+    # worlds do not always carry a current_screen attribute.
+    app.sim_generate_count.set(1)
+    app.sim_generate_age.set("12")
+    app.sim_generate_ability.set("60")
+    app.sim_generate_gender.set("Male")
+    app.sim_generate_weight.set("Bantamweight")
+    had_screen = "current_screen" in app.__dict__
+    old_screen = app.__dict__.pop("current_screen", None)
+    before_invalid = len(app.free_agents)
+    app.generate_sim_lab_free_agents()
+    require(len(app.free_agents) == before_invalid + 1 and app.free_agents[-1].age == 16,
+            "Sim Lab accepted an under-16 generated fighter")
+    if had_screen:
+        app.current_screen = old_screen
+
+
+def exercise_free_agent_safety_floor(app):
+    active = [fighter for fighter in app.free_agents if not fighter.retired]
+    require(len(active) >= 160, "Test universe lacks enough free agents for the safety-floor regression")
+    app.month = max(2, app.month)
+    app.free_agents = active[:160]
+    ids_at_floor = {fighter.fighter_id for fighter in app.free_agents}
+    require(app.ensure_free_agent_depth(emergency=True) == 0,
+            "Free-agent safety floor activated at 160 instead of below 160")
+    require({fighter.fighter_id for fighter in app.free_agents} == ids_at_floor,
+            "Free-agent safety floor changed a healthy 160-fighter market")
+
+    app.free_agents = active[:159]
+    additions = app.ensure_free_agent_depth(emergency=True)
+    live = [fighter for fighter in app.free_agents if not fighter.retired]
+    require(additions == 41 and len(live) == 200,
+            "Free-agent safety floor did not restore a sub-160 market to 200")
+    require(len({fighter.fighter_id for fighter in live}) == 200,
+            "Free-agent safety floor introduced duplicate fighter IDs")
+    generated = [fighter for fighter in live if fighter.fighter_id not in {item.fighter_id for item in active[:159]}]
+    require(all(fighter.contract_months == 0 and not fighter.exclusive for fighter in generated),
+            "Free-agent safety floor created contracted emergency entrants")
+
+
+def exercise_fighter_tree_identity_safety(app):
+    """Duplicate display names and stale UI selections must not crash core tables."""
+    market_original = app.free_agents[0]
+    market_duplicate = app.create_generated_fighter()
+    market_duplicate.name = market_original.name
+    market_duplicate.fighter_id = "stability-duplicate-market-id"
+    app.free_agents.append(market_duplicate)
+    app.refresh_market()
+    duplicate_rows = [row_id for row_id, fighter in app.market_tree_fighters.items()
+                      if fighter.name == market_original.name]
+    require(len(duplicate_rows) >= 2 and len(duplicate_rows) == len(set(duplicate_rows)),
+            "Free Agents still uses a fighter's display name as the Treeview key")
+    market_duplicate.gender = market_original.gender
+    market_duplicate.weight = market_original.weight
+    _company_ranks, world_ranks = app.division_rank_maps()
+    original_key = app.fighter_identity_key(market_original)
+    duplicate_key = app.fighter_identity_key(market_duplicate)
+    require(original_key != duplicate_key and world_ranks.get(original_key) and world_ranks.get(duplicate_key),
+            "Worldwide rankings still collapse same-named fighters into one entry")
+    app.free_agents.remove(market_duplicate)
+
+    first, second = app.roster[:2]
+    second_original_name = second.name
+    second.name = first.name
+    try:
+        app.refresh_roster()
+        app.refresh_contracts()
+        app.refresh_available()
+        require(len(app.roster_tree_fighters) == len(app.roster_tree.get_children()),
+                "Roster Treeview identity mapping lost a duplicate-name fighter")
+        require(len(app.contracts_tree_fighters) == len(app.contracts_tree.get_children()),
+                "Contracts Treeview identity mapping lost a duplicate-name fighter")
+
+        selected = app.roster_tree.selection()[0]
+        removed = app.roster_tree_fighters[selected]
+        app.roster.remove(removed)
+        app.update_fighter_detail()
+        require(not app.roster_tree.selection(), "Stale roster selection was not cleared")
+        app.roster.append(removed)
+    finally:
+        second.name = second_original_name
+        app.refresh_roster()
+        app.refresh_contracts()
+        app.refresh_available()
+
+
 def main():
     silence_dialogs()
     root, app, callback_errors = new_app(2200)
@@ -702,9 +1077,13 @@ def main():
         exercise_media_story_reader(app, root)
         exercise_normal_and_retirement_events(app, root)
         exercise_academy_and_sport_edge_cases(app)
+        exercise_talent_ecosystem_balance(app)
         exercise_save_roundtrip(app)
         exercise_optimized_autosave_cycle(app)
         exercise_responsive_advance(app, root)
+        exercise_sim_lab_population_tool(app)
+        exercise_free_agent_safety_floor(app)
+        exercise_fighter_tree_identity_safety(app)
         require(not callback_errors, f"UI callback error: {callback_errors[0][1] if callback_errors else ''}")
     finally:
         destroy_root(root)
@@ -717,6 +1096,7 @@ def main():
         destroy_root(root)
 
     summaries = exercise_repeated_world_loops()
+    exercise_retirement_card_pipeline()
     print("STABILITY PLAYTEST PASSED")
     for seed, month, results, retired in summaries:
         print(f"Seed {seed}: reached Month {month}; recorded events {results}; retired fighters {retired}")

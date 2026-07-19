@@ -1,0 +1,142 @@
+MMA WARRIORS - FREE AGENT SNAPSHOT AUDIT
+
+Game 1 / savegame.json | 2026-01 W1 | internal month 1
+Free agents: 222 (222 market-available; 222 fight-ready) | Contracted MMA fighters: 4159
+Unavailable flags: 
+OVR mean/median: 63.4/62.0 | P10/P90: 46/83 | Maximum: 94 | Potential mean: 70.8
+Contracted OVR: mean 69.5 | maximum 94 | 80+ 809 | 90+ 42 | 95+ 0
+OVR bands: <50 39 | 50-59 54 | 60-69 50 | 70-74 28 | 75-79 23 | 80-84 6 | 85-89 13 | 90-94 9 | 95+ 0
+Age mean/median: 25.2/24.0 | Generated/real: 184/38 | Gender: Male 181, Female 41
+Age bands: U21 48 | 21-25 86 | 26-30 56 | 31-35 23 | 36-40 3 | 41+ 6
+Unsigned months mean/median: 0.0/0.0 | 12m+ 0 | 24m+ 0 | 60m+ 0
+Sources: No recorded origin 222
+Generated entry months: M0 184
+Originless entry months: M0 184
+Young quality: U24 70+ 20 | U26 80+ 4 | U30 85+ 6
+Top free agents:
+  Jon Jones | Male Heavyweight | OVR 94 POT 98 | age 31 | unsigned 0m | No recorded origin
+  Demetrious Johnson | Male Flyweight | OVR 93 POT 98 | age 30 | unsigned 0m | No recorded origin
+  Khabib Nurmagomedov | Male Lightweight | OVR 93 POT 98 | age 29 | unsigned 0m | No recorded origin
+  Georges St-Pierre | Male Welterweight | OVR 92 POT 98 | age 31 | unsigned 0m | No recorded origin
+  Fedor Emelianenko | Male Heavyweight | OVR 92 POT 98 | age 31 | unsigned 0m | No recorded origin
+  Amanda Nunes | Female Bantamweight | OVR 92 POT 98 | age 31 | unsigned 0m | No recorded origin
+  Anderson Silva | Male Middleweight | OVR 91 POT 97 | age 33 | unsigned 0m | No recorded origin
+  Daniel Cormier | Male Heavyweight | OVR 90 POT 96 | age 35 | unsigned 0m | No recorded origin
+  Jose Aldo | Male Featherweight | OVR 90 POT 96 | age 29 | unsigned 0m | No recorded origin
+  Mirko Cro Cop | Male Heavyweight | OVR 89 POT 95 | age 31 | unsigned 0m | No recorded origin
+  Lyoto Machida | Male Light Heavyweight | OVR 89 POT 95 | age 30 | unsigned 0m | No recorded origin
+  Joanna Jedrzejczyk | Female Flyweight | OVR 89 POT 95 | age 29 | unsigned 0m | No recorded origin
+  Demian Maia | Male Welterweight | OVR 88 POT 94 | age 32 | unsigned 0m | No recorded origin
+  Matt Hughes | Male Welterweight | OVR 88 POT 94 | age 31 | unsigned 0m | No recorded origin
+  Frankie Edgar | Male Bantamweight | OVR 88 POT 94 | age 30 | unsigned 0m | No recorded origin
+Free-agent divisions (count / mean / max):
+  Female Bantamweight: 6 / 72.2 / 92
+  Female Featherweight: 9 / 61.9 / 85
+  Female Flyweight: 5 / 63.4 / 89
+  Female Heavyweight: 4 / 53.8 / 69
+  Female Light Heavyweight: 3 / 61.0 / 74
+  Female Lightweight: 5 / 68.8 / 74
+  Female Middleweight: 3 / 70.0 / 81
+  Female Welterweight: 6 / 56.2 / 75
+  Male Bantamweight: 20 / 62.6 / 88
+  Male Featherweight: 20 / 61.6 / 90
+  Male Flyweight: 25 / 58.7 / 93
+  Male Heavyweight: 20 / 65.8 / 94
+  Male Light Heavyweight: 21 / 65.2 / 89
+  Male Lightweight: 22 / 63.5 / 93
+  Male Middleweight: 27 / 62.6 / 91
+  Male Welterweight: 26 / 67.8 / 92
+
+Game 1_1 / savegame.json | 2029-09 W4 | internal month 45
+Free agents: 1377 (1283 market-available; 1065 fight-ready) | Contracted MMA fighters: 3526
+Unavailable flags: recovery cooldown 310 | AI offer live 65 | injured 28 | retirement pending 1
+OVR mean/median: 61.9/62.0 | P10/P90: 51/72 | Maximum: 77 | Potential mean: 66.9
+Contracted OVR: mean 76.2 | maximum 96 | 80+ 1412 | 90+ 206 | 95+ 7
+OVR bands: <50 88 | 50-59 474 | 60-69 502 | 70-74 305 | 75-79 8 | 80-84 0 | 85-89 0 | 90-94 0 | 95+ 0
+Age mean/median: 26.6/26.0 | Generated/real: 1341/36 | Gender: Male 1370, Female 7
+Age bands: U21 13 | 21-25 598 | 26-30 502 | 31-35 238 | 36-40 26 | 41+ 0
+Unsigned months mean/median: 17.1/14.0 | 12m+ 767 | 24m+ 419 | 60m+ 0
+Sources: No recorded origin 1228 | Regional pathway 124 | Other recorded origin 25
+Generated entry months: M0 1287 | M1 28 | M31 2 | M2 2 | M45 2 | M9 1 | M13 1 | M14 1 | M21 1 | M7 1 | M23 1 | M29 1
+Originless entry months: M0 1145 | M1 27 | M31 2 | M45 2 | M9 1 | M13 1 | M14 1 | M21 1 | M23 1 | M29 1 | M30 1 | M32 1
+Young quality: U24 70+ 101 | U26 80+ 0 | U30 85+ 0
+Top free agents:
+  Marc McCarthy | Male Featherweight | OVR 77 POT 80 | age 22 | unsigned 23m | Other recorded origin
+  Takumi Ueno | Male Lightweight | OVR 76 POT 78 | age 22 | unsigned 34m | No recorded origin
+  Zebaztian Kadestam | Male Welterweight | OVR 75 POT 81 | age 37 | unsigned 0m | No recorded origin
+  Rhys Maddox | Male Bantamweight | OVR 75 POT 77 | age 22 | unsigned 38m | No recorded origin
+  Owen Bennett | Male Lightweight | OVR 75 POT 77 | age 21 | unsigned 2m | Regional pathway
+  Kacper Ionescu | Male Featherweight | OVR 75 POT 76 | age 23 | unsigned 35m | No recorded origin
+  Yuri Ferreira | Male Featherweight | OVR 75 POT 76 | age 21 | unsigned 12m | No recorded origin
+  Benoit McCarthy | Male Bantamweight | OVR 75 POT 76 | age 21 | unsigned 1m | Other recorded origin
+  Fabian Onyango | Male Welterweight | OVR 74 POT 85 | age 33 | unsigned 4m | No recorded origin
+  Yago Vieira | Male Featherweight | OVR 74 POT 85 | age 24 | unsigned 8m | Regional pathway
+  Petar Bauer | Male Bantamweight | OVR 74 POT 84 | age 27 | unsigned 8m | No recorded origin
+  Derek Coleman | Male Flyweight | OVR 74 POT 82 | age 21 | unsigned 0m | Regional pathway
+  Shamil Gaziev | Male Heavyweight | OVR 74 POT 81 | age 38 | unsigned 2m | No recorded origin
+  Oskar Cerny | Male Featherweight | OVR 74 POT 81 | age 36 | unsigned 4m | No recorded origin
+  Hunter King | Male Featherweight | OVR 74 POT 81 | age 33 | unsigned 10m | No recorded origin
+Free-agent divisions (count / mean / max):
+  Female Bantamweight: 2 / 61.5 / 63
+  Female Featherweight: 1 / 56.0 / 56
+  Female Flyweight: 1 / 60.0 / 60
+  Female Heavyweight: 1 / 39.0 / 39
+  Female Lightweight: 1 / 45.0 / 45
+  Female Welterweight: 1 / 59.0 / 59
+  Male Bantamweight: 246 / 63.1 / 75
+  Male Featherweight: 223 / 62.8 / 77
+  Male Flyweight: 160 / 61.8 / 74
+  Male Heavyweight: 141 / 60.4 / 74
+  Male Light Heavyweight: 129 / 60.2 / 74
+  Male Lightweight: 172 / 61.8 / 76
+  Male Middleweight: 145 / 60.6 / 74
+  Male Welterweight: 154 / 63.2 / 75
+
+Game 1_2 / savegame.json | 2031-05 W1 | internal month 65
+Free agents: 1429 (1368 market-available; 1104 fight-ready) | Contracted MMA fighters: 3633
+Unavailable flags: recovery cooldown 314 | AI offer live 29 | injured 19 | retirement pending 13
+OVR mean/median: 62.4/63.0 | P10/P90: 52/72 | Maximum: 81 | Potential mean: 67.3
+Contracted OVR: mean 76.8 | maximum 96 | 80+ 1501 | 90+ 226 | 95+ 14
+OVR bands: <50 78 | 50-59 465 | 60-69 541 | 70-74 333 | 75-79 11 | 80-84 1 | 85-89 0 | 90-94 0 | 95+ 0
+Age mean/median: 28.4/28.0 | Generated/real: 1391/38 | Gender: Male 1422, Female 7
+Age bands: U21 2 | 21-25 403 | 26-30 613 | 31-35 333 | 36-40 76 | 41+ 2
+Unsigned months mean/median: 24.3/20.0 | 12m+ 934 | 24m+ 644 | 60m+ 53
+Sources: No recorded origin 1173 | Regional pathway 219 | Other recorded origin 37
+Generated entry months: M0 1328 | M1 32 | M2 3 | M9 2 | M31 2 | M56 2 | M3 2 | M13 1 | M14 1 | M21 1 | M29 1 | M30 1
+Originless entry months: M0 1082 | M1 30 | M9 2 | M31 2 | M56 2 | M13 1 | M14 1 | M21 1 | M29 1 | M30 1 | M32 1 | M35 1
+Young quality: U24 70+ 41 | U26 80+ 0 | U30 85+ 0
+Top free agents:
+  John Lineker | Male Bantamweight | OVR 81 POT 87 | age 41 | unsigned 0m | No recorded origin
+  Sebastian Rajewski | Male Lightweight | OVR 76 POT 81 | age 39 | unsigned 6m | No recorded origin
+  Colton Young | Male Lightweight | OVR 76 POT 78 | age 23 | unsigned 6m | Regional pathway
+  Kai Kamaka III | Male Featherweight | OVR 75 POT 81 | age 36 | unsigned 11m | No recorded origin
+  Blake Harris | Male Lightweight | OVR 75 POT 80 | age 26 | unsigned 26m | Regional pathway
+  Nikola Kovalenko | Male Middleweight | OVR 75 POT 78 | age 36 | unsigned 4m | No recorded origin
+  Jett Whelan | Male Lightweight | OVR 75 POT 78 | age 24 | unsigned 12m | Regional pathway
+  Rhys Maddox | Male Bantamweight | OVR 75 POT 77 | age 24 | unsigned 58m | No recorded origin
+  Grayson Allen | Male Bantamweight | OVR 75 POT 77 | age 24 | unsigned 3m | Regional pathway
+  Owen Bennett | Male Lightweight | OVR 75 POT 77 | age 23 | unsigned 22m | Regional pathway
+  Binh Bui | Male Bantamweight | OVR 75 POT 77 | age 23 | unsigned 16m | Regional pathway
+  Rafael Youssef | Male Featherweight | OVR 75 POT 76 | age 31 | unsigned 6m | No recorded origin
+  Preecha Ramos | Male Lightweight | OVR 74 POT 86 | age 24 | unsigned 1m | Regional pathway
+  Fabian Onyango | Male Welterweight | OVR 74 POT 85 | age 35 | unsigned 0m | No recorded origin
+  Jordan Johnson | Male Lightweight | OVR 74 POT 85 | age 32 | unsigned 16m | No recorded origin
+Free-agent divisions (count / mean / max):
+  Female Bantamweight: 1 / 48.0 / 48
+  Female Heavyweight: 1 / 49.0 / 49
+  Female Light Heavyweight: 1 / 58.0 / 58
+  Female Lightweight: 2 / 55.0 / 57
+  Female Middleweight: 1 / 65.0 / 65
+  Female Welterweight: 1 / 48.0 / 48
+  Male Bantamweight: 260 / 63.6 / 81
+  Male Featherweight: 231 / 63.5 / 75
+  Male Flyweight: 177 / 62.9 / 74
+  Male Heavyweight: 133 / 59.9 / 74
+  Male Light Heavyweight: 121 / 60.4 / 74
+  Male Lightweight: 211 / 63.8 / 76
+  Male Middleweight: 140 / 59.7 / 75
+  Male Welterweight: 149 / 62.9 / 74
+
+SNAPSHOT FLOW
+2026-01 W1 -> 2029-09 W4: retained 94 | entered 1283 (mean 62.3, 80+ 0) | left 128 (mean 69.8, 80+ 28) | retained OVR change +1.7
+2029-09 W4 -> 2031-05 W1: retained 1048 | entered 381 (mean 66.1, 80+ 1) | left 329 (mean 65.4, 80+ 0) | retained OVR change +0.3

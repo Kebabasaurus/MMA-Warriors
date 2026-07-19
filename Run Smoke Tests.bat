@@ -28,8 +28,11 @@ if errorlevel 1 goto failed
 %PY% "%APP_DIR%stability_test.py"
 if errorlevel 1 goto failed
 
+%PY% "%APP_DIR%media_system_test.py"
+if errorlevel 1 goto failed
+
 echo.
-echo Smoke and stability playtests passed.
+echo Smoke, stability, and media-system playtests passed.
 goto done
 
 :failed

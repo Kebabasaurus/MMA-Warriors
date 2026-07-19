@@ -30,3 +30,9 @@ Databases/*.broken_*.json
 # OS noise
 Thumbs.db
 Desktop.ini
+
+# Extra PyInstaller build/output experiment folders
+build_*/
+output/
+output_*/
+tmp/

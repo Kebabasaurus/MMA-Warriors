@@ -1,5 +1,37 @@
 MMA WARRIORS - NEXT TO DO
-Updated: 2026-07-12 (Companies + O'Malley/Merab audit completed)
+Updated: 2026-07-19 (weekly experience, development explanations, and fight-night presentation completed)
+
+RECENTLY COMPLETED
+
+   - Weekly Command Centre now exposes next-show readiness, unresolved card slots,
+     contracts, division health, cash runway, medical load, scouting discoveries,
+     and current-week attributed changes with direct navigation.
+   - MMA fighter profiles now include a calculation-backed Development tab showing
+     every live growth input plus compact history for actual OVR changes.
+   - Fight Night now has a current-moment panel, readable condition/round telemetry,
+     bounded judging uncertainty, paced commentary, and a richer post-event report.
+   - Serious-injury choices are inline Inbox decisions instead of native Windows
+     prompts. Unscouted free agents can be negotiated with while ratings stay hidden.
+
+   - Create Promotion now supports 8/10/12-fighter division targets and a budgeted
+     manual roster draft with Balanced, Star Led, and Prospect Heavy strategies.
+   - Automatic custom-roster allocation reserves every selected division before
+     upgrading stars, preventing three-person and last-division depth failures.
+   - Matchmaking availability is calculated for the selected event date. Exact return
+     dates appear in the table and recovery conflicts use an inline game notice.
+   - Save slots can be created/moved/viewed in Main or user folders such as Tests.
+     Grouped slots live under Saves\Folders and keep their slot-local recovery data.
+   - Free agents in disabled player divisions now say DIVISION CLOSED and explain how
+     to reopen the division.
+
+NEXT VALIDATION TARGETS
+
+   - Exercise grouped-save backup, restore, delete, crash recovery, decade snapshots,
+     and quick save in both source and packaged builds.
+   - Continue replacing routine Tk message boxes with themed inline decisions; retain
+     modal confirmation for destructive actions.
+   - Audit manually drafted custom promotions after 12-24 simulated months: division
+     depth, payroll runway, card cadence, champion quality, and AI behavior after handoff.
 
 UI SWEEP
 

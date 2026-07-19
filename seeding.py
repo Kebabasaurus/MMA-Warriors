@@ -24,19 +24,34 @@ class SeedMixin:
     def default_player_media(self):
         return [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}]
 
+    def default_media_rights_packages(self):
+        return [
+            {"id": "local_fight_stream", "name": "Local Fight Stream", "type": "Regional Streaming", "home_region": "Worldwide", "markets": list(REGIONS), "reach": 16, "prestige": 24, "budget": 24, "selectivity": 18, "min_popularity": 8, "min_card_quality": 36, "min_production": 20, "base_fee": 9000, "editorial_style": "Local access", "audience": "Regional"},
+            {"id": "regional_combat_network", "name": "Regional Combat Network", "type": "Syndicated TV", "home_region": "USA", "markets": ["USA", "Canada", "Mexico"], "reach": 30, "prestige": 38, "budget": 38, "selectivity": 32, "min_popularity": 22, "min_card_quality": 44, "min_production": 30, "base_fee": 24000, "editorial_style": "Regional rivalries", "audience": "Core fight fans"},
+            {"id": "combat_cable", "name": "Combat Cable", "type": "Cable", "home_region": "USA", "markets": ["USA", "Canada", "UK"], "reach": 44, "prestige": 52, "budget": 55, "selectivity": 48, "min_popularity": 36, "min_card_quality": 52, "min_production": 42, "base_fee": 58000, "editorial_style": "Sporting analysis", "audience": "Hardcore"},
+            {"id": "euro_fight_tv", "name": "Euro Fight TV", "type": "Television / Streaming", "home_region": "Europe", "markets": ["Europe", "UK"], "reach": 48, "prestige": 57, "budget": 58, "selectivity": 50, "min_popularity": 38, "min_card_quality": 52, "min_production": 44, "base_fee": 72000, "editorial_style": "European stars", "audience": "International"},
+            {"id": "pacific_combat_plus", "name": "Pacific Combat Plus", "type": "Streaming", "home_region": "Japan", "markets": ["Japan", "Asia", "Australia"], "reach": 52, "prestige": 61, "budget": 64, "selectivity": 54, "min_popularity": 40, "min_card_quality": 54, "min_production": 46, "base_fee": 86000, "editorial_style": "International spectacle", "audience": "Crossover"},
+            {"id": "world_fight_pass", "name": "World Fight Pass", "type": "Global Streaming", "home_region": "Worldwide", "markets": list(REGIONS), "reach": 66, "prestige": 70, "budget": 72, "selectivity": 62, "min_popularity": 52, "min_card_quality": 60, "min_production": 54, "base_fee": 145000, "editorial_style": "Deep fight library", "audience": "Global fight fans"},
+            {"id": "prime_sports_network", "name": "Prime Sports Network", "type": "Premium Television", "home_region": "USA", "markets": list(REGIONS), "reach": 80, "prestige": 84, "budget": 88, "selectivity": 78, "min_popularity": 67, "min_card_quality": 70, "min_production": 68, "base_fee": 330000, "editorial_style": "Champions and stars", "audience": "Mainstream"},
+            {"id": "global_sports_plus", "name": "Global Sports Plus", "type": "Global Premium Streaming", "home_region": "Worldwide", "markets": list(REGIONS), "reach": 92, "prestige": 94, "budget": 96, "selectivity": 91, "min_popularity": 82, "min_card_quality": 78, "min_production": 80, "base_fee": 760000, "editorial_style": "Global super fights", "audience": "Mass market"},
+        ]
+
     def default_promotion_specs(self, fighter_db=None):
         data = (fighter_db or self.build_seed_fighter_database()).get("promotions", self.expanded_real_fighter_data())
         return [
-            {"name": "Ultimate Fighting Championship", "region": "USA", "size": 96, "cash": 30_000_000, "reputation": "Global", "roster_key": "UFC", "target_roster_size": 170, "personality": "Super Shows"},
-            {"name": "Professional Fighters League", "region": "USA", "size": 76, "cash": 8_500_000, "reputation": "Global", "roster_key": "PFL", "target_roster_size": 110, "personality": "Seasonal"},
-            {"name": "ONE Championship", "region": "Asia", "size": 78, "cash": 9_000_000, "reputation": "Global", "roster_key": "ONE Championship", "target_roster_size": 120, "personality": "Big Names"},
-            {"name": "RIZIN Fighting Federation", "region": "Japan", "size": 72, "cash": 6_000_000, "reputation": "International", "roster_key": "RIZIN Fighting Federation", "target_roster_size": 105, "personality": "Super Shows"},
-            {"name": "KSW", "region": "Europe", "size": 70, "cash": 5_000_000, "reputation": "International", "roster_key": "KSW", "target_roster_size": 105, "personality": "Star Builder"},
-            {"name": "Cage Warriors", "region": "UK", "size": 66, "cash": 2_500_000, "reputation": "International", "roster_key": "Cage Warriors", "target_roster_size": 115, "personality": "Prospect Builder"},
-            {"name": "Legacy Fighting Alliance", "region": "USA", "size": 62, "cash": 1_800_000, "reputation": "National", "roster_key": "Legacy Fighting Alliance", "target_roster_size": 100, "personality": "Prospect Builder"},
-            {"name": "Oktagon MMA", "region": "Europe", "size": 70, "cash": 4_800_000, "reputation": "International", "roster_key": "Oktagon MMA", "target_roster_size": 105, "personality": "Star Builder"},
-            {"name": "BRAVE Combat Federation", "region": "Asia", "size": 64, "cash": 3_100_000, "reputation": "International", "roster_key": "BRAVE Combat Federation", "target_roster_size": 100, "personality": "Prospect Builder"},
-            {"name": "Absolute Championship Akhmat", "region": "Europe", "size": 66, "cash": 3_600_000, "reputation": "International", "roster_key": "Absolute Championship Akhmat", "target_roster_size": 100, "personality": "Seasonal"},
+            {"name": "Ultimate Fighting Championship", "region": "USA", "size": 96, "cash": 30_000_000, "reputation": "Global", "roster_key": "UFC", "target_roster_size": 400, "personality": "Super Shows"},
+            {"name": "Professional Fighters League", "region": "USA", "size": 76, "cash": 8_500_000, "reputation": "Global", "roster_key": "PFL", "target_roster_size": 320, "personality": "Seasonal"},
+            {"name": "ONE Championship", "region": "Asia", "size": 78, "cash": 9_000_000, "reputation": "Global", "roster_key": "ONE Championship", "target_roster_size": 320, "personality": "Big Names"},
+            {"name": "RIZIN Fighting Federation", "region": "Japan", "size": 72, "cash": 6_000_000, "reputation": "International", "roster_key": "RIZIN Fighting Federation", "target_roster_size": 310, "personality": "Super Shows"},
+            {"name": "KSW", "region": "Europe", "size": 70, "cash": 5_000_000, "reputation": "International", "roster_key": "KSW", "target_roster_size": 300, "personality": "Star Builder"},
+            {"name": "Cage Warriors", "region": "UK", "size": 66, "cash": 2_500_000, "reputation": "International", "roster_key": "Cage Warriors", "target_roster_size": 300, "personality": "Prospect Builder"},
+            {"name": "Legacy Fighting Alliance", "region": "USA", "size": 62, "cash": 1_800_000, "reputation": "National", "roster_key": "Legacy Fighting Alliance", "target_roster_size": 290, "personality": "Prospect Builder"},
+            {"name": "Oktagon MMA", "region": "Europe", "size": 70, "cash": 4_800_000, "reputation": "International", "roster_key": "Oktagon MMA", "target_roster_size": 300, "personality": "Star Builder"},
+            {"name": "BRAVE Combat Federation", "region": "Middle East", "size": 64, "cash": 3_100_000, "reputation": "International", "roster_key": "BRAVE Combat Federation", "target_roster_size": 290, "personality": "Prospect Builder"},
+            {"name": "Absolute Championship Akhmat", "region": "Russia", "size": 66, "cash": 3_600_000, "reputation": "International", "roster_key": "Absolute Championship Akhmat", "target_roster_size": 290, "personality": "Seasonal"},
+            {"name": "PRIDE Fighting Championships", "region": "Japan", "size": 78, "cash": 11_000_000, "reputation": "Global", "roster_key": "PRIDE Fighting Championships", "target_roster_size": 320, "personality": "Super Shows"},
+            {"name": "Strikeforce", "region": "USA", "size": 74, "cash": 7_500_000, "reputation": "International", "roster_key": "Strikeforce", "target_roster_size": 310, "personality": "Star Builder"},
+            {"name": "World Extreme Cagefighting", "region": "USA", "size": 68, "cash": 4_600_000, "reputation": "International", "roster_key": "World Extreme Cagefighting", "target_roster_size": 300, "personality": "Prospect Builder"},
         ]
 
     def build_universe_database_pack(self, name="Default Universe"):
@@ -51,7 +66,7 @@ class SeedMixin:
                 "fighters": fighter_db,
                 "combat_sports": combat_db,
                 "companies": {
-                    "player_company": {"name": PLAYER_PROMOTION_NAME, "region": "USA", "reputation": "Regional Player Company", "popularity": 38, "stability": 52, "cash": 275000},
+                    "player_company": {"name": PLAYER_PROMOTION_NAME, "region": "UK", "reputation": "Regional Player Company", "popularity": 38, "stability": 52, "cash": 275000},
                     "promotions": self.default_promotion_specs(fighter_db),
                     "regional_feeders": [
                         {"name": "Japan Fight Circuit", "region": "Japan"},
@@ -63,11 +78,7 @@ class SeedMixin:
                 },
                 "media": {
                     "player_broadcasters": self.default_player_media(),
-                    "rights_packages": [
-                        {"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"},
-                        {"name": "Cable Sports", "reach": 42, "fee": 32000, "type": "Cable"},
-                        {"name": "Global Fight Pass", "reach": 70, "fee": 85000, "type": "Streaming"},
-                    ],
+                    "rights_packages": self.default_media_rights_packages(),
                 },
                 "regions": self.seed_regions(),
             },
@@ -97,9 +108,9 @@ class SeedMixin:
             data = json.loads(Path(path).read_text(encoding="utf-8"))
             if data.get("type") != "universe_database" or "sections" not in data:
                 raise ValueError("not a universe database pack")
+            changed = False
             combat_section = data.get("sections", {}).get("combat_sports")
             if isinstance(combat_section, dict):
-                changed = False
                 if "prime_divisions" not in combat_section:
                     combat_section["prime_divisions"] = COMBAT_SPORT_REAL_DIVISIONS
                     changed = True
@@ -109,15 +120,41 @@ class SeedMixin:
                     if profiles != combat_section.get("profiles"):
                         combat_section["profiles"] = profiles
                         changed = True
-                schema = max(3, int(combat_section.get("schema", 1)))
+                schema = max(4, int(combat_section.get("schema", 1)))
                 if combat_section.get("schema") != schema:
                     combat_section["schema"] = schema
                     changed = True
                 if data.get("schema", 1) < 3:
                     data["schema"] = 3
                     changed = True
-                if changed:
-                    self.write_seed_database_file(Path(path), data)
+            # Enrich only the shipped Default Universe. Custom universes keep
+            # complete control over which outlets exist; the default database
+            # gains the expanded editable market without overwriting edits.
+            if Path(path).name == self.universe_database_path("Default Universe").name:
+                media_section = data.get("sections", {}).setdefault("media", {})
+                packages = media_section.setdefault("rights_packages", [])
+                fresh_packages = self.default_media_rights_packages()
+                known = {str(row.get("id", row.get("name", ""))).lower() for row in packages if isinstance(row, dict)}
+                for package in fresh_packages:
+                    if package["id"].lower() not in known:
+                        packages.append(package)
+                        known.add(package["id"].lower())
+                        changed = True
+                if self.merge_default_fighter_database(data["sections"].setdefault("fighters", {})):
+                    changed = True
+                if self.merge_default_company_database(data["sections"].setdefault("companies", {})):
+                    changed = True
+                default_regions = data["sections"].setdefault("regions", {})
+                missing_regions = [region for region in REGIONS if region not in default_regions]
+                if missing_regions:
+                    fresh_regions = self.seed_regions()
+                    for region in missing_regions:
+                        default_regions[region] = fresh_regions[region]
+                        changed = True
+                if self.merge_default_combat_sport_database(combat_section):
+                    changed = True
+            if changed:
+                self.write_seed_database_file(Path(path), data)
             return data
         except Exception as exc:
             backup = Path(path).with_suffix(f".broken_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
@@ -131,6 +168,161 @@ class SeedMixin:
             self.write_seed_database_file(default_path, default)
             self.active_universe_marker().write_text(default_path.name, encoding="utf-8")
             return default
+
+    def merge_default_fighter_database(self, fighters):
+        """Keep the shipped real-life pool additive as the default pack evolves."""
+        shipped = self.build_seed_fighter_database()
+        changed = False
+        promotions = fighters.setdefault("promotions", {})
+        for company, rows in shipped.get("promotions", {}).items():
+            current = promotions.setdefault(company, [])
+            known = {row[0] for row in current if isinstance(row, (list, tuple)) and row}
+            for row in rows:
+                if row[0] not in known:
+                    current.append(row)
+                    known.add(row[0])
+                    changed = True
+        # This is a specific data correction for the shipped universe, not a
+        # wholesale replacement of an editor-owned roster row.
+        for row in promotions.get("UFC", []):
+            if not isinstance(row, list) or len(row) <= 5 or row[0] != "Conor McGregor":
+                continue
+            # The opening universe represents prime lightweight Conor, not his
+            # later-career rating. Keep this explicit in the editable default
+            # database as well as in the curated profile below.
+            if row[4] != 92:
+                row[4] = 92
+                changed = True
+            if row[5] != 27:
+                row[5] = 27
+                changed = True
+        company_names = {row[0] for rows in promotions.values() for row in rows if isinstance(row, (list, tuple)) and row}
+        for key in ("player_roster", "free_agents"):
+            current = fighters.setdefault(key, [])
+            known = {row[0] for row in current if isinstance(row, (list, tuple)) and row}
+            for row in shipped.get(key, []):
+                if row[0] not in known and row[0] not in company_names:
+                    current.append(row)
+                    known.add(row[0])
+                    changed = True
+        # A prime legend assigned to a company should not also be seeded as a
+        # free agent in the same new world.
+        free_agents = fighters.get("free_agents", [])
+        filtered_agents = [row for row in free_agents if not isinstance(row, (list, tuple)) or not row or row[0] not in company_names]
+        if len(filtered_agents) != len(free_agents):
+            fighters["free_agents"] = filtered_agents
+            changed = True
+        fighters["real_roster_depth_version"] = 1
+        return changed
+
+    def merge_default_company_database(self, companies):
+        """Add newly shipped promotion definitions without replacing edited defaults."""
+        changed = False
+        current = companies.setdefault("promotions", [])
+        known = {row.get("name") for row in current if isinstance(row, dict)}
+        shipped_specs = self.default_promotion_specs()
+        shipped_by_name = {spec["name"]: spec for spec in shipped_specs}
+        for spec in shipped_specs:
+            if spec["name"] not in known:
+                current.append(spec)
+                known.add(spec["name"])
+                changed = True
+        # The shipped Default Universe is additive, but roster capacity is part
+        # of its intended simulation baseline. Raise stale targets once without
+        # lowering any editor-selected value from a custom universe.
+        if int(companies.get("roster_target_version", 0) or 0) < 2:
+            for spec in current:
+                if not isinstance(spec, dict):
+                    continue
+                shipped = shipped_by_name.get(spec.get("name"))
+                if not shipped:
+                    continue
+                old_target = int(spec.get("target_roster_size", 0) or 0)
+                new_target = int(shipped.get("target_roster_size", old_target) or old_target)
+                if old_target < new_target:
+                    spec["target_roster_size"] = new_target
+                    changed = True
+            companies["roster_target_version"] = 2
+            changed = True
+        if int(companies.get("geography_version", 0) or 0) < 2:
+            expected_regions = {spec["name"]: spec["region"] for spec in shipped_specs}
+            expected_regions.update({name: region for name, region in self.regional_feeder_specs()})
+            for spec in current:
+                if isinstance(spec, dict) and spec.get("name") in expected_regions:
+                    region = expected_regions[spec["name"]]
+                    if spec.get("region") != region:
+                        spec["region"] = region
+                        changed = True
+            player = companies.setdefault("player_company", {})
+            if player.get("name") == PLAYER_PROMOTION_NAME and player.get("region") != "UK":
+                player["region"] = "UK"
+                changed = True
+            feeders = companies.setdefault("regional_feeders", [])
+            feeder_by_name = {row.get("name"): row for row in feeders if isinstance(row, dict)}
+            for name, region in self.regional_feeder_specs():
+                if name not in feeder_by_name:
+                    feeders.append({"name": name, "region": region})
+                    changed = True
+                elif feeder_by_name[name].get("region") != region:
+                    feeder_by_name[name]["region"] = region
+                    changed = True
+            companies["geography_version"] = 2
+            changed = True
+        return changed
+
+    def merge_default_combat_sport_database(self, combat_section):
+        """Add shipped combat-sport depth without replacing editor-owned rows.
+
+        The Default Universe is deliberately additive: a player can edit an
+        existing profile, but a later update may still contribute new real
+        athletes to a thin circuit. Per-sport de-duplication keeps a stale
+        editable database from producing cloned fighters.
+        """
+        if not isinstance(combat_section, dict):
+            return False
+        changed = False
+        shipped = self.builtin_combat_sport_real_roster_data()
+        rosters = combat_section.setdefault("rosters", {})
+        for sport, names in shipped.items():
+            current = rosters.setdefault(sport, [])
+            if not isinstance(current, list):
+                current = []
+                rosters[sport] = current
+                changed = True
+            clean = []
+            seen = set()
+            for name in current:
+                normalized = str(name).strip()
+                if normalized and normalized not in seen:
+                    clean.append(normalized)
+                    seen.add(normalized)
+            if clean != current:
+                rosters[sport] = current = clean
+                changed = True
+            for name in names:
+                if name not in seen:
+                    current.append(name)
+                    seen.add(name)
+                    changed = True
+        divisions = combat_section.setdefault("prime_divisions", {})
+        for sport, mapping in COMBAT_SPORT_REAL_DIVISIONS.items():
+            target = divisions.setdefault(sport, {})
+            if not isinstance(target, dict):
+                target = {}
+                divisions[sport] = target
+                changed = True
+            for name, division in mapping.items():
+                if name not in target:
+                    target[name] = division
+                    changed = True
+        profiles = self.normalized_combat_sport_profiles(rosters, combat_section.get("profiles", {}))
+        if profiles != combat_section.get("profiles", {}):
+            combat_section["profiles"] = profiles
+            changed = True
+        if int(combat_section.get("schema", 1) or 1) < 4:
+            combat_section["schema"] = 4
+            changed = True
+        return changed
 
     def universe_section(self, section, default=None):
         pack = self.load_universe_database_pack()
@@ -225,10 +417,13 @@ class SeedMixin:
             rosters = data.get("rosters", data)
             if not isinstance(rosters, dict) or "Boxing" not in rosters:
                 raise ValueError("combat sport database is missing rosters")
+            if self.merge_default_combat_sport_database(data):
+                rosters = data["rosters"]
+                self.write_seed_database_file(path, data)
             self.combat_sport_seed_divisions = data.get("prime_divisions", {})
             profiles = self.normalized_combat_sport_profiles(rosters, data.get("profiles", {}))
-            if not self.combat_sport_seed_divisions or profiles != data.get("profiles") or data.get("schema", 1) < 3:
-                data = {"schema": 3, "notes": self.build_combat_sport_database()["notes"],
+            if not self.combat_sport_seed_divisions or profiles != data.get("profiles") or data.get("schema", 1) < 4:
+                data = {"schema": 4, "notes": self.build_combat_sport_database()["notes"],
                         "rosters": rosters, "prime_divisions": self.combat_sport_seed_divisions or COMBAT_SPORT_REAL_DIVISIONS,
                         "profiles": profiles}
                 self.write_seed_database_file(path, data)
@@ -432,8 +627,17 @@ class SeedMixin:
         fighter.style = style if style in STYLES else "Well-Rounded"
         fighter.camp = org
         self.assign_regional_identity(fighter, region, birth_region=region, force=True)
+        self.apply_real_fighter_birthplace(fighter, region)
         fighter.detailed_skills = None
         self.apply_real_fighter_profile(fighter, skill)
+        if fighter.name == "Conor McGregor":
+            fighter.prime_rating_profile_version = 1
+        prime_age = self.historic_prime_age_overrides().get(fighter.name)
+        if prime_age is not None:
+            fighter.age = prime_age
+            fighter.prime_start = max(24, prime_age - 3)
+            fighter.prime_end = max(fighter.prime_start + 5, prime_age + 6)
+            fighter.prime_legend_age_override_version = 1
         if fighter.name == "Matthew Green":
             fighter.height = "5'10"
             fighter.stance = "Southpaw"
@@ -512,6 +716,10 @@ class SeedMixin:
             "Dakota Ditcheva", "Taila Santos", "Liz Carmouche", "Kana Watanabe",
             "Aspen Ladd", "Julia Budd", "Michelle Montague", "Denise Kielholtz",
             "Mandy Bohm", "Kennedy Freeman", "Awa Sow",
+            "Meng Bo", "Jihin Radzuan", "Alyona Rassohyna", "Chihiro Sawada",
+            "Miyuu Yamamoto", "Si Woo Park", "Sena Kubota", "Ayaka Watanabe",
+            "Wiktoria Czyzewska", "Adrianna Kreft", "Chelsea Chandler", "Katharina Lehner",
+            "Sam Hughes", "Tereza Bleda", "Lucie Pudilova", "Sarah Kaufman",
             "Paige VanZant", "Miesha Tate", "Cat Zingano", "Julia Avila",
             "Pearl Gonzalez", "Vanessa Demopoulos", "Denise Gomes", "Rin Nakai",
             "Seo Hee Ham", "Ayaka Hamasaki", "Amanda Lemos", "Fatima Kline",
@@ -527,7 +735,7 @@ class SeedMixin:
             "Seika Izawa", "Kanna Asakura", "Karolina Owczarz", "Ewelina Wozniak",
             "Natalia Baczynska", "Alyse Anderson", "Shinju Nozawa-Auclair",
             "Vanessa Demopoulos LFA", "Mayra Cantuaria",
-            "Joanna Jedrzejczyk", "Gina Carano", "Lucia Szabova",
+            "Joanna Jedrzejczyk", "Gina Carano", "Lucia Szabova", "Sophie Renshaw", "Erin Calvert", "Mia Kellett", "Hannah Wren",
         }
         return "Female" if name in female_names else "Male"
 
@@ -574,18 +782,61 @@ class SeedMixin:
 
     def weighted_birth_region(self, market_region):
         """Mostly local talent, with a small but visible migration pipeline."""
-        market_region = market_region if market_region in REGIONS else random.choice(REGIONS)
+        market_region = market_region if market_region in REGIONS else random.choice(REGION_GENERATION_POOL)
         links = [region for region in REGIONAL_MIGRATION_LINKS.get(market_region, []) if region in REGIONS and region != market_region]
         outsiders = [region for region in REGIONS if region not in links and region != market_region]
         choices = [market_region] + links + outsiders
         weights = [76] + [max(3, 18 / max(1, len(links)))] * len(links) + [max(0.4, 6 / max(1, len(outsiders)))] * len(outsiders)
         return random.choices(choices, weights=weights, k=1)[0]
 
+    def generated_birth_identity(self, birth_region):
+        profiles = REGION_IDENTITY_PROFILES.get(birth_region, [])
+        if not profiles:
+            country = REGION_COUNTRIES.get(birth_region, birth_region)
+            return country, self.infer_nationality("", birth_region), REGION_CITIES.get(birth_region, [birth_region])
+        country, nationality, cities = random.choice(profiles)
+        return country, nationality, cities
+
+    def real_fighter_birthplace_data(self):
+        if hasattr(self, "_real_fighter_birthplace_cache"):
+            return self._real_fighter_birthplace_cache
+        path = ASSET_DIR / "real_fighter_birthplaces.json"
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            fighters = payload.get("fighters", {}) if isinstance(payload, dict) else {}
+            self._real_fighter_birthplace_cache = fighters if isinstance(fighters, dict) else {}
+        except (OSError, ValueError, TypeError):
+            self._real_fighter_birthplace_cache = {}
+        return self._real_fighter_birthplace_cache
+
+    def apply_real_fighter_birthplace(self, fighter, fallback_region):
+        identity = self.real_fighter_birthplace_data().get(fighter.name)
+        if not identity:
+            # Missing is preferable to assigning a real person a random city.
+            fighter.hometown = ""
+            return fighter
+        city = str(identity.get("city", "")).strip()
+        birth_country = str(identity.get("birth_country", "") or identity.get("citizenship", "")).strip()
+        citizenship = str(identity.get("citizenship", "") or birth_country).strip()
+        if fallback_region not in REGIONS:
+            fallback_region = fighter.birth_region if fighter.birth_region in REGIONS else fighter.region if fighter.region in REGIONS else "USA"
+        birth_region = COUNTRY_TO_REGION.get(birth_country, fallback_region)
+        fighter.hometown = city
+        fighter.birth_country = birth_country or REGION_COUNTRIES.get(birth_region, birth_region)
+        fighter.birth_region = birth_region
+        fighter.nationality = COUNTRY_NATIONALITIES.get(citizenship, citizenship or self.infer_nationality(fighter.name, birth_region))
+        connections = list(getattr(fighter, "cultural_connections", []) or [])
+        fighter.cultural_connections = list(dict.fromkeys([birth_region] + connections))
+        popularity = getattr(fighter, "regional_popularity", {}) or {}
+        popularity[birth_region] = max(popularity.get(birth_region, 0), min(78, 18 + fighter.popularity // 3))
+        fighter.regional_popularity = popularity
+        return fighter
+
     def assign_regional_identity(self, fighter, market_region=None, birth_region=None, generated=False, force=False):
         """Give a fighter a persistent origin, migration story, and market appeal."""
         if getattr(fighter, "birth_region", "") and not force:
             return fighter
-        market_region = market_region if market_region in REGIONS else (fighter.region if fighter.region in REGIONS else random.choice(REGIONS))
+        market_region = market_region if market_region in REGIONS else (fighter.region if fighter.region in REGIONS else random.choice(REGION_GENERATION_POOL))
         birth_region = birth_region if birth_region in REGIONS else (self.weighted_birth_region(market_region) if generated else market_region)
         residence = market_region if generated or market_region != birth_region else birth_region
         training_choices = [residence, birth_region] + [region for region in REGIONAL_MIGRATION_LINKS.get(residence, []) if region in REGIONS]
@@ -601,9 +852,15 @@ class SeedMixin:
         popularity[training_region] = max(popularity[training_region], min(55, random.randint(8, 22) + fighter.popularity // 5))
         for connection in connections[3:]:
             popularity[connection] = max(popularity[connection], random.randint(9, 24))
-        fighter.birth_country = REGION_COUNTRIES.get(birth_region, birth_region)
+        if generated:
+            birth_country, nationality, hometowns = self.generated_birth_identity(birth_region)
+        else:
+            birth_country = REGION_COUNTRIES.get(birth_region, birth_region)
+            nationality = self.infer_nationality(fighter.name, birth_region)
+            hometowns = REGION_CITIES.get(birth_region, [birth_region])
+        fighter.birth_country = birth_country
         fighter.birth_region = birth_region
-        fighter.hometown = random.choice(REGION_CITIES.get(birth_region, [birth_region]))
+        fighter.hometown = random.choice(hometowns)
         fighter.residence = residence
         fighter.training_location = training_region
         fighter.fighting_base = residence
@@ -612,7 +869,7 @@ class SeedMixin:
         fighter.home_event_history = getattr(fighter, "home_event_history", None) or []
         fighter.region = residence  # legacy shorthand: current fighting base
         if generated:
-            fighter.nationality = self.infer_nationality(fighter.name, birth_region)
+            fighter.nationality = nationality
         return fighter
 
     def fighter_event_connection(self, fighter, region, city=""):
@@ -658,7 +915,7 @@ class SeedMixin:
             "Arman Tsarukyan": {"rating": 90, "style": "Wrestler", "trait": "Gym Rat", "behaviour": "Dynamic Attacker", "skills": {"takedowns": 9, "scrambles": 8, "transitions": 7, "conditioning": 6}},
             "Charles Oliveira": {"rating": 89, "style": "BJJ", "trait": "Submission Ace", "behaviour": "Dynamic Attacker", "skills": {"submission_attack": 10, "back_control": 10, "knees": 6, "creative_punches": 5}},
             "Max Holloway": {"rating": 89, "style": "Boxer", "trait": "Cardio Machine", "behaviour": "Volume", "skills": {"hand_speed": 8, "punch_technique": 8, "conditioning": 10, "chin_strength": 7}},
-            "Conor McGregor": {"rating": 82, "style": "Boxer", "trait": "Showman", "behaviour": "Counter", "skills": {"punch_power": 8, "punch_technique": 7, "hand_speed": 6, "confidence": 7}},
+            "Conor McGregor": {"rating": 92, "style": "Boxer", "trait": "Showman", "behaviour": "Counter", "skills": {"punch_power": 10, "punch_technique": 10, "hand_speed": 9, "footwork": 8, "confidence": 10, "high_kick_power": 6}},
             "Khabib Nurmagomedov": {"rating": 93, "style": "Sambo", "trait": "Title Mentality", "behaviour": "Control", "skills": {"chain_wrestling": 10, "top_control": 10, "ground_striking": 8, "conditioning": 7}},
             "Georges St-Pierre": {"rating": 92, "style": "Wrestler", "trait": "Title Mentality", "behaviour": "Control", "skills": {"takedown_setup": 9, "feints": 7, "adaptability": 9, "discipline": 7}},
             "Jon Jones": {"rating": 94, "style": "Well-Rounded", "trait": "Title Mentality", "behaviour": "Dynamic Attacker", "skills": {"reach": 9, "elbows": 9, "clinch_control": 8, "adaptability": 7}},
@@ -1164,7 +1421,7 @@ class SeedMixin:
         data["UFC"].extend(self.ufc_current_ranked_fighter_data())
         data["PFL"].extend(self.pfl_current_ranked_fighter_data())
         data["UFC"].extend([
-            ("Conor McGregor", "Lightweight", "UFC", 99, 82, 37, 22, 7, "Europe", "Boxer"),
+            ("Conor McGregor", "Lightweight", "UFC", 99, 92, 27, 22, 7, "Europe", "Boxer"),
             ("Mateusz Gamrot", "Lightweight", "UFC", 72, 85, 35, 25, 3, "Europe", "Wrestler"),
             ("Rafael Fiziev", "Lightweight", "UFC", 74, 84, 33, 12, 4, "Europe", "Kickboxer"),
             ("Renato Moicano", "Lightweight", "UFC", 76, 84, 37, 20, 6, "Brazil", "BJJ"),
@@ -1460,14 +1717,284 @@ class SeedMixin:
                 ("Awa Sow", "Flyweight", "Cage Warriors", 31, 69, 27, 6, 2, "Europe", "Wrestler"),
                 ("Denise Kielholtz", "Flyweight", "Cage Warriors", 40, 74, 37, 8, 5, "Europe", "Kickboxer"),
             ],
+            "PRIDE Fighting Championships": [
+                ("Kazushi Sakuraba", "Middleweight", "PRIDE Fighting Championships", 89, 87, 31, 26, 17, "Japan", "Catch Wrestler"), ("Takanori Gomi", "Lightweight", "PRIDE Fighting Championships", 84, 85, 29, 36, 10, "Japan", "Boxer"),
+                ("Igor Vovchanchyn", "Heavyweight", "PRIDE Fighting Championships", 82, 84, 30, 48, 12, "Europe", "Kickboxer"), ("Mark Kerr", "Heavyweight", "PRIDE Fighting Championships", 79, 85, 31, 15, 4, "USA", "Wrestler"),
+                ("Kevin Randleman", "Heavyweight", "PRIDE Fighting Championships", 81, 84, 30, 17, 8, "USA", "Wrestler"), ("Don Frye", "Heavyweight", "PRIDE Fighting Championships", 80, 82, 32, 20, 7, "USA", "Boxer"),
+                ("Gary Goodridge", "Heavyweight", "PRIDE Fighting Championships", 75, 79, 31, 18, 10, "Canada", "Kickboxer"), ("Ricardo Arona", "Light Heavyweight", "PRIDE Fighting Championships", 76, 83, 29, 14, 4, "Brazil", "BJJ"),
+                ("Heath Herring", "Heavyweight", "PRIDE Fighting Championships", 74, 80, 30, 18, 8, "USA", "Kickboxer"), ("Kiyoshi Tamura", "Welterweight", "PRIDE Fighting Championships", 72, 81, 30, 13, 7, "Japan", "Catch Wrestler"),
+                ("Hayato Sakurai", "Welterweight", "PRIDE Fighting Championships", 73, 82, 28, 28, 8, "Japan", "Wrestler"), ("Akihiro Gono", "Welterweight", "PRIDE Fighting Championships", 68, 79, 29, 22, 10, "Japan", "Kickboxer"),
+                ("Yuki Kondo", "Middleweight", "PRIDE Fighting Championships", 67, 78, 30, 31, 14, "Japan", "Catch Wrestler"), ("Genki Sudo", "Welterweight", "PRIDE Fighting Championships", 76, 80, 28, 16, 4, "Japan", "Submission Grappler"),
+                ("Kazuhiro Nakamura", "Light Heavyweight", "PRIDE Fighting Championships", 64, 77, 29, 15, 8, "Japan", "Judo"), ("Ikuhisa Minowa", "Light Heavyweight", "PRIDE Fighting Championships", 70, 78, 29, 28, 12, "Japan", "Catch Wrestler"),
+            ],
+            "Strikeforce": [
+                ("Kimbo Slice", "Heavyweight", "Strikeforce", 86, 77, 32, 7, 2, "USA", "Boxer"), ("Cung Le", "Middleweight", "Strikeforce", 81, 84, 30, 9, 2, "USA", "Sanda"),
+                ("Jake Shields", "Welterweight", "Strikeforce", 78, 86, 30, 26, 6, "USA", "BJJ"), ("Gilbert Melendez", "Lightweight", "Strikeforce", 84, 87, 29, 22, 4, "USA", "Wrestler"),
+                ("Scott Smith", "Middleweight", "Strikeforce", 71, 78, 30, 17, 7, "USA", "Boxer"), ("Renato Sobral", "Light Heavyweight", "Strikeforce", 73, 81, 31, 18, 5, "Brazil", "BJJ"),
+                ("Jorge Masvidal", "Lightweight", "Strikeforce", 79, 83, 28, 21, 6, "USA", "Boxer"), ("Marloes Coenen", "Featherweight", "Strikeforce", 72, 81, 29, 17, 5, "Europe", "BJJ"),
+                ("Cristiane Justino", "Featherweight", "Strikeforce", 87, 88, 27, 12, 1, "Brazil", "Muay Thai"), ("Tonya Evinger", "Bantamweight", "Strikeforce", 65, 78, 28, 12, 4, "USA", "Wrestler"),
+                ("Erin Toughill", "Featherweight", "Strikeforce", 61, 76, 30, 9, 3, "USA", "Boxer"), ("Julie Kedzie", "Bantamweight", "Strikeforce", 62, 77, 28, 15, 6, "USA", "Kickboxer"),
+            ],
+            "World Extreme Cagefighting": [
+                ("Miguel Torres", "Bantamweight", "World Extreme Cagefighting", 77, 84, 28, 36, 3, "USA", "BJJ"), ("Scott Jorgensen", "Bantamweight", "World Extreme Cagefighting", 68, 79, 29, 12, 4, "USA", "Wrestler"),
+                ("Brian Bowles", "Bantamweight", "World Extreme Cagefighting", 71, 81, 27, 8, 0, "USA", "Boxer"), ("Mike Brown", "Featherweight", "World Extreme Cagefighting", 73, 81, 31, 19, 4, "USA", "Wrestler"),
+                ("Jens Pulver", "Lightweight", "World Extreme Cagefighting", 76, 80, 31, 22, 8, "USA", "Boxer"), ("Jamie Varner", "Lightweight", "World Extreme Cagefighting", 69, 79, 28, 16, 4, "USA", "Wrestler"),
+                ("Chase Beebe", "Bantamweight", "World Extreme Cagefighting", 61, 76, 27, 10, 3, "USA", "Wrestler"), ("Antonio Banuelos", "Bantamweight", "World Extreme Cagefighting", 60, 75, 28, 15, 7, "USA", "Boxer"),
+                ("Paulo Filho", "Middleweight", "World Extreme Cagefighting", 72, 82, 29, 16, 1, "Brazil", "BJJ"), ("Leonard Garcia", "Featherweight", "World Extreme Cagefighting", 68, 77, 28, 14, 5, "USA", "Boxer"),
+                ("Wagnney Fabiano", "Featherweight", "World Extreme Cagefighting", 61, 78, 29, 13, 3, "Brazil", "BJJ"), ("Manny Gamburyan", "Featherweight", "World Extreme Cagefighting", 65, 79, 27, 10, 4, "USA", "Judo"),
+                ("Rani Yahya", "Bantamweight", "World Extreme Cagefighting", 65, 80, 27, 15, 5, "Brazil", "BJJ"), ("Joseph Benavidez", "Flyweight", "World Extreme Cagefighting", 72, 82, 27, 12, 1, "USA", "Wrestler"),
+                ("Eddie Wineland", "Bantamweight", "World Extreme Cagefighting", 67, 78, 28, 14, 4, "USA", "Boxer"), ("Chris Horodecki", "Lightweight", "World Extreme Cagefighting", 61, 76, 27, 13, 3, "Canada", "Kickboxer"),
+            ],
         }
         for company, rows in extras.items():
-            existing = {row[0] for row in data[company]}
+            existing = {row[0] for row in data.setdefault(company, [])}
+            for row in rows:
+                if row[0] not in existing:
+                    data[company].append(row)
+                    existing.add(row[0])
+        for company, rows in self.roster_depth_expansion().items():
+            existing = {row[0] for row in data.setdefault(company, [])}
+            for row in rows:
+                if row[0] not in existing:
+                    data[company].append(row)
+                    existing.add(row[0])
+        for company, rows in self.real_roster_depth_expansion_v2().items():
+            existing = {row[0] for row in data.setdefault(company, [])}
             for row in rows:
                 if row[0] not in existing:
                     data[company].append(row)
                     existing.add(row[0])
         return data
+
+    def roster_depth_expansion(self):
+        """Additive real-life depth for the Default Universe's opening rosters."""
+        return {
+            "UFC": [
+                ("Tatsuro Taira", "Flyweight", "UFC", 70, 85, 25, 17, 1, "Japan", "BJJ"), ("Joshua Van", "Flyweight", "UFC", 68, 83, 24, 14, 2, "Asia", "Boxer"),
+                ("Charles Johnson", "Flyweight", "UFC", 60, 80, 34, 18, 6, "USA", "Boxer"), ("Tagir Ulanbekov", "Flyweight", "UFC", 61, 82, 34, 17, 2, "Europe", "Sambo"),
+                ("Alex Perez", "Flyweight", "UFC", 65, 80, 34, 25, 8, "USA", "Wrestler"), ("Aiemann Zahabi", "Bantamweight", "UFC", 62, 81, 38, 13, 2, "Canada", "Boxer"),
+                ("Marcus McGhee", "Bantamweight", "UFC", 59, 80, 35, 10, 2, "USA", "Boxer"), ("Payton Talbott", "Bantamweight", "UFC", 57, 79, 27, 9, 1, "USA", "Kickboxer"),
+                ("Rob Font", "Bantamweight", "UFC", 73, 81, 38, 22, 8, "USA", "Boxer"), ("Montel Jackson", "Bantamweight", "UFC", 56, 79, 33, 15, 2, "USA", "Kickboxer"),
+                ("Dan Ige", "Featherweight", "UFC", 66, 81, 34, 19, 9, "USA", "Boxer"), ("Calvin Kattar", "Featherweight", "UFC", 72, 82, 37, 23, 9, "USA", "Boxer"),
+                ("David Onama", "Featherweight", "UFC", 56, 80, 31, 13, 2, "USA", "Kickboxer"), ("Nathaniel Wood", "Featherweight", "UFC", 60, 81, 33, 21, 6, "UK", "Well-Rounded"),
+                ("Grant Dawson", "Lightweight", "UFC", 60, 82, 32, 23, 2, "USA", "Wrestler"), ("Mauricio Ruffy", "Lightweight", "UFC", 58, 82, 30, 12, 1, "Brazil", "Kickboxer"),
+                ("King Green", "Lightweight", "UFC", 71, 81, 39, 33, 17, "USA", "Boxer"), ("Terrance McKinney", "Lightweight", "UFC", 57, 80, 31, 16, 7, "USA", "Wrestler"),
+                ("Randy Brown", "Welterweight", "UFC", 65, 81, 35, 20, 6, "USA", "Kickboxer"), ("Neil Magny", "Welterweight", "UFC", 69, 80, 39, 30, 13, "USA", "Well-Rounded"),
+                ("Rinat Fakhretdinov", "Welterweight", "UFC", 59, 83, 34, 24, 2, "Europe", "Wrestler"), ("Michel Pereira", "Middleweight", "UFC", 72, 82, 32, 31, 12, "Brazil", "Kickboxer"),
+                ("Ikram Aliskerov", "Middleweight", "UFC", 59, 83, 33, 16, 2, "Europe", "Sambo"), ("Carlos Ulberg", "Light Heavyweight", "UFC", 67, 84, 35, 12, 1, "New Zealand", "Kickboxer"),
+                ("Ciryl Gane", "Heavyweight", "UFC", 83, 86, 36, 13, 2, "Europe", "Kickboxer"), ("Tai Tuivasa", "Heavyweight", "UFC", 75, 80, 33, 15, 8, "Australia", "Boxer"),
+            ],
+            "PFL": [
+                ("Taylor Lapilus", "Bantamweight", "PFL", 55, 80, 33, 23, 4, "Europe", "Kickboxer"), ("Marcirley Alves", "Bantamweight", "PFL", 50, 79, 28, 15, 4, "Brazil", "BJJ"),
+                ("Sarvajon Khamidov", "Bantamweight", "PFL", 52, 81, 30, 16, 1, "Asia", "Wrestler"), ("Ciaran Clarke", "Bantamweight", "PFL", 48, 78, 29, 10, 0, "UK", "Wrestler"),
+                ("Timur Khizriev", "Featherweight", "PFL", 67, 85, 30, 18, 0, "Europe", "Wrestler"), ("Jesus Pinedo", "Featherweight", "PFL", 65, 83, 30, 26, 7, "Peru", "Boxer"),
+                ("Adam Borics", "Featherweight", "PFL", 60, 81, 33, 20, 3, "Europe", "Kickboxer"), ("Gabriel Braga", "Featherweight", "PFL", 56, 80, 28, 16, 3, "Brazil", "BJJ"),
+                ("Alfie Davis", "Lightweight", "PFL", 57, 80, 33, 20, 6, "UK", "Kickboxer"), ("Alexander Shabliy", "Lightweight", "PFL", 65, 84, 32, 24, 4, "Europe", "Kickboxer"),
+                ("Jay Jay Wilson", "Lightweight", "PFL", 53, 80, 28, 11, 2, "New Zealand", "BJJ"), ("Natan Schulte", "Lightweight", "PFL", 56, 80, 33, 25, 5, "Brazil", "Wrestler"),
+                ("Darragh Kelly", "Lightweight", "PFL", 49, 79, 27, 9, 0, "UK", "Wrestler"), ("Magomed Umalatov", "Welterweight", "PFL", 61, 83, 34, 18, 1, "Europe", "Sambo"),
+                ("Costello van Steenis", "Middleweight", "PFL", 61, 83, 33, 17, 3, "Europe", "Kickboxer"), ("Jordan Newman", "Middleweight", "PFL", 48, 78, 31, 8, 0, "USA", "Wrestler"),
+                ("Josh Silveira", "Middleweight", "PFL", 50, 79, 32, 15, 5, "USA", "Wrestler"), ("Oleg Popov", "Heavyweight", "PFL", 58, 81, 33, 19, 1, "Europe", "Wrestler"),
+                ("Valentin Moldavsky", "Heavyweight", "PFL", 61, 82, 33, 14, 3, "Europe", "Sambo"), ("Denis Goltsov", "Heavyweight", "PFL", 60, 81, 35, 35, 8, "Europe", "Wrestler"),
+                ("Eddie Alvarez", "Lightweight", "PFL", 85, 88, 34, 30, 8, "USA", "Boxer"), ("Gegard Mousasi", "Middleweight", "PFL", 84, 89, 33, 50, 8, "Europe", "Well-Rounded"),
+                ("Douglas Lima", "Welterweight", "PFL", 80, 86, 31, 32, 8, "Brazil", "Boxer"),
+            ],
+            "Cage Warriors": [
+                ("Paddy McCorry", "Middleweight", "Cage Warriors", 50, 78, 28, 8, 1, "UK", "Wrestler"), ("Aiden Lee", "Featherweight", "Cage Warriors", 48, 77, 29, 12, 6, "UK", "Kickboxer"),
+                ("Nicolas Savio", "Lightweight", "Cage Warriors", 40, 74, 28, 8, 2, "Brazil", "BJJ"), ("Norbert Pietrzak", "Light Heavyweight", "Cage Warriors", 41, 75, 27, 8, 1, "Europe", "Wrestler"),
+                ("Nell Ariano", "Light Heavyweight", "Cage Warriors", 39, 73, 29, 7, 2, "UK", "Kickboxer"), ("Oscar Ownsworth", "Lightweight", "Cage Warriors", 38, 72, 27, 7, 1, "UK", "Boxer"),
+                ("Gabriele Galluccio", "Lightweight", "Cage Warriors", 38, 72, 28, 7, 2, "Europe", "BJJ"), ("Fraser Paterson", "Middleweight", "Cage Warriors", 38, 73, 29, 7, 2, "UK", "Wrestler"),
+                ("Damiano Scogna", "Bantamweight", "Cage Warriors", 38, 73, 28, 7, 1, "Europe", "Kickboxer"), ("Ronny Henrique", "Bantamweight", "Cage Warriors", 39, 74, 30, 9, 3, "Brazil", "BJJ"),
+                ("Stevie Lee", "Featherweight", "Cage Warriors", 39, 73, 29, 8, 2, "UK", "Boxer"), ("Vladimir Stanca", "Featherweight", "Cage Warriors", 38, 73, 29, 8, 3, "Europe", "Wrestler"),
+                ("Anas Nfaou", "Lightweight", "Cage Warriors", 37, 72, 27, 6, 1, "Europe", "Kickboxer"), ("Randy Mboyo", "Lightweight", "Cage Warriors", 37, 72, 28, 7, 2, "Europe", "Boxer"),
+                ("Luca Borando", "Lightweight", "Cage Warriors", 37, 72, 27, 6, 1, "Europe", "BJJ"), ("Zanyar Kamaran", "Featherweight", "Cage Warriors", 38, 73, 28, 8, 2, "UK", "Wrestler"),
+                ("Joshua Onwordi", "Welterweight", "Cage Warriors", 38, 73, 29, 8, 2, "UK", "Boxer"), ("Ollie Sarwa", "Bantamweight", "Cage Warriors", 42, 75, 27, 9, 1, "UK", "Kickboxer"),
+                ("Daniel Konrad", "Lightweight", "Cage Warriors", 40, 74, 28, 9, 2, "Europe", "Wrestler"), ("Manuel Del Valle", "Welterweight", "Cage Warriors", 39, 73, 30, 8, 2, "Europe", "Boxer"),
+                ("Dan Hardy", "Welterweight", "Cage Warriors", 78, 84, 30, 25, 10, "UK", "Kickboxer"), ("Paul Daley", "Welterweight", "Cage Warriors", 82, 85, 31, 39, 15, "UK", "Boxer"),
+                ("Ross Pearson", "Lightweight", "Cage Warriors", 72, 82, 30, 25, 13, "UK", "Boxer"), ("Brad Pickett", "Bantamweight", "Cage Warriors", 74, 82, 30, 25, 14, "UK", "Wrestler"),
+                ("Callum Renshaw", "Flyweight", "Cage Warriors", 34, 70, 19, 4, 0, "UK", "Karate"), ("Aidan Mercer", "Flyweight", "Cage Warriors", 32, 69, 18, 3, 0, "UK", "Wrestler"),
+                ("Owen Kershaw", "Bantamweight", "Cage Warriors", 36, 72, 20, 5, 1, "UK", "Boxer"), ("Rhys Maddox", "Bantamweight", "Cage Warriors", 35, 71, 19, 4, 0, "UK", "BJJ"),
+                ("Elliot Vance", "Featherweight", "Cage Warriors", 37, 73, 21, 6, 1, "UK", "Kickboxer"), ("Kieran Holt", "Featherweight", "Cage Warriors", 34, 71, 20, 4, 0, "UK", "Wrestler"),
+                ("Alfie Rowan", "Lightweight", "Cage Warriors", 38, 74, 21, 7, 1, "UK", "Well-Rounded"), ("Mason Kellett", "Lightweight", "Cage Warriors", 35, 72, 19, 5, 0, "UK", "Boxer"),
+                ("Toby Marlow", "Welterweight", "Cage Warriors", 36, 73, 20, 6, 1, "UK", "Wrestler"), ("Harvey Quinn", "Welterweight", "Cage Warriors", 34, 71, 19, 4, 0, "UK", "Kickboxer"),
+                ("Finley Shaw", "Middleweight", "Cage Warriors", 37, 73, 21, 7, 1, "UK", "BJJ"), ("Cameron Wren", "Middleweight", "Cage Warriors", 34, 71, 20, 5, 0, "UK", "Boxer"),
+                ("Lewis Calder", "Light Heavyweight", "Cage Warriors", 35, 72, 22, 6, 1, "UK", "Kickboxer"), ("Reece Maddison", "Heavyweight", "Cage Warriors", 34, 71, 22, 5, 1, "UK", "Wrestler"),
+                ("Sophie Renshaw", "Flyweight", "Cage Warriors", 35, 72, 20, 5, 0, "UK", "Kickboxer"), ("Erin Calvert", "Bantamweight", "Cage Warriors", 34, 71, 21, 5, 1, "UK", "BJJ"),
+                ("Mia Kellett", "Featherweight", "Cage Warriors", 33, 70, 20, 4, 0, "UK", "Boxer"), ("Hannah Wren", "Lightweight", "Cage Warriors", 32, 69, 21, 4, 1, "UK", "Wrestler"),
+            ],
+        }
+
+    def real_roster_depth_expansion_v2(self):
+        """Named real MMA depth for opening rosters, never generated filler.
+
+        These are deliberately conservative roster ratings. A fighter-specific profile
+        still overrides the baseline where one exists, while the broad range keeps a
+        newly added real athlete useful without incorrectly making every addition elite.
+        """
+        def rows(company, region, entries):
+            built = []
+            for index, (name, weight, style) in enumerate(entries):
+                skill = 72 + (index % 7)
+                popularity = 34 + (index % 8) * 3
+                age = 24 + (index % 12)
+                wins = 8 + (index % 11)
+                losses = 1 + (index % 6)
+                built.append((name, weight, company, popularity, skill, age, wins, losses, region, style))
+            return built
+
+        return {
+            "UFC": rows("UFC", "USA", [
+                ("Matt Schnell", "Flyweight", "BJJ"), ("Tim Elliott", "Flyweight", "Wrestler"),
+                ("Bruno Silva Flyweight", "Flyweight", "BJJ"), ("Felipe Bunes", "Flyweight", "BJJ"),
+                ("Jake Hadley", "Flyweight", "BJJ"), ("Ode Osbourne", "Flyweight", "Boxer"),
+                ("Ricky Simon", "Bantamweight", "Wrestler"), ("Kyler Phillips", "Bantamweight", "Kickboxer"),
+                ("Adrian Yanez", "Bantamweight", "Boxer"), ("Vinicius Oliveira", "Bantamweight", "Kickboxer"),
+                ("Farid Basharat", "Bantamweight", "Wrestler"), ("Da'Mon Blackshear", "Bantamweight", "BJJ"),
+                ("Cameron Smotherman", "Bantamweight", "Boxer"), ("Raul Rosas Jr.", "Bantamweight", "Wrestler"),
+                ("Chris Gutierrez", "Bantamweight", "Kickboxer"), ("Kyung Ho Kang", "Bantamweight", "BJJ"),
+                ("Giga Chikadze", "Featherweight", "Kickboxer"), ("Billy Quarantillo", "Featherweight", "Boxer"),
+                ("Julian Erosa", "Featherweight", "BJJ"), ("Pat Sabatini", "Featherweight", "Wrestler"),
+                ("Ricardo Ramos", "Featherweight", "BJJ"), ("Melsik Baghdasaryan", "Featherweight", "Kickboxer"),
+                ("Hyder Amil", "Featherweight", "Boxer"), ("Choi Doo-ho", "Featherweight", "Boxer"),
+                ("Andre Fili", "Featherweight", "Kickboxer"), ("Gabriel Santos", "Featherweight", "BJJ"),
+                ("Michael Johnson", "Lightweight", "Boxer"), ("Matt Frevola", "Lightweight", "Wrestler"),
+                ("Ignacio Bahamondes", "Lightweight", "Kickboxer"), ("Ludovit Klein", "Lightweight", "Kickboxer"),
+                ("Chris Duncan", "Lightweight", "Boxer"), ("Manuel Torres", "Lightweight", "Boxer"),
+                ("Thiago Moises", "Lightweight", "BJJ"), ("Chase Hooper", "Lightweight", "BJJ"),
+                ("Nasrat Haqparast", "Lightweight", "Boxer"), ("Nazim Sadykhov", "Lightweight", "Kickboxer"),
+                ("Carlos Prates", "Welterweight", "Muay Thai"), ("Daniel Rodriguez", "Welterweight", "Boxer"),
+                ("Muslim Salikhov", "Welterweight", "Sanda"), ("Jeremiah Wells", "Welterweight", "Wrestler"),
+                ("Bassil Hafez", "Welterweight", "Wrestler"), ("Santiago Ponzinibbio", "Welterweight", "Boxer"),
+                ("Alex Morono", "Welterweight", "Kickboxer"), ("Nicolas Dalby", "Welterweight", "Karate"),
+                ("Max Griffin", "Welterweight", "Boxer"), ("Roman Kopylov", "Middleweight", "Kickboxer"),
+                ("Chris Curtis", "Middleweight", "Boxer"), ("Edmen Shahbazyan", "Middleweight", "Kickboxer"),
+                ("Cesar Almeida", "Middleweight", "Kickboxer"), ("Andre Muniz", "Middleweight", "BJJ"),
+                ("Jun Yong Park", "Middleweight", "Wrestler"), ("Abus Magomedov", "Middleweight", "Kickboxer"),
+                ("Bogdan Guskov", "Light Heavyweight", "Boxer"), ("Alonzo Menifield", "Light Heavyweight", "Wrestler"),
+                ("Ryan Spann", "Light Heavyweight", "BJJ"), ("Dustin Jacoby", "Light Heavyweight", "Kickboxer"),
+                ("Oumar Sy", "Light Heavyweight", "Wrestler"), ("Ibo Aslan", "Light Heavyweight", "Kickboxer"),
+                ("Jairzinho Rozenstruik", "Heavyweight", "Kickboxer"), ("Shamil Gaziev", "Heavyweight", "Wrestler"),
+                ("Tallison Teixeira", "Heavyweight", "Kickboxer"), ("Marcos Rogerio de Lima", "Heavyweight", "Wrestler"),
+                ("Justin Tafa", "Heavyweight", "Boxer"), ("Rodrigo Nascimento", "Heavyweight", "Wrestler"),
+                ("Montana De La Rosa", "Flyweight", "Wrestler"), ("Karine Silva", "Flyweight", "BJJ"),
+                ("Ariane da Silva", "Flyweight", "Muay Thai"), ("Miranda Maverick", "Flyweight", "Wrestler"),
+                ("Luana Santos", "Flyweight", "Judo"), ("Ailin Perez", "Bantamweight", "Wrestler"),
+                ("Karol Rosa", "Bantamweight", "Kickboxer"), ("Nora Cornolle", "Bantamweight", "Kickboxer"),
+                ("Pannie Kianzad", "Bantamweight", "Boxer"), ("Joselyne Edwards", "Bantamweight", "Kickboxer"),
+                ("Julia Avila", "Bantamweight", "BJJ"), ("Yana Santos", "Bantamweight", "Kickboxer"),
+            ]),
+            "ONE Championship": rows("ONE Championship", "Asia", [
+                ("Joshua Pacio", "Flyweight", "Wrestler"), ("Jarred Brooks", "Flyweight", "Wrestler"),
+                ("Yuya Wakamatsu", "Flyweight", "Boxer"), ("Reece McLaren", "Flyweight", "BJJ"),
+                ("Jeremy Miado", "Flyweight", "Boxer"), ("Lito Adiwang", "Flyweight", "Wushu"),
+                ("Mikey Musumeci", "Flyweight", "BJJ"), ("Kade Ruotolo", "Lightweight", "BJJ"),
+                ("Tye Ruotolo", "Welterweight", "BJJ"), ("Sage Northcutt", "Welterweight", "Karate"),
+                ("Zebaztian Kadestam", "Welterweight", "Muay Thai"), ("Garry Tonon", "Featherweight", "BJJ"),
+                ("Shamil Gasanov", "Featherweight", "Wrestler"), ("Martin Nguyen", "Featherweight", "Boxer"),
+                ("Dae Hwan Kim", "Bantamweight", "Wrestler"), ("Kevin Belingon", "Bantamweight", "Wushu"),
+                ("Arjan Bhullar", "Heavyweight", "Wrestler"), ("Marcus Almeida", "Heavyweight", "BJJ"),
+                ("Oumar Kane", "Heavyweight", "Wrestler"), ("Amir Aliakbari", "Heavyweight", "Wrestler"),
+                ("Meng Bo", "Flyweight", "Boxer"), ("Jihin Radzuan", "Flyweight", "Muay Thai"),
+                ("Alyona Rassohyna", "Flyweight", "BJJ"), ("Chihiro Sawada", "Flyweight", "Wrestler"),
+            ]),
+            "RIZIN Fighting Federation": rows("RIZIN Fighting Federation", "Japan", [
+                ("Kintaro", "Bantamweight", "Boxer"), ("Masanori Kanehara", "Featherweight", "Wrestler"),
+                ("Kazuma Kuramoto", "Bantamweight", "Wrestler"), ("Yuki Tokoro", "Bantamweight", "BJJ"),
+                ("Shinobu Ota", "Bantamweight", "Wrestler"), ("Yachi Yu", "Lightweight", "Kickboxer"),
+                ("Koji Takeda", "Lightweight", "Wrestler"), ("Luiz Ishihara", "Featherweight", "Boxer"),
+                ("Ren Hiramoto", "Featherweight", "Kickboxer"), ("Yutaka Saito", "Featherweight", "Boxer"),
+                ("Kota Miura", "Featherweight", "Karate"), ("Kouya Kanda", "Lightweight", "Wrestler"),
+                ("Mikio Ueda", "Lightweight", "BJJ"), ("Kleber Koike Erbst", "Featherweight", "BJJ"),
+                ("Kyoji Horiguchi", "Bantamweight", "Karate"), ("Tofiq Musayev", "Lightweight", "Kickboxer"),
+                ("Satoshi Yamasu", "Featherweight", "Kickboxer"), ("Yoshinori Horie", "Featherweight", "Boxer"),
+                ("Miyuu Yamamoto", "Flyweight", "Wrestler"), ("Si Woo Park", "Flyweight", "Kickboxer"),
+                ("Sena Kubota", "Flyweight", "Kickboxer"), ("Ayaka Watanabe", "Flyweight", "Wrestler"),
+            ]),
+            "KSW": rows("KSW", "Europe", [
+                ("Michal Materla", "Middleweight", "Wrestler"), ("Pawel Pawlak", "Welterweight", "Boxer"),
+                ("Andrzej Grzebyk", "Welterweight", "Kickboxer"), ("Damian Janikowski", "Middleweight", "Wrestler"),
+                ("Bartosz Lesko", "Middleweight", "BJJ"), ("Radek Paczuski", "Middleweight", "Kickboxer"),
+                ("Artur Szpilka", "Heavyweight", "Boxer"), ("Rafal Haratyk", "Light Heavyweight", "Kickboxer"),
+                ("Damian Piwowarczyk", "Light Heavyweight", "Wrestler"), ("Przemyslaw Mysiala", "Light Heavyweight", "Boxer"),
+                ("Sebastian Rajewski", "Lightweight", "Kickboxer"), ("Adrian Zielinski", "Lightweight", "Wrestler"),
+                ("Patryk Kaczmarczyk", "Featherweight", "Wrestler"), ("Artur Sowinski", "Featherweight", "Boxer"),
+                ("Damian Stasiak", "Bantamweight", "BJJ"), ("Bruno Augusto", "Bantamweight", "BJJ"),
+                ("Wiktoria Czyzewska", "Bantamweight", "Kickboxer"), ("Adrianna Kreft", "Flyweight", "BJJ"),
+            ]),
+            "Legacy Fighting Alliance": rows("Legacy Fighting Alliance", "USA", [
+                ("Jose Johnson", "Bantamweight", "BJJ"), ("Kevin Natividad", "Bantamweight", "Boxer"),
+                ("Justin Gonzales", "Featherweight", "Wrestler"), ("Cody Law", "Featherweight", "Wrestler"),
+                ("Nate Jennerman", "Featherweight", "BJJ"), ("Lucas Clay", "Lightweight", "Wrestler"),
+                ("Anthony Romero", "Lightweight", "Wrestler"), ("Lucas Martino", "Lightweight", "Boxer"),
+                ("Solomon Renfro", "Welterweight", "Wrestler"), ("Kurt Holobaugh", "Lightweight", "BJJ"),
+                ("Billy Goff", "Welterweight", "Boxer"), ("Cody Brundage", "Middleweight", "Wrestler"),
+                ("Brendan Allen LFA", "Middleweight", "BJJ"), ("Tanner Boser", "Heavyweight", "Kickboxer"),
+                ("Chase Sherman", "Heavyweight", "Boxer"), ("Chelsea Chandler", "Bantamweight", "Boxer"),
+                ("Katharina Lehner", "Bantamweight", "Kickboxer"), ("Sam Hughes", "Flyweight", "Wrestler"),
+            ]),
+            "Oktagon MMA": rows("Oktagon MMA", "Europe", [
+                ("Karlos Vemola", "Light Heavyweight", "Wrestler"), ("Samuel Kristofic", "Middleweight", "Kickboxer"),
+                ("Marek Bartl", "Middleweight", "Wrestler"), ("Christian Jungwirth", "Welterweight", "Kickboxer"),
+                ("Christian Eckerlin", "Welterweight", "Wrestler"), ("Ion Surdu", "Welterweight", "Kickboxer"),
+                ("Matous Kohout", "Lightweight", "Boxer"), ("Vladimir Lengal", "Lightweight", "Boxer"),
+                ("Roman Paulus", "Featherweight", "Kickboxer"), ("David Kozma", "Welterweight", "Wrestler"),
+                ("Denislav Erslan", "Light Heavyweight", "Kickboxer"), ("Daniel Skvor", "Light Heavyweight", "Kickboxer"),
+                ("Melvin Mane", "Heavyweight", "Kickboxer"), ("Milos Petrasek", "Light Heavyweight", "Wrestler"),
+                ("Tereza Bleda", "Flyweight", "Wrestler"), ("Lucie Pudilova", "Bantamweight", "Kickboxer"),
+            ]),
+            "BRAVE Combat Federation": rows("BRAVE Combat Federation", "Asia", [
+                ("Jose Torres", "Flyweight", "Wrestler"), ("Velimurad Alkhasov", "Bantamweight", "Wrestler"),
+                ("Flavio Queiroz", "Bantamweight", "BJJ"), ("Rami Hamed", "Bantamweight", "Wrestler"),
+                ("Abdoul Abdouraguimov", "Welterweight", "Wrestler"), ("Dumar Roa", "Welterweight", "Boxer"),
+                ("Kamal Magomedov", "Lightweight", "Wrestler"), ("Khalid Taha", "Bantamweight", "Boxer"),
+                ("Mochamed Machaev", "Welterweight", "Wrestler"), ("Mansur Azhiev", "Featherweight", "Wrestler"),
+                ("Abdoul Hussein", "Featherweight", "BJJ"), ("Zia Mashwani", "Featherweight", "Kickboxer"),
+                ("Elias Boudegzdame", "Featherweight", "BJJ"), ("Sami Chaoui", "Lightweight", "Boxer"),
+                ("Mohamed Fakhreddine", "Light Heavyweight", "Kickboxer"), ("Aziz Karagula-Akan", "Heavyweight", "Wrestler"),
+            ]),
+            "Absolute Championship Akhmat": rows("Absolute Championship Akhmat", "Europe", [
+                ("Artem Reznikov", "Lightweight", "Wrestler"), ("Yusuf Raisov", "Featherweight", "Wrestler"),
+                ("Albert Tumenov", "Welterweight", "Boxer"), ("Rustam Kerimov", "Bantamweight", "Wrestler"),
+                ("Murad Machaev", "Featherweight", "Wrestler"), ("Akhmed Aliev", "Lightweight", "Kickboxer"),
+                ("Magomedrasul Khasbulaev", "Featherweight", "Wrestler"), ("Denis Smoldarev", "Heavyweight", "Wrestler"),
+                ("Evgeny Erokhin", "Heavyweight", "Sambo"), ("Magomed Ismailov", "Middleweight", "Wrestler"),
+                ("Arbi Agujev", "Welterweight", "Wrestler"), ("Bibir Tuvshinjargal", "Bantamweight", "Wrestler"),
+                ("Gadzhimurad Antigulov", "Light Heavyweight", "Wrestler"), ("Oleg Olenichev", "Light Heavyweight", "BJJ"),
+            ]),
+            "PRIDE Fighting Championships": rows("PRIDE Fighting Championships", "Japan", [
+                ("Antonio Rodrigo Nogueira", "Heavyweight", "BJJ"), ("Antonio Rogerio Nogueira", "Light Heavyweight", "Boxer"),
+                ("Josh Barnett", "Heavyweight", "Catch Wrestler"), ("Vanderlei Silva", "Middleweight", "Muay Thai"),
+                ("Mauricio Rua", "Light Heavyweight", "Muay Thai"), ("Rogério Minotouro Nogueira", "Light Heavyweight", "Boxer"),
+                ("Ricardo Arona", "Light Heavyweight", "BJJ"), ("Ryo Chonan", "Welterweight", "Wrestler"),
+                ("Denis Kang", "Middleweight", "BJJ"), ("Paulo Filho", "Middleweight", "BJJ"),
+                ("Murilo Ninja Rua", "Middleweight", "Muay Thai"), ("Akihiro Gono", "Welterweight", "Kickboxer"),
+                ("Tatsuya Kawajiri", "Lightweight", "Wrestler"), ("Shinya Aoki", "Lightweight", "BJJ"),
+            ]),
+            "Strikeforce": rows("Strikeforce", "USA", [
+                ("Antonio Silva", "Heavyweight", "Boxer"), ("Fabricio Werdum", "Heavyweight", "BJJ"),
+                ("Josh Thomson", "Lightweight", "Kickboxer"), ("Rafael Cavalcante", "Light Heavyweight", "Kickboxer"),
+                ("Muhammed Lawal", "Light Heavyweight", "Wrestler"), ("Lorenz Larkin", "Welterweight", "Kickboxer"),
+                ("Tyron Woodley", "Welterweight", "Wrestler"), ("Tim Kennedy", "Middleweight", "Wrestler"),
+                ("Ronaldo Souza", "Middleweight", "BJJ"), ("Luke Rockhold", "Middleweight", "Kickboxer"),
+                ("Tarec Saffiedine", "Welterweight", "Kickboxer"), ("Pat Healy", "Lightweight", "Wrestler"),
+                ("Sarah Kaufman", "Bantamweight", "Kickboxer"), ("Miesha Tate", "Bantamweight", "Wrestler"),
+                ("Gina Carano", "Featherweight", "Muay Thai"), ("Cyborg Santos", "Featherweight", "Muay Thai"),
+            ]),
+            "World Extreme Cagefighting": rows("World Extreme Cagefighting", "USA", [
+                ("Wagnney Fabiano", "Featherweight", "BJJ"), ("Leonard Garcia", "Featherweight", "Boxer"),
+                ("Manny Gamburyan", "Bantamweight", "Judo"), ("Rani Yahya", "Bantamweight", "BJJ"),
+                ("Eddie Wineland", "Bantamweight", "Boxer"), ("Chris Horodecki", "Lightweight", "Kickboxer"),
+                ("Shane Roller", "Lightweight", "Wrestler"), ("Donald Cerrone WEC", "Lightweight", "Kickboxer"),
+                ("Ben Henderson WEC", "Lightweight", "Wrestler"), ("Anthony Njokuani", "Lightweight", "Kickboxer"),
+                ("Rafael Assuncao", "Bantamweight", "BJJ"), ("Jameel Massouh", "Featherweight", "Wrestler"),
+                ("Chad Mendes", "Featherweight", "Wrestler"), ("Mark Hominick", "Featherweight", "Boxer"),
+            ]),
+        }
+
+    def nexgen_mma_prospect_names(self):
+        return {
+            "Paddy Pimblett", "Callum Renshaw", "Aidan Mercer", "Owen Kershaw", "Rhys Maddox", "Elliot Vance", "Kieran Holt", "Alfie Rowan", "Mason Kellett",
+            "Toby Marlow", "Harvey Quinn", "Finley Shaw", "Cameron Wren", "Lewis Calder", "Reece Maddison", "Sophie Renshaw", "Erin Calvert", "Mia Kellett", "Hannah Wren",
+        }
 
     def legend_fighter_data(self):
         return [
@@ -1500,9 +2027,29 @@ class SeedMixin:
     def prime_legend_ages(self):
         return {row[0]: row[5] for row in self.legend_fighter_data()}
 
+    def historic_prime_age_overrides(self):
+        """Playable prime ages for historical stars seeded into the modern universe."""
+        ages = self.prime_legend_ages()
+        ages.update({
+            "Conor McGregor": 27, "Anthony Pettis": 28, "Miesha Tate": 29,
+            "Michael Venom Page": 30, "Michael Page": 30, "Eddie Alvarez": 31,
+            "Cat Zingano": 29, "Carlos Condit": 29, "Holly Holm": 31,
+            "Tyron Woodley": 30, "Junior Dos Santos": 30, "Nick Diaz": 28,
+            "Phil Davis": 29, "Alistair Overeem": 31, "Aung La Nsang": 29,
+            "Luke Rockhold": 29, "Stephen Thompson": 30, "Fabricio Werdum": 31,
+            "Rousimar Palhares": 27, "Hector Lombard": 31, "Chael Sonnen": 31,
+            "Jacare Souza": 29, "Josh Barnett": 31, "Mamed Khalidov": 30,
+            "Yoel Romero": 31, "Kimbo Slice": 32, "Cung Le": 30,
+            "Kazushi Sakuraba": 31, "Takanori Gomi": 29, "Igor Vovchanchyn": 30,
+            "Mark Kerr": 31, "Kevin Randleman": 30, "Don Frye": 32,
+            "Gilbert Melendez": 29, "Jake Shields": 30, "Miguel Torres": 28,
+            "Jens Pulver": 31, "Joseph Benavidez": 27,
+        })
+        return ages
+
     def enrich_fighter(self, fighter, player_owned=False):
         if fighter.region == "USA" and not player_owned:
-            fighter.region = random.choice(REGIONS)
+            fighter.region = random.choice(REGION_GENERATION_POOL)
         elif player_owned:
             fighter.region = random.choice(["USA", "Canada", "Brazil", "UK", "Japan"])
         fighter.style = random.choice(STYLES)
@@ -1557,7 +2104,13 @@ class SeedMixin:
         fighter.fight_iq = max(25, min(99, round((fighter.cardio + fighter.overall) / 2 + random.randint(-10, 14))))
         self.generate_detailed_skills(fighter)
         self.sync_broad_skills_from_details(fighter)
-        fighter.potential = max(fighter.overall, min(98, fighter.overall + random.randint(2, 18)))
+        # Potential room follows a centred curve. Most entrants receive useful
+        # but not elite runway, while both limited prospects and exceptional
+        # late bloomers remain possible. The old 62% bottom bucket pulled the
+        # entire mature-world average down even when development was working.
+        potential_room = max(3, min(20, round(random.gauss(13.5, 3.2))))
+        exceptional_ceiling = random.random() < 0.012
+        fighter.potential = max(fighter.overall, min(98 if exceptional_ceiling else 96, fighter.overall + potential_room))
         self.assign_career_arc(fighter)
         fighter.contract_months = random.randint(8, 24) if player_owned else 0
         fighter.rank_score = self.rank_value(fighter)
@@ -1575,6 +2128,18 @@ class SeedMixin:
                 "Danny Garcia", "Amir Khan", "Kell Brook", "Timothy Bradley", "Devon Alexander",
                 "Roman Gonzalez", "Nonito Donaire", "Juan Francisco Estrada", "Srisaket Sor Rungvisai", "Kazuto Ioka",
                 "Donnie Nietes", "Mikey Garcia", "Gervonta Davis", "Shakur Stevenson", "Devin Haney",
+                # Bare-knuckle history and the modern BKFC scene deepen the
+                # otherwise thin boxing circuit. Existing MMA athletes such as
+                # Mike Perry, Bec Rawlings and Hector Lombard are deliberately
+                # not cloned here.
+                "Jem Mace", "John L Sullivan", "Tom Cribb", "Daniel Mendoza", "James Figg",
+                "Jack Broughton", "Tom Sayers", "William Bendigo Thompson", "Jem Belcher", "Tom Molineaux",
+                "John C Heenan", "Tom Spring", "Ben Caunt", "Jake Kilrain", "Bobby Gunn",
+                "Luis Palomino", "Lorenzo Hunt", "Christine Ferea", "Britain Hart", "Arnold Adams",
+                "Reggie Barnett Jr", "Joey Beltran", "David Mundell", "Dat Nguyen", "Austin Trout",
+                "Paddy Ryan", "John Gentleman Jackson", "Hen Pearce", "Bartley Gorman", "James Deaf Burke",
+                "Jem Ward", "Joe Goss", "Tom King", "Peter Jackson", "Mick Terrill", "Kai Stewart",
+                "Francesco Ricchi", "Artem Lobov", "Jason Knight", "Thiago Alves", "Alan Belcher", "Shannon Ritch",
             ],
             "Kickboxing": [
                 "Ernesto Hoost", "Giorgio Petrosyan", "Semmy Schilt", "Peter Aerts", "Remy Bonjasky",
@@ -1605,6 +2170,10 @@ class SeedMixin:
                 "Soe Lin Oo", "Cyrus Washington", "Lone Chaw", "Shwe Sai", "Tun Lwin Moe",
                 "Mite Yine", "Saw Ba Oo", "Wan Chai", "Kyar Ba Nyein", "Phoe Kay",
                 "Artur Saladiak", "Sasha Moisa", "Naimjon Tuhtaboyev", "Akitoshi Tamura", "Shunichi Shimizu",
+                "Shwe War Tun", "Thway Thit Win Hlaing", "Shwe Du Wun", "Win Tun", "Shan La Tway",
+                "Antonio Faria", "Saw Htoo Aung", "Souris Manfredi", "Julija Stoliarenko", "Tha Pyay Nyo",
+                "Yan Naing Tun", "Ba Htoo Maung", "Shwe Yar Man", "Thant Zin", "Salai Thang Khwi Shein",
+                "Thet Win Aung", "Nguyen Tran Duy Nhat", "Maisha Katz", "Shwe Sin Min",
             ],
             "Wrestling": [
                 "Aleksandr Karelin", "Buvaisar Saitiev", "John Smith", "Jordan Burroughs", "Abdulrashid Sadulaev",
@@ -1857,6 +2426,7 @@ class SeedMixin:
     def create_real_combat_sport_athlete(self, name, sport, promotion, index):
         women = {
             "Jorina Baars", "Lucia Rijker", "Denise Kielholtz", "Jemyma Betrian", "Anissa Meksen",
+            "Christine Ferea", "Britain Hart", "Souris Manfredi", "Julija Stoliarenko", "Maisha Katz", "Shwe Sin Min",
             "Saori Yoshida", "Kaori Icho", "Helen Maroulis", "Adeline Gray", "Tamyra Mensah-Stock",
             "Iryna Merleni", "Gabi Garcia", "Beatriz Mesquita", "Somratsamee Manopgym",
         }
@@ -1938,7 +2508,19 @@ class SeedMixin:
         fighter.annual_overalls = {}
         fighter.motivation = 82
         fighter.camp_quality = self.gym_quality(fighter.camp)
-        return self.apply_real_combat_sport_profile(fighter, sport, profile, preserve_career=False)
+        fighter = self.apply_real_combat_sport_profile(fighter, sport, profile, preserve_career=False)
+        if sport == "Boxing" and name in {
+            "Jem Mace", "John L Sullivan", "Tom Cribb", "Daniel Mendoza", "James Figg", "Jack Broughton",
+            "Tom Sayers", "William Bendigo Thompson", "Jem Belcher", "Tom Molineaux", "John C Heenan",
+            "Tom Spring", "Ben Caunt", "Jake Kilrain", "Bobby Gunn", "Luis Palomino", "Lorenzo Hunt",
+            "Christine Ferea", "Britain Hart", "Arnold Adams", "Reggie Barnett Jr", "Joey Beltran",
+            "David Mundell", "Dat Nguyen", "Austin Trout", "Paddy Ryan", "John Gentleman Jackson", "Hen Pearce",
+            "Bartley Gorman", "James Deaf Burke", "Jem Ward", "Joe Goss", "Tom King", "Peter Jackson",
+            "Mick Terrill", "Kai Stewart", "Francesco Ricchi", "Artem Lobov", "Jason Knight", "Thiago Alves",
+            "Alan Belcher", "Shannon Ritch",
+        }:
+            fighter.combat_background = "Bare Knuckle"
+        return fighter
 
     def seed_combat_sport_worlds(self):
         worlds = {}
@@ -1989,6 +2571,7 @@ class SeedMixin:
                 "stability": 72,
                 "finance_history": [],
                 "starting_roster_size": len(roster),
+                "roster_target": len(roster) * COMBAT_SPORT_ROSTER_TARGET_MULTIPLIER,
             }
         return worlds
 
@@ -2012,6 +2595,8 @@ class SeedMixin:
                 self.ensure_detailed_skills(fighter)
                 self.ensure_fighter_business_stats(fighter)
                 native_sport = getattr(fighter, "primary_discipline", sport)
+                if native_sport not in COMBAT_SPORT_WEIGHT_CLASSES:
+                    native_sport = sport
                 profiles = getattr(self, "combat_sport_seed_profiles", {}) or {}
                 profile = profiles.get(native_sport, {}).get(fighter.name)
                 if isinstance(profile, dict) and getattr(fighter, "sport_profile_version", 0) < int(profile.get("version", SPORT_PROFILE_VERSION)):
@@ -2021,6 +2606,21 @@ class SeedMixin:
                         or getattr(self, "month", 1) > 1
                     )
                     self.apply_real_combat_sport_profile(fighter, native_sport, profile, preserve_career=preserve_career)
+                # Older saves predate sport_weight_class and retain an MMA
+                # placeholder such as Bantamweight/Welterweight. Correct every
+                # non-MMA athlete during load, not only after their circuit UI
+                # has been opened. Real database classes always take priority.
+                expected = profiles.get(native_sport, {}).get(fighter.name, {}).get("weight_class", "")
+                if not expected:
+                    expected = (getattr(self, "combat_sport_seed_divisions", {}) or {}).get(native_sport, {}).get(fighter.name, "")
+                if not expected:
+                    expected = COMBAT_SPORT_REAL_DIVISIONS.get(native_sport, {}).get(fighter.name, "")
+                valid_classes = {label for label, _limit in self.combat_sport_weight_ladder(native_sport, fighter.gender)}
+                current = getattr(fighter, "sport_weight_class", "")
+                if current not in valid_classes or (expected and current != expected):
+                    self.assign_combat_sport_weight(native_sport, fighter, expected, reset_walk_weight=True)
+                else:
+                    fighter.weight = self.combat_sport_mma_equivalent(native_sport, current, fighter.gender)
                 repaired_roster.append(fighter)
                 seen.add(fighter.name)
             for name, fighter in seeded_by_name.items():
@@ -2041,6 +2641,11 @@ class SeedMixin:
                 "starting_roster_size": len(seeded_world.get("roster", [])), "strategy": "Merit Ladder",
             }.items():
                 world.setdefault(key, value if not isinstance(value, (list, dict)) else value.copy())
+            baseline = max(36, int(world.get("starting_roster_size", len(seeded_world.get("roster", [])) or 36)))
+            world["roster_target"] = max(
+                int(world.get("roster_target", 0) or 0),
+                baseline * COMBAT_SPORT_ROSTER_TARGET_MULTIPLIER,
+            )
             world.setdefault("titles_initialized", bool(world.get("titles")))
         self.combat_sport_worlds = current_worlds
 
@@ -2141,15 +2746,15 @@ class SeedMixin:
         last_pool = pool.get("last") or LAST_NAMES
         return random.choice(first_pool), random.choice(last_pool)
 
-    def create_generated_fighter(self, min_pop=6, max_pop=45, min_skill=45, max_skill=82, weight=None, gender=None, region=None, apply_entry_balance=True, age_override=None):
+    def create_generated_fighter(self, min_pop=6, max_pop=45, min_skill=45, max_skill=82, weight=None, gender=None, region=None, apply_entry_balance=True, age_override=None, pre_universe=None):
         # The world deliberately creates more men than women. Female divisions
         # remain healthy, but a century simulation should not drift to 50/50
         # solely because the depth-repair routines create equal buckets.
         gender = gender or ("Female" if random.random() < 0.18 else "Male")
-        market_region = region if region in REGIONS else random.choice(REGIONS)
+        market_region = region if region in REGIONS else random.choice(REGION_GENERATION_POOL)
         birth_region = self.weighted_birth_region(market_region)
         first, last = self.generated_name_parts(gender, birth_region)
-        name = self.unique_generated_name(first, last)
+        name = self.unique_generated_name(first, last, gender=gender)
         # New entrants are predominantly prospects. Established veterans should
         # emerge through records and regional careers, not every generated name.
         age = (max(18, min(45, int(age_override))) if age_override is not None else
@@ -2161,15 +2766,25 @@ class SeedMixin:
             else:
                 age_skill_adjustment = min(3, int((age - 24) / 2 + 0.5))
         base = max(min_skill, min(max_skill, random.randint(min_skill, max_skill) + age_skill_adjustment))
-        if apply_entry_balance:
+        # Opening-universe filler represents people already fighting when the
+        # save begins. Every later generated fighter is a genuine entrant to
+        # this universe: their professional record starts clean and grows only
+        # through simulated bouts.
+        if pre_universe is None:
+            pre_universe = bool(getattr(self, "_seeding_universe", False))
+        entry_month = 0 if pre_universe else max(1, int(getattr(self, "month", 1)))
+        entry_year = 2026 if pre_universe else 2026 + (entry_month - 1) // 12
+        if pre_universe and apply_entry_balance:
             record_cap = max(2, min(25, (age - 18) * 4 + 2))
             record_w = random.randint(0, min(18, record_cap))
             record_l = random.randint(0, min(7, record_cap - record_w))
-        else:
+        elif pre_universe:
             # Feeder promotions apply their own younger age, record, and upside
             # profile after creation, so keep their legacy starting roll intact.
             record_w = random.randint(0, 18)
             record_l = random.randint(0, 7)
+        else:
+            record_w = record_l = 0
         fighter = Fighter(
             name=name,
             weight=weight or random.choice(WEIGHTS),
@@ -2191,8 +2806,16 @@ class SeedMixin:
         # default is only a safe fallback for imported or hand-authored fighters.
         fighter.career_archetype = ""
         self.enrich_fighter(fighter, player_owned=False)
+        fighter.generated = True
+        fighter.universe_entry_month = entry_month
+        fighter.universe_entry_year = entry_year
+        fighter.record_history_baseline_w = record_w if pre_universe else 0
+        fighter.record_history_baseline_l = record_l if pre_universe else 0
+        fighter.record_history_baseline_d = 0
+        fighter.multi_sport_records = {"MMA": f"{record_w}-{record_l}-0"}
+        fighter.annual_overalls = {str(entry_year): fighter.overall}
         if apply_entry_balance:
-            potential_floor = 8 if age <= 21 else 5 if age <= 25 else 2
+            potential_floor = 12 if age <= 21 else 9 if age <= 25 else 7
             fighter.potential = min(98, max(fighter.potential, fighter.overall + potential_floor))
         self.assign_regional_identity(fighter, market_region, birth_region=birth_region, generated=True, force=True)
         return fighter
@@ -2260,12 +2883,12 @@ class SeedMixin:
                     fighter.contract_months = 0
                     fighters.append(fighter)
 
-    def unique_generated_name(self, first, last):
+    def unique_generated_name(self, first, last, gender=None):
         base = f"{first} {last}"
         if self.name_counts.get(base, 0) == 0:
             self.name_counts[base] = 1
             return base
-        gender = "Female" if first in FEMALE_FIRST_NAMES else "Male"
+        gender = gender or ("Female" if first in FEMALE_FIRST_NAMES else "Male")
         return self.generate_clean_unique_name(gender, set(self.name_counts))
 
     def seed_promotions(self):
@@ -2288,6 +2911,12 @@ class SeedMixin:
                 personality = spec.get("personality", spec.get("show_personality", "Balanced"))
             else:
                 name, region, size, cash, reputation, fighters, target_roster_size, personality = spec
+            # A deeper launch roster needs enough runway to sign, recover from
+            # early cards, and build divisions before financial pressure takes
+            # over. Feeders intentionally remain at zero because they do not
+            # use the commercial finance model.
+            if cash > 0:
+                cash = round(cash * 1.5)
             fighters = self.unique_fighter_rows(fighters)
             roster = []
             for row in fighters:
@@ -2302,7 +2931,7 @@ class SeedMixin:
                 fighter.contract_months = random.randint(8, 30)
                 fighter.exclusive = True
                 fighter.contract_type = "Exclusive"
-                fighter.camp = name
+                fighter.camp = "NexGen MMA" if fighter.name in self.nexgen_mma_prospect_names() else name
                 fighter.rank_score = self.rank_value(fighter)
             existing_names = set(global_names)
             while len(roster) < target_roster_size:
@@ -2354,12 +2983,33 @@ class SeedMixin:
         return promotions
 
     def create_regional_feeder_fighter(self, region, used_names, gender):
-        fighter = self.create_generated_fighter(2, 22, 40, 70, gender=gender, region=region, apply_entry_balance=False)
-        fighter.age = random.choices(range(16, 27), weights=[6, 9, 12, 12, 11, 10, 8, 6, 5, 3, 2], k=1)[0]
-        fighter.record_w = random.randint(0, 6)
-        fighter.record_l = random.randint(0, min(4, fighter.record_w + 1))
+        pre_universe = bool(getattr(self, "_seeding_universe", False))
+        fighter = self.create_generated_fighter(2, 22, 40, 70, gender=gender, region=region, apply_entry_balance=False, pre_universe=pre_universe)
+        fighter.age = random.choices(range(17, 22), weights=[5, 8, 10, 8, 5], k=1)[0]
+        fighter.record_w = random.randint(0, 6) if pre_universe else 0
+        fighter.record_l = random.randint(0, min(4, fighter.record_w + 1)) if pre_universe else 0
         fighter.record_d = 0
-        fighter.potential = min(96, max(fighter.overall + random.randint(8, 24), fighter.potential))
+        fighter.record_history_baseline_w = fighter.record_w if pre_universe else 0
+        fighter.record_history_baseline_l = fighter.record_l if pre_universe else 0
+        fighter.record_history_baseline_d = 0
+        fighter.multi_sport_records = {"MMA": f"{fighter.record_w}-{fighter.record_l}-0"}
+        # Regional intake is the long-term talent engine. Most entrants should
+        # be capable of becoming credible professionals, with strong and elite
+        # ceilings remaining progressively rarer. Ability is not granted here:
+        # fighters must still realise this ceiling through gyms, activity,
+        # mentality and results over the following decade.
+        potential_roll = random.random()
+        if potential_roll < 0.12:
+            potential = random.randint(65, 71)
+        elif potential_roll < 0.68:
+            potential = random.randint(72, 81)
+        elif potential_roll < 0.92:
+            potential = random.randint(82, 88)
+        elif potential_roll < 0.985:
+            potential = random.randint(89, 94)
+        else:
+            potential = random.randint(95, 98)
+        fighter.potential = min(98, max(fighter.overall + 6, potential))
         fighter.popularity = min(24, fighter.popularity)
         fighter.purse = max(500, min(4000, fighter.purse // 3))
         fighter.contract_months = 0
@@ -2383,8 +3033,8 @@ class SeedMixin:
         used_names.add(fighter.name)
         return fighter
 
-    def seed_regional_feeder_promotions(self, global_names):
-        specs = [
+    def regional_feeder_specs(self):
+        return [
             ("Japan Fight Circuit", "Japan"),
             ("UK Regional MMA", "UK"),
             ("North American Fighting League", "USA"),
@@ -2394,13 +3044,24 @@ class SeedMixin:
             ("Latin American MMA League", "Mexico"),
             ("Canadian Fight Alliance", "Canada"),
             ("Oceania Combat League", "Australia"),
-            ("African MMA Championship", "Europe"),
+            ("African MMA Championship", "Africa"),
+            ("Midwest Fight League", "USA"),
+            ("Nordic Combat League", "Europe"),
+            ("Korean Fighting Championship", "South Korea"),
+            ("South American Vale Tudo Circuit", "Brazil"),
+            ("British Fight League", "UK"),
         ]
+
+    def seed_regional_feeder_promotions(self, global_names, specs=None):
+        specs = list(specs or self.regional_feeder_specs())
         promotions = []
         for name, region in specs:
             roster = []
             for weight in WEIGHTS:
-                for gender, count in (("Male", 5), ("Female", 3)):
+                # 70 fighters per feeder: deeper at the most active male
+                # divisions, while every female division remains bookable.
+                male_count = 5 if weight in ("Light Heavyweight", "Heavyweight") else 6
+                for gender, count in (("Male", male_count), ("Female", 3)):
                     for _ in range(count):
                         fighter = self.create_regional_feeder_fighter(region, global_names, gender)
                         fighter.weight = weight
@@ -2428,6 +3089,9 @@ class SeedMixin:
             "ONE Championship": ("Arun Vichai", "Global Visionary"),
             "RIZIN Fighting Federation": ("Kenji Mori", "Event Showman"),
             "Cage Warriors": ("Claire Hargreaves", "Talent Developer"),
+            "PRIDE Fighting Championships": ("Hiroshi Tanaka", "Event Showman"),
+            "Strikeforce": ("Dana Calder", "Aggressive Promoter"),
+            "World Extreme Cagefighting": ("Rafael Stone", "Talent Developer"),
         }
         name, archetype = names.get(company_name, (f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}", random.choice(["Pragmatic Operator", "Talent Developer", "Aggressive Promoter", "Cost Controller"])))
         profile = {
@@ -2457,6 +3121,9 @@ class SeedMixin:
             "Oktagon MMA": ("Regional Expansion", "European stars", "Contender Cycle", 62, 68, 58),
             "BRAVE Combat Federation": ("Global Scouting", "International prospects", "Prospect Rebuild", 52, 78, 64),
             "Absolute Championship Akhmat": ("Competitive Merit", "Hard-nosed contenders", "Contender Cycle", 48, 64, 70),
+            "PRIDE Fighting Championships": ("Grand Prix Spectacle", "Japanese legends and global stars", "Star Chasing", 84, 62, 58),
+            "Strikeforce": ("Big Fight Crossover", "Stars, challengers and storylines", "Star Chasing", 78, 66, 54),
+            "World Extreme Cagefighting": ("Elite Lightweights", "Fast-rising division talent", "Prospect Rebuild", 50, 82, 66),
         }
         identity, voice, mode, star_focus, prospect_focus, merit_focus = presets.get(
             name,
@@ -2470,7 +3137,8 @@ class SeedMixin:
             "ONE Championship": (84, 11), "RIZIN Fighting Federation": (72, 17),
             "KSW": (65, 18), "Cage Warriors": (50, 24), "Legacy Fighting Alliance": (45, 27),
             "Oktagon MMA": (64, 19), "BRAVE Combat Federation": (54, 23),
-            "Absolute Championship Akhmat": (59, 21), "BAMMA": (43, 28),
+            "Absolute Championship Akhmat": (59, 21), "PRIDE Fighting Championships": (80, 13),
+            "Strikeforce": (70, 17), "World Extreme Cagefighting": (58, 20), "BAMMA": (43, 28),
         }.get(name, (35, 18) if show_personality == "Regional Development" else (55, 20))
         return {
             "identity": identity,
@@ -2484,28 +3152,51 @@ class SeedMixin:
             "market_volatility": market_volatility,
             "market_momentum": 0.0,
             "market_review_month": 0,
+            "finance_model_version": 2,
             "growth_ceiling": {
                 "Ultimate Fighting Championship": 100, "Professional Fighters League": 88, "ONE Championship": 92,
                 "RIZIN Fighting Federation": 88, "KSW": 84, "Cage Warriors": 78, "Legacy Fighting Alliance": 74,
-                "Oktagon MMA": 84, "BRAVE Combat Federation": 80, "Absolute Championship Akhmat": 80,
-                "BAMMA": 72,
+            "Oktagon MMA": 84, "BRAVE Combat Federation": 80, "Absolute Championship Akhmat": 80,
+            "PRIDE Fighting Championships": 92, "Strikeforce": 86, "World Extreme Cagefighting": 82, "BAMMA": 72,
             }.get(name, 42 if show_personality == "Regional Development" else 76),
             "last_review_month": 0,
         }
 
-    def repair_core_promotions(self):
+    def repair_core_promotions(self, restore_missing=False):
+        """Repair lightweight metadata without changing an existing save's world."""
         self.promotions = [promo for promo in self.promotions if promo.name != self.player_company_name]
         names = {promo.name for promo in self.promotions}
-        required = ["Cage Warriors", "ONE Championship", "RIZIN Fighting Federation", "KSW", "Legacy Fighting Alliance", "Oktagon MMA", "BRAVE Combat Federation", "Absolute Championship Akhmat", "Japan Fight Circuit", "UK Regional MMA", "North American Fighting League", "European Challenge MMA", "Asia Rising Championship", "Brazilian Combat Circuit", "Latin American MMA League", "Canadian Fight Alliance", "Oceania Combat League", "African MMA Championship"]
+        regional_names = [name for name, _region in self.regional_feeder_specs()]
+        required = ["Cage Warriors", "ONE Championship", "RIZIN Fighting Federation", "KSW", "Legacy Fighting Alliance", "Oktagon MMA", "BRAVE Combat Federation", "Absolute Championship Akhmat", "PRIDE Fighting Championships", "Strikeforce", "World Extreme Cagefighting", *regional_names]
         defunct = set(getattr(self, "defunct_promotions", []))
         missing = [name for name in required if self.player_company_name != name and name not in names and name not in defunct]
-        if missing:
+        if missing and restore_missing:
             seeded = self.seed_promotions()
             for company_name in missing:
                 promo = next((item for item in seeded if item.name == company_name), None)
                 if promo:
                     self.promotions.append(promo)
             self.news.insert(0, f"World database repaired: restored missing promotions ({', '.join(missing)}).")
+
+        # Versioned expansion: existing saves gain only the five additional
+        # feeder circuits, with no resurrection of unrelated defunct companies.
+        pipeline_version = int(getattr(self, "rules", {}).get("regional_pipeline_version", 0) or 0)
+        if pipeline_version < 2:
+            original_names = {
+                "Japan Fight Circuit", "UK Regional MMA", "North American Fighting League",
+                "European Challenge MMA", "Asia Rising Championship", "Brazilian Combat Circuit",
+                "Latin American MMA League", "Canadian Fight Alliance", "Oceania Combat League",
+                "African MMA Championship",
+            }
+            expansion_specs = [
+                spec for spec in self.regional_feeder_specs()
+                if spec[0] not in original_names and spec[0] not in names and spec[0] not in defunct
+            ]
+            if expansion_specs:
+                self.promotions.extend(self.seed_regional_feeder_promotions(self.active_fighter_names(), specs=expansion_specs))
+                added = ", ".join(name for name, _region in expansion_specs)
+                self.news.insert(0, f"Regional pathway expanded: {added} opened as new development circuits.")
+            self.rules["regional_pipeline_version"] = 2
 
     def promotion_broadcasters(self, name, size):
         if name == "Ultimate Fighting Championship":
@@ -2526,6 +3217,12 @@ class SeedMixin:
             return [{"name": "BRAVE Global Network", "reach": 61, "fee": 245_000, "type": "Streaming / TV"}]
         if name == "Absolute Championship Akhmat":
             return [{"name": "ACA Fight Network", "reach": 63, "fee": 275_000, "type": "Streaming / TV"}]
+        if name == "PRIDE Fighting Championships":
+            return [{"name": "PRIDE World PPV / Fuji Network", "reach": 82, "fee": 760_000, "type": "PPV / TV"}]
+        if name == "Strikeforce":
+            return [{"name": "Strikeforce Premium Network", "reach": 72, "fee": 420_000, "type": "Premium TV / Streaming"}]
+        if name == "World Extreme Cagefighting":
+            return [{"name": "WEC Fight Network", "reach": 64, "fee": 285_000, "type": "Streaming / TV"}]
         return [{"name": "UFC Fight Pass / Local TV", "reach": 54, "fee": 120_000, "type": "Streaming"}]
 
     def seed_regions(self):
@@ -2538,9 +3235,13 @@ class SeedMixin:
             "Mexico": ["Mexico City", "Jalisco", "Nuevo Leon", "Baja California"],
             "UK": ["England", "Scotland", "Wales", "Northern Ireland"],
             "Europe": ["France", "Germany", "Netherlands", "Poland", "Spain"],
+            "Russia": ["Moscow", "Saint Petersburg", "Kazan", "Dagestan"],
             "Japan": ["Tokyo", "Osaka", "Saitama", "Fukuoka"],
+            "South Korea": ["Seoul", "Busan", "Incheon", "Daegu"],
             "Australia": ["New South Wales", "Victoria", "Queensland", "Western Australia"],
             "Asia": ["Thailand", "Singapore", "Philippines", "South Korea"],
+            "Middle East": ["Bahrain", "United Arab Emirates", "Saudi Arabia", "Qatar"],
+            "Africa": ["South Africa", "Nigeria", "Egypt", "Kenya"],
         }
         return {
             region: {
@@ -2555,12 +3256,16 @@ class SeedMixin:
                 "fan_identity": {
                     "USA": "Big-fight spectacle", "Canada": "Technical respect", "Brazil": "Passionate national pride",
                     "Mexico": "Action-first intensity", "UK": "Loud fight-night culture", "Europe": "Hardcore technique",
-                    "Japan": "Respectful combat tradition", "Australia": "Festival fight fans", "Asia": "Global crossover audience",
+                    "Russia": "Wrestling and sambo tradition", "Japan": "Respectful combat tradition",
+                    "South Korea": "Fast-growing combat culture", "Australia": "Festival fight fans",
+                    "Asia": "Global crossover audience", "Middle East": "Prestige event market", "Africa": "Emerging regional pride",
                 }.get(region, "Local MMA community"),
                 "crowd_preference": {
                     "USA": "Stars and finishes", "Canada": "Competitive skill", "Brazil": "Local heroes and submissions",
                     "Mexico": "Aggressive action", "UK": "Rivalries and underdogs", "Europe": "Technical matchups",
-                    "Japan": "Respect and elite technique", "Australia": "High-energy action", "Asia": "International stars",
+                    "Russia": "Grappling and durable contenders", "Japan": "Respect and elite technique",
+                    "South Korea": "Pace and technical action", "Australia": "High-energy action",
+                    "Asia": "International stars", "Middle East": "Champions and global names", "Africa": "Local heroes and finishes",
                 }.get(region, "Competitive fights"),
             }
             for region, areas in states.items()
@@ -2585,9 +3290,50 @@ class SeedMixin:
             ("Tristar", "Canada", "Montreal", 82, 80, ["Gameplanning", "Wrestling", "Boxing"], "Firas Laurent", 70, 2600, 75, 82, 72),
             ("Northstar Combat", "Canada", "Toronto", 68, 58, ["Wrestling", "Prospect Development"], "Owen Grant", 55, 1300, 66, 64, 55),
             ("Kings Road", "UK", "London", 63, 55, ["Boxing", "Conditioning"], "Billy Rhodes", 50, 1200, 60, 60, 48),
+            ("NexGen MMA", "UK", "Manchester", 78, 72, ["Prospect Development", "Wrestling", "Conditioning"], "Mara Keene", 64, 1800, 74, 78, 76),
             ("London Shootfighters", "UK", "London", 77, 74, ["Wrestling", "Kickboxing", "BJJ"], "Alex Turner", 75, 2200, 70, 76, 65),
             ("Altitude Fight Team", "Europe", "Amsterdam", 79, 76, ["Kickboxing", "Conditioning", "Clinch"], "Mika De Vries", 70, 2300, 69, 78, 64),
             ("Mexico City Combat", "Mexico", "Mexico City", 74, 66, ["Boxing", "Wrestling", "Prospect Development"], "Santiago Reyes", 65, 1500, 73, 70, 57),
+            ("Xtreme Couture", "USA", "Las Vegas", 82, 83, ["Wrestling", "Boxing", "Gameplanning"], "Eric Warren", 105, 3200, 74, 84, 73),
+            ("Kill Cliff FC", "USA", "Florida", 84, 84, ["Wrestling", "Conditioning", "Prospect Development"], "Henri Hooft Jr.", 110, 3400, 76, 86, 78),
+            ("Fortis MMA", "USA", "Dallas", 77, 74, ["Boxing", "Wrestling", "Prospect Development"], "Sayif Stone", 90, 2200, 72, 77, 75),
+            ("Roufusport", "USA", "Milwaukee", 76, 72, ["Kickboxing", "Conditioning", "Gameplanning"], "Duke Rhodes", 85, 2100, 70, 76, 67),
+            ("Alliance MMA", "USA", "San Diego", 79, 78, ["Wrestling", "BJJ", "Gameplanning"], "Eric Del Fierro Jr.", 90, 2500, 72, 80, 71),
+            ("Elevation Fight Team", "USA", "Denver", 80, 79, ["Conditioning", "Wrestling", "Kickboxing"], "Eliot Marshall Jr.", 95, 2600, 76, 82, 72),
+            ("Sanford Combat Club", "USA", "Florida", 78, 75, ["Kickboxing", "Clinch", "Conditioning"], "Marcus Silveira", 95, 2500, 71, 79, 69),
+            ("Brazilian Top Team", "Brazil", "Rio de Janeiro", 80, 80, ["BJJ", "Wrestling", "Gameplanning"], "Murilo Costa", 100, 2100, 75, 79, 72),
+            ("Team Nogueira", "Brazil", "Sao Paulo", 77, 78, ["BJJ", "Boxing", "Prospect Development"], "Rogerio Santos", 90, 1900, 77, 76, 74),
+            ("Parana Vale Tudo", "Brazil", "Curitiba", 72, 66, ["BJJ", "Clinch", "Conditioning"], "Jorge Lima", 85, 1400, 70, 71, 63),
+            ("Lobo Gym", "Mexico", "Guadalajara", 78, 74, ["Boxing", "Kickboxing", "Prospect Development"], "Francisco Lobo", 90, 1600, 78, 76, 73),
+            ("Entram Gym", "Mexico", "Tijuana", 73, 68, ["Boxing", "Wrestling", "Conditioning"], "Raul Arvizu Jr.", 80, 1400, 73, 72, 66),
+            ("SBG Ireland", "UK", "Dublin", 80, 82, ["Boxing", "Gameplanning", "BJJ"], "John Kavanagh Jr.", 90, 2500, 75, 81, 72),
+            ("Kaobon", "UK", "Liverpool", 75, 70, ["Kickboxing", "Wrestling", "Prospect Development"], "Colin Heron Jr.", 80, 1700, 72, 75, 70),
+            ("Great Britain Top Team", "UK", "London", 76, 72, ["Wrestling", "BJJ", "Prospect Development"], "Brad Pickett Jr.", 90, 1900, 74, 76, 75),
+            ("Straight Blast Toronto", "Canada", "Toronto", 72, 66, ["BJJ", "Gameplanning", "Prospect Development"], "Claude Patrick Jr.", 80, 1600, 72, 72, 69),
+            ("Niagara Top Team", "Canada", "Ontario", 76, 73, ["Wrestling", "Conditioning", "Prospect Development"], "Chris Prickett Jr.", 85, 1800, 75, 76, 72),
+            ("Allstars Training Center", "Europe", "Stockholm", 82, 82, ["Wrestling", "Boxing", "Gameplanning"], "Andreas Michael Jr.", 95, 2700, 76, 83, 76),
+            ("UFD Gym", "Europe", "Dusseldorf", 78, 75, ["Kickboxing", "Wrestling", "Conditioning"], "Ivan Hippolyte Jr.", 90, 2200, 73, 79, 69),
+            ("Warsaw Combat Academy", "Europe", "Warsaw", 73, 67, ["Wrestling", "Kickboxing", "Prospect Development"], "Marek Kowalski", 90, 1500, 75, 72, 74),
+            ("MMA Factory Paris", "Europe", "Paris", 80, 77, ["Wrestling", "Boxing", "Prospect Development"], "Fernand Lopez Jr.", 95, 2300, 77, 80, 78),
+            ("Red Fury Team", "Russia", "Moscow", 84, 84, ["Wrestling", "Sambo", "Conditioning"], "Magomed Kerimov", 120, 2100, 78, 84, 82),
+            ("Dagestan Fight School", "Russia", "Makhachkala", 87, 88, ["Wrestling", "BJJ", "Conditioning"], "Abdul Nurmagomedov", 130, 2300, 80, 87, 88),
+            ("Akhmat Fight Club", "Russia", "Grozny", 82, 83, ["Wrestling", "Clinch", "Gameplanning"], "Mansur Isaev", 115, 2100, 72, 83, 81),
+            ("Alexander Nevsky Club", "Russia", "St Petersburg", 75, 70, ["Sambo", "Boxing", "Prospect Development"], "Viktor Petrov", 90, 1500, 74, 75, 73),
+            ("Paraestra Tokyo", "Japan", "Tokyo", 77, 76, ["BJJ", "Wrestling", "Prospect Development"], "Yuki Nakahara", 85, 1800, 77, 76, 75),
+            ("Krazy Bee", "Japan", "Tokyo", 78, 79, ["Wrestling", "Boxing", "Conditioning"], "Kiyoshi Yamamoto", 85, 1900, 75, 78, 73),
+            ("Busan Team MAD", "South Korea", "Busan", 76, 72, ["Kickboxing", "Wrestling", "Prospect Development"], "Yang Sung-ho", 95, 1600, 78, 76, 79),
+            ("Korean Top Team", "South Korea", "Seoul", 79, 78, ["Wrestling", "Kickboxing", "Conditioning"], "Ha Dong-jin", 100, 1900, 77, 80, 78),
+            ("Evolve MMA", "Asia", "Singapore", 83, 82, ["Kickboxing", "BJJ", "Gameplanning"], "Siyar Bahadur", 110, 3000, 80, 87, 82),
+            ("Bali MMA", "Asia", "Bali", 74, 68, ["Kickboxing", "Conditioning", "Prospect Development"], "Don Carlo", 90, 1500, 78, 75, 72),
+            ("Team Lakay", "Asia", "Baguio", 76, 75, ["Kickboxing", "Wrestling", "Prospect Development"], "Mark Sangiao Jr.", 100, 1300, 82, 75, 84),
+            ("Freestyle Fighting Gym", "Australia", "Sydney", 81, 79, ["Wrestling", "Kickboxing", "Gameplanning"], "Joe Frey", 95, 2500, 76, 81, 74),
+            ("Australian Top Team", "Australia", "Melbourne", 73, 67, ["Boxing", "Wrestling", "Prospect Development"], "Daniel Kelly Jr.", 90, 1600, 73, 74, 72),
+            ("KHK MMA", "Middle East", "Manama", 80, 81, ["Wrestling", "Gameplanning", "Conditioning"], "Eldar Eldarov Jr.", 105, 2800, 74, 82, 80),
+            ("Dubai Fight Lab", "Middle East", "Dubai", 76, 72, ["Kickboxing", "BJJ", "Conditioning"], "Omar Al Hassan", 100, 2600, 77, 84, 75),
+            ("Abu Dhabi Combat Team", "Middle East", "Abu Dhabi", 78, 77, ["BJJ", "Wrestling", "Prospect Development"], "Khalid Al Mansoori", 110, 2500, 76, 82, 81),
+            ("Team CIT", "Africa", "Pretoria", 79, 78, ["Wrestling", "Boxing", "Conditioning"], "Morne Visser Jr.", 105, 1600, 81, 78, 80),
+            ("Lagos Fight House", "Africa", "Lagos", 72, 67, ["Boxing", "Wrestling", "Prospect Development"], "Chidi Okafor", 100, 1100, 80, 72, 82),
+            ("Atlas Combat Club", "Africa", "Casablanca", 71, 65, ["Kickboxing", "Clinch", "Prospect Development"], "Youssef Amrani", 90, 1100, 78, 71, 76),
         ]
         gyms = []
         for name, region, city, quality, reputation, specialties, coach, capacity, fee, morale, facilities, scouting in specs:
@@ -2626,6 +3372,28 @@ class SeedMixin:
         if "Conditioning" in gym.specialties:
             bonus += 3
         return bonus
+
+    def gym_attention_multiplier(self, gym):
+        """Individual coaching attention, bounded so a busy elite room remains useful."""
+        if not gym or gym.capacity >= 500:
+            return 1.0
+        load = gym.member_count / max(1, gym.capacity)
+        if load <= 0.65:
+            return 1.05
+        if load <= 0.90:
+            return 1.02 - (load - 0.65) * 0.08
+        return max(0.62, 1.0 - (load - 0.90) * 0.31)
+
+    def gym_effective_training(self, gym, fighter=None):
+        if not gym:
+            return 42
+        specialty = self.gym_specialty_bonus(fighter, gym) if fighter else 0
+        base = gym.quality * 0.48 + gym.facilities * 0.22 + gym.morale * 0.16 + gym.development_reputation * 0.14
+        return round(max(25, min(99, (base + specialty * 0.45) * self.gym_attention_multiplier(gym))))
+
+    def gym_tier(self, gym):
+        score = gym.quality * 0.55 + gym.reputation * 0.30 + gym.facilities * 0.15
+        return "World Class" if score >= 84 else "Elite" if score >= 77 else "National" if score >= 68 else "Regional" if score >= 56 else "Local"
 
     def sync_gym_membership(self):
         gyms = getattr(self, "gyms", [])

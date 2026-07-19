@@ -5,12 +5,14 @@ import os
 import platform
 import random
 import shutil
+import stat
 import sys
 import threading
 import traceback
 from collections import Counter
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
+from uuid import uuid4
 import tkinter as tk
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -53,6 +55,32 @@ def atomic_write_json_gzip(path, data, compresslevel=6):
     payload = json.dumps(data, separators=(",", ":")).encode("utf-8")
     temporary.write_bytes(gzip.compress(payload, compresslevel=max(1, min(9, int(compresslevel)))))
     os.replace(temporary, path)
+
+
+def _make_path_writable(path):
+    """Clear Windows read-only attributes before removing user save folders."""
+    try:
+        path = Path(path)
+        path.chmod(path.stat().st_mode | stat.S_IWRITE)
+    except OSError:
+        pass
+
+
+def _remove_readonly_path(func, path, _exc_info):
+    """Retry a failed rmtree operation after making the affected path writable."""
+    _make_path_writable(path)
+    func(path)
+
+
+def remove_save_folder(path):
+    """Remove a save slot even when an autosave folder was marked read-only."""
+    path = Path(path)
+    if not path.exists():
+        return
+    for item in sorted(path.rglob("*"), key=lambda candidate: len(candidate.parts), reverse=True):
+        _make_path_writable(item)
+    _make_path_writable(path)
+    shutil.rmtree(path, onerror=_remove_readonly_path)
 
 
 def read_json_text(path):
@@ -169,8 +197,9 @@ class PersistenceMixin:
         crash_note = f"\nCrash report: {report_path}." if report_path else "\nA crash report could not be written."
         try:
             data = self.serialize_world()
-            SAVE_DIR.mkdir(parents=True, exist_ok=True)
-            autosave_path = SAVE_DIR / f"crash_autosave_{_crash_stamp()}.json"
+            crash_folder = self.save_slot_dir() / "Crash Recovery"
+            crash_folder.mkdir(parents=True, exist_ok=True)
+            autosave_path = crash_folder / f"crash_autosave_{_crash_stamp()}.json"
             atomic_write_json_compact(autosave_path, data)
             crash_note += f"\nAn emergency autosave was written to {autosave_path}."
         except Exception as autosave_error:
@@ -186,27 +215,145 @@ class PersistenceMixin:
             print(message, file=sys.stderr)
 
     def save_game(self):
-        SAVE_DIR.mkdir(parents=True, exist_ok=True)
+        path = self.active_save_path()
         data = self.serialize_world()
-        data["_save_meta"] = self.save_metadata("Quick Save")
-        backup_path = SAVE_FILE.with_name("savegame.previous.json")
+        data["_save_meta"] = self.save_metadata(self.active_save_name)
         try:
-            if SAVE_FILE.exists():
-                shutil.copy2(SAVE_FILE, backup_path)
-                self.backup_save_file(SAVE_FILE, "before_quick_save")
-            atomic_write_json_compact(SAVE_FILE, data)
+            if path.exists():
+                self.backup_save_file(path, "before_quick_save")
+            atomic_write_json_compact(path, data)
             self.prune_save_backups()
         except Exception as exc:
             LOGGER.exception("Quick save failed: %s", exc)
             messagebox.showerror("Save failed", f"The existing save was left untouched.\n\n{type(exc).__name__}: {exc}")
-            return
-        messagebox.showinfo("Saved", f"Quick saved to {SAVE_FILE.resolve()}\n\nPrevious quick save: {backup_path.name}")
+            return False
+        messagebox.showinfo("Saved", f"Quick saved to {path.resolve()}\n\nTwo rolling recovery backups are kept in this game's Backups folder.")
+        if hasattr(self, "editor_current_dirty"):
+            self.editor_current_dirty = False
+            if hasattr(self, "refresh_editor_scope_banner"):
+                self.refresh_editor_scope_banner()
+        return True
+
+    def normalized_save_name(self, name=None):
+        raw = str(name or getattr(self, "active_save_name", "") or "Game 1").strip()
+        return self.safe_filename(raw) if hasattr(self, "safe_filename") else raw
+
+    def normalized_save_group(self, group=None):
+        raw = str(group if group is not None else getattr(self, "active_save_group", "Main") or "Main").strip()
+        if raw in ("", "All Saves"):
+            return "Main"
+        cleaned = self.safe_filename(raw) if hasattr(self, "safe_filename") else raw
+        return cleaned if cleaned.lower() not in {"main", "folders", "deleted saves", "autosaves", "backups"} else "Main"
+
+    def save_group_root(self, group=None, create=True):
+        normalized = self.normalized_save_group(group)
+        path = SAVE_DIR if normalized == "Main" else SAVE_DIR / "Folders" / normalized
+        if create:
+            path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def save_slot_dir(self, name=None, create=True, group=None):
+        path = self.save_group_root(group, create=create) / self.normalized_save_name(name)
+        if create:
+            path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def active_save_path(self):
+        return self.save_slot_dir() / "savegame.json"
+
+    def save_slot_name_from_path(self, path):
+        """Find the owning game folder for a new-format primary or snapshot."""
+        path = Path(path)
+        try:
+            relative = path.resolve().relative_to(SAVE_DIR.resolve())
+        except Exception:
+            return self.normalized_save_name()
+        parts = relative.parts
+        if len(parts) >= 4 and parts[0] == "Folders":
+            return parts[2]
+        if len(parts) >= 2 and parts[0] not in {"Backups", "Autosaves", "Deleted Saves", "Folders"}:
+            return parts[0]
+        return self.normalized_save_name()
+
+    def save_slot_group_from_path(self, path):
+        try:
+            parts = Path(path).resolve().relative_to(SAVE_DIR.resolve()).parts
+        except Exception:
+            return "Main"
+        return parts[1] if len(parts) >= 4 and parts[0] == "Folders" else "Main"
+
+    def save_slot_root_from_path(self, path):
+        path = Path(path)
+        if path.name == "savegame.json":
+            return path.parent
+        for parent in path.parents:
+            if (parent / "savegame.json").exists():
+                return parent
+        return path.parent
+
+    def set_active_save_name(self, name):
+        self.active_save_name = self.normalized_save_name(name)
+        if hasattr(self, "save_slot_name"):
+            self.save_slot_name.set(self.active_save_name)
+
+    def set_active_save_location(self, name, group="Main"):
+        self.active_save_group = self.normalized_save_group(group)
+        self.set_active_save_name(name)
+        if hasattr(self, "save_folder_target"):
+            self.save_folder_target.set(self.active_save_group)
+
+    def primary_save_paths(self):
+        """Return folder-based saves first, then legacy flat saves for migration."""
+        SAVE_DIR.mkdir(parents=True, exist_ok=True)
+        paths = [folder / "savegame.json" for folder in SAVE_DIR.iterdir()
+                 if folder.is_dir() and folder.name != "Folders" and (folder / "savegame.json").exists()]
+        folders_root = SAVE_DIR / "Folders"
+        if folders_root.exists():
+            paths.extend(
+                slot / "savegame.json"
+                for group in folders_root.iterdir() if group.is_dir()
+                for slot in group.iterdir() if slot.is_dir() and (slot / "savegame.json").exists()
+            )
+        legacy = [path for path in SAVE_DIR.glob("*.json") if path.name != SAVE_FILE.name]
+        if SAVE_FILE.exists():
+            legacy.append(SAVE_FILE)
+        return sorted(paths, key=lambda item: (self.save_slot_group_from_path(item).lower(), item.parent.name.lower())) + sorted(legacy, key=lambda item: item.name.lower())
+
+    def spectator_snapshot_dir(self, name=None):
+        path = self.save_slot_dir(name) / "Snapshots"
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def write_spectator_decade_snapshot(self):
+        """Archive a spectator universe at each completed decade, once only."""
+        if not getattr(self, "spectator_mode", False):
+            return None
+        years = max(0, (int(getattr(self, "month", 1)) - 1) // 12)
+        if years < 10 or years % 10 or years <= int(getattr(self, "last_spectator_snapshot_year", 0)):
+            return None
+        name = self.normalized_save_name()
+        path = self.spectator_snapshot_dir(name) / f"{name} - {years} Years.json.gz"
+        data = self.serialize_world()
+        # Store the completed decade in the archive itself. Loading a 10-year
+        # archive should continue toward year 20, not rewrite year 10 next month.
+        data["last_spectator_snapshot_year"] = years
+        data["_save_meta"] = self.save_metadata(f"{name} - {years} Years")
+        data["_save_meta"].update({"snapshot_type": "spectator_decade", "years_elapsed": years})
+        try:
+            atomic_write_json_gzip(path, data, compresslevel=3)
+            self.last_spectator_snapshot_year = years
+            self.event_log.insert(0, f"Save system: created spectator decade snapshot {path.name}.")
+            return path
+        except Exception as exc:
+            LOGGER.exception("Spectator decade snapshot failed: %s", exc)
+            return None
 
     def save_metadata(self, slot_name=""):
         company_label = "Spectator Mode" if getattr(self, "spectator_mode", False) else getattr(self, "player_company_name", PLAYER_PROMOTION_NAME)
         return {
             "schema": 1,
             "slot_name": slot_name,
+            "folder": getattr(self, "active_save_group", "Main"),
             "saved_at": datetime.now().isoformat(timespec="seconds"),
             "company": company_label,
             "spectator_mode": bool(getattr(self, "spectator_mode", False)),
@@ -216,49 +363,74 @@ class PersistenceMixin:
             "active_universe": self.active_universe_database_path().name if hasattr(self, "active_universe_database_path") else "",
         }
 
-    def save_backup_dir(self):
-        path = SAVE_DIR / "Backups"
+    def save_backup_dir(self, source_path=None):
+        source = Path(source_path) if source_path else self.active_save_path()
+        if source.name == "savegame.json":
+            path = source.parent / "Backups"
+        elif source == SAVE_FILE:
+            path = SAVE_DIR / "Backups"
+        else:
+            path = self.save_slot_dir() / "Backups"
         path.mkdir(parents=True, exist_ok=True)
         return path
+
+    def rolling_snapshot_path(self, folder, prefix):
+        """Choose the empty or oldest of the two fixed rolling snapshot slots."""
+        folder = Path(folder)
+        folder.mkdir(parents=True, exist_ok=True)
+        slots = [folder / f"{prefix}_{index}.json.gz" for index in range(1, ROLLING_SAVE_SLOT_COUNT + 1)]
+        missing = next((slot for slot in slots if not slot.exists()), None)
+        return missing or min(slots, key=lambda slot: slot.stat().st_mtime)
+
+    def prune_rolling_snapshot_files(self, folder, prefix):
+        """Keep only the fixed rolling slots; remove legacy timestamped snapshots."""
+        folder = Path(folder)
+        allowed = {f"{prefix}_{index}.json.gz" for index in range(1, ROLLING_SAVE_SLOT_COUNT + 1)}
+        for item in list(folder.glob("*.json")) + list(folder.glob("*.json.gz")) + list(folder.glob("*.tmp")):
+            if item.name in allowed:
+                continue
+            try:
+                item.unlink()
+            except FileNotFoundError:
+                pass
+            except Exception:
+                LOGGER.exception("Could not remove stale rolling save file: %s", item)
+        for manifest in folder.glob("*.manifest.json"):
+            try:
+                manifest.unlink()
+            except FileNotFoundError:
+                pass
+            except Exception:
+                LOGGER.exception("Could not remove stale rolling save manifest: %s", manifest)
+
+    def rolling_backup_files(self):
+        folder = self.save_backup_dir()
+        files = [folder / f"backup_{index}.json.gz" for index in range(1, ROLLING_SAVE_SLOT_COUNT + 1)]
+        return sorted((item for item in files if item.exists()), key=lambda item: item.stat().st_mtime, reverse=True)
 
     def backup_save_file(self, path, reason="manual"):
         path = Path(path)
         if not path.exists():
             return None
-        backup_dir = self.save_backup_dir()
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        target = backup_dir / f"{path.stem}_{reason}_{stamp}.json.gz"
-        with path.open("rb") as source, gzip.open(target, "wb", compresslevel=6) as destination:
-            shutil.copyfileobj(source, destination)
-        manifest = target.with_suffix(".manifest.json")
-        atomic_write_json(manifest, {
-            "created_at": datetime.now().isoformat(timespec="seconds"),
-            "source": str(path),
-            "backup": str(target),
-            "reason": reason,
+        backup_dir = self.save_backup_dir(path)
+        target = self.rolling_snapshot_path(backup_dir, "backup")
+        data = json.loads(read_json_text(path))
+        metadata = dict(data.get("_save_meta", {}))
+        metadata.update({
+            "backup_created_at": datetime.now().isoformat(timespec="seconds"),
+            "backup_source": path.name,
+            "backup_reason": reason,
         })
+        data["_save_meta"] = metadata
+        atomic_write_json_gzip(target, data)
+        self.prune_rolling_snapshot_files(backup_dir, "backup")
         return target
 
     def prune_save_backups(self, keep=None):
-        backup_dir = self.save_backup_dir()
-        if keep is None:
-            keep = int(self.rules.get("save_backup_keep", 12)) if hasattr(self, "rules") else 12
-        backups = list(backup_dir.glob("*.json")) + list(backup_dir.glob("*.json.gz"))
-        data_backups = sorted(
-            [item for item in backups if not item.name.endswith(".manifest.json")],
-            key=lambda item: item.stat().st_mtime, reverse=True,
-        )
-        for old in data_backups[keep:]:
-            try:
-                manifest = old.with_suffix(".manifest.json")
-                old.unlink()
-                if manifest.exists():
-                    manifest.unlink()
-            except Exception:
-                LOGGER.exception("Could not prune old save backup: %s", old)
+        self.prune_rolling_snapshot_files(self.save_backup_dir(), "backup")
 
     def autosave_dir(self, kind="weekly"):
-        path = SAVE_DIR / "Autosaves" / str(kind).capitalize()
+        path = self.save_slot_dir() / "Autosaves" / str(kind).capitalize()
         path.mkdir(parents=True, exist_ok=True)
         return path
 
@@ -271,9 +443,8 @@ class PersistenceMixin:
             return None
         kind = "monthly" if kind == "monthly" else "weekly"
         year = 2026 + (getattr(self, "month", 1) - 1) // 12
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         label = f"{kind.title()} Autosave Y{year} M{getattr(self, 'month', 1):02d} W{getattr(self, 'week', 1)}"
-        path = self.autosave_dir(kind) / f"{kind}_Y{year}_M{getattr(self, 'month', 1):02d}_W{getattr(self, 'week', 1)}_{stamp}.json.gz"
+        path = self.rolling_snapshot_path(self.autosave_dir(kind), f"{kind}_autosave")
         data = dict(snapshot) if snapshot is not None else self.serialize_world()
         data["_save_meta"] = self.save_metadata(label)
         data["_save_meta"]["autosave_kind"] = kind
@@ -281,18 +452,7 @@ class PersistenceMixin:
             # Level 3 materially shortens the UI pause on long saves while
             # retaining ordinary gzip compatibility and bounded retention.
             atomic_write_json_gzip(path, data, compresslevel=3)
-            manifest = path.with_suffix(".manifest.json")
-            atomic_write_json(manifest, {
-                "created_at": datetime.now().isoformat(timespec="seconds"),
-                "source": "automatic rolling autosave",
-                "kind": kind,
-                "year": year,
-                "month": getattr(self, "month", 1),
-                "week": getattr(self, "week", 1),
-                "company": getattr(self, "player_company_name", PLAYER_PROMOTION_NAME),
-            })
-            keep_key = "autosave_monthly_keep" if kind == "monthly" else "autosave_weekly_keep"
-            self.prune_rolling_autosaves(kind, int(self.rules.get(keep_key, 6 if kind == "monthly" else 8)))
+            self.prune_rolling_autosaves(kind)
             return path
         except Exception as exc:
             LOGGER.exception("Rolling %s autosave failed: %s", kind, exc)
@@ -300,23 +460,7 @@ class PersistenceMixin:
 
     def prune_rolling_autosaves(self, kind="weekly", keep=12):
         folder = self.autosave_dir(kind)
-        now = datetime.now().timestamp()
-        for temporary in folder.glob("*.tmp"):
-            try:
-                if now - temporary.stat().st_mtime > 86_400:
-                    temporary.unlink()
-            except Exception:
-                LOGGER.exception("Could not clean stale autosave temporary file: %s", temporary)
-        candidates = list(folder.glob("*.json")) + list(folder.glob("*.json.gz"))
-        saves = sorted([item for item in candidates if not item.name.endswith(".manifest.json")], key=lambda item: item.stat().st_mtime, reverse=True)
-        for old in saves[max(1, keep):]:
-            try:
-                manifest = old.with_suffix(".manifest.json")
-                old.unlink()
-                if manifest.exists():
-                    manifest.unlink()
-            except Exception:
-                LOGGER.exception("Could not prune old %s autosave: %s", kind, old)
+        self.prune_rolling_snapshot_files(folder, f"{kind}_autosave")
 
     def run_automatic_save_cycle(self, month_changed=False):
         if getattr(self, "suppress_autosaves", False) or not self.rules.get("autosave_enabled", True):
@@ -343,7 +487,7 @@ class PersistenceMixin:
         """
         archive = {
             (item.get("date", ""), item.get("company", ""), item.get("event_name", "")): item
-            for item in getattr(self, "ai_event_archive", [])
+            for item in list(getattr(self, "ai_event_archive", [])) + list(getattr(self, "player_event_archive", []))
         }
         rows = []
         for record in self.result_records:
@@ -357,11 +501,30 @@ class PersistenceMixin:
             rows.append(saved)
         return rows
 
+    def json_safe_save_value(self, value):
+        """Defensively flatten transient model references before writing a save.
+
+        Event builders occasionally keep a featured Fighter reference in a
+        runtime-only archive payload. A save must remain portable even if one
+        slips into an archive or media metadata structure.
+        """
+        if isinstance(value, Fighter):
+            return asdict(value)
+        if isinstance(value, Promotion):
+            return asdict(value)
+        if isinstance(value, Gym):
+            return asdict(value)
+        if isinstance(value, dict):
+            return {str(key): self.json_safe_save_value(item) for key, item in value.items()}
+        if isinstance(value, (list, tuple, set)):
+            return [self.json_safe_save_value(item) for item in value]
+        return value
+
     def relink_archived_result_records(self):
         """Restore de-duplicated save records to the normal full runtime shape."""
         archive = {
             (item.get("date", ""), item.get("company", ""), item.get("event_name", "")): item
-            for item in getattr(self, "ai_event_archive", [])
+            for item in list(getattr(self, "ai_event_archive", [])) + list(getattr(self, "player_event_archive", []))
         }
         for record in self.result_records:
             ref = record.pop("_archive_ref", None)
@@ -372,13 +535,132 @@ class PersistenceMixin:
                 record["log"] = package.get("log", [])
                 record["fight_logs"] = package.get("fight_logs", [])
 
+    def repair_premature_retirements(self):
+        """Repair legacy feeder exits and introduce requested prime legend starts.
+
+        This migration is confined to early-world saves, so an established
+        long-running universe is never silently rewound.
+        """
+        restored = []
+        retained = []
+        early_world = getattr(self, "month", 1) <= 48
+        prime_resets = set()
+        if early_world:
+            prime_ages = self.historic_prime_age_overrides()
+            fighter_groups = [self.roster, self.free_agents, self.retired_fighters]
+            fighter_groups.extend(promo.roster for promo in self.promotions)
+            for group in fighter_groups:
+                for fighter in group:
+                    # Conor's old profile was incorrectly calibrated as a
+                    # late-career 82 despite this universe starting him at 27.
+                    # Only opening-world saves receive this correction; later
+                    # development remains part of that save's own history.
+                    if fighter.name == "Conor McGregor" and getattr(fighter, "prime_rating_profile_version", 0) < 1:
+                        self.apply_real_fighter_profile(fighter, 92)
+                        fighter.prime_rating_profile_version = 1
+                        fighter.potential = max(fighter.potential, 98)
+                    target_age = prime_ages.get(fighter.name)
+                    if target_age is None or getattr(fighter, "prime_legend_age_override_version", 0) >= 1:
+                        continue
+                    fighter.age = target_age
+                    fighter.prime_start = max(24, target_age - 3)
+                    fighter.prime_end = max(fighter.prime_start + 5, target_age + 6)
+                    fighter.prime_legend_age_override_version = 1
+                    prime_resets.add(id(fighter))
+        for fighter in self.retired_fighters:
+            bad_early_exit = (
+                fighter.age < 30
+                and not getattr(fighter, "serious_injury", "")
+                and str(getattr(fighter, "retirement_reason", "")).startswith("Retired after final fight")
+            )
+            prime_legend_reset = id(fighter) in prime_resets
+            if not (bad_early_exit or prime_legend_reset):
+                retained.append(fighter)
+                continue
+            fighter.retired = False
+            fighter.retirement_pending = False
+            fighter.retirement_fight_completed = False
+            fighter.retirement_requested_month = 0
+            fighter.retirement_reason = "Returned to free agency for a fresh career opportunity."
+            fighter.contract_months = 0
+            fighter.contract_type = "Free Agent"
+            fighter.exclusive = False
+            fighter.free_agent_months = 0
+            fighter.available_week = max(getattr(fighter, "available_week", 0), self.calendar_week_index() + 4)
+            restored.append(fighter)
+        if not restored:
+            return
+        self.retired_fighters = retained
+        existing = {fighter.fighter_id for fighter in self.free_agents}
+        for fighter in restored:
+            if fighter.fighter_id not in existing:
+                self.free_agents.append(fighter)
+                existing.add(fighter.fighter_id)
+
+    def ensure_fighter_ids(self):
+        """Give legacy saves permanent fighter identities and repair bad collisions."""
+        seen = set()
+        fighter_groups = [self.roster, self.free_agents, self.retired_fighters]
+        fighter_groups.extend(promo.roster for promo in self.promotions)
+        fighter_groups.extend(world.get("roster", []) for world in getattr(self, "combat_sport_worlds", {}).values())
+        for group in fighter_groups:
+            for fighter in group:
+                fighter_id = str(getattr(fighter, "fighter_id", "") or "")
+                if not fighter_id or fighter_id in seen:
+                    fighter_id = f"FTR-{uuid4().hex[:16]}"
+                    fighter.fighter_id = fighter_id
+                seen.add(fighter_id)
+
+    def backfill_archived_fight_log_ids(self):
+        """Attach IDs to legacy bout logs only when sport/division gives one answer."""
+        fighters = []
+        for group in [self.roster, self.free_agents, self.retired_fighters]:
+            fighters.extend(group)
+        for promo in self.promotions:
+            fighters.extend(promo.roster)
+        for world in getattr(self, "combat_sport_worlds", {}).values():
+            fighters.extend(world.get("roster", []))
+
+        def identify(name, sport, division):
+            matches = [fighter for fighter in fighters if fighter.name == name]
+            if sport:
+                sport_matches = [fighter for fighter in matches if str(getattr(fighter, "primary_discipline", "") or "") == str(sport)]
+                if sport_matches:
+                    matches = sport_matches
+            if division:
+                division_matches = [fighter for fighter in matches if str(getattr(fighter, "sport_weight_class", "") or fighter.weight) == str(division)]
+                if division_matches:
+                    matches = division_matches
+            return matches[0] if len(matches) == 1 else None
+
+        seen_logs = set()
+        for record in list(self.result_records) + list(self.ai_event_archive):
+            for log in record.get("fight_logs", []) or []:
+                marker = id(log)
+                if marker in seen_logs:
+                    continue
+                seen_logs.add(marker)
+                sport, division = log.get("sport", ""), log.get("weight", "")
+                if not log.get("a_id"):
+                    fighter = identify(str(log.get("a", "")), sport, division)
+                    if fighter:
+                        log["a_id"] = fighter.fighter_id
+                if not log.get("b_id"):
+                    fighter = identify(str(log.get("b", "")), sport, division)
+                    if fighter:
+                        log["b_id"] = fighter.fighter_id
+
     def serialize_world(self):
         self.ensure_all_company_champions()
         return {
             "player_company_name": self.player_company_name,
             "spectator_mode": getattr(self, "spectator_mode", False),
+            "active_save_name": getattr(self, "active_save_name", "Game 1"),
+            "active_save_group": getattr(self, "active_save_group", "Main"),
+            "last_spectator_snapshot_year": getattr(self, "last_spectator_snapshot_year", 0),
             "player_region": self.player_region,
             "player_reputation": self.player_reputation,
+            "company_show_personality": getattr(self, "company_show_personality", "Balanced"),
             "theme_name": self.theme_name,
             "cash": self.cash,
             "company_pop": self.company_pop,
@@ -393,11 +675,17 @@ class PersistenceMixin:
             "regions": self.regions,
             "gyms": [asdict(g) for g in getattr(self, "gyms", [])],
             "result_history": self.result_history,
-            "result_records": self.serialized_result_records(),
-            "ai_event_archive": self.ai_event_archive,
+            "result_records": self.json_safe_save_value(self.serialized_result_records()),
+            "change_journal": self.json_safe_save_value(getattr(self, "change_journal", [])),
+            "result_index": self.json_safe_save_value(getattr(self, "result_index", [])),
+            "ai_event_archive": self.json_safe_save_value(self.ai_event_archive),
+            "player_event_archive": self.json_safe_save_value(getattr(self, "player_event_archive", [])),
             "independent_showcase_counter": getattr(self, "independent_showcase_counter", 1),
             "retired_fighters": [asdict(f) for f in self.retired_fighters],
             "finance": self.finance,
+            "media_companies": getattr(self, "media_companies", []),
+            "media_market_history": getattr(self, "media_market_history", []),
+            "media_market_last_month": getattr(self, "media_market_last_month", 0),
             "engine_settings": self.engine_settings,
             "staff": self.staff,
             "staff_candidates": self.staff_candidates,
@@ -411,7 +699,10 @@ class PersistenceMixin:
             "owner_goals": self.owner_goals,
             "belts": self.belts,
             "interim_belts": self.interim_belts,
+            "special_belts": getattr(self, "special_belts", {}),
             "belt_history": self.belt_history,
+            "closed_divisions": sorted(getattr(self, "closed_divisions", set())),
+            "player_managed_divisions": sorted(getattr(self, "player_managed_divisions", set())),
             "rules": self.rules,
             "broadcasters": self.broadcasters,
             "weight_classes": self.weight_classes,
@@ -428,21 +719,29 @@ class PersistenceMixin:
         }
 
     def load_game(self):
-        if not SAVE_FILE.exists():
-            messagebox.showinfo("No save", "No savegame.json exists yet.")
+        path = self.active_save_path()
+        if not path.exists() and SAVE_FILE.exists():
+            path = SAVE_FILE
+        if not path.exists():
+            messagebox.showinfo("No save", "No active save exists yet.")
             return
         try:
-            data = json.loads(SAVE_FILE.read_text(encoding="utf-8"))
+            data = json.loads(read_json_text(path))
             self.apply_world_data(data)
         except Exception as exc:
-            backup_path = SAVE_FILE.with_name("savegame.previous.json")
-            if backup_path.exists():
+            recovery_paths = self.rolling_backup_files()
+            # A legacy previous-save file is read once as a fallback for saves
+            # created before the two-slot policy. New saves no longer create it.
+            legacy_previous = SAVE_FILE.with_name("savegame.previous.json")
+            if legacy_previous.exists():
+                recovery_paths.append(legacy_previous)
+            for backup_path in recovery_paths:
                 try:
-                    self.apply_world_data(json.loads(backup_path.read_text(encoding="utf-8")))
+                    self.apply_world_data(json.loads(read_json_text(backup_path)))
                     self.booked.clear()
                     self.refresh_all()
                     self.write_log()
-                    messagebox.showwarning("Backup loaded", "The current quick save could not be read. The previous quick save was loaded instead.")
+                    messagebox.showwarning("Backup loaded", f"The current quick save could not be read. Recovery snapshot {backup_path.stem} was loaded instead.")
                     LOGGER.warning("Quick save failed to load; restored previous backup: %s", exc)
                     return
                 except Exception:
@@ -458,12 +757,18 @@ class PersistenceMixin:
         self.write_log()
 
     def apply_world_data(self, data):
+        if hasattr(self, "editor_current_dirty"):
+            self.editor_current_dirty = False
+        self.active_save_name = self.normalized_save_name(data.get("active_save_name", getattr(self, "active_save_name", "Game 1")))
+        self.active_save_group = self.normalized_save_group(data.get("active_save_group", getattr(self, "active_save_group", "Main")))
+        self.last_spectator_snapshot_year = max(0, int(data.get("last_spectator_snapshot_year", 0)))
         self.player_company_name = data.get("player_company_name", PLAYER_PROMOTION_NAME)
         if self.player_company_name == "Cage Empire":
             self.player_company_name = PLAYER_PROMOTION_NAME
         self.spectator_mode = bool(data.get("spectator_mode", self.player_company_name == "Spectator"))
         self.player_region = data.get("player_region", "USA")
         self.player_reputation = data.get("player_reputation", "Regional Player Company")
+        self.company_show_personality = data.get("company_show_personality", "Balanced")
         self.theme_name = data.get("theme_name", getattr(self, "theme_name", "Fight Night"))
         if hasattr(self, "theme_name_var"):
             self.theme_name_var.set(self.theme_name)
@@ -489,13 +794,18 @@ class PersistenceMixin:
             row.setdefault("executive", self.seed_promotion_executive(row.get("name", "")))
             row.setdefault("era_history", [])
             row.setdefault("legacy_score", 0)
+            row.setdefault("closed_divisions", [])
+            row.setdefault("special_belts", {})
             for fighter in row["roster"]:
                 self.ensure_detailed_skills(fighter)
                 self.ensure_fighter_business_stats(fighter)
             self.promotions.append(Promotion(**row))
+        # A save is a sealed simulation state. Its fighter rosters must never
+        # be repopulated from whichever universe database happens to be active
+        # when the player loads it.
         if not self.promotions:
-            self.promotions = self.seed_promotions()
-        self.repair_core_promotions()
+            raise ValueError("Save contains no promotion data and cannot be safely restored")
+        self.repair_core_promotions(restore_missing=False)
         self.regions = data.get("regions", self.seed_regions())
         for region in REGIONS:
             self.regions.setdefault(region, {
@@ -519,19 +829,29 @@ class PersistenceMixin:
             self.gyms = seeded_gyms
         self.result_history = data.get("result_history", [])
         self.result_records = data.get("result_records", [])
+        self.change_journal = list(data.get("change_journal", []))[-400:]
         self.ai_event_archive = data.get("ai_event_archive", [])
+        self.player_event_archive = data.get("player_event_archive", [])[-150:]
         self.relink_archived_result_records()
-        self.combat_sport_worlds = data.get("combat_sport_worlds", self.seed_combat_sport_worlds()) or self.seed_combat_sport_worlds()
+        self.result_index = data.get("result_index", [])
+        self.ensure_result_index()
+        serialized_sport_worlds = data.get("combat_sport_worlds")
+        self.combat_sport_worlds = serialized_sport_worlds if serialized_sport_worlds else self.seed_combat_sport_worlds()
         for world in self.combat_sport_worlds.values():
             world["roster"] = [fighter if isinstance(fighter, Fighter) else Fighter(**fighter) for fighter in world.get("roster", [])]
-        self.repair_combat_sport_worlds()
         self.player_combat_divisions = data.get("player_combat_divisions", {}) or {}
         self.independent_showcase_counter = max(1, data.get("independent_showcase_counter", 1))
         self.retired_fighters = [Fighter(**row) for row in data.get("retired_fighters", [])]
         for fighter in self.retired_fighters:
             self.ensure_detailed_skills(fighter)
             self.ensure_fighter_business_stats(fighter)
+        self.repair_premature_retirements()
+        self.ensure_fighter_ids()
+        self.backfill_archived_fight_log_ids()
         self.finance = data.get("finance", self.seed_finance())
+        self.media_companies = data.get("media_companies", []) or []
+        self.media_market_history = data.get("media_market_history", []) or []
+        self.media_market_last_month = data.get("media_market_last_month", 0)
         self.engine_settings = data.get("engine_settings", self.seed_engine_settings())
         if hasattr(self, "engine_vars"):
             for key, var in self.engine_vars.items():
@@ -558,7 +878,10 @@ class PersistenceMixin:
         self.owner_goals = data.get("owner_goals", self.seed_owner_goals())
         self.belts = self.normalize_belts(data.get("belts", self.blank_belts()))
         self.interim_belts = self.normalize_belts(data.get("interim_belts", self.blank_belts()))
+        self.special_belts = self.normalize_special_belts(data.get("special_belts", {}))
         self.belt_history = self.normalize_belt_history(data.get("belt_history", self.blank_belt_history()))
+        self.closed_divisions = set(data.get("closed_divisions", []))
+        self.player_managed_divisions = set(data.get("player_managed_divisions", self.closed_divisions))
         if hasattr(self, "fight_timer_delay"):
             saved_delay = int(data.get("fight_timer_delay", self.fight_timer_delay.get()))
             # 950 ms was the old shipped default. Move old-default saves to the
@@ -567,12 +890,19 @@ class PersistenceMixin:
                 saved_delay = 2150
             self.fight_timer_delay.set(max(120, min(3000, saved_delay)))
         self.rules = data.get("rules", {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "active_fighter_target": 1200})
-        self.rules.setdefault("scouting_mode", False)
+        self.rules.setdefault("scouting_mode", True)
+        if self.spectator_mode:
+            self.rules["scouting_mode"] = False
         self.ensure_rule_defaults()
         self.broadcasters = data.get("broadcasters", [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}])
+        self.ensure_media_system()
         self.weight_classes = data.get("weight_classes", list(WEIGHTS))
         self.post_show_bonuses = data.get("post_show_bonuses", {"fight": 5000, "ko": 5000, "sub": 5000})
         self.scheduled_events = data.get("scheduled_events", [])
+        # Older builds silently moved cancelled bouts to other cards or created a
+        # dedicated Rebooked Bouts show. Player cards now remain entirely manual.
+        rebooked_name = f"{self.player_company_name} Rebooked Bouts"
+        self.scheduled_events = [event for event in self.scheduled_events if event.get("name") != rebooked_name]
         self.pending_rebookings = data.get("pending_rebookings", [])
         for event in self.scheduled_events:
             event.setdefault("week", 1)
@@ -585,19 +915,15 @@ class PersistenceMixin:
         self.season_stats = data.get("season_stats", {})
         self.awards_history = data.get("awards_history", [])
         self.clean_numbered_fighter_names()
+        self.normalize_gym_assignments()
         self.sync_gym_membership()
         loaded_fighters = list(self.roster) + list(self.free_agents) + list(self.retired_fighters)
         for promo in self.promotions:
             loaded_fighters.extend(promo.roster)
-        recalibrated = self.migrate_real_fighter_profiles(loaded_fighters)
-        if recalibrated:
-            self.news.insert(0, f"Database realism update: recalibrated {recalibrated} real fighter profiles.")
-        rejuvenated = self.migrate_legend_prime_ages(loaded_fighters)
-        if rejuvenated:
-            self.news.insert(0, f"Legend database update: restored {rejuvenated} legends to their prime-era ages.")
         for fighter in loaded_fighters:
             fighter.camp_quality = self.gym_quality(fighter.camp)
         self.ensure_all_company_champions()
+        self.rebalance_ai_finance_model()
 
     def migrate_real_fighter_profiles(self, fighters):
         """One-time migration for saves made before deterministic real-fighter profiles."""
@@ -666,13 +992,32 @@ class PersistenceMixin:
             fighter.regional_popularity[fighter.birth_region] = max(fighter.regional_popularity.get(fighter.birth_region, 0), min(65, 18 + fighter.popularity // 3))
             fighter.home_event_history = getattr(fighter, "home_event_history", None) or []
         fighter.record_d = getattr(fighter, "record_d", 0)
-        fighter.fight_history = fighter.fight_history or []
-        fighter.annual_overalls = fighter.annual_overalls or {"2026": fighter.overall}
+        fighter.interim_title_wins = max(0, getattr(fighter, "interim_title_wins", 0) or 0)
+        fighter.interim_title_defenses = max(0, getattr(fighter, "interim_title_defenses", 0) or 0)
+        fighter.special_titles = list(getattr(fighter, "special_titles", None) or [])
+        history = fighter.fight_history or []
+        # Old simulations could occasionally persist the exact same event line
+        # twice. Preserve chronological order while repairing only exact repeats.
+        seen_history, cleaned_history = set(), []
+        for entry in history:
+            key = str(entry).strip()
+            if key and key in seen_history:
+                continue
+            seen_history.add(key)
+            cleaned_history.append(entry)
+        fighter.fight_history = cleaned_history
+        fighter.bout_rating_history = getattr(fighter, "bout_rating_history", None) or []
+        self.repair_legacy_generated_entry(fighter)
+        self.ensure_fighter_history_baseline(fighter)
+        entry_year = max(2026, int(getattr(fighter, "universe_entry_year", 0) or 2026))
+        fighter.annual_overalls = fighter.annual_overalls or {str(entry_year): fighter.overall}
         fighter.motivation = getattr(fighter, "motivation", 65) or 65
         fighter.retirement_pending = bool(getattr(fighter, "retirement_pending", False))
         fighter.retirement_requested_month = max(0, getattr(fighter, "retirement_requested_month", 0) or 0)
         fighter.retirement_fight_completed = bool(getattr(fighter, "retirement_fight_completed", False))
         fighter.camp_quality = getattr(fighter, "camp_quality", 0) or self.gym_quality(fighter.camp)
+        fighter.camp_joined_month = max(0, getattr(fighter, "camp_joined_month", 0) or 0)
+        fighter.camp_history = getattr(fighter, "camp_history", None) or []
         fighter.walk_weight = getattr(fighter, "walk_weight", 0) or self.default_walk_weight(fighter)
         fighter.scale_weight = getattr(fighter, "scale_weight", 0.0) or 0.0
         fighter.missed_weight = getattr(fighter, "missed_weight", False)
@@ -725,6 +1070,76 @@ class PersistenceMixin:
             self.assign_career_arc(fighter)
             fighter.career_arc_version = 2
 
+    def repair_legacy_generated_entry(self, fighter):
+        """Repair old saves where post-launch entrants inherited seed history.
+
+        Before entry provenance existed, the generic generator gave every new
+        fighter an opening-universe record and a 2026 rating snapshot. We only
+        repair fighters whose current age makes it mathematically impossible
+        for them to have been an eligible 16-year-old at the 2026 launch, so
+        genuine real-world and opening-universe records are left intact.
+        """
+        current_year = 2026 + max(0, int(getattr(self, "month", 1)) - 1) // 12
+        years_elapsed = max(0, current_year - 2026)
+        if fighter.age - years_elapsed >= 16:
+            return
+
+        history_months = []
+        for entry in fighter.fight_history or []:
+            text = str(entry)
+            marker = "Month "
+            if marker not in text:
+                continue
+            tail = text.split(marker, 1)[1].lstrip()
+            digits = ""
+            for character in tail:
+                if not character.isdigit():
+                    break
+                digits += character
+            if digits:
+                history_months.append(max(1, int(digits)))
+        earliest_month = min(history_months) if history_months else 0
+        earliest_possible_year = max(2026, current_year - max(0, fighter.age - 16))
+        entry_year = 2026 + (earliest_month - 1) // 12 if earliest_month else earliest_possible_year
+        entry_year = max(earliest_possible_year, min(current_year, entry_year))
+
+        fighter.generated = True
+        fighter.universe_entry_month = earliest_month
+        fighter.universe_entry_year = entry_year
+        fighter.record_history_baseline_w = 0
+        fighter.record_history_baseline_l = 0
+        fighter.record_history_baseline_d = 0
+        peaks = dict(fighter.annual_overalls or {})
+        fighter.annual_overalls = {
+            str(year): score for year, score in peaks.items()
+            if str(year).isdigit() and int(year) >= entry_year
+        }
+        if not fighter.annual_overalls:
+            fighter.annual_overalls = {str(entry_year): fighter.overall}
+
+    def ensure_fighter_history_baseline(self, fighter):
+        """Separate imported records from fights actually played in this universe."""
+        baseline_fields = ("record_history_baseline_w", "record_history_baseline_l", "record_history_baseline_d")
+        if all(getattr(fighter, field, -1) >= 0 for field in baseline_fields):
+            return tuple(getattr(fighter, field) for field in baseline_fields)
+        wins = losses = draws = 0
+        name = str(fighter.name)
+        for entry in getattr(fighter, "fight_history", []) or []:
+            line = str(entry)
+            if f"{name} def. " in line or "Amateur W" in line or "W over" in line:
+                wins += 1
+            elif "fought to a draw" in line or "Amateur D" in line:
+                draws += 1
+            elif " def. " in line and name in line or "Amateur L" in line or "L to" in line:
+                losses += 1
+        baseline = (
+            max(0, int(getattr(fighter, "record_w", 0)) - wins),
+            max(0, int(getattr(fighter, "record_l", 0)) - losses),
+            max(0, int(getattr(fighter, "record_d", 0)) - draws),
+        )
+        fighter.record_history_baseline_w, fighter.record_history_baseline_l, fighter.record_history_baseline_d = baseline
+        return baseline
+
     def default_walk_weight(self, fighter):
         limit = WEIGHT_LIMITS.get(fighter.weight, 170)
         spread = 10 if limit <= 135 else 15 if limit <= 170 else 22 if limit <= 205 else 35
@@ -734,6 +1149,60 @@ class PersistenceMixin:
         size_adjust = round((natural_size - 50) / 8)
         return min(295, limit + max(4, random.randint(max(5, spread // 2), spread) + size_adjust))
 
+    def save_group_names(self):
+        folders_root = SAVE_DIR / "Folders"
+        groups = ["Main"]
+        if folders_root.exists():
+            groups.extend(sorted((folder.name for folder in folders_root.iterdir() if folder.is_dir()), key=str.lower))
+        return groups
+
+    def set_save_manager_status(self, message=""):
+        if hasattr(self, "save_manager_status"):
+            self.save_manager_status.config(text=str(message))
+
+    def create_save_folder(self):
+        name = self.normalized_save_group(self.save_new_folder_name.get() if hasattr(self, "save_new_folder_name") else "")
+        if name == "Main":
+            self.set_save_manager_status("Enter a distinct folder name, such as Tests or Long-Term Saves.")
+            return
+        self.save_group_root(name).mkdir(parents=True, exist_ok=True)
+        if hasattr(self, "save_folder_target"):
+            self.save_folder_target.set(name)
+        self.set_save_manager_status(f"Created save folder: {name}")
+        self.refresh_game_menu()
+
+    def move_selected_save_to_folder(self):
+        path = self.selected_save_path()
+        if not path.exists():
+            self.set_save_manager_status("Select an existing save before moving it.")
+            return
+        source_root = self.save_slot_root_from_path(path)
+        slot_name = source_root.name
+        source_group = self.save_slot_group_from_path(source_root / "savegame.json")
+        target_group = self.normalized_save_group(self.save_folder_target.get() if hasattr(self, "save_folder_target") else "Main")
+        if source_group == target_group:
+            self.set_save_manager_status(f"{slot_name} is already in {target_group}.")
+            return
+        target_root = self.save_group_root(target_group) / slot_name
+        if target_root.exists():
+            self.set_save_manager_status(f"Cannot move: {target_group} already contains a save named {slot_name}.")
+            return
+        try:
+            target_root.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(source_root), str(target_root))
+            active_path = self.active_save_path()
+            try:
+                was_active = active_path.resolve().is_relative_to(source_root.resolve())
+            except (OSError, ValueError):
+                was_active = False
+            if was_active:
+                self.set_active_save_location(slot_name, target_group)
+            self.set_save_manager_status(f"Moved {slot_name} from {source_group} to {target_group}.")
+        except Exception as exc:
+            LOGGER.exception("Could not move save folder %s: %s", source_root, exc)
+            self.set_save_manager_status(f"Move failed: {type(exc).__name__}: {exc}")
+        self.refresh_game_menu()
+
     def refresh_game_menu(self):
         if not hasattr(self, "save_slot_list"):
             return
@@ -742,21 +1211,46 @@ class PersistenceMixin:
         playable = [promo.name for promo in sorted(self.promotions, key=lambda promo: promo.name)
                     if promo.name != "Spectator" and not getattr(promo, "is_regional_feeder", False)
                     and "independent" not in promo.name.lower()]
-        choices = ["Spectator Mode"] + list(dict.fromkeys([self.player_company_name] + playable))
+        choices = ["Create New Promotion...", "Spectator Mode"] + list(dict.fromkeys([self.player_company_name] + playable))
         self.start_company_combo.configure(values=choices)
         if self.start_company_choice.get() not in choices:
             self.start_company_choice.set(self.player_company_name)
         current_save = self.save_slot_list.curselection()
         current_db = self.database_list.curselection()
+        groups = self.save_group_names()
+        if hasattr(self, "save_folder_filter_box"):
+            self.save_folder_filter_box.configure(values=("All Saves",) + tuple(groups))
+        if hasattr(self, "save_folder_target_box"):
+            self.save_folder_target_box.configure(values=tuple(groups))
+        if hasattr(self, "save_folder_filter") and self.save_folder_filter.get() not in ("All Saves",) + tuple(groups):
+            self.save_folder_filter.set("All Saves")
+        if hasattr(self, "save_folder_target") and self.save_folder_target.get() not in groups:
+            self.save_folder_target.set(getattr(self, "active_save_group", "Main") if getattr(self, "active_save_group", "Main") in groups else "Main")
+        visible_group = self.save_folder_filter.get() if hasattr(self, "save_folder_filter") else "All Saves"
         self.save_slot_list.delete(0, "end")
         self.save_slot_files = []
         metadata_cache = getattr(self, "_save_metadata_cache", {})
         live_cache_keys = set()
-        for file in sorted(SAVE_DIR.glob("*.json")):
-            if file.name == SAVE_FILE.name:
-                label = f"{file.stem} | Quick Save"
-            else:
-                label = file.stem
+        self.save_slot_sources = {}
+        self.save_slot_groups = {}
+        primary_paths = self.primary_save_paths()
+        entries = []
+        for file in primary_paths:
+            group = self.save_slot_group_from_path(file)
+            if visible_group != "All Saves" and group != visible_group:
+                continue
+            display_name = self.save_slot_name_from_path(file) if file.name == "savegame.json" else file.stem
+            entries.append((file, display_name, "", group))
+        for primary in primary_paths:
+            slot_dir = primary.parent
+            group = self.save_slot_group_from_path(primary)
+            if visible_group != "All Saves" and group != visible_group:
+                continue
+            for snapshot in sorted((slot_dir / "Snapshots").glob("*.json.gz")) if (slot_dir / "Snapshots").exists() else []:
+                entries.append((snapshot, snapshot.stem.replace(".json", ""), "Spectator Snapshot", group))
+        for file, display_name, kind, group in entries:
+            group_prefix = f"[{group}] " if visible_group == "All Saves" else ""
+            label = group_prefix + (f"{display_name} | {kind}" if kind else display_name)
             try:
                 stat = file.stat()
                 cache_key = str(file.resolve())
@@ -766,7 +1260,7 @@ class PersistenceMixin:
                 if cached and cached[0] == signature:
                     meta = cached[1]
                 else:
-                    data = json.loads(file.read_text(encoding="utf-8"))
+                    data = json.loads(read_json_text(file))
                     meta = data.get("_save_meta", {}) if isinstance(data, dict) else {}
                     metadata_cache[cache_key] = (signature, meta)
                 if meta:
@@ -776,10 +1270,13 @@ class PersistenceMixin:
                     saved_at = str(meta.get("saved_at", ""))[:16].replace("T", " ")
                     universe = meta.get("active_universe", "")
                     universe_note = f" | {universe}" if universe else ""
-                    label = f"{file.stem} | {company} | M{month} W{week} | {saved_at}{universe_note}"
+                    prefix = group_prefix + (f"{display_name} | {kind} | " if kind else f"{display_name} | ")
+                    label = f"{prefix}{company} | M{month} W{week} | {saved_at}{universe_note}"
             except Exception:
                 pass
             self.save_slot_files.append(file)
+            self.save_slot_sources[file] = self.save_slot_name_from_path(file)
+            self.save_slot_groups[file] = group
             self.save_slot_list.insert("end", label)
         self._save_metadata_cache = {key: value for key, value in metadata_cache.items() if key in live_cache_keys}
         self.database_list.delete(0, "end")
@@ -807,14 +1304,15 @@ class PersistenceMixin:
             status = "ON" if self.rules.get("autosave_enabled", True) else "OFF"
             weekly_count = len([item for pattern in ("*.json", "*.json.gz") for item in self.autosave_dir("weekly").glob(pattern) if not item.name.endswith(".manifest.json")]) if hasattr(self, "autosave_dir") else 0
             monthly_count = len([item for pattern in ("*.json", "*.json.gz") for item in self.autosave_dir("monthly").glob(pattern) if not item.name.endswith(".manifest.json")]) if hasattr(self, "autosave_dir") else 0
-            backup_count = len([item for pattern in ("*.json", "*.json.gz") for item in self.save_backup_dir().glob(pattern) if not item.name.endswith(".manifest.json")]) if hasattr(self, "save_backup_dir") else 0
+            backup_count = len(self.rolling_backup_files()) if hasattr(self, "rolling_backup_files") else 0
             interval = self.rules.get("autosave_interval_months", 2)
-            legacy = f" | Legacy W {weekly_count}" if weekly_count else ""
+            legacy = f" | Weekly {weekly_count}/2" if weekly_count else ""
             self.autosave_status_label.config(
-                text=f"Auto {status} | Every {interval} months | Rolling {monthly_count}/{self.rules.get('autosave_monthly_keep', 6)}{legacy} | Backups {backup_count}/{self.rules.get('save_backup_keep', 12)}"
+                text=f"Auto {status} | Every {interval} months | Monthly {monthly_count}/2{legacy} | Backups {backup_count}/2"
             )
 
     def player_company_as_promotion(self):
+        self.ensure_player_media_state()
         show_history = list(self.result_history[:12])
         if not show_history and self.event_log:
             show_history = list(self.event_log[:12])
@@ -832,6 +1330,7 @@ class PersistenceMixin:
             event_counter=max(1, len(self.result_history) + len(self.scheduled_events) + 1),
             belts=self.normalize_belts(self.belts),
             interim_belts=self.normalize_belts(self.interim_belts),
+            special_belts=self.normalize_special_belts(getattr(self, "special_belts", {})),
             belt_history=self.normalize_belt_history(self.belt_history),
             rules=dict(self.rules),
             broadcasters=[dict(item) for item in self.broadcasters],
@@ -843,10 +1342,12 @@ class PersistenceMixin:
             inbox=[dict(item) for item in self.inbox],
             owner_goals=[dict(item) for item in self.owner_goals],
             post_show_bonuses=dict(self.post_show_bonuses),
-            strategy=self.seed_promotion_strategy(self.player_company_name, "Balanced"),
+            show_personality=getattr(self, "company_show_personality", "Balanced"),
+            strategy=self.seed_promotion_strategy(self.player_company_name, getattr(self, "company_show_personality", "Balanced")),
             executive=self.seed_promotion_executive(self.player_company_name),
             era_history=[],
             academy=json.loads(json.dumps(self.repair_academy(getattr(self, "academy", {})))) if hasattr(self, "repair_academy") else {},
+            closed_divisions=sorted(getattr(self, "closed_divisions", set())),
         )
 
     def enter_spectator_mode(self):
@@ -861,12 +1362,13 @@ class PersistenceMixin:
         # handoff company a one-time operating runway rather than bypassing the
         # same affordability checks used by every other promotion.
         former_company.cash = max(former_company.cash, 2_000_000)
-        former_company.show_personality = "Prospect Builder"
+        former_company.show_personality = getattr(self, "company_show_personality", "Prospect Builder")
         former_company.strategy = self.seed_promotion_strategy(former_company.name, former_company.show_personality)
         former_company.executive = self.seed_promotion_executive(former_company.name)
         if not any(promo.name == former_company.name for promo in self.promotions):
             self.promotions.append(former_company)
         self.spectator_mode = True
+        self.rules["scouting_mode"] = False
         self.player_company_name = "Spectator"
         self.player_region = "Worldwide"
         self.player_reputation = "World Observer"
@@ -884,6 +1386,29 @@ class PersistenceMixin:
             self.event_name.set("Spectator Mode")
         self.refresh_all()
         self.write_log()
+
+    def return_to_spectator_mode(self, confirm=True):
+        """Resign from the current promotion and resume observing the world."""
+        if getattr(self, "spectator_mode", False):
+            messagebox.showinfo("Spectator Mode", "You are already observing the world simulation.")
+            return False
+        company_name = self.player_company_name
+        if confirm and not messagebox.askyesno(
+            "Return to Spectator",
+            f"Step away from {company_name}? The promotion will return to AI management, including its roster, contracts, scheduled cards, and finances. You can take control of another company later.",
+        ):
+            return False
+        self.enter_spectator_mode()
+        self.news.insert(0, f"Promoter move: you stepped away from {company_name} and returned to spectator mode.")
+        self.record_world_story(
+            "Promoter Move",
+            f"The promoter stepped away from {company_name}.",
+            f"{company_name} returns to AI management while the world continues under spectator observation.",
+            [company_name],
+            importance=2,
+        )
+        self.refresh_all()
+        return True
 
     def exit_spectator_mode(self):
         self.spectator_mode = False
@@ -915,13 +1440,22 @@ class PersistenceMixin:
         self.company_stability = promo.stability
         self.roster = promo.roster
         self.academy = self.repair_academy(promo.academy or self.academy_defaults()) if hasattr(self, "repair_academy") else (promo.academy or {})
-        self.belts, self.interim_belts, self.belt_history = self.ensure_company_champions(self.roster, promo.belts or {}, promo.name, promo.region, promo.reputation_score, player_owned=True, interim_belts=promo.interim_belts or {}, belt_history=promo.belt_history or {})
+        self.closed_divisions = set(getattr(promo, "closed_divisions", None) or [])
+        self.player_managed_divisions = set()
+        self.belts, self.interim_belts, self.belt_history = self.ensure_company_champions(
+            self.roster, promo.belts or {}, promo.name, promo.region, promo.reputation_score,
+            player_owned=True, interim_belts=promo.interim_belts or {}, belt_history=promo.belt_history or {},
+            closed_divisions=self.closed_divisions,
+        )
+        self.special_belts = self.normalize_special_belts(getattr(promo, "special_belts", {}) or {})
         self.rules = promo.rules or {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "active_fighter_target": 1200}
         self.ensure_rule_defaults()
         self.broadcasters = promo.broadcasters or [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}]
         self.weight_classes = promo.weight_classes or list(WEIGHTS)
         self.scheduled_events = promo.scheduled_events or []
         self.finance = promo.finance or self.seed_finance()
+        self.ensure_finance_defaults()
+        self.ensure_player_media_state()
         self.staff = promo.staff or self.seed_staff()
         self.staff_candidates = self.seed_staff_candidates()
         self.scouting = promo.scouting or []
@@ -1168,6 +1702,23 @@ class PersistenceMixin:
                 return ["media section must be an object."]
             if not value.get("player_broadcasters"):
                 issues.append("No player broadcasters defined.")
+            packages = value.get("rights_packages", [])
+            if not packages:
+                issues.append("No media rights packages defined.")
+            seen_media_ids = set()
+            for package in packages:
+                if not isinstance(package, dict) or not package.get("name"):
+                    issues.append("Media rights package is missing a name.")
+                    continue
+                media_id = str(package.get("id", package["name"])).strip().lower()
+                if media_id in seen_media_ids:
+                    issues.append(f"Duplicate media rights id/name: {package['name']}")
+                seen_media_ids.add(media_id)
+                for key in ("reach", "prestige", "budget", "selectivity", "min_popularity", "min_card_quality", "min_production"):
+                    if key in package and not 0 <= int(package[key]) <= 100:
+                        issues.append(f"{package['name']}: {key} must be 0-100.")
+                if int(package.get("base_fee", package.get("fee", 0))) < 0:
+                    issues.append(f"{package['name']}: fee must not be negative.")
         elif section == "regions":
             if not isinstance(value, dict) or not value:
                 issues.append("regions section must be a non-empty object.")
@@ -1187,21 +1738,26 @@ class PersistenceMixin:
     def save_selected_slot(self):
         SAVE_DIR.mkdir(parents=True, exist_ok=True)
         name = self.safe_filename(self.save_slot_name.get())
-        path = SAVE_DIR / f"{name}.json"
+        group = self.normalized_save_group(self.save_folder_target.get() if hasattr(self, "save_folder_target") else getattr(self, "active_save_group", "Main"))
+        path = self.save_slot_dir(name, group=group) / "savegame.json"
+        previous_name = getattr(self, "active_save_name", "Game 1")
+        previous_group = getattr(self, "active_save_group", "Main")
         try:
             if path.exists():
                 self.backup_save_file(path, "before_slot_save")
+            self.set_active_save_location(name, group)
             data = self.serialize_world()
             data["_save_meta"] = self.save_metadata(name)
             atomic_write_json_compact(path, data)
             self.prune_save_backups()
         except Exception as exc:
+            self.set_active_save_location(previous_name, previous_group)
             LOGGER.exception("Save slot failed: %s", exc)
             messagebox.showerror("Save failed", f"The slot was not changed.\n\n{type(exc).__name__}: {exc}")
             return
         self.refresh_game_menu()
         saved_as = "Spectator Mode" if getattr(self, "spectator_mode", False) else getattr(self, "player_company_name", PLAYER_PROMOTION_NAME)
-        messagebox.showinfo("Saved", f"Saved slot: {name}\nMode/company: {saved_as}")
+        self.set_save_manager_status(f"Saved {name} in {group}. Mode/company: {saved_as}")
 
     def selected_save_path(self):
         selected = self.save_slot_list.curselection()
@@ -1209,7 +1765,8 @@ class PersistenceMixin:
         if selected and selected[0] < len(files):
             return files[selected[0]]
         name = self.safe_filename(self.save_slot_name.get())
-        return SAVE_DIR / f"{name}.json"
+        group = self.normalized_save_group(self.save_folder_target.get() if hasattr(self, "save_folder_target") else getattr(self, "active_save_group", "Main"))
+        return self.save_slot_dir(name, group=group) / "savegame.json"
 
     def load_selected_slot(self):
         path = self.selected_save_path()
@@ -1217,8 +1774,14 @@ class PersistenceMixin:
             messagebox.showinfo("No save", "Select an existing save slot.")
             return
         try:
-            self.backup_save_file(path, "before_slot_load")
-            self.apply_world_data(json.loads(path.read_text(encoding="utf-8")))
+            current_path = self.active_save_path()
+            if current_path.exists() and current_path != path:
+                self.backup_save_file(current_path, "before_slot_load")
+            self.apply_world_data(json.loads(read_json_text(path)))
+            self.set_active_save_location(
+                getattr(self, "save_slot_sources", {}).get(path, self.save_slot_name_from_path(path)),
+                getattr(self, "save_slot_groups", {}).get(path, self.save_slot_group_from_path(path)),
+            )
         except Exception as exc:
             LOGGER.exception("Save slot failed to load: %s", exc)
             messagebox.showerror("Load failed", f"That slot was left untouched.\n\n{type(exc).__name__}: {exc}")
@@ -1226,16 +1789,38 @@ class PersistenceMixin:
         self.booked.clear()
         self.refresh_all()
         self.write_log()
-        messagebox.showinfo("Loaded", f"Loaded slot: {path.stem}")
+        self.set_save_manager_status(f"Loaded {self.active_save_name} from {self.active_save_group}.")
 
     def delete_selected_slot(self):
         path = self.selected_save_path()
-        if path.exists():
-            if not messagebox.askyesno("Delete Save Slot", f"Delete {path.stem}? A backup will be kept."):
-                return
-            self.backup_save_file(path, "before_slot_delete")
-            path.unlink()
+        if not path.exists():
+            messagebox.showinfo("No save", "Select an existing save slot.")
+            return
+        slot_name = self.save_slot_name_from_path(path)
+        active_path = self.save_slot_dir(create=False) / "savegame.json"
+        deleting_active_slot = path == active_path
+        if not messagebox.askyesno("Delete Save Slot", f"Delete '{slot_name}'? A recovery copy will be kept."):
+            return
+        try:
+            backup = self.backup_save_file(path, "before_slot_delete")
+            # Slot-local Backups are removed with the slot, so retain a copy outside it.
+            deleted_dir = SAVE_DIR / "Deleted Saves"
+            deleted_dir.mkdir(parents=True, exist_ok=True)
+            archive_name = f"{self.safe_filename(slot_name)}_{_crash_stamp()}{''.join(backup.suffixes)}"
+            shutil.copy2(backup, deleted_dir / archive_name)
+            if path.name == "savegame.json":
+                remove_save_folder(self.save_slot_root_from_path(path))
+            else:
+                _make_path_writable(path)
+                path.unlink()
+            if deleting_active_slot:
+                # Do not silently recreate the slot through the current session's autosave.
+                self.set_active_save_name("Unsaved Session")
             self.refresh_game_menu()
+            self.set_save_manager_status(f"Deleted {slot_name}. A recovery copy is in Deleted Saves.")
+        except Exception as exc:
+            LOGGER.exception("Could not delete save slot %s: %s", path, exc)
+            messagebox.showerror("Delete failed", f"The save was not fully deleted.\n\n{type(exc).__name__}: {exc}")
 
     def backup_selected_slot(self):
         path = self.selected_save_path()
@@ -1260,21 +1845,15 @@ class PersistenceMixin:
         self.refresh_game_menu()
 
     def change_autosave_keep(self, key, amount):
-        if hasattr(self, "ensure_rule_defaults"):
-            self.ensure_rule_defaults()
-        limits = {
-            "autosave_weekly_keep": (3, 52),
-            "autosave_monthly_keep": (3, 120),
-            "save_backup_keep": (5, 250),
-        }
-        low, high = limits.get(key, (1, 250))
-        self.rules[key] = max(low, min(high, int(self.rules.get(key, low)) + amount))
+        # Retained for compatibility with older UI bindings. Retention is fixed
+        # to two rotating snapshots to prevent save-folder bloat.
+        self.rules[key] = ROLLING_SAVE_SLOT_COUNT
         if key == "autosave_weekly_keep":
-            self.prune_rolling_autosaves("weekly", self.rules[key])
+            self.prune_rolling_autosaves("weekly")
         elif key == "autosave_monthly_keep":
-            self.prune_rolling_autosaves("monthly", self.rules[key])
-        elif key == "save_backup_keep":
-            self.prune_save_backups(self.rules[key])
+            self.prune_rolling_autosaves("monthly")
+        else:
+            self.prune_save_backups()
         self.refresh_game_menu()
 
     def open_save_backup_manager(self):
@@ -1294,7 +1873,7 @@ class PersistenceMixin:
         window.geometry("860x520")
         window.configure(bg=self.colors["chrome"])
         ttk.Label(window, text="SAVE BACKUP / AUTOSAVE MANAGER", style="ScreenTitle.TLabel").pack(anchor="w", padx=10, pady=(10, 4))
-        ttk.Label(window, text="Restore creates a backup of the destination first. Manual backups live in Saves/Backups; rolling autosaves live in Saves/Autosaves.", style="Inset.TLabel").pack(fill="x", padx=10, pady=(0, 8))
+        ttk.Label(window, text="Each category keeps two rolling snapshots. Restore creates a backup of the destination first.", style="Inset.TLabel").pack(fill="x", padx=10, pady=(0, 8))
         body = ttk.Frame(window, style="Chrome.TFrame")
         body.pack(fill="both", expand=True, padx=10, pady=(0, 8))
         backup_list = tk.Listbox(body, font=("Consolas", 9), bg=self.colors["tree"], fg=self.colors["text"], selectbackground=self.colors["red"], selectforeground="#ffffff")
@@ -1313,10 +1892,13 @@ class PersistenceMixin:
             detail.config(state="normal")
             detail.delete("1.0", "end")
             if item:
-                manifest = item.with_suffix(".manifest.json")
                 text = f"File: {item.name}\nFolder: {item.parent}\nSize: {item.stat().st_size:,} bytes\nModified: {datetime.fromtimestamp(item.stat().st_mtime)}\n\n"
-                if manifest.exists():
-                    text += manifest.read_text(encoding="utf-8")
+                try:
+                    metadata = json.loads(read_json_text(item)).get("_save_meta", {})
+                    if metadata:
+                        text += "Snapshot metadata:\n" + json.dumps(metadata, indent=2)
+                except Exception:
+                    text += "Snapshot metadata could not be read."
                 detail.insert("end", text)
             detail.config(state="disabled")
 
@@ -1326,8 +1908,8 @@ class PersistenceMixin:
                 messagebox.showinfo("Restore Backup", "Select a backup first.")
                 return
             target_name = self.safe_filename(self.save_slot_name.get() or item.name.split("_before_")[0].split("_manual_")[0])
-            target = SAVE_DIR / f"{target_name}.json"
-            if not messagebox.askyesno("Restore Backup", f"Restore this backup to slot '{target.stem}'?\n\n{item.name}"):
+            target = self.save_slot_dir(target_name) / "savegame.json"
+            if not messagebox.askyesno("Restore Backup", f"Restore this backup to slot '{target_name}'?\n\n{item.name}"):
                 return
             if target.exists():
                 self.backup_save_file(target, "before_restore")
@@ -1349,7 +1931,7 @@ class PersistenceMixin:
         DATABASE_DIR.mkdir(parents=True, exist_ok=True)
         name = self.safe_filename(self.database_name.get())
         data = self.serialize_world()
-        for key in ("cash", "month", "scheduled_events", "event_log", "result_history", "result_records", "ai_event_archive", "finance", "inbox"):
+        for key in ("cash", "month", "scheduled_events", "event_log", "result_history", "result_records", "ai_event_archive", "player_event_archive", "finance", "inbox"):
             data.pop(key, None)
         data["database_name"] = name
         path = DATABASE_DIR / f"{name}.json"
@@ -1358,13 +1940,16 @@ class PersistenceMixin:
         messagebox.showinfo("Database Exported", f"Exported database: {name}")
 
     def import_quick_save_as_database(self):
-        if not SAVE_FILE.exists():
-            messagebox.showinfo("No quick save", "No savegame.json exists to import.")
+        source = self.active_save_path()
+        if not source.exists() and SAVE_FILE.exists():
+            source = SAVE_FILE
+        if not source.exists():
+            messagebox.showinfo("No quick save", "No active save exists to import.")
             return
         DATABASE_DIR.mkdir(parents=True, exist_ok=True)
         name = self.safe_filename(self.database_name.get())
-        data = json.loads(SAVE_FILE.read_text(encoding="utf-8"))
-        for key in ("cash", "month", "scheduled_events", "event_log", "result_history", "result_records", "ai_event_archive", "finance", "inbox"):
+        data = json.loads(read_json_text(source))
+        for key in ("cash", "month", "scheduled_events", "event_log", "result_history", "result_records", "ai_event_archive", "player_event_archive", "finance", "inbox"):
             data.pop(key, None)
         data["database_name"] = name
         atomic_write_json(DATABASE_DIR / f"{name}.json", data)
@@ -1395,8 +1980,511 @@ class PersistenceMixin:
         self.write_log()
         messagebox.showinfo("Database Loaded", f"Started game from database: {path.stem}")
 
+    def open_create_promotion_mode(self):
+        window = tk.Toplevel(self.root)
+        window.title("Create New Promotion")
+        screen_width = max(800, window.winfo_screenwidth())
+        screen_height = max(650, window.winfo_screenheight())
+        width = min(840, screen_width - 60)
+        height = min(690, screen_height - 110)
+        x = max(0, (screen_width - width) // 2)
+        y = max(0, (screen_height - height) // 2)
+        window.geometry(f"{width}x{height}+{x}+{y}")
+        window.minsize(min(720, width), min(560, height))
+        window.configure(bg=self.colors["chrome"])
+        window.transient(self.root)
+        window.grab_set()
+
+        header = ttk.Frame(window, style="Header.TFrame")
+        header.pack(fill="x")
+        ttk.Label(header, text="FOUND A NEW PROMOTION", style="ScreenTitle.TLabel").pack(side="left", padx=12, pady=8)
+
+        name_var = tk.StringVar(value="New Fighting Championship")
+        region_var = tk.StringVar(value="USA")
+        scale_var = tk.StringVar(value="Regional")
+        personality_var = tk.StringVar(value="Balanced")
+        roster_var = tk.StringVar(value="Viable (8 per division)")
+        gender_var = tk.StringVar(value="Men Only")
+        roster_style_var = tk.StringVar(value="Balanced")
+        manual_draft_var = tk.BooleanVar(value=True)
+        theme_var = tk.StringVar(value=getattr(self, "theme_name", "UFC"))
+
+        notebook = ttk.Notebook(window)
+        notebook.pack(fill="both", expand=True, padx=10, pady=10)
+        identity_tab = ttk.Frame(notebook, style="Inset.TFrame")
+        sport_tab = ttk.Frame(notebook, style="Inset.TFrame")
+        notebook.add(identity_tab, text="Promotion Identity")
+        notebook.add(sport_tab, text="Divisions and Roster")
+
+        identity_fields = (
+            ("Promotion Name", name_var, None),
+            ("Home Region", region_var, REGIONS),
+            ("Starting Scale", scale_var, ("Small Local", "Regional", "National")),
+            ("Event Philosophy", personality_var, ("Balanced", "Prospect Builder", "Star Builder", "Frequent Small Cards", "Seasonal", "Super Shows")),
+            ("Interface Theme", theme_var, tuple(self.themes.keys())),
+        )
+        name_entry = None
+        for row, (label, variable, values) in enumerate(identity_fields):
+            ttk.Label(identity_tab, text=label, style="Inset.TLabel").grid(row=row, column=0, sticky="w", padx=16, pady=12)
+            if values:
+                widget = ttk.Combobox(identity_tab, textvariable=variable, values=values, state="readonly", width=32)
+            else:
+                widget = ttk.Entry(identity_tab, textvariable=variable, width=35)
+                name_entry = widget
+            widget.grid(row=row, column=1, sticky="ew", padx=16, pady=12)
+        identity_tab.columnconfigure(1, weight=1)
+
+        ttk.Label(sport_tab, text="Roster Foundation", style="Inset.TLabel").grid(row=0, column=0, sticky="w", padx=16, pady=(14, 8))
+        ttk.Combobox(sport_tab, textvariable=roster_var, values=("Viable (8 per division)", "Established (10 per division)", "Deep (12 per division)"), state="readonly", width=28).grid(row=0, column=1, sticky="ew", padx=16, pady=(14, 8))
+        ttk.Label(sport_tab, text="Divisions", style="Inset.TLabel").grid(row=1, column=0, sticky="w", padx=16, pady=8)
+        ttk.Combobox(sport_tab, textvariable=gender_var, values=("Men Only", "Women Only", "Men and Women"), state="readonly", width=28).grid(row=1, column=1, sticky="ew", padx=16, pady=8)
+        ttk.Label(sport_tab, text="Roster Strategy", style="Inset.TLabel").grid(row=2, column=0, sticky="w", padx=16, pady=8)
+        ttk.Combobox(sport_tab, textvariable=roster_style_var, values=("Balanced", "Star Led", "Prospect Heavy"), state="readonly", width=28).grid(row=2, column=1, sticky="ew", padx=16, pady=8)
+        ttk.Checkbutton(sport_tab, text="Choose the initial roster in a budgeted draft", variable=manual_draft_var).grid(row=3, column=1, sticky="w", padx=16, pady=8)
+        ttk.Label(sport_tab, text="Active Weight Classes", style="Inset.TLabel").grid(row=4, column=0, sticky="nw", padx=16, pady=8)
+        weight_list = tk.Listbox(sport_tab, selectmode="multiple", exportselection=False, height=len(WEIGHTS), bg=self.colors["tree"], fg=self.colors["text"], selectbackground=self.colors["red"], selectforeground="#ffffff")
+        for weight in WEIGHTS:
+            weight_list.insert("end", weight)
+        for default_weight in ("Featherweight", "Lightweight", "Welterweight"):
+            if default_weight in WEIGHTS:
+                weight_list.selection_set(WEIGHTS.index(default_weight))
+        weight_list.grid(row=4, column=1, sticky="nsew", padx=16, pady=8)
+        sport_tab.columnconfigure(1, weight=1)
+        sport_tab.rowconfigure(4, weight=1)
+
+        summary_var = tk.StringVar(value="")
+        summary = ttk.Label(window, textvariable=summary_var, style="Inset.TLabel", anchor="w")
+        summary.pack(fill="x", padx=12, pady=(0, 6))
+
+        scale_data = {
+            "Small Local": (22, 800_000, 58, "Local", 100_000, 240_000),
+            "Regional": (38, 2_500_000, 64, "Regional", 300_000, 380_000),
+            "National": (55, 7_500_000, 70, "National", 800_000, 600_000),
+        }
+
+        def update_summary(*_args):
+            size, cash, stability, reputation, base_budget, division_budget = scale_data[scale_var.get()]
+            count = {"Viable (8 per division)": 8, "Established (10 per division)": 10, "Deep (12 per division)": 12}[roster_var.get()]
+            gender_count = 2 if gender_var.get() == "Men and Women" else 1
+            weights = max(1, len(weight_list.curselection()))
+            divisions = gender_count * weights
+            budget = base_budget + divisions * division_budget
+            summary_var.set(f"{reputation} | Cash ${cash:,} | Contract budget ${budget:,} | {divisions} divisions | Target roster {count * divisions}")
+
+        for variable in (scale_var, roster_var, gender_var):
+            variable.trace_add("write", update_summary)
+        weight_list.bind("<<ListboxSelect>>", update_summary)
+        update_summary()
+
+        footer = ttk.Frame(window, style="Chrome.TFrame")
+        footer.pack(fill="x", padx=10, pady=(0, 10))
+
+        def begin_custom_game():
+            name = " ".join(name_var.get().split())
+            company_section = self.universe_section("companies", {}) if hasattr(self, "universe_section") else {}
+            player_spec = (company_section or {}).get("player_company", {})
+            seeded_names = {str(player_spec.get("name", PLAYER_PROMOTION_NAME)).lower()}
+            for section_name in ("promotions", "regional_feeders"):
+                for row in (company_section or {}).get(section_name, []):
+                    if isinstance(row, dict) and row.get("name"):
+                        seeded_names.add(str(row["name"]).lower())
+            existing = seeded_names | {self.player_company_name.lower()} | {promo.name.lower() for promo in self.promotions}
+            if len(name) < 3:
+                messagebox.showwarning("Create Promotion", "Enter a promotion name of at least three characters.", parent=window)
+                return
+            if name.lower() in existing or name.lower() in {"spectator", "spectator mode"}:
+                messagebox.showwarning("Create Promotion", "That promotion name already exists in this universe.", parent=window)
+                return
+            selected_weights = [WEIGHTS[index] for index in weight_list.curselection()]
+            if not selected_weights:
+                messagebox.showwarning("Create Promotion", "Select at least one weight class.", parent=window)
+                return
+            size, cash, stability, reputation, base_budget, division_budget = scale_data[scale_var.get()]
+            genders = ["Male", "Female"] if gender_var.get() == "Men and Women" else (["Male"] if gender_var.get() == "Men Only" else ["Female"])
+            recruitment_budget = base_budget + len(genders) * len(selected_weights) * division_budget
+            self.pending_custom_promotion_config = {
+                "name": name,
+                "region": region_var.get(),
+                "size": size,
+                "cash": cash,
+                "stability": stability,
+                "reputation": reputation,
+                "personality": personality_var.get(),
+                "roster_depth": {"Viable (8 per division)": 8, "Established (10 per division)": 10, "Deep (12 per division)": 12}[roster_var.get()],
+                "genders": genders,
+                "weights": selected_weights,
+                "theme": theme_var.get(),
+                "roster_style": roster_style_var.get(),
+                "manual_draft": manual_draft_var.get(),
+                "recruitment_budget": recruitment_budget,
+            }
+            self.start_company_choice.set("Create New Promotion...")
+            window.grab_release()
+            window.destroy()
+            self.new_game()
+
+        ttk.Button(footer, text="Cancel", command=window.destroy).pack(side="right", padx=4)
+        ttk.Button(footer, text="Found Promotion and Start", style="Accent.TButton", command=begin_custom_game).pack(side="right", padx=4)
+        window.bind("<Escape>", lambda _event: window.destroy())
+        if name_entry is not None:
+            name_entry.focus_set()
+            name_entry.selection_range(0, "end")
+
+    def custom_roster_commitment_cost(self, fighter):
+        """Estimated first-year commitment used only by the opening roster draft."""
+        return max(6_000, round((fighter.purse * 2.5 + fighter.popularity * 350) / 500) * 500)
+
+    def build_custom_roster_candidates(self, config):
+        candidates = []
+        scale_skill = {
+            "Local": ((47, 67), (61, 75)),
+            "Regional": ((51, 73), (68, 82)),
+            "National": ((57, 80), (75, 90)),
+        }
+        core_range, star_range = scale_skill.get(config["reputation"], ((47, 70), (64, 78)))
+        depth = max(8, int(config.get("roster_depth", 8)))
+        candidate_count = max(18, depth * 2)
+        existing = self.active_fighter_names()
+        for weight in config["weights"]:
+            for gender in config["genders"]:
+                for index in range(candidate_count):
+                    if index < 3:
+                        min_skill, max_skill = star_range
+                        age_override = random.randint(24, 31)
+                    elif index >= candidate_count - 6:
+                        min_skill, max_skill = core_range[0], min(core_range[1], core_range[0] + 13)
+                        age_override = random.randint(18, 23)
+                    else:
+                        min_skill, max_skill = core_range
+                        age_override = None
+                    fighter = self.create_generated_fighter(
+                        3, max(16, config["size"] // 2), min_skill, max_skill,
+                        weight=weight, gender=gender, region=config["region"],
+                        age_override=age_override, pre_universe=True,
+                    )
+                    self.avoid_name_collision(fighter, existing)
+                    self.prepare_company_generated_fighter(
+                        fighter, config["region"], config["name"], player_owned=True
+                    )
+                    fighter.purse = max(
+                        1_500,
+                        min(95_000, round(((fighter.overall - 35) ** 2 * 10 + fighter.popularity * 120) / 250) * 250),
+                    )
+                    fighter.contract_months = random.randint(10, 24)
+                    target = self.gym_by_name(self.suggest_camp_for_fighter(fighter, config["region"]))
+                    if target:
+                        fighter.camp = target.name
+                        fighter.camp_quality = target.quality
+                    candidates.append(fighter)
+        return candidates
+
+    def auto_select_custom_roster(self, candidates, config):
+        target = max(8, int(config.get("roster_depth", 8)))
+        budget = max(1, int(config.get("recruitment_budget", 1_000_000)))
+        style = config.get("roster_style", "Balanced")
+        division_groups = []
+        for weight in config["weights"]:
+            for gender in config["genders"]:
+                division = [fighter for fighter in candidates if fighter.weight == weight and fighter.gender == gender]
+                if style == "Star Led":
+                    score = lambda fighter: fighter.overall * 2.0 + fighter.popularity * 0.9 + fighter.star_quality * 0.7
+                elif style == "Prospect Heavy":
+                    score = lambda fighter: fighter.potential * 1.7 + max(0, 27 - fighter.age) * 2.2 + fighter.overall * 0.4
+                else:
+                    score = lambda fighter: fighter.overall * 1.15 + fighter.potential * 0.7 + fighter.popularity * 0.3 - self.custom_roster_commitment_cost(fighter) / 35_000
+                baseline = sorted(division, key=self.custom_roster_commitment_cost)[:target]
+                division_groups.append((division, score, baseline))
+
+        # Reserve a complete affordable roster for every division first.  The old
+        # sequential picker could spend heavily on the first weight classes and
+        # leave the final one with seven fighters despite an adequate total budget.
+        selected_groups = [list(baseline) for _division, _score, baseline in division_groups]
+        spent = sum(self.custom_roster_commitment_cost(fighter) for group in selected_groups for fighter in group)
+        for group_index, (division, score, _baseline) in enumerate(division_groups):
+            picks = selected_groups[group_index]
+            for candidate in sorted(division, key=score, reverse=True):
+                if candidate in picks:
+                    continue
+                weakest = min(picks, key=score)
+                if score(candidate) <= score(weakest):
+                    continue
+                revised = spent - self.custom_roster_commitment_cost(weakest) + self.custom_roster_commitment_cost(candidate)
+                if revised <= budget:
+                    picks[picks.index(weakest)] = candidate
+                    spent = revised
+        return [fighter for group in selected_groups for fighter in group]
+
+    def open_initial_roster_draft(self, candidates, config):
+        window = tk.Toplevel(self.root)
+        window.title(f"Found {config['name']} - Initial Roster Draft")
+        screen_width = max(1024, window.winfo_screenwidth())
+        screen_height = max(720, window.winfo_screenheight())
+        width = min(1280, screen_width - 50)
+        height = min(820, screen_height - 80)
+        window.geometry(f"{width}x{height}+{max(0, (screen_width-width)//2)}+{max(0, (screen_height-height)//2)}")
+        window.minsize(min(960, width), min(650, height))
+        window.configure(bg=self.colors["chrome"])
+        window.transient(self.root)
+        window.grab_set()
+
+        budget = int(config.get("recruitment_budget", 1_000_000))
+        target = max(8, int(config.get("roster_depth", 8)))
+        selected_ids = {fighter.fighter_id for fighter in self.auto_select_custom_roster(candidates, config)}
+        result = {"roster": None}
+        fighter_map = {fighter.fighter_id: fighter for fighter in candidates}
+
+        header = ttk.Frame(window, style="Header.TFrame")
+        header.pack(fill="x")
+        ttk.Label(header, text="BUILD YOUR FIRST ROSTER", style="ScreenTitle.TLabel").pack(side="left", padx=12, pady=8)
+        budget_var = tk.StringVar()
+        ttk.Label(header, textvariable=budget_var, style="ScreenTitle.TLabel").pack(side="right", padx=12, pady=8)
+
+        controls = ttk.Frame(window, style="Chrome.TFrame")
+        controls.pack(fill="x", padx=8, pady=6)
+        gender_filter = tk.StringVar(value="All")
+        weight_filter = tk.StringVar(value="All")
+        search_var = tk.StringVar(value="")
+        ttk.Label(controls, text="Search", style="Chrome.TLabel").pack(side="left", padx=(4, 3))
+        ttk.Entry(controls, textvariable=search_var, width=22).pack(side="left", padx=(0, 8))
+        ttk.Label(controls, text="Gender", style="Chrome.TLabel").pack(side="left", padx=3)
+        ttk.Combobox(controls, textvariable=gender_filter, values=("All",) + tuple(config["genders"]), state="readonly", width=10).pack(side="left", padx=(0, 8))
+        ttk.Label(controls, text="Division", style="Chrome.TLabel").pack(side="left", padx=3)
+        ttk.Combobox(controls, textvariable=weight_filter, values=("All",) + tuple(config["weights"]), state="readonly", width=17).pack(side="left", padx=(0, 8))
+        ttk.Label(controls, text=f"Minimum 6, target {target} fighters per active division", style="Chrome.TLabel").pack(side="right", padx=8)
+
+        body = ttk.Panedwindow(window, orient="horizontal")
+        body.pack(fill="both", expand=True, padx=8, pady=(0, 6))
+        available_frame = ttk.Frame(body, style="Inset.TFrame")
+        selected_frame = ttk.Frame(body, style="Inset.TFrame")
+        body.add(available_frame, weight=3)
+        body.add(selected_frame, weight=2)
+        ttk.Label(available_frame, text="AVAILABLE FIGHTERS", style="Section.TLabel").pack(fill="x")
+        ttk.Label(selected_frame, text="YOUR ROSTER", style="Section.TLabel").pack(fill="x")
+
+        columns = ("name", "g", "division", "age", "ovr", "potential", "pop", "style", "purse", "cost")
+        headings = (("name", "Fighter", 145), ("g", "G", 30), ("division", "Division", 90), ("age", "Age", 38),
+                    ("ovr", "OVR", 42), ("potential", "POT", 42), ("pop", "Pop", 42), ("style", "Style", 90),
+                    ("purse", "Purse", 70), ("cost", "Annual", 80))
+
+        def make_tree(parent):
+            frame = ttk.Frame(parent, style="Inset.TFrame")
+            frame.pack(fill="both", expand=True)
+            tree = ttk.Treeview(frame, columns=columns, show="headings", selectmode="extended")
+            for key, label, column_width in headings:
+                tree.heading(key, text=label)
+                tree.column(key, width=column_width, anchor="w" if key in ("name", "style") else "center")
+            scroll = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
+            tree.configure(yscrollcommand=scroll.set)
+            scroll.pack(side="right", fill="y")
+            tree.pack(side="left", fill="both", expand=True)
+            self.make_tree_sortable(tree)
+            return tree
+
+        available_tree = make_tree(available_frame)
+        selected_tree = make_tree(selected_frame)
+        status_var = tk.StringVar()
+        status = ttk.Label(window, textvariable=status_var, style="Inset.TLabel", anchor="w")
+        status.pack(fill="x", padx=10, pady=(0, 5))
+
+        def values(fighter):
+            return (fighter.name, fighter.gender[0], fighter.weight, fighter.age, fighter.overall,
+                    fighter.potential, fighter.popularity, fighter.style, f"${fighter.purse:,}",
+                    f"${self.custom_roster_commitment_cost(fighter):,}")
+
+        def current_spend():
+            return sum(self.custom_roster_commitment_cost(fighter_map[fighter_id]) for fighter_id in selected_ids)
+
+        def division_counts():
+            return Counter((fighter_map[fighter_id].gender, fighter_map[fighter_id].weight) for fighter_id in selected_ids)
+
+        def refresh_draft(*_args):
+            available_tree.delete(*available_tree.get_children())
+            selected_tree.delete(*selected_tree.get_children())
+            query = search_var.get().strip().lower()
+            for fighter in candidates:
+                if fighter.fighter_id in selected_ids:
+                    selected_tree.insert("", "end", iid=fighter.fighter_id, values=values(fighter))
+                    continue
+                if gender_filter.get() != "All" and fighter.gender != gender_filter.get():
+                    continue
+                if weight_filter.get() != "All" and fighter.weight != weight_filter.get():
+                    continue
+                if query and query not in f"{fighter.name} {fighter.style} {fighter.weight}".lower():
+                    continue
+                available_tree.insert("", "end", iid=fighter.fighter_id, values=values(fighter))
+            spent = current_spend()
+            counts = division_counts()
+            budget_var.set(f"COMMITTED ${spent:,} / ${budget:,}")
+            weak = [f"{gender[0]} {weight}: {counts[(gender, weight)]}" for weight in config["weights"] for gender in config["genders"] if counts[(gender, weight)] < 6]
+            status_var.set(("Needs depth: " + ", ".join(weak)) if weak else f"All divisions are viable. {len(selected_ids)} fighters selected; target {target} per division.")
+
+        def add_selected(_event=None):
+            additions = [fighter_map[row_id] for row_id in available_tree.selection() if row_id in fighter_map]
+            projected = current_spend() + sum(self.custom_roster_commitment_cost(fighter) for fighter in additions)
+            if projected > budget:
+                status_var.set(f"Those contracts would exceed the ${budget:,} annual commitment budget by ${projected-budget:,}.")
+                return
+            selected_ids.update(fighter.fighter_id for fighter in additions)
+            refresh_draft()
+
+        def remove_selected(_event=None):
+            selected_ids.difference_update(selected_tree.selection())
+            refresh_draft()
+
+        def auto_build():
+            selected_ids.clear()
+            selected_ids.update(fighter.fighter_id for fighter in self.auto_select_custom_roster(candidates, config))
+            refresh_draft()
+
+        def view_selected_profile():
+            rows = selected_tree.selection() or available_tree.selection()
+            if rows and rows[0] in fighter_map:
+                self.open_fighter_profile_window(fighter_map[rows[0]])
+
+        def finish_draft():
+            counts = division_counts()
+            weak = [(gender, weight) for weight in config["weights"] for gender in config["genders"] if counts[(gender, weight)] < 6]
+            if weak:
+                status_var.set("Cannot start: every active division needs at least 6 fighters.")
+                return
+            if current_spend() > budget:
+                status_var.set("Cannot start: roster exceeds the annual contract commitment budget.")
+                return
+            result["roster"] = [fighter for fighter in candidates if fighter.fighter_id in selected_ids]
+            window.grab_release()
+            window.destroy()
+
+        footer = ttk.Frame(window, style="Chrome.TFrame")
+        footer.pack(fill="x", padx=8, pady=(0, 8))
+        ttk.Button(footer, text="Add Selected", style="Accent.TButton", command=add_selected).pack(side="left", padx=3)
+        ttk.Button(footer, text="Remove Selected", command=remove_selected).pack(side="left", padx=3)
+        ttk.Button(footer, text=f"Auto Build: {config.get('roster_style', 'Balanced')}", command=auto_build).pack(side="left", padx=3)
+        ttk.Button(footer, text="View Profile", command=view_selected_profile).pack(side="left", padx=3)
+        ttk.Button(footer, text="Start Career", style="Accent.TButton", command=finish_draft).pack(side="right", padx=3)
+        available_tree.bind("<Double-1>", add_selected)
+        selected_tree.bind("<Double-1>", remove_selected)
+        for variable in (gender_filter, weight_filter, search_var):
+            variable.trace_add("write", refresh_draft)
+        window.protocol("WM_DELETE_WINDOW", finish_draft)
+        refresh_draft()
+        self.root.wait_window(window)
+        return result["roster"] or self.auto_select_custom_roster(candidates, config)
+
+    def custom_starting_roster(self, config):
+        candidates = self.build_custom_roster_candidates(config)
+        target = max(8, int(config.get("roster_depth", 8)))
+        minimum_commitment = 0
+        for weight in config["weights"]:
+            for gender in config["genders"]:
+                division_costs = sorted(
+                    self.custom_roster_commitment_cost(fighter)
+                    for fighter in candidates
+                    if fighter.weight == weight and fighter.gender == gender
+                )
+                minimum_commitment += sum(division_costs[:target])
+        config["recruitment_budget"] = max(
+            int(config.get("recruitment_budget", 0)),
+            ((minimum_commitment + 9_999) // 10_000) * 10_000,
+        )
+        if config.get("manual_draft", False):
+            roster = self.open_initial_roster_draft(candidates, config)
+        else:
+            roster = self.auto_select_custom_roster(candidates, config)
+        self.seed_relationships(roster)
+        return roster
+
+    def apply_custom_promotion_start(self, config):
+        config = dict(config)
+        config["weights"] = [weight for weight in config.get("weights", []) if weight in WEIGHTS] or ["Lightweight"]
+        config["genders"] = [gender for gender in config.get("genders", []) if gender in ("Male", "Female")] or ["Male"]
+        config["roster_depth"] = max(8, min(12, int(config.get("roster_depth", 8))))
+        if "recruitment_budget" not in config:
+            base, per_division = {
+                "Local": (100_000, 240_000),
+                "Regional": (300_000, 380_000),
+                "National": (800_000, 600_000),
+            }.get(config.get("reputation"), (200_000, 250_000))
+            config["recruitment_budget"] = base + len(config["weights"]) * len(config["genders"]) * per_division
+        original_company = self.player_company_as_promotion()
+        original_company.show_personality = "Prospect Builder"
+        original_company.strategy = self.seed_promotion_strategy(original_company.name, original_company.show_personality)
+        original_company.executive = self.seed_promotion_executive(original_company.name)
+        if not any(promo.name == original_company.name for promo in self.promotions):
+            self.promotions.append(original_company)
+
+        self.player_company_name = config["name"]
+        self.player_region = config["region"]
+        self.player_reputation = config["reputation"]
+        self.company_pop = config["size"]
+        self.company_stability = config["stability"]
+        self.cash = config["cash"]
+        self.roster = self.custom_starting_roster(config)
+        self.weight_classes = list(config["weights"])
+        active_keys = {self.belt_key(gender, weight) for gender in config["genders"] for weight in config["weights"]}
+        self.closed_divisions = set(self.blank_belts()) - active_keys
+        self.player_managed_divisions = set()
+        self.belts = self.blank_belts()
+        self.interim_belts = self.blank_belts()
+        self.special_belts = {}
+        self.belt_history = self.blank_belt_history()
+        self.belts, self.interim_belts, self.belt_history = self.ensure_company_champions(
+            self.roster, self.belts, self.player_company_name, self.player_region, self.company_pop,
+            player_owned=True, min_per_division=3, interim_belts=self.interim_belts, belt_history=self.belt_history,
+            closed_divisions=self.closed_divisions,
+        )
+        self.finance = self.seed_finance()
+        reach = max(18, min(68, round(self.company_pop * 0.75)))
+        self.broadcasters = [{"name": f"{self.player_region} Fight Network", "reach": reach, "fee": max(8_000, self.company_pop * 900), "type": "Regional Streaming" if self.company_pop < 50 else "National TV / Streaming"}]
+        self.ensure_player_media_state()
+        self.staff = self.seed_staff()
+        self.staff_candidates = self.seed_staff_candidates()
+        self.ensure_staff_profiles()
+        self.scouting = []
+        self.scouting_reports = {}
+        self.academy = self.academy_defaults() if hasattr(self, "academy_defaults") else {}
+        self.inbox = []
+        self.owner_goals = [
+            {"goal": f"Keep cash above ${max(150_000, round(self.cash * 0.25)):,}", "metric": "cash", "target": max(150_000, round(self.cash * 0.25)), "deadline": 12, "status": "Active"},
+            {"goal": f"Reach company popularity {min(90, self.company_pop + 12)}", "metric": "popularity", "target": min(90, self.company_pop + 12), "deadline": 18, "status": "Active"},
+            {"goal": "Run at least 4 shows", "metric": "shows", "target": 4, "deadline": 12, "status": "Active"},
+        ]
+        self.scheduled_events = []
+        self.pending_rebookings = []
+        self.booked = []
+        self.result_history = []
+        self.event_log = []
+        self.fanbase = {
+            "core_support": max(24, min(55, self.company_pop)),
+            "casual_reach": max(12, min(48, self.company_pop - 8)),
+            "identity": f"{self.player_region} Independent Fight Community",
+            "home_region": self.player_region,
+            "event_history": [],
+        }
+        self.theme_name = config.get("theme", self.theme_name)
+        if hasattr(self, "theme_name_var"):
+            self.theme_name_var.set(self.theme_name)
+            self.configure_style()
+            self.retheme_plain_widgets(self.root)
+        self.normalize_gym_assignments()
+        self.sync_gym_membership()
+        self.ensure_all_company_champions()
+        if hasattr(self, "event_name"):
+            self.event_name.set(self.default_event_name())
+        self.news.insert(0, f"{self.player_company_name} was founded in {self.player_region} as a {self.player_reputation.lower()} promotion.")
+        self.company_show_personality = config["personality"]
+        self.record_world_story("Business", f"{self.player_company_name} enters the MMA world", f"A new {self.player_reputation.lower()} promotion has opened in {self.player_region} with {len(self.roster)} contracted fighters.", companies=[self.player_company_name])
+
     def new_game(self):
+        if hasattr(self, "editor_current_dirty"):
+            self.editor_current_dirty = False
         choice = self.start_company_choice.get() if hasattr(self, "start_company_choice") else PLAYER_PROMOTION_NAME
+        custom_config = None
+        if choice == "Create New Promotion...":
+            custom_config = getattr(self, "pending_custom_promotion_config", None)
+            if not custom_config:
+                self.open_create_promotion_mode()
+                return
+            self.pending_custom_promotion_config = None
         if choice == "Cage Empire":
             choice = PLAYER_PROMOTION_NAME
         company_section = self.universe_section("companies", {}) if hasattr(self, "universe_section") else {}
@@ -1405,20 +2493,34 @@ class PersistenceMixin:
         self.spectator_mode = False
         self.player_region = player_spec.get("region", "USA")
         self.player_reputation = player_spec.get("reputation", "Regional Player Company")
-        self.cash = player_spec.get("cash", 275_000)
+        self.company_show_personality = "Balanced"
+        self.cash = max(500_000, round(player_spec.get("cash", 275_000) * 1.5))
         self.company_pop = player_spec.get("popularity", 38)
         self.company_stability = player_spec.get("stability", 52)
         self.month = 1
         self.week = 1
         self.name_counts = {}
-        self.roster = self.seed_roster()
-        self.free_agents = self.seed_free_agents()
-        self.promotions = self.seed_promotions()
+        # A fresh universe must not inherit name reservations from the world
+        # currently open. Without this reset, every authored fighter already
+        # on an old promotion roster was treated as a duplicate and silently
+        # replaced with generated roster filler on the new-game seed pass.
+        self.promotions = []
+        self.retired_fighters = []
+        self._seeding_universe = True
+        try:
+            self.roster = self.seed_roster()
+            self.free_agents = self.seed_free_agents()
+            self.promotions = self.seed_promotions()
+        finally:
+            self._seeding_universe = False
         self.repair_core_promotions()
         self.regions = self.universe_section("regions", None) or self.seed_regions()
+        self.gyms = self.seed_gyms()
         self.result_history = []
         self.result_records = []
+        self.change_journal = []
         self.ai_event_archive = []
+        self.player_event_archive = []
         self.independent_showcase_counter = 1
         self.retired_fighters = []
         self.finance = self.seed_finance()
@@ -1436,10 +2538,17 @@ class PersistenceMixin:
         self.owner_goals = self.seed_owner_goals()
         self.belts = self.blank_belts()
         self.interim_belts = self.blank_belts()
+        self.special_belts = {}
         self.belt_history = self.blank_belt_history()
-        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "allow_mixed_gender": False, "active_fighter_target": 1200, "auto_renew_enabled": False, "scouting_mode": False, "autosave_enabled": True, "autosave_interval_months": 2, "autosave_weekly_keep": 8, "autosave_monthly_keep": 6, "save_backup_keep": 12, "save_retention_version": 3}
+        self.closed_divisions = set()
+        self.player_managed_divisions = set()
+        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "allow_mixed_gender": False, "active_fighter_target": 1200, "ai_offer_market_target": 100, "global_result_replay_limit": 2000, "auto_renew_enabled": False, "scouting_mode": True, "autosave_enabled": True, "autosave_interval_months": 2, "autosave_weekly_keep": 2, "autosave_monthly_keep": 2, "save_backup_keep": 2, "save_retention_version": 4}
         media_section = self.universe_section("media", {}) if hasattr(self, "universe_section") else {}
         self.broadcasters = media_section.get("player_broadcasters", self.default_player_media() if hasattr(self, "default_player_media") else [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}])
+        self.media_companies = []
+        self.media_market_history = []
+        self.media_market_last_month = 0
+        self.ensure_media_system()
         self.weight_classes = list(WEIGHTS)
         self.post_show_bonuses = {"fight": 5000, "ko": 5000, "sub": 5000}
         self.news = ["A new game has started."]
@@ -1450,8 +2559,14 @@ class PersistenceMixin:
         self.scheduled_events = []
         self.event_log = []
         self.clean_numbered_fighter_names()
+        self.normalize_gym_assignments()
         self.sync_gym_membership()
         self.ensure_all_company_champions()
+        if custom_config:
+            self.apply_custom_promotion_start(custom_config)
+            self.refresh_all()
+            self.write_log()
+            return
         if choice == "Spectator Mode":
             self.enter_spectator_mode()
             return

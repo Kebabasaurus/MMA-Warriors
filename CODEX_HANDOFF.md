@@ -1,6 +1,6 @@
 # MMA Warriors Codex Handoff
 
-Last updated: 2026-07-12
+Last updated: 2026-07-19
 
 This is a working handoff for continuing MMA Warriors in a fresh Codex session on another machine. It is a curated project summary, not a verbatim chat transcript.
 
@@ -18,13 +18,15 @@ Suggested first message:
 
 ## Project Location and Delivery
 
-- Source project: `D:\CodexFILES\MMA Warriors`
+- Source project (current machine): `D:\CodexFILES\MMA Warriors`
 - Main source entry point: `main.py`
 - Packaged game: `dist\MMA Warriors\MMA Warriors.exe`
 - Runtime data folders: `Saves\`, `Databases\`
 - Build output is intentionally only the current `dist\MMA Warriors` folder.
 
-The source has a few newer edits than the currently packaged EXE. Before treating the EXE as the current build, run the smoke test and package it again. Close `MMA Warriors.exe` first: `Build Portable.bat` now detects an open package and preserves packaged runtime data across the rebuild.
+The packaged EXE was rebuilt and startup-tested on 2026-07-19 after the custom-promotion
+roster draft, event-date matchmaking, and grouped-save work. Close `MMA Warriors.exe`
+before rebuilding and preserve packaged `Saves`, `Databases`, and `Logs`.
 
 ## Architecture
 
@@ -54,9 +56,37 @@ The intended game is a deep, dark, playable WMMA-style business and world simula
 - Fights resolve through mechanics and attributes, never post-result fudging.
 - The UI should be data-rich, readable, linked, and game-like rather than a wall of static text.
 
-Core competitive promotions are BAMMA, UFC, PFL, ONE, RIZIN, KSW, Cage Warriors, LFA, Oktagon, BRAVE, and ACA. Feeder promotions exist as non-player regional circuits.
+Core competitive promotions are BAMMA, UFC, PFL, ONE, RIZIN, KSW, Cage Warriors, LFA,
+Oktagon, BRAVE, ACA, PRIDE, Strikeforce, and WEC. The expanded feeder network covers
+Japan, the UK, North America, Europe, Asia, Brazil, Latin America, Canada, Oceania,
+Africa, the US Midwest, the Nordic region, Korea, South America, and Britain.
 
 ## Important Recent Work
+
+### July 18-19: starting mode, matchmaking, and saves
+
+- `Create Your Own Promotion` now launches a proper setup and roster-draft flow. The
+  player chooses active genders/weights, scale, philosophy, theme, roster depth, and a
+  Balanced/Star Led/Prospect Heavy allocation strategy.
+- Custom divisions target 8, 10, or 12 fighters. The interactive draft enforces a hard
+  six-fighter viability floor in every active division and a scale/division-based annual
+  contract budget. Automatic selection reserves every division's complete baseline before
+  spending extra on stars, avoiding the old three-fighter and last-division starvation bugs.
+- The test save that exposed the problem was a local men's promotion with eight active
+  weights and only three fighters in each. Existing saves are not rewritten; the improved
+  allocation applies to newly created promotions.
+- Closed custom divisions now survive save/load, AI handoff, and later takeover. AI
+  recruitment/champion repair respects them. Free-agent rows say `DIVISION CLOSED`
+  rather than the ambiguous `CLOSED`, and explain how to reopen the division.
+- Matchmaking status is now based on the selected event date. Month/year/week changes
+  refresh the list, `Ready` means ready for that card, and `All` shows exact return dates.
+  Recovery conflicts use an in-game notice instead of a surprise Windows popup.
+- Save slots can be grouped in-game. Root slots are the `Main` folder; user folders live at
+  `Saves\Folders\<Folder>\<Slot>`. The Game Menu can create folders, filter the list, and
+  move a complete slot (including backups, autosaves, and snapshots) into `Tests` or another
+  group. `active_save_group` is serialized with the career.
+- Fighter rows in core roster, contract, matchmaking, and free-agent views use durable
+  fighter IDs, avoiding duplicate-name Treeview collisions. Ranking maps also use identity.
 
 ### World and roster simulation
 
@@ -94,6 +124,17 @@ Core competitive promotions are BAMMA, UFC, PFL, ONE, RIZIN, KSW, Cage Warriors,
 - Finance shows 48 weeks of opening balance, revenue, costs, net, and closing balance.
 - World news uses a selectable story list/detail screen instead of one long text wall.
 - Fighter profile stat meters use a dark value gutter, fixing white-on-white scores.
+- Theme selector now includes branded looks for the full core-promotion roster, the child combat-sport worlds, and Sky Sports/ESPN/BBC Sport-inspired media views.
+- The player closes/reopens MMA divisions through one **Manage Divisions** popup with its own gender/weight selectors. It shows roster, booked-purse, and payroll impact before closure. Closed divisions release their roster, vacate titles, remove booked bouts, are hidden from roster/Matchmaking dropdowns, and can be reopened for free. Their released free agents remain visible with an amber `DIVISION CLOSED` highlight and an eligibility explanation.
+- Free-agent scouting visibility is now a persistent setting under **Game & Saves → Game Settings**, not a checkbox on the market. New games default to scouting required; exact market information is hidden until scouted. Existing saves retain their recorded choice.
+
+### Academy and child combat-sport promotions
+
+- The player academy is one shared development system. It can promote graduates into MMA or any opened child sport (BJJ, Boxing, Kickboxing, Muay Thai, Wrestling, etc.). It is not a separate academy per sport.
+- Academy networks take eight weeks to establish, only one may be active at once, and leads are generated weekly until the live shortlist cap of eight. Leads expire after 2–3 weeks.
+- Academy prospects arrive aged 12–15, with 30–60 current rating. Potential is normally 60–98; 99–100 generational prospects are deliberately very rare and need a strong scout plus academy reputation. Pros can be promoted from age 16; 16–17 requires an explicit early-debut confirmation.
+- Opening a sport creates an empty branded child promotion such as `BAMMA BJJ` (or `UFC BJJ` when UFC is the parent). The player signs athletes, selects two roster members, adds manual bouts to **Your Booked Card**, runs the card, and can watch its replay. Smart Card remains an optional automatic shortcut. Child-promotion startup/signing/card finances feed into parent cash while retaining separate division revenue/cost/history tracking.
+- Non-MMA sport classes are repaired for every athlete during save load. Older saves stored MMA placeholders (for example Tyson Fury as Bantamweight with no `sport_weight_class`); the migration restores the real sport-specific class before any combat-sport UI is opened.
 
 ## Known Follow-up Work
 
@@ -104,6 +145,14 @@ These are intentional next tasks, not reasons to undo recent work.
 3. **Inbox preferences:** hidden mail types currently work during the running session but have not been verified as serialized into saves.
 4. **Extreme-horizon audit:** the 30-year play-level audit is complete; a future overnight 100-year audit can validate the new youth/retirement equilibrium beyond three generations.
 5. **UI sweep:** highest-value interactive upgrades are Companies, Regions, Personal Assistant, Staff/Scouting, and the Chronicle. Many links now exist, but these still contain static information surfaces.
+6. **Child-promotion scheduling:** player child promotions now support manual booked cards and smart cards, but they run immediately rather than being put on the parent-style future event calendar.
+7. **Native-dialog cleanup:** routine matchmaking recovery and several academy/scouting
+   decisions have moved into game surfaces, but older validation, delete confirmation, and
+   fight-day flows still use Tk message boxes. Replace them opportunistically with inline or
+   themed decisions; keep modal confirmation for destructive actions.
+8. **Grouped-save edge audit:** Main-to-folder creation/move/filter paths are tested. When
+   changing backup, restore, delete, crash-recovery, or decade-snapshot code, explicitly test
+   both `Saves\<Slot>` and `Saves\Folders\<Folder>\<Slot>` layouts.
 
 ## Testing and Build
 
@@ -124,14 +173,16 @@ python smoke_test.py
 Build:
 
 ```powershell
-python -m PyInstaller --noconfirm --windowed --name "MMA Warriors" --distpath ".\dist" --workpath ".\build" --specpath ".\build" ".\main.py"
+& "C:\Users\Tanks\AppData\Local\Programs\Python\Python313\python.exe" -m PyInstaller --noconfirm --clean --distpath ".\output_current" --workpath ".\build_current" ".\MMA Warriors.spec"
 ```
 
-After building, ensure `dist\MMA Warriors\Saves` and `dist\MMA Warriors\Databases` exist, then copy `README.md` into the same packaged folder. Start `dist\MMA Warriors\MMA Warriors.exe` briefly as a final sanity check.
+Copy the built EXE and `_internal` directory into the existing `dist\MMA Warriors`
+package without replacing `Saves`, `Databases`, or `Logs`. Start the packaged EXE briefly
+as a final sanity check and confirm no new crash report appears.
 
 ## Transfer Checklist
 
-Copy the complete `D:\CodexFILES\MMA Warriors` project folder to the laptop, including:
+Copy the complete `MMA Warriors` project folder to the laptop, including:
 
 - All `.py`, `.bat`, `.md`, and asset files.
 - `Saves\` and `Databases\` if you want current saves/custom databases.
@@ -156,7 +207,28 @@ Run `Portable Check.bat` in the packaged folder after transfer. It verifies the 
 
 ## Recent Verification Snapshot
 
-- `smoke_test.py` passed after the inbox, finance, world-news, auto-renew, and showcase changes.
+- The 2026-07-19 player-experience pass added an actionable weekly command centre,
+  attributed MMA development profiles, inline medical decisions, unscouted contract
+  talks with hidden ratings, and a substantial watched Fight Night presentation pass.
+- `smoke_test.py` passes with exact development-factor parity and a regression check
+  that opens contract talks for a genuinely unscouted free agent.
+- The broader responsiveness suite reached 2.14s on its spectator-batch UI guard
+  (threshold 2.0s); no gameplay or persistence assertion failed before that guard.
+
+- `smoke_test.py` passed on 2026-07-19 after custom-promotion draft, event-date
+  availability, grouped saves, and closed-division wording changes.
+- The roster-allocation matrix passed for Local, Regional, and National starts under all
+  three draft strategies. Each tested three-division roster received exactly eight fighters
+  per division and remained inside its annual commitment budget.
+- The interactive draft was opened and completed through its real Tk UI; the test roster
+  contained eight fighters and remained inside budget.
+- A targeted matchmaking test moved a fighter's return to Mar W3 2026, verified that an
+  earlier event displayed `Available Mar W3 2026`, then verified `Ready` on that date.
+- A temporary save was moved physically from Main to Tests, disappeared under a Main-only
+  filter, and appeared under Tests.
+- The three-seed stability playtest passed through Month 4 with 104-114 recorded events.
+- The child-sport weight audit passed against new data plus legacy source and packaged saves: all 270 mapped real athletes resolve to their recorded Boxing/Kickboxing/Muay Thai/Lethwei/Wrestling/BJJ classes.
 - AI duplicate-booking stress tests passed across competitive promotions.
 - Fight judge-card variance and draw handling were smoke-tested.
-- The latest database-editor field expansion was `py_compile` checked; rerun the full smoke test before release packaging.
+- The latest EXE at `dist\MMA Warriors\MMA Warriors.exe` was rebuilt and startup-tested on
+  2026-07-19. It remained running for the startup probe and produced no new crash report.

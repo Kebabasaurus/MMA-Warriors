@@ -127,7 +127,7 @@ class AwardsMixin:
             detail.config(state="normal"); detail.delete("1.0", "end")
             if chosen:
                 entry = visible[int(chosen[0])]
-                detail.insert("end", f"{entry['title']}\n{entry['target']} — {entry['description']}\nUnlocked Month {entry.get('month', '?')}, {entry.get('year', '?')}.")
+                detail.insert("end", f"{entry['title']}\n{entry['target']} — {entry['description']}\nUnlocked {self.format_game_date(entry.get('month', 1), entry.get('week', 1))}.")
             detail.config(state="disabled")
         def open_profile(_event=None):
             chosen = tree.selection()
@@ -576,6 +576,14 @@ class AwardsMixin:
 
     def refresh_historical_records(self):
         """Refresh official world, promotion, and event records after completed cards."""
+        # A fast-forward can complete hundreds of AI cards. Rebuilding every
+        # world and promotion record after each individual card repeatedly
+        # scans the whole fighter population; defer that presentation work until
+        # the advance ends or the player opens the record book.
+        if getattr(self, "_advance_in_progress", False):
+            self.historical_records_dirty = True
+            return
+        self.historical_records_dirty = False
         records = self.ensure_historical_records()
         seen, fighters = set(), []
         for company, fighter in self.all_database_fighters_with_companies():

@@ -235,7 +235,7 @@ def validation_section(app, fighters):
         bouts = fighter.record_w + fighter.record_l + fighter.record_d
         if bouts > cap:
             record_violations.append((fighter.age, bouts, cap))
-        floor = 8 if fighter.age <= 21 else 5 if fighter.age <= 25 else 2
+        floor = 12 if fighter.age <= 21 else 9 if fighter.age <= 25 else 7
         required = min(98, fighter.overall + floor)
         if fighter.potential < required:
             potential_violations.append((fighter.age, fighter.overall, fighter.potential, required))
@@ -259,7 +259,7 @@ def validation_section(app, fighters):
         if not (16 <= fighter.age <= 26)
         or fighter.record_w > 6
         or fighter.record_l > min(4, fighter.record_w + 1)
-        or fighter.potential < min(96, fighter.overall + 8)
+        or fighter.potential < min(98, fighter.overall + 6)
     ]
 
     assert not record_violations, f"Age-bounded record violations: {record_violations[:3]}"

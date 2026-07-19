@@ -4,17 +4,17 @@ Seed 20260712; 24 clones per stage; 24 monthly checks; competitive fights every 
 
 Early career (age 20 / OVR 58)
 ------------------------------------------------------------------------------
-Training only                  OVR +2.54 | detailed +156.7 | bouts 0
-Training + competitive fights  OVR +2.46 | detailed +156.3 | bouts 192
+Training only                  OVR +8.75 | detailed +573.9 | bouts 0
+Training + competitive fights  OVR +8.67 | detailed +557.7 | bouts 192
 
 Mid career (age 28 / OVR 72)
 ------------------------------------------------------------------------------
-Training only                  OVR +2.62 | detailed +158.2 | bouts 0
-Training + competitive fights  OVR +2.50 | detailed +156.4 | bouts 192
+Training only                  OVR +1.92 | detailed +122.8 | bouts 0
+Training + competitive fights  OVR +2.25 | detailed +137.6 | bouts 192
 
 Late career (age 36 / OVR 82)
 ------------------------------------------------------------------------------
 Training only                  OVR +0.00 | detailed +6.5 | bouts 0
-Training + competitive fights  OVR +0.00 | detailed +7.0 | bouts 192
+Training + competitive fights  OVR +0.00 | detailed +5.0 | bouts 192
 
 Interpretation: early fighters should grow most; mid-career fighters should progress more slowly; late fighters should be stable or decline. The fight cohort measures momentum/conditioning context without forcing a winner.

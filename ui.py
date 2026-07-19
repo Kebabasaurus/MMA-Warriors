@@ -53,6 +53,102 @@ class UIMixin:
                 "gold": "#f0f7ff", "text": "#ecf8ff", "muted": "#a8c7d3", "tree": "#0c141d",
                 "tree_head": "#0a6d84", "button": "#1d3342", "button_text": "#f0fbff",
             },
+            "BAMMA": {
+                "chrome": "#10100f", "chrome2": "#24221e", "paper": "#181715", "panel": "#292722",
+                "panel_dark": "#d66f16", "line": "#5a4b39", "cream": "#27251f", "red": "#e67e18",
+                "gold": "#ffe0a6", "text": "#fff5e5", "muted": "#d2b98d", "tree": "#12110f",
+                "tree_head": "#bc5b0c", "button": "#353026", "button_text": "#fff4e2",
+            },
+            "ONE Championship": {
+                "chrome": "#080808", "chrome2": "#1b1b1b", "paper": "#141414", "panel": "#242424",
+                "panel_dark": "#7a0d14", "line": "#4d4d4d", "cream": "#292929", "red": "#bd1020",
+                "gold": "#f4d276", "text": "#f5f5f5", "muted": "#c6c6c6", "tree": "#101010",
+                "tree_head": "#9f0c18", "button": "#303030", "button_text": "#ffffff",
+            },
+            "RIZIN": {
+                "chrome": "#050505", "chrome2": "#221312", "paper": "#151111", "panel": "#28201f",
+                "panel_dark": "#a81720", "line": "#61413c", "cream": "#2b2321", "red": "#c51c27",
+                "gold": "#f0d4aa", "text": "#fff4e6", "muted": "#d7bdb2", "tree": "#100d0d",
+                "tree_head": "#8f131b", "button": "#382a28", "button_text": "#fff3e3",
+            },
+            "KSW": {
+                "chrome": "#08111d", "chrome2": "#122740", "paper": "#101925", "panel": "#1d2a38",
+                "panel_dark": "#ca1d2c", "line": "#3d5872", "cream": "#202f3e", "red": "#d52030",
+                "gold": "#e8f2ff", "text": "#edf6ff", "muted": "#b6cadc", "tree": "#0c1520",
+                "tree_head": "#173f6b", "button": "#283c50", "button_text": "#eff7ff",
+            },
+            "LFA": {
+                "chrome": "#071420", "chrome2": "#102c42", "paper": "#101d29", "panel": "#1b3144",
+                "panel_dark": "#d33a35", "line": "#41657c", "cream": "#203b4e", "red": "#d63c36",
+                "gold": "#e7f4ff", "text": "#edf8ff", "muted": "#b9d2e5", "tree": "#0d1a25",
+                "tree_head": "#1c5272", "button": "#29485d", "button_text": "#f3fbff",
+            },
+            "Oktagon": {
+                "chrome": "#0b0b0a", "chrome2": "#23231d", "paper": "#151512", "panel": "#292821",
+                "panel_dark": "#c69a24", "line": "#645836", "cream": "#2d2b20", "red": "#bd8514",
+                "gold": "#fff0b1", "text": "#fff8df", "muted": "#dfcea0", "tree": "#10100d",
+                "tree_head": "#917119", "button": "#373423", "button_text": "#fff7de",
+            },
+            "BRAVE": {
+                "chrome": "#07120e", "chrome2": "#103326", "paper": "#102019", "panel": "#193a2b",
+                "panel_dark": "#b78b20", "line": "#3d6752", "cream": "#203c30", "red": "#b88c21",
+                "gold": "#fff0a1", "text": "#f1fae9", "muted": "#b8d1bd", "tree": "#0b1912",
+                "tree_head": "#17613f", "button": "#294c3b", "button_text": "#f7ffe9",
+            },
+            "ACA": {
+                "chrome": "#0a0e0c", "chrome2": "#1d3025", "paper": "#121a15", "panel": "#23372a",
+                "panel_dark": "#497c43", "line": "#47634e", "cream": "#293d2e", "red": "#b42c2d",
+                "gold": "#e7e6c1", "text": "#eff5e9", "muted": "#bdccb9", "tree": "#0d1510",
+                "tree_head": "#35683b", "button": "#314a37", "button_text": "#f4faee",
+            },
+            "Boxing": {
+                "chrome": "#100b08", "chrome2": "#332016", "paper": "#1b120d", "panel": "#352117",
+                "panel_dark": "#a72b1c", "line": "#6c4330", "cream": "#3b271d", "red": "#bd321f",
+                "gold": "#f5c66d", "text": "#fff0d9", "muted": "#d6b28d", "tree": "#130c09",
+                "tree_head": "#7f2017", "button": "#4a2e22", "button_text": "#fff0dc",
+            },
+            "Kickboxing": {
+                "chrome": "#07141a", "chrome2": "#12343b", "paper": "#102126", "panel": "#1b3b40",
+                "panel_dark": "#db5b20", "line": "#3c7073", "cream": "#23464a", "red": "#d85a20",
+                "gold": "#f7e3a5", "text": "#ecfbfa", "muted": "#b6d7d5", "tree": "#0b191d",
+                "tree_head": "#167078", "button": "#2b5356", "button_text": "#effffd",
+            },
+            "Muay Thai": {
+                "chrome": "#170a08", "chrome2": "#3c1712", "paper": "#21100d", "panel": "#432119",
+                "panel_dark": "#c84819", "line": "#7a3e2c", "cream": "#4a291f", "red": "#c84519",
+                "gold": "#f3c45d", "text": "#fff0d7", "muted": "#dbb28b", "tree": "#180b09",
+                "tree_head": "#8d2d18", "button": "#593225", "button_text": "#fff1dd",
+            },
+            "Wrestling": {
+                "chrome": "#0a1422", "chrome2": "#173557", "paper": "#102039", "panel": "#1d3858",
+                "panel_dark": "#d39a22", "line": "#42688d", "cream": "#294665", "red": "#b6322d",
+                "gold": "#ffe79a", "text": "#edf6ff", "muted": "#bad0e5", "tree": "#0c192b",
+                "tree_head": "#214e7c", "button": "#315675", "button_text": "#f2f9ff",
+            },
+            "BJJ": {
+                "chrome": "#0a0d18", "chrome2": "#22264b", "paper": "#14172a", "panel": "#292e54",
+                "panel_dark": "#7652aa", "line": "#4e5785", "cream": "#303761", "red": "#8a3e57",
+                "gold": "#ddd5ff", "text": "#f0eeff", "muted": "#c3c1e1", "tree": "#0f1221",
+                "tree_head": "#4c4386", "button": "#3b4371", "button_text": "#f5f3ff",
+            },
+            "Sky Sports": {
+                "chrome": "#061535", "chrome2": "#102d64", "paper": "#0c1d40", "panel": "#173563",
+                "panel_dark": "#1b5cba", "line": "#3c6ca7", "cream": "#1d4176", "red": "#e30613",
+                "gold": "#eef5ff", "text": "#eff6ff", "muted": "#bfd3ef", "tree": "#08162f",
+                "tree_head": "#174d9b", "button": "#28528a", "button_text": "#f4f8ff",
+            },
+            "ESPN": {
+                "chrome": "#090909", "chrome2": "#202020", "paper": "#151515", "panel": "#2a2a2a",
+                "panel_dark": "#9d9d9d", "line": "#4e4e4e", "cream": "#303030", "red": "#d71920",
+                "gold": "#f1f1f1", "text": "#f4f4f4", "muted": "#c1c1c1", "tree": "#101010",
+                "tree_head": "#ba171d", "button": "#393939", "button_text": "#ffffff",
+            },
+            "BBC Sport": {
+                "chrome": "#101010", "chrome2": "#2a2a2a", "paper": "#181818", "panel": "#303030",
+                "panel_dark": "#494949", "line": "#5a5a5a", "cream": "#353535", "red": "#bc1c21",
+                "gold": "#ffe53b", "text": "#f5f5f5", "muted": "#c5c5c5", "tree": "#111111",
+                "tree_head": "#bc1c21", "button": "#3e3e3e", "button_text": "#ffffff",
+            },
         }
         self.colors = self.themes.get(getattr(self, "theme_name", "Fight Night"), self.themes["Fight Night"])
         style.configure(".", font=("Tahoma", 8), background=self.colors["paper"], foreground=self.colors["text"])
@@ -190,8 +286,9 @@ class UIMixin:
         self.draw_logo()
         ttk.Label(titlebar, text=GAME_NAME.upper(), style="Title.TLabel").pack(side="left", padx=8, pady=8)
         self.theme_name_var = tk.StringVar(value=getattr(self, "theme_name", "Fight Night"))
-        ttk.Combobox(titlebar, values=list(self.themes.keys()), textvariable=self.theme_name_var, state="readonly", width=16).pack(side="right", padx=10)
-        ttk.Button(titlebar, text="Apply Theme", command=self.apply_selected_theme).pack(side="right")
+        ttk.Button(titlebar, text="Apply Theme", command=self.apply_selected_theme).pack(side="right", padx=(2, 10))
+        ttk.Combobox(titlebar, values=list(self.themes.keys()), textvariable=self.theme_name_var, state="readonly", width=20, height=22).pack(side="right", padx=(2, 6))
+        ttk.Label(titlebar, text="Theme", style="Chrome.TLabel").pack(side="right", padx=(12, 2))
         ttk.Label(titlebar, text="Promoter Office", style="Chrome.TLabel").pack(side="right", padx=18)
 
         self.statusbar = ttk.Frame(shell, style="Chrome.TFrame")
@@ -235,15 +332,15 @@ class UIMixin:
         nav_scroll.pack(side="right", fill="y")
         groups = (
             ("TODAY", (("Assistant", "assistant"), ("Inbox", "inbox"), ("Media Desk", "website"), ("Fight Night", "log"))),
-            ("PROMOTION", (("Roster", "roster"), ("Matchmaking", "booking"), ("Contracts", "contracts"), ("Free Agents", "market"), ("Staff", "staff"), ("Finance", "finance"))),
-            ("WORLD", (("World", "world"), ("Combat Sports", "combat_sports"), ("Companies", "companies"), ("Rankings", "rankings"), ("Results", "results"), ("Regions", "regions"))),
-            ("TOOLS", (("Game & Saves", "game_menu"), ("Company Rules", "company_editor"), ("Database Editor", "editor"), ("Sim Lab", "sim_lab"))),
+            ("PROMOTION", (("Roster", "roster"), ("Matchmaking", "booking"), ("Contracts", "contracts"), ("Free Agents", "market"), ("Fight Academy", "academy"), ("Staff", "staff"), ("Finance", "finance"))),
+            ("WORLD", (("World", "world"), ("Fighter Search", "fighter_search"), ("Combat Sports", "combat_sports"), ("Companies", "companies"), ("Rankings", "rankings"), ("Results", "results"), ("Regions", "regions"))),
+            ("TOOLS", (("Game & Saves", "game_menu"), ("Company Rules", "company_editor"), ("World Editor", "editor"), ("Sim Lab", "sim_lab"))),
         )
         self.nav_buttons = {}
         for heading, entries in groups:
             ttk.Label(nav, text=heading, anchor="center", style="Section.TLabel").pack(fill="x", padx=6, pady=(5, 2), ipady=2)
             for text, tab in entries:
-                command = self.open_combat_sports_window if tab == "combat_sports" else (lambda name=tab: self.select_tab(name))
+                command = self.open_combat_sports_window if tab == "combat_sports" else (self.open_academy_window if tab == "academy" else (lambda name=tab: self.select_tab(name)))
                 button = ttk.Button(nav, text=text, style="Nav.TButton", command=command)
                 button.pack(fill="x", padx=8, pady=1)
                 self.nav_buttons[tab] = button
@@ -273,6 +370,7 @@ class UIMixin:
             ("booking", "booking_tab", "Booking"),
             ("market", "market_tab", "Free Agents"),
             ("world", "world_tab", "World"),
+            ("fighter_search", "fighter_search_tab", "Fighter Search"),
             ("rankings", "rankings_tab", "Rankings"),
             ("editor", "editor_tab", "Editor"),
             ("sim_lab", "sim_lab_tab", "Sim Lab"),
@@ -299,6 +397,7 @@ class UIMixin:
         self.build_booking_tab()
         self.build_market_tab()
         self.build_world_tab()
+        self.build_fighter_search_tab()
         self.build_rankings_tab()
         self.build_editor_tab()
         self.build_sim_lab_tab()
@@ -310,6 +409,14 @@ class UIMixin:
         self.theme_name = self.theme_name_var.get()
         self.configure_style()
         self.retheme_plain_widgets(self.root)
+        for pane in getattr(self, "vertical_resize_panes", []):
+            try:
+                pane.configure(bg=self.colors["panel"])
+            except tk.TclError:
+                pass
+        spacer = getattr(self, "market_resize_spacer", None)
+        if spacer:
+            spacer.configure(bg=self.colors["paper"])
         self.draw_logo()
 
     def draw_logo(self):
@@ -357,6 +464,7 @@ class UIMixin:
             "booking": self.tab_pages["booking"],
             "market": self.tab_pages["market"],
             "world": self.tab_pages["world"],
+            "fighter_search": self.tab_pages["fighter_search"],
             "rankings": self.tab_pages["rankings"],
             "editor": self.tab_pages["editor"],
             "sim_lab": self.tab_pages["sim_lab"],
@@ -392,6 +500,52 @@ class UIMixin:
         inner.pack(fill="both", expand=True, padx=6, pady=6)
         return frame, inner
 
+    def create_vertical_resizer(self, parent, initial_fraction=0.7, min_top=180, min_bottom=80):
+        """Create a themed vertical split that keeps its useful default on first layout."""
+        pane = tk.PanedWindow(
+            parent,
+            orient="vertical",
+            bg=self.colors["panel"],
+            bd=0,
+            sashwidth=8,
+            sashpad=2,
+            sashrelief="raised",
+            opaqueresize=True,
+        )
+        pane._resize_ready = False
+        pane._resize_fraction = initial_fraction
+        pane._resize_min_top = min_top
+        pane._resize_min_bottom = min_bottom
+        pane.bind("<Configure>", lambda _event, target=pane: self.initialize_vertical_resizer(target), add="+")
+        if not hasattr(self, "vertical_resize_panes"):
+            self.vertical_resize_panes = []
+        self.vertical_resize_panes.append(pane)
+        return pane
+
+    def initialize_vertical_resizer(self, pane):
+        """Position a new split once; subsequent drags belong entirely to the player."""
+        if getattr(pane, "_resize_ready", False) or pane.winfo_height() < 260:
+            return
+        if not pane.winfo_ismapped():
+            if not getattr(pane, "_resize_map_bound", False):
+                pane._resize_map_bound = True
+                pane.bind("<Map>", lambda _event, target=pane: target.after_idle(lambda: self.initialize_vertical_resizer(target)), add="+")
+            return
+        if len(pane.panes()) < 2:
+            pane.after_idle(lambda: self.initialize_vertical_resizer(pane))
+            return
+        height = pane.winfo_height()
+        min_top = getattr(pane, "_resize_min_top", 180)
+        min_bottom = getattr(pane, "_resize_min_bottom", 80)
+        fraction = getattr(pane, "_resize_fraction", 0.7)
+        top_height = max(min_top, min(height - min_bottom, round(height * fraction)))
+        try:
+            pane.sash_place(0, 0, top_height)
+            pane._resize_ready = True
+        except tk.TclError:
+            # Both child panes may not exist until Tk completes this layout pass.
+            pane.after_idle(lambda: self.initialize_vertical_resizer(pane))
+
     def make_tree_sortable(self, tree):
         tree._sort_reverse = {}
         for col in tree["columns"]:
@@ -404,17 +558,20 @@ class UIMixin:
         def convert(value):
             text = str(value).strip()
             if text == "C":
-                return -1
-            cleaned = text.replace("$", "").replace(",", "").replace("%", "")
+                return (0, -1.0)
+            cleaned = text.replace("$", "").replace(",", "").replace("%", "").replace("#", "")
             if cleaned.startswith("-") and cleaned[1:].replace(".", "", 1).isdigit():
-                return float(cleaned)
+                return (0, float(cleaned))
             if cleaned.replace(".", "", 1).isdigit():
-                return float(cleaned)
+                return (0, float(cleaned))
             record_parts = text.split("-")
             if len(record_parts) >= 2 and all(part.isdigit() for part in record_parts[:2]):
                 wins, losses = int(record_parts[0]), int(record_parts[1])
-                return wins * 1000 - losses
-            return text.lower()
+                return (0, float(wins * 1000 - losses))
+            # Always return a tagged tuple.  A tree column can legitimately
+            # contain a numeric rank, a champion marker, and a blank/text
+            # status; Python cannot sort bare floats and strings together.
+            return (1, text.lower())
 
         rows = [(convert(tree.set(item, col)), item) for item in tree.get_children("")]
         rows.sort(key=lambda row: row[0], reverse=reverse)
@@ -428,6 +585,23 @@ class UIMixin:
         body.pack(fill="both", expand=True)
         save_panel, save_inner = self.section(body, "SAVE GAMES")
         save_panel.pack(side="left", fill="both", expand=True, padx=(0, 6))
+        folder_row = ttk.Frame(save_inner, style="Inset.TFrame")
+        folder_row.pack(fill="x", pady=(0, 5))
+        self.save_folder_filter = tk.StringVar(value="All Saves")
+        self.save_folder_target = tk.StringVar(value=getattr(self, "active_save_group", "Main"))
+        self.save_new_folder_name = tk.StringVar(value="Tests")
+        ttk.Label(folder_row, text="View", style="Inset.TLabel").grid(row=0, column=0, sticky="w", padx=3)
+        self.save_folder_filter_box = ttk.Combobox(folder_row, textvariable=self.save_folder_filter, values=("All Saves", "Main"), state="readonly", width=15)
+        self.save_folder_filter_box.grid(row=0, column=1, sticky="ew", padx=3)
+        self.save_folder_filter_box.bind("<<ComboboxSelected>>", lambda _event: self.refresh_game_menu())
+        ttk.Label(folder_row, text="Save / move to", style="Inset.TLabel").grid(row=0, column=2, sticky="w", padx=(8, 3))
+        self.save_folder_target_box = ttk.Combobox(folder_row, textvariable=self.save_folder_target, values=("Main",), state="readonly", width=15)
+        self.save_folder_target_box.grid(row=0, column=3, sticky="ew", padx=3)
+        ttk.Entry(folder_row, textvariable=self.save_new_folder_name, width=15).grid(row=1, column=0, columnspan=2, sticky="ew", padx=3, pady=(4, 0))
+        ttk.Button(folder_row, text="Create Folder", command=self.create_save_folder).grid(row=1, column=2, sticky="ew", padx=3, pady=(4, 0))
+        ttk.Button(folder_row, text="Move Selected", command=self.move_selected_save_to_folder).grid(row=1, column=3, sticky="ew", padx=3, pady=(4, 0))
+        for column in (1, 3):
+            folder_row.columnconfigure(column, weight=1)
         self.save_slot_list = tk.Listbox(save_inner, font=("Tahoma", 9), bg="#c9c9c9")
         self.save_slot_list.pack(fill="both", expand=True)
         row = ttk.Frame(save_inner, style="Inset.TFrame")
@@ -444,21 +618,20 @@ class UIMixin:
         ttk.Button(save_tools, text="Backup Slot", command=self.backup_selected_slot).grid(row=0, column=0, sticky="ew", padx=3, pady=2)
         ttk.Button(save_tools, text="Restore Backup", command=self.open_save_backup_manager).grid(row=0, column=1, sticky="ew", padx=3, pady=2)
         ttk.Button(save_tools, text="Open Saves Folder", command=self.open_saves_folder).grid(row=0, column=2, sticky="ew", padx=3, pady=2)
+        ttk.Button(save_tools, text="Game Settings", command=self.open_game_settings_window).grid(row=1, column=0, columnspan=3, sticky="ew", padx=3, pady=2)
         for col in range(3):
             save_tools.columnconfigure(col, weight=1)
         autosave_row = ttk.Frame(save_inner, style="Inset.TFrame")
         autosave_row.pack(fill="x", pady=(0, 6))
         self.autosave_status_label = ttk.Label(autosave_row, text="Autosaves loading...", style="Inset.TLabel")
-        self.autosave_status_label.grid(row=0, column=0, columnspan=5, sticky="ew", padx=4, pady=2)
+        self.autosave_status_label.grid(row=0, column=0, columnspan=2, sticky="ew", padx=4, pady=2)
         for col, (text, command) in enumerate((
             ("Auto", self.toggle_autosaves),
-            ("Keep -", lambda: self.change_autosave_keep("autosave_monthly_keep", -1)),
-            ("Keep +", lambda: self.change_autosave_keep("autosave_monthly_keep", 1)),
-            ("B-", lambda: self.change_autosave_keep("save_backup_keep", -5)),
-            ("B+", lambda: self.change_autosave_keep("save_backup_keep", 5)),
         )):
             ttk.Button(autosave_row, text=text, command=command).grid(row=1, column=col, sticky="ew", padx=2, pady=2)
             autosave_row.columnconfigure(col, weight=1)
+        self.save_manager_status = ttk.Label(save_inner, text="", style="Inset.TLabel", anchor="w")
+        self.save_manager_status.pack(fill="x", padx=4, pady=(0, 4))
         db_panel, db_inner = self.section(body, "DATABASE / WORLD")
         db_panel.pack(side="left", fill="both", expand=True)
         self.database_list = tk.Listbox(db_inner, font=("Tahoma", 9), bg="#c9c9c9")
@@ -502,6 +675,7 @@ class UIMixin:
         start_button_row = ttk.Frame(start_inner, style="Inset.TFrame")
         start_button_row.pack(fill="x", padx=4, pady=(2, 4))
         ttk.Button(start_button_row, text="Start New Game With Selected Promotion", style="Accent.TButton", command=self.new_game).pack(side="left", fill="x", expand=True)
+        ttk.Button(start_button_row, text="Create Your Own Promotion", command=self.open_create_promotion_mode).pack(side="left", fill="x", expand=True, padx=(4, 0))
         ttk.Label(start_inner, text="Spectator Mode starts a fresh observer save with no player company.", style="Inset.TLabel", wraplength=260).pack(fill="x", padx=6, pady=(0, 4))
 
         self.spectator_sim_panel, spectator = self.section(db_inner, "SPECTATOR WORLD SIMULATION")
@@ -524,15 +698,18 @@ class UIMixin:
         spectator_actions.columnconfigure(1, weight=1)
         date_row = ttk.Frame(spectator, style="Inset.TFrame")
         date_row.pack(fill="x", padx=4, pady=(0, 4))
-        ttk.Label(date_row, text="Sim to date", style="Inset.TLabel").grid(row=0, column=0, columnspan=4, sticky="w", padx=4, pady=(2, 0))
-        self.spectator_target_month = tk.IntVar(value=12)
+        ttk.Label(date_row, text="Sim to calendar date", style="Inset.TLabel").grid(row=0, column=0, columnspan=4, sticky="w", padx=4, pady=(2, 0))
+        self.spectator_target_year = tk.IntVar(value=GAME_START_YEAR)
+        self.spectator_target_calendar_month = tk.StringVar(value=CALENDAR_MONTHS[0])
         self.spectator_target_week = tk.IntVar(value=4)
-        ttk.Label(date_row, text="Month", style="Inset.TLabel").grid(row=1, column=0, sticky="w", padx=(4, 2), pady=2)
-        ttk.Spinbox(date_row, from_=1, to=240, textvariable=self.spectator_target_month, width=5).grid(row=1, column=1, sticky="ew", padx=(0, 4), pady=2)
-        ttk.Label(date_row, text="Week", style="Inset.TLabel").grid(row=1, column=2, sticky="w", padx=(4, 2), pady=2)
-        ttk.Spinbox(date_row, from_=1, to=4, textvariable=self.spectator_target_week, width=4).grid(row=1, column=3, sticky="ew", padx=(0, 4), pady=2)
+        ttk.Label(date_row, text="Year", style="Inset.TLabel").grid(row=1, column=0, sticky="w", padx=(4, 2), pady=2)
+        ttk.Spinbox(date_row, from_=GAME_START_YEAR, to=GAME_START_YEAR + 240, textvariable=self.spectator_target_year, width=6).grid(row=1, column=1, sticky="ew", padx=(0, 4), pady=2)
+        ttk.Label(date_row, text="Month", style="Inset.TLabel").grid(row=2, column=0, sticky="w", padx=(4, 2), pady=2)
+        ttk.Combobox(date_row, textvariable=self.spectator_target_calendar_month, values=CALENDAR_MONTHS, state="readonly", width=12).grid(row=2, column=1, sticky="ew", padx=(0, 4), pady=2)
+        ttk.Label(date_row, text="Week", style="Inset.TLabel").grid(row=2, column=2, sticky="w", padx=(4, 2), pady=2)
+        ttk.Spinbox(date_row, from_=1, to=4, textvariable=self.spectator_target_week, width=4).grid(row=2, column=3, sticky="ew", padx=(0, 4), pady=2)
         sim_to_date_button = ttk.Button(date_row, text="Sim To Date", command=self.spectator_sim_to_date)
-        sim_to_date_button.grid(row=2, column=0, columnspan=4, sticky="ew", padx=4, pady=(2, 4))
+        sim_to_date_button.grid(row=3, column=0, columnspan=4, sticky="ew", padx=4, pady=(2, 4))
         self.spectator_sim_buttons.append(sim_to_date_button)
         date_row.columnconfigure(1, weight=1)
         date_row.columnconfigure(3, weight=1)
@@ -544,10 +721,9 @@ class UIMixin:
         if hasattr(self, "advance_progress"):
             self.advance_progress["value"] = max(0, min(100, float(progress)))
         if hasattr(self, "stat_month"):
-            year = 2026 + (self.month - 1) // 12
-            self.stat_month.config(text=f"W{self.week} M{self.month} / {year}")
+            self.stat_month.config(text=self.format_game_date())
         if hasattr(self, "spectator_sim_status") and getattr(self, "spectator_mode", False):
-            self.spectator_sim_status.config(text=f"{status} | Month {self.month}, Week {self.week}")
+            self.spectator_sim_status.config(text=f"{status} | {self.format_game_date()}")
 
     def set_advance_ui_busy(self, busy, status="", progress=0):
         """Show activity, prevent re-entry, and keep the native window responsive."""
@@ -586,67 +762,246 @@ class UIMixin:
             self.refresh_spectator_controls()
 
     def build_website_tab(self):
-        self.screen_header(self.website_tab, "MEDIA DESK", "Manage narrative, press activity, rivalries, and public interest")
+        self.screen_header(self.website_tab, "MEDIA DESK", "Build the company brand, promote events, manage rights, and follow the fight world")
+
+        # Media is intentionally a vertical dashboard.  Every main page already
+        # lives in a scrollable canvas, so stacking these panels keeps the full
+        # desk usable on a 768px laptop without forcing the player to pan past a
+        # wide two-column layout just to reach a Treeview scrollbar.
         body = ttk.Frame(self.website_tab)
         body.pack(fill="both", expand=True)
-        actions = ttk.Frame(body, style="Inset.TFrame")
-        actions.pack(fill="x", pady=(0, 6))
-        ttk.Label(actions, text="Spokesperson", style="Inset.TLabel").pack(side="left", padx=(6, 2))
-        self.media_fighter_combo = ttk.Combobox(actions, textvariable=self.media_fighter_choice, state="readonly", width=22)
-        self.media_fighter_combo.pack(side="left", padx=(0, 6))
+
+        if not hasattr(self, "media_strategy_choice"):
+            self.media_strategy_choice = tk.StringVar(value="Balanced")
+        if not hasattr(self, "media_action_choice"):
+            self.media_action_choice = tk.StringVar(value="Interview")
+
+        strategy_panel, strategy = self.section(body, "MEDIA STRATEGY / COMPANY REACH")
+        strategy_panel.pack(fill="x", pady=(0, 6))
+        strategy.columnconfigure(1, weight=1)
+        strategy.columnconfigure(3, weight=1)
+        self.media_kpi_summary = ttk.Label(
+            strategy,
+            text="Media actions, brand heat, public trust, audience reach, and the next event will appear here.",
+            style="Inset.TLabel",
+            justify="left",
+            anchor="w",
+            wraplength=900,
+        )
+        self.media_kpi_summary.grid(row=0, column=0, columnspan=5, sticky="ew", padx=5, pady=(2, 7))
+        ttk.Label(strategy, text="Company strategy", style="Inset.TLabel").grid(row=1, column=0, sticky="w", padx=(5, 4), pady=3)
+        self.media_strategy_combo = ttk.Combobox(
+            strategy,
+            textvariable=self.media_strategy_choice,
+            values=(
+                "Balanced", "Sporting Credibility", "Star Builder", "Viral Growth",
+                "Regional Expansion", "Sponsor Friendly", "Crisis Management",
+            ),
+            state="readonly",
+            width=22,
+        )
+        self.media_strategy_combo.grid(row=1, column=1, sticky="w", padx=(0, 6), pady=3)
+        ttk.Button(
+            strategy,
+            text="Apply Strategy",
+            style="Accent.TButton",
+            command=lambda: self.media_apply_strategy(),
+        ).grid(row=1, column=2, sticky="w", padx=3, pady=3)
+        ttk.Label(
+            strategy,
+            text="Strategy shapes campaign effectiveness, risk, sponsor fit, and the stories your promotion tries to create.",
+            style="Inset.TLabel",
+            justify="left",
+            anchor="w",
+            wraplength=720,
+        ).grid(row=2, column=0, columnspan=5, sticky="ew", padx=5, pady=(3, 2))
+
+        campaign_panel, campaign = self.section(body, "RUN A MEDIA CAMPAIGN")
+        campaign_panel.pack(fill="x", pady=(0, 6))
+        for column in (1, 3):
+            campaign.columnconfigure(column, weight=1)
+        ttk.Label(campaign, text="Spokesperson", style="Inset.TLabel").grid(row=0, column=0, sticky="w", padx=(5, 3), pady=4)
+        self.media_fighter_combo = ttk.Combobox(campaign, textvariable=self.media_fighter_choice, state="readonly", width=22)
+        self.media_fighter_combo.grid(row=0, column=1, sticky="ew", padx=(0, 8), pady=4)
         self.media_fighter_combo.bind("<<ComboboxSelected>>", self.refresh_media_targets)
-        ttk.Label(actions, text="Target", style="Inset.TLabel").pack(side="left", padx=(2, 2))
-        self.media_target_combo = ttk.Combobox(actions, textvariable=self.media_target_choice, state="readonly", width=22)
-        self.media_target_combo.pack(side="left", padx=(0, 6))
-        ttk.Button(actions, text="Call Out", command=self.media_desk_callout).pack(side="left", padx=3)
-        ttk.Button(actions, text="Interview", command=self.media_desk_interview).pack(side="left", padx=3)
-        ttk.Button(actions, text="Press Tour", style="Accent.TButton", command=self.media_desk_press_tour).pack(side="left", padx=3)
-        left_panel, left = self.section(body, "FEATURED STORY / UPCOMING EVENTS")
-        left_panel.pack(side="left", fill="both", expand=True, padx=(0, 6))
-        self.website_story = tk.Text(left, wrap="word", font=("Tahoma", 9, "bold"), bg=self.colors["cream"], fg=self.colors["text"], insertbackground=self.colors["text"], height=9, padx=10, pady=10)
-        self.website_story.pack(fill="x")
-        ttk.Label(left, text="Upcoming Events Calendar", style="Section.TLabel", anchor="center").pack(fill="x", pady=(8, 4))
-        self.website_calendar = tk.Text(left, wrap="word", font=("Tahoma", 9), bg=self.colors["cream"], fg=self.colors["text"], insertbackground=self.colors["text"], height=12, padx=10, pady=8)
-        self.website_calendar.pack(fill="both", expand=True)
-        right_panel, right = self.section(body, "TODAY'S MAJOR STORIES")
-        right_panel.pack(side="left", fill="both", expand=True)
-        news_table = ttk.Frame(right, style="Panel.TFrame")
-        news_table.pack(fill="both", expand=True)
-        self.website_news = ttk.Treeview(news_table, columns=("type", "headline", "date"), show="headings", height=14)
+        ttk.Label(campaign, text="Optional target", style="Inset.TLabel").grid(row=0, column=2, sticky="w", padx=(3, 3), pady=4)
+        self.media_target_combo = ttk.Combobox(campaign, textvariable=self.media_target_choice, state="readonly", width=22)
+        self.media_target_combo.grid(row=0, column=3, sticky="ew", padx=(0, 8), pady=4)
+        ttk.Label(campaign, text="Campaign", style="Inset.TLabel").grid(row=1, column=0, sticky="w", padx=(5, 3), pady=4)
+        self.media_action_combo = ttk.Combobox(
+            campaign,
+            textvariable=self.media_action_choice,
+            values=(
+                "Interview", "Call Out", "Press Tour", "Open Workout",
+                "Highlight Package", "Press Conference", "Regional Tour", "Crisis Response",
+            ),
+            state="readonly",
+            width=20,
+        )
+        self.media_action_combo.grid(row=1, column=1, sticky="ew", padx=(0, 8), pady=4)
+        self.media_action_combo.bind("<<ComboboxSelected>>", lambda _event: self.refresh_media_dashboard())
+        ttk.Button(
+            campaign,
+            text="Run Campaign",
+            style="Accent.TButton",
+            command=lambda: self.media_run_selected_campaign(),
+        ).grid(row=1, column=2, columnspan=2, sticky="w", padx=3, pady=4)
+        self.media_action_summary = ttk.Label(
+            campaign,
+            text="Select an action to see its cost, likely reach, risk, and whether a target is required.",
+            style="Inset.TLabel",
+            justify="left",
+            anchor="w",
+            wraplength=980,
+        )
+        self.media_action_summary.grid(row=2, column=0, columnspan=4, sticky="ew", padx=5, pady=(2, 4))
+
+        rights_panel, rights = self.section(body, "MEDIA RIGHTS / COMPLIANCE")
+        rights_panel.pack(fill="x", pady=(0, 6))
+        self.media_rights_summary = ttk.Label(
+            rights,
+            text="No active rights package. Available offers and delivery requirements will appear below.",
+            style="Inset.TLabel",
+            justify="left",
+            anchor="w",
+            wraplength=980,
+        )
+        self.media_rights_summary.pack(fill="x", padx=5, pady=(2, 6))
+
+        offers_frame = ttk.Frame(rights, style="Panel.TFrame")
+        offers_frame.pack(fill="both", expand=True)
+        self.media_offers_tree = ttk.Treeview(
+            offers_frame,
+            columns=("partner", "type", "reach", "fee", "term", "events", "requirements"),
+            show="headings",
+            height=6,
+        )
         for column, label, width, anchor in (
-            ("type", "Type", 105, "w"), ("headline", "Headline", 430, "w"), ("date", "Date", 105, "center"),
+            ("partner", "Partner", 125, "w"), ("type", "Platform", 85, "w"),
+            ("reach", "Reach", 45, "center"), ("fee", "Fee / Event", 75, "e"),
+            ("term", "Term", 45, "center"), ("events", "Events", 45, "center"),
+            ("requirements", "Requirements / Risk", 220, "w"),
+        ):
+            self.media_offers_tree.heading(column, text=label)
+            self.media_offers_tree.column(column, width=width, minwidth=48, anchor=anchor, stretch=column in ("partner", "requirements"))
+        offers_y = ttk.Scrollbar(offers_frame, orient="vertical", command=self.media_offers_tree.yview)
+        offers_x = ttk.Scrollbar(offers_frame, orient="horizontal", command=self.media_offers_tree.xview)
+        self.media_offers_tree.configure(yscrollcommand=offers_y.set, xscrollcommand=offers_x.set)
+        offers_frame.rowconfigure(0, weight=1)
+        offers_frame.columnconfigure(0, weight=1)
+        self.media_offers_tree.grid(row=0, column=0, sticky="nsew")
+        offers_y.grid(row=0, column=1, sticky="ns")
+        offers_x.grid(row=1, column=0, sticky="ew")
+        self.make_tree_sortable(self.media_offers_tree)
+        offer_buttons = ttk.Frame(rights, style="Inset.TFrame")
+        offer_buttons.pack(fill="x", pady=(5, 0))
+        ttk.Button(offer_buttons, text="Accept Selected", style="Accent.TButton", command=lambda: self.media_accept_selected_offer()).pack(side="left", padx=3, pady=3)
+        ttk.Button(offer_buttons, text="Reject Selected", command=lambda: self.media_reject_selected_offer()).pack(side="left", padx=3, pady=3)
+        ttk.Button(offer_buttons, text="Refresh Offers", command=lambda: self.media_refresh_offers()).pack(side="left", padx=3, pady=3)
+        ttk.Button(offer_buttons, text="End Active Deal", command=lambda: self.media_terminate_contract()).pack(side="right", padx=3, pady=3)
+
+        history_panel, history = self.section(body, "CAMPAIGN HISTORY")
+        history_panel.pack(fill="both", expand=True, pady=(0, 6))
+        history_frame = ttk.Frame(history, style="Panel.TFrame")
+        history_frame.pack(fill="both", expand=True)
+        self.media_campaign_history_tree = ttk.Treeview(
+            history_frame,
+            columns=("date", "strategy", "action", "subject", "target", "outcome", "heat", "cost"),
+            show="headings",
+            height=7,
+        )
+        for column, label, width, anchor in (
+            ("date", "Date", 62, "center"), ("strategy", "Strategy", 80, "w"),
+            ("action", "Campaign", 82, "w"), ("subject", "Spokesperson", 95, "w"),
+            ("target", "Target", 95, "w"), ("outcome", "Outcome", 150, "w"),
+            ("heat", "Heat", 42, "center"), ("cost", "Cost", 55, "e"),
+        ):
+            self.media_campaign_history_tree.heading(column, text=label)
+            self.media_campaign_history_tree.column(column, width=width, minwidth=48, anchor=anchor, stretch=column == "outcome")
+        history_y = ttk.Scrollbar(history_frame, orient="vertical", command=self.media_campaign_history_tree.yview)
+        history_x = ttk.Scrollbar(history_frame, orient="horizontal", command=self.media_campaign_history_tree.xview)
+        self.media_campaign_history_tree.configure(yscrollcommand=history_y.set, xscrollcommand=history_x.set)
+        history_frame.rowconfigure(0, weight=1)
+        history_frame.columnconfigure(0, weight=1)
+        self.media_campaign_history_tree.grid(row=0, column=0, sticky="nsew")
+        history_y.grid(row=0, column=1, sticky="ns")
+        history_x.grid(row=1, column=0, sticky="ew")
+        self.make_tree_sortable(self.media_campaign_history_tree)
+
+        brief_panel, brief = self.section(body, "COMPANY MEDIA BRIEF / UPCOMING EVENTS")
+        brief_panel.pack(fill="x", pady=(0, 6))
+        self.website_story = tk.Text(brief, wrap="word", font=("Tahoma", 9, "bold"), bg=self.colors["cream"], fg=self.colors["text"], insertbackground=self.colors["text"], height=5, padx=10, pady=8)
+        self.website_story.pack(fill="x")
+        ttk.Label(brief, text="Upcoming Events Calendar", style="Section.TLabel", anchor="center").pack(fill="x", pady=(6, 4))
+        self.website_calendar = tk.Text(brief, wrap="word", font=("Tahoma", 9), bg=self.colors["cream"], fg=self.colors["text"], insertbackground=self.colors["text"], height=5, padx=10, pady=8)
+        self.website_calendar.pack(fill="x")
+
+        news_panel, news = self.section(body, "WORLD NEWSROOM")
+        news_panel.pack(fill="both", expand=True)
+        news_table = ttk.Frame(news, style="Panel.TFrame")
+        news_table.pack(fill="both", expand=True)
+        self.website_news = ttk.Treeview(news_table, columns=("type", "headline", "date"), show="headings", height=11)
+        for column, label, width, anchor in (
+            ("type", "Type", 95, "w"), ("headline", "Headline", 430, "w"), ("date", "Date", 85, "center"),
         ):
             self.website_news.heading(column, text=label)
             self.website_news.column(column, width=width, minwidth=65, anchor=anchor, stretch=column == "headline")
         news_y = ttk.Scrollbar(news_table, orient="vertical", command=self.website_news.yview)
         news_x = ttk.Scrollbar(news_table, orient="horizontal", command=self.website_news.xview)
         self.website_news.configure(yscrollcommand=news_y.set, xscrollcommand=news_x.set)
-        news_table.rowconfigure(0, weight=1); news_table.columnconfigure(0, weight=1)
+        news_table.rowconfigure(0, weight=1)
+        news_table.columnconfigure(0, weight=1)
         self.website_news.grid(row=0, column=0, sticky="nsew")
-        news_y.grid(row=0, column=1, sticky="ns"); news_x.grid(row=1, column=0, sticky="ew")
+        news_y.grid(row=0, column=1, sticky="ns")
+        news_x.grid(row=1, column=0, sticky="ew")
         self.website_news.bind("<<TreeviewSelect>>", self.show_selected_media_story)
         self.website_news.bind("<Double-1>", lambda _event: self.open_selected_news_story())
         self.website_news.bind("<Return>", lambda _event: self.open_selected_news_story())
-        self.website_news_preview = tk.Text(right, wrap="word", height=6, font=("Tahoma", 9), bg=self.colors["panel_dark"], fg=self.colors["text"], insertbackground=self.colors["text"], padx=10, pady=8)
+        self.website_news_preview = tk.Text(news, wrap="word", height=6, font=("Tahoma", 9), bg=self.colors["panel_dark"], fg=self.colors["text"], insertbackground=self.colors["text"], padx=10, pady=8)
         self.website_news_preview.pack(fill="x", pady=(6, 0))
         self.website_news_preview.config(state="disabled")
-        news_buttons = ttk.Frame(right, style="Inset.TFrame")
+        news_buttons = ttk.Frame(news, style="Inset.TFrame")
         news_buttons.pack(fill="x", pady=(5, 0))
         ttk.Button(news_buttons, text="Read Selected Story", style="Accent.TButton", command=self.open_selected_news_story).pack(side="left", padx=3, pady=3)
         ttk.Button(news_buttons, text="Open Story Context", command=self.open_selected_story_context).pack(side="left", padx=3, pady=3)
         ttk.Button(news_buttons, text="World Chronicle", command=self.open_world_chronicle).pack(side="right", padx=3, pady=3)
 
+        def resize_media_wrap(event):
+            wrap = max(320, event.width - 30)
+            for label in (self.media_kpi_summary, self.media_action_summary, self.media_rights_summary):
+                label.configure(wraplength=wrap)
+
+        body.bind("<Configure>", resize_media_wrap, add="+")
+
     def build_assistant_tab(self):
-        self.screen_header(self.assistant_tab, "PERSONAL ASSISTANT", "Warnings, upcoming shows, quick roster, finance, birthdays, and recommendations")
-        top_panel, top = self.section(self.assistant_tab, "COMPANY SNAPSHOT")
+        self.screen_header(self.assistant_tab, "WEEKLY COMMAND CENTRE", "The next decisions, show readiness, runway, division health, and attributed changes")
+        top_panel, top = self.section(self.assistant_tab, "THIS WEEK")
         top_panel.pack(fill="x", pady=(0, 6))
-        self.assistant_snapshot = ttk.Label(top, text="", justify="left", style="Inset.TLabel")
-        self.assistant_snapshot.pack(anchor="w", padx=8, pady=6)
-        ttk.Button(top, text="Guided First Week", command=self.open_guided_first_week).pack(anchor="e", padx=8, pady=(0, 6))
-        msg_panel, msg = self.section(self.assistant_tab, "MESSAGES FROM PERSONAL ASSISTANT")
-        msg_panel.pack(fill="both", expand=True)
+        self.assistant_snapshot = ttk.Label(top, text="", justify="left", anchor="w", style="Inset.TLabel")
+        self.assistant_snapshot.pack(fill="x", padx=8, pady=6)
+        self.assistant_kpis = {}
+        kpi_row = ttk.Frame(top, style="Inset.TFrame")
+        kpi_row.pack(fill="x", padx=5, pady=(0, 5))
+        for key, label in (("show", "NEXT SHOW"), ("card", "CARD"), ("contracts", "CONTRACTS"),
+                           ("divisions", "DIVISION HEALTH"), ("runway", "RUNWAY"), ("medical", "MEDICAL")):
+            cell = tk.Frame(kpi_row, bg=self.colors["panel_dark"], highlightthickness=1, highlightbackground=self.colors["line"])
+            cell.pack(side="left", fill="x", expand=True, padx=2)
+            tk.Label(cell, text=label, bg=self.colors["panel_dark"], fg=self.colors["muted"], font=("Tahoma", 7, "bold")).pack(anchor="w", padx=7, pady=(4, 0))
+            value = tk.Label(cell, text="-", bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 10, "bold"), anchor="w")
+            value.pack(fill="x", padx=7, pady=(0, 5))
+            self.assistant_kpis[key] = value
+        quick = ttk.Frame(top, style="Inset.TFrame")
+        quick.pack(fill="x", padx=5, pady=(0, 6))
+        for label, tab in (("Matchmaking", "booking"), ("Inbox", "inbox"), ("Contracts", "contracts"), ("Finance", "finance"), ("Results", "results")):
+            ttk.Button(quick, text=label, command=lambda name=tab: self.select_tab(name)).pack(side="left", padx=3)
+        ttk.Button(quick, text="Guided First Week", command=self.open_guided_first_week).pack(side="right", padx=3)
+
+        body = ttk.Frame(self.assistant_tab, style="Panel.TFrame")
+        body.pack(fill="both", expand=True)
+        msg_panel, msg = self.section(body, "PRIORITY DECISIONS")
+        msg_panel.pack(side="left", fill="both", expand=True, padx=(0, 3))
         self.assistant_messages = ttk.Treeview(msg, columns=("priority", "notice", "action"), show="headings", height=14)
-        for column, label, width in (("priority", "!", 42), ("notice", "Notice", 570), ("action", "Open", 110)):
+        for column, label, width in (("priority", "!", 36), ("notice", "Decision / Risk", 510), ("action", "Open", 90)):
             self.assistant_messages.heading(column, text=label)
             self.assistant_messages.column(column, width=width, anchor="w")
         self.assistant_messages.tag_configure("urgent", foreground="#ff9b9b")
@@ -654,6 +1009,19 @@ class UIMixin:
         self.assistant_messages.pack(fill="both", expand=True)
         self.assistant_messages.bind("<Double-1>", lambda _event: self.open_selected_assistant_notice())
         ttk.Button(msg, text="Open Selected Context", style="Accent.TButton", command=self.open_selected_assistant_notice).pack(anchor="e", pady=(6, 0))
+
+        change_panel, changes = self.section(body, "WHAT CHANGED")
+        change_panel.pack(side="left", fill="both", expand=True, padx=(3, 0))
+        change_table = ttk.Frame(changes, style="Inset.TFrame")
+        change_table.pack(fill="both", expand=True)
+        self.assistant_changes = ttk.Treeview(change_table, columns=("date", "change", "why"), show="headings", height=14)
+        for column, label, width in (("date", "When", 90), ("change", "Attributed Delta", 190), ("why", "Why", 390)):
+            self.assistant_changes.heading(column, text=label)
+            self.assistant_changes.column(column, width=width, anchor="w")
+        change_y = ttk.Scrollbar(change_table, orient="vertical", command=self.assistant_changes.yview)
+        self.assistant_changes.configure(yscrollcommand=change_y.set)
+        self.assistant_changes.pack(side="left", fill="both", expand=True)
+        change_y.pack(side="right", fill="y")
 
     def build_companies_tab(self):
         self.screen_header(self.companies_tab, "COMPANY BROWSER", "Company profiles, rosters, upcoming events, recent events, credibility, stability, and size")
@@ -684,6 +1052,8 @@ class UIMixin:
         ttk.Button(company_actions, text="Staff", command=lambda: self.open_selected_company_section("Staff")).pack(side="left", padx=2)
         ttk.Button(company_actions, text="Read Last Card", command=self.view_selected_company_card).pack(side="left", padx=8)
         ttk.Button(company_actions, text="Watch Last Card", command=self.watch_selected_company_card).pack(side="left", padx=2)
+        self.return_to_spectator_button = ttk.Button(company_actions, text="Return to Spectator", command=self.return_to_spectator_mode)
+        self.return_to_spectator_button.pack(side="right", padx=4)
         ttk.Button(company_actions, text="Take Control Of Selected Company", command=self.take_control_selected_company).pack(side="right", padx=4)
 
     def build_regions_tab(self):
@@ -715,13 +1085,18 @@ class UIMixin:
         search_entry = ttk.Entry(controls, textvariable=self.result_search, width=34)
         search_entry.pack(side="left", fill="x", expand=True, padx=4)
         search_entry.bind("<KeyRelease>", lambda _e: self.refresh_results())
+        ttk.Label(controls, text="Promotion", style="Inset.TLabel").pack(side="left", padx=(8, 2))
+        self.result_company_combo = ttk.Combobox(controls, textvariable=self.result_company_filter, values=("All",), state="readonly", width=24)
+        self.result_company_combo.pack(side="left", padx=(0, 4))
+        self.result_company_combo.bind("<<ComboboxSelected>>", lambda _e: self.refresh_results())
         result_buttons = ttk.Frame(self.results_tab, style="Inset.TFrame")
         result_buttons.pack(fill="x", pady=(0, 6))
         for col, (text, command, style) in enumerate((
             ("Open Selected", self.open_selected_result, None),
+            ("Watch Card", self.watch_selected_result, "Accent.TButton"),
             ("Awards", self.open_awards_history_window, None),
             ("Hall of Fame", self.open_hall_of_fame_window, None),
-            ("Achievements", self.open_achievements_window, "Accent.TButton"),
+            ("Achievements", self.open_achievements_window, None),
             ("Historical Records", self.open_records_ledger_window, None),
             ("Record Book", self.open_record_book_window, None),
             ("Legacy Ledger", self.open_legacy_ledger, None),
@@ -730,8 +1105,10 @@ class UIMixin:
             button.grid(row=col // 4, column=col % 4, sticky="ew", padx=3, pady=2)
         for col in range(4):
             result_buttons.columnconfigure(col, weight=1)
-        body = ttk.Frame(self.results_tab)
-        body.pack(fill="both", expand=True)
+        results_resize = self.create_vertical_resizer(self.results_tab, initial_fraction=0.66, min_top=220, min_bottom=135)
+        results_resize.pack(fill="both", expand=True)
+        body = ttk.Frame(results_resize, style="Inset.TFrame")
+        results_resize.add(body, minsize=220)
         panel, inner = self.section(body, "EVENT RESULTS")
         panel.pack(side="left", fill="both", expand=True, padx=(0, 6))
         self.results_tree = ttk.Treeview(inner, columns=("date", "company", "event", "headline", "fights", "gate", "profit"), show="headings", height=12)
@@ -745,17 +1122,35 @@ class UIMixin:
         self.results_tree.bind("<Double-1>", lambda _e: self.open_selected_result())
         retired_panel, retired = self.section(body, "RETIRED FIGHTERS")
         retired_panel.pack(side="left", fill="both", expand=True)
-        self.retired_tree = ttk.Treeview(retired, columns=("name", "gender", "weight", "record", "age", "motivation"), show="headings", height=12)
-        for col, text, width in (("name", "Fighter", 150), ("gender", "G", 38), ("weight", "Division", 95), ("record", "W-L-D", 84), ("age", "Age", 45), ("motivation", "Mot", 45)):
+        retired_controls = ttk.Frame(retired, style="Inset.TFrame")
+        retired_controls.pack(fill="x", pady=(0, 4))
+        ttk.Label(retired_controls, text="Search", style="Inset.TLabel").pack(side="left", padx=(4, 2))
+        retired_search = ttk.Entry(retired_controls, textvariable=self.retired_search, width=20)
+        retired_search.pack(side="left", fill="x", expand=True, padx=(0, 4), pady=2)
+        retired_search.bind("<KeyRelease>", lambda _e: self.refresh_results())
+        for label, variable, values, width in (
+            ("G", self.retired_gender_filter, ("All", "Male", "Female"), 8),
+            ("Division", self.retired_weight_filter, ("All", *WEIGHTS), 13),
+            ("Legacy", self.retired_legacy_filter, ("All", "Former Champions", "20+ Bouts", "30+ Bouts"), 18),
+        ):
+            ttk.Label(retired_controls, text=label, style="Inset.TLabel").pack(side="left", padx=(4, 2))
+            combo = ttk.Combobox(retired_controls, textvariable=variable, values=values, width=width, state="readonly")
+            combo.pack(side="left", padx=(0, 2), pady=2)
+            combo.bind("<<ComboboxSelected>>", lambda _e: self.refresh_results())
+        self.retired_tree = ttk.Treeview(retired, columns=("name", "gender", "weight", "record", "age", "peak", "motivation"), show="headings", height=12)
+        for col, text, width in (("name", "Fighter", 150), ("gender", "G", 38), ("weight", "Division", 95), ("record", "W-L-D", 84), ("age", "Age", 45), ("peak", "Peak OVR", 66), ("motivation", "Mot", 45)):
             self.retired_tree.heading(col, text=text)
             self.retired_tree.column(col, width=width, anchor="center")
         self.retired_tree.column("name", anchor="w")
         self.make_tree_sortable(self.retired_tree)
+        retired_scroll = ttk.Scrollbar(retired, orient="vertical", command=self.retired_tree.yview)
+        self.retired_tree.configure(yscrollcommand=retired_scroll.set)
+        retired_scroll.pack(side="right", fill="y")
         self.retired_tree.pack(fill="both", expand=True)
         self.retired_tree.bind("<Double-1>", lambda _e: self.open_tree_fighter_profile(self.retired_tree, "name"))
         ttk.Button(retired, text="Offer Comeback Deal", command=self.unretire_selected_fighter).pack(anchor="e", pady=4)
-        detail_panel, detail = self.section(self.results_tab, "DETAIL")
-        detail_panel.pack(fill="both", expand=True, pady=(6, 0))
+        detail_panel, detail = self.section(results_resize, "DETAIL")
+        results_resize.add(detail_panel, minsize=135)
         self.results_text = tk.Text(detail, wrap="word", font=("Courier New", 9), bg=self.colors["cream"], fg=self.colors["text"], padx=10, pady=10)
         self.results_text.pack(fill="both", expand=True)
 
@@ -775,7 +1170,24 @@ class UIMixin:
         self.belt_history_text = tk.Text(belt, wrap="word", font=("Tahoma", 9), bg=self.colors["cream"], fg=self.colors["text"], height=7, padx=8, pady=8)
         self.belt_history_text.pack(fill="x", pady=(6, 0))
         ttk.Button(belt, text="Toggle Selected Weight Class", command=self.toggle_weight_class).pack(anchor="e", pady=4)
-        rules_panel, rules = self.section(top, "RULES / BROADCASTERS")
+        ttk.Label(belt, text="SPECIAL BELTS", style="Section.TLabel", anchor="center").pack(fill="x", pady=(5, 3))
+        special_entry = ttk.Frame(belt, style="Inset.TFrame")
+        special_entry.pack(fill="x", pady=(0, 3))
+        self.special_belt_name_var = tk.StringVar(value="")
+        ttk.Entry(special_entry, textvariable=self.special_belt_name_var).pack(side="left", fill="x", expand=True, padx=(3, 5), pady=3)
+        ttk.Button(special_entry, text="Create Belt", style="Accent.TButton", command=self.create_special_belt).pack(side="left", padx=3)
+        self.special_belts_tree = ttk.Treeview(belt, columns=("name", "holder", "defenses"), show="headings", height=4)
+        for col, text, width in (("name", "Belt", 145), ("holder", "Holder", 175), ("defenses", "Def", 45)):
+            self.special_belts_tree.heading(col, text=text)
+            self.special_belts_tree.column(col, width=width, anchor="w" if col != "defenses" else "center")
+        self.special_belts_tree.pack(fill="x")
+        special_actions = ttk.Frame(belt, style="Inset.TFrame")
+        special_actions.pack(fill="x", pady=(3, 0))
+        ttk.Button(special_actions, text="Vacate", command=self.vacate_selected_special_belt).pack(side="left", padx=3)
+        ttk.Button(special_actions, text="Delete", command=self.delete_selected_special_belt).pack(side="left", padx=3)
+        self.special_belt_status_var = tk.StringVar(value="Create named championships such as BMF, then select them in Matchmaking.")
+        ttk.Label(special_actions, textvariable=self.special_belt_status_var, style="Inset.TLabel").pack(side="left", padx=8)
+        rules_panel, rules = self.section(top, "RULES / EVENT PRODUCTION PROVIDERS")
         rules_panel.pack(side="left", fill="both", expand=True)
         self.rules_text = tk.Text(rules, wrap="word", font=("Tahoma", 9), bg=self.colors["cream"], fg=self.colors["text"], insertbackground=self.colors["text"], height=10)
         self.rules_text.pack(fill="both", expand=True)
@@ -792,7 +1204,7 @@ class UIMixin:
             ("- Title Round", lambda: self.adjust_title_rounds(-1)),
             ("+ Fighter Target", lambda: self.adjust_active_fighter_target(50)),
             ("- Fighter Target", lambda: self.adjust_active_fighter_target(-50)),
-            ("Add Broadcaster", self.add_broadcaster),
+            ("Add Production Provider", self.add_broadcaster),
         )):
             ttk.Button(buttons, text=text, command=command).grid(row=col // 3, column=col % 3, sticky="ew", padx=3, pady=2)
         for col in range(3):
@@ -800,8 +1212,10 @@ class UIMixin:
 
     def build_inbox_tab(self):
         self.screen_header(self.inbox_tab, "MAIL / DECISIONS", "Owner goals, decisions, contract alerts, suspensions, and business mail")
-        body = ttk.Frame(self.inbox_tab)
-        body.pack(fill="both", expand=True)
+        inbox_resize = self.create_vertical_resizer(self.inbox_tab, initial_fraction=0.66, min_top=220, min_bottom=135)
+        inbox_resize.pack(fill="both", expand=True)
+        body = ttk.Frame(inbox_resize, style="Inset.TFrame")
+        inbox_resize.add(body, minsize=220)
         inbox_panel, inbox = self.section(body, "INBOX")
         inbox_panel.pack(side="left", fill="both", expand=True, padx=(0, 6))
         controls = ttk.Frame(inbox, style="Inset.TFrame")
@@ -849,10 +1263,15 @@ class UIMixin:
         self.goals_tree.tag_configure("failed", foreground="#ff9b9b")
         self.goals_tree.pack(fill="both", expand=True)
         self.goals_tree.bind("<Double-1>", lambda _event: self.open_selected_owner_goal())
-        detail_panel, detail = self.section(self.inbox_tab, "MESSAGE DETAIL")
-        detail_panel.pack(fill="both", expand=True, pady=(6, 0))
+        detail_panel, detail = self.section(inbox_resize, "MESSAGE DETAIL")
+        inbox_resize.add(detail_panel, minsize=135)
         self.inbox_detail = tk.Text(detail, wrap="word", font=("Tahoma", 10), bg=self.colors["panel_dark"], fg=self.colors["text"], insertbackground=self.colors["text"], padx=12, pady=12)
         self.inbox_detail.pack(fill="both", expand=True)
+        self.medical_decision_bar = ttk.Frame(detail, style="Inset.TFrame")
+        ttk.Label(self.medical_decision_bar, text="MEDICAL DECISION", style="Inset.TLabel", font=("Tahoma", 8, "bold")).pack(side="left", padx=6)
+        ttk.Button(self.medical_decision_bar, text="Surgical Repair", style="Accent.TButton", command=lambda: self.apply_inbox_medical_decision("surgery")).pack(side="left", padx=3, pady=5)
+        ttk.Button(self.medical_decision_bar, text="Accelerated Rehab", command=lambda: self.apply_inbox_medical_decision("rehab")).pack(side="left", padx=3, pady=5)
+        ttk.Button(self.medical_decision_bar, text="Retirement Bout", command=lambda: self.apply_inbox_medical_decision("retire")).pack(side="left", padx=3, pady=5)
 
     def build_staff_tab(self):
         self.screen_header(self.staff_tab, "STAFF / SCOUTING / DRUG TESTING", "Hire staff, assign scouting, manage testing, and post-show bonuses")
@@ -903,6 +1322,21 @@ class UIMixin:
         ttk.Button(actions, text="Lower Ticket Price", command=lambda: self.adjust_ticket_price(-5)).pack(side="right", padx=4)
         self.finance_summary = ttk.Label(inner, text="", style="Panel.TLabel", justify="left")
         self.finance_summary.pack(fill="x", padx=6, pady=(0, 6))
+        sponsor_panel, sponsor_inner = self.section(inner, "SPONSOR MARKET")
+        sponsor_panel.pack(fill="x", pady=(0, 6))
+        sponsor_actions = ttk.Frame(sponsor_inner, style="Inset.TFrame")
+        sponsor_actions.pack(side="right", fill="y", padx=(6, 0))
+        ttk.Button(sponsor_actions, text="Accept Offer", style="Accent.TButton", command=self.accept_sponsor_offer).pack(fill="x", pady=(0, 3))
+        ttk.Button(sponsor_actions, text="Reject Offer", command=self.reject_sponsor_offer).pack(fill="x")
+        self.sponsor_market_tree = ttk.Treeview(sponsor_inner, columns=("status", "brand", "category", "fee", "term", "fit", "requirement"), show="headings", height=4)
+        for column, text, width in (("status", "Status", 58), ("brand", "Brand", 145), ("category", "Category", 100), ("fee", "Per Event", 90), ("term", "Term", 62), ("fit", "Fit", 42), ("requirement", "Requirement", 290)):
+            self.sponsor_market_tree.heading(column, text=text)
+            self.sponsor_market_tree.column(column, width=width, anchor="w" if column in ("brand", "category", "requirement") else "center")
+        self.sponsor_market_tree.tag_configure("offer", foreground="#9de6ff")
+        self.sponsor_market_tree.tag_configure("active", foreground="#9de6a0")
+        self.sponsor_market_tree.pack(fill="x", expand=True)
+        self.sponsor_market_note = ttk.Label(sponsor_inner, text="", style="Inset.TLabel", justify="left")
+        self.sponsor_market_note.pack(fill="x", pady=(3, 0))
         body = ttk.Frame(inner, style="Chrome.TFrame")
         body.pack(fill="both", expand=True)
         self.finance_tree = ttk.Treeview(body, columns=("period", "opening", "revenue", "costs", "net", "ending"), show="headings", height=14)
@@ -928,23 +1362,41 @@ class UIMixin:
         left_panel.pack(side="left", fill="both", expand=True, padx=(0, 6))
         top = ttk.Frame(left, style="Inset.TFrame")
         top.pack(fill="x", pady=(0, 5))
-        ttk.Label(top, text="Search", style="Inset.TLabel").pack(side="left")
-        roster_search = ttk.Entry(top, textvariable=self.roster_search, width=18)
+        top_primary = ttk.Frame(top, style="Inset.TFrame")
+        top_primary.pack(fill="x", pady=(2, 0))
+        ttk.Label(top_primary, text="Search", style="Inset.TLabel").pack(side="left")
+        roster_search = ttk.Entry(top_primary, textvariable=self.roster_search, width=18)
         roster_search.pack(side="left", padx=(4, 10))
         roster_search.bind("<KeyRelease>", lambda _e: self.refresh_roster())
-        ttk.Label(top, text="Weight", style="Inset.TLabel").pack(side="left")
-        weight = ttk.Combobox(top, values=["All"] + WEIGHTS, textvariable=self.weight_filter, state="readonly", width=20)
+        ttk.Label(top_primary, text="Weight", style="Inset.TLabel").pack(side="left")
+        weight = ttk.Combobox(top_primary, values=["All"] + WEIGHTS, textvariable=self.weight_filter, state="readonly", width=20)
+        self.roster_weight_combo = weight
         weight.pack(side="left", padx=(4, 10))
         weight.bind("<<ComboboxSelected>>", lambda _e: self.refresh_roster())
-        ttk.Label(top, text="Gender", style="Inset.TLabel").pack(side="left")
-        roster_gender = ttk.Combobox(top, values=["All", "Male", "Female"], textvariable=self.roster_gender_filter, state="readonly", width=9)
+        ttk.Label(top_primary, text="Gender", style="Inset.TLabel").pack(side="left")
+        roster_gender = ttk.Combobox(top_primary, values=["All", "Male", "Female"], textvariable=self.roster_gender_filter, state="readonly", width=9)
+        self.roster_gender_combo = roster_gender
         roster_gender.pack(side="left", padx=(4, 10))
-        roster_gender.bind("<<ComboboxSelected>>", lambda _e: self.refresh_roster())
-        ttk.Label(top, text="Status", style="Inset.TLabel").pack(side="left")
-        roster_status = ttk.Combobox(top, values=["All", "Ready", "Champion", "Injured", "Tired", "Expiring", "Unhappy"], textvariable=self.roster_status_filter, state="readonly", width=10)
+        roster_gender.bind("<<ComboboxSelected>>", lambda _e: (self.refresh_player_division_filter_options("roster"), self.refresh_roster()))
+        ttk.Label(top_primary, text="Status", style="Inset.TLabel").pack(side="left")
+        roster_status = ttk.Combobox(top_primary, values=["All", "Ready", "Champion", "Injured", "Tired", "Expiring", "Unhappy"], textvariable=self.roster_status_filter, state="readonly", width=10)
         roster_status.pack(side="left", padx=(4, 0))
         roster_status.bind("<<ComboboxSelected>>", lambda _e: self.refresh_roster())
-        ttk.Button(top, text="Career Goals", command=self.open_career_goals_window).pack(side="right", padx=4)
+        ttk.Button(top_primary, text="Career Goals", command=self.open_career_goals_window).pack(side="right", padx=4)
+        top_ranges = ttk.Frame(top, style="Inset.TFrame")
+        top_ranges.pack(fill="x", pady=(3, 2))
+        for label, variable, minimum, maximum, width in (
+            ("Age", self.roster_age_min, 16, 60, 4), ("to", self.roster_age_max, 16, 60, 4),
+            ("OVR", self.roster_ovr_min, 0, 100, 4), ("to", self.roster_ovr_max, 0, 100, 4),
+            ("Min Pop", self.roster_pop_min, 0, 100, 4),
+        ):
+            ttk.Label(top_ranges, text=label, style="Inset.TLabel").pack(side="left", padx=(7, 2))
+            spin = ttk.Spinbox(top_ranges, from_=minimum, to=maximum, textvariable=variable, width=width, command=self.refresh_roster)
+            spin.pack(side="left")
+            spin.bind("<KeyRelease>", lambda _e: self.refresh_roster())
+            spin.bind("<FocusOut>", lambda _e: self.refresh_roster())
+        ttk.Button(top_ranges, text="Reset Filters", command=self.reset_roster_filters).pack(side="left", padx=10)
+        ttk.Button(top_ranges, text="Manage Divisions", style="Accent.TButton", command=self.open_division_management_window).pack(side="right", padx=4)
 
         columns = ("name", "gender", "weight", "record", "age", "overall", "popularity", "momentum", "morale", "contract", "status")
         self.roster_tree = ttk.Treeview(left, columns=columns, show="headings", selectmode="browse")
@@ -1023,8 +1475,8 @@ class UIMixin:
         filter_box.bind("<<ComboboxSelected>>", lambda _e: self.refresh_contracts())
         panel, inner = self.section(self.contracts_tab, "CONTRACT OVERVIEW")
         panel.pack(fill="both", expand=True)
-        self.contracts_tree = ttk.Treeview(inner, columns=("name", "gender", "weight", "rank", "pop", "ovr", "months", "purse", "type", "morale", "status"), show="headings")
-        for col, text, width in (("name", "Fighter", 160), ("gender", "G", 34), ("weight", "Division", 96), ("rank", "Rank", 52), ("pop", "Pop", 46), ("ovr", "OVR", 46), ("months", "Months", 58), ("purse", "Purse", 88), ("type", "Type", 96), ("morale", "Morale", 58), ("status", "Status", 118)):
+        self.contracts_tree = ttk.Treeview(inner, columns=("name", "gender", "weight", "rank", "pop", "ovr", "remaining", "expiry", "purse", "type", "morale", "status"), show="headings", selectmode="extended")
+        for col, text, width in (("name", "Fighter", 160), ("gender", "G", 34), ("weight", "Division", 96), ("rank", "Rank", 52), ("pop", "Pop", 46), ("ovr", "OVR", 46), ("remaining", "Time Left", 72), ("expiry", "Expiry", 92), ("purse", "Purse", 88), ("type", "Type", 96), ("morale", "Morale", 58), ("status", "Status", 118)):
             self.contracts_tree.heading(col, text=text)
             self.contracts_tree.column(col, width=width, anchor="center")
         self.contracts_tree.column("name", anchor="w")
@@ -1037,6 +1489,7 @@ class UIMixin:
         buttons = ttk.Frame(inner, style="Inset.TFrame")
         buttons.pack(fill="x", pady=(6, 0))
         ttk.Button(buttons, text="Negotiate Renewal", style="Accent.TButton", command=self.renew_selected_contract).pack(side="left", padx=4)
+        ttk.Button(buttons, text="Auto Negotiate Selected", command=self.auto_negotiate_selected_contracts).pack(side="left", padx=4)
         ttk.Button(buttons, text="View Profile", command=self.view_contract_profile).pack(side="left", padx=4)
         self.auto_renew_button = ttk.Button(buttons, text="", command=self.toggle_auto_renew)
         self.auto_renew_button.pack(side="left", padx=4)
@@ -1048,6 +1501,7 @@ class UIMixin:
         self.screen_header(self.booking_tab, "ADD SHOW / MATCHMAKING", "Build the card from opener to main event")
         header_panel, header = self.section(self.booking_tab, "SHOW DETAILS")
         header_panel.pack(fill="x", pady=(0, 6))
+        self.schedule_status_var = tk.StringVar(value="Card has not been scheduled.")
         line1 = ttk.Frame(header, style="Inset.TFrame")
         line1.pack(fill="x", pady=2)
         line2 = ttk.Frame(header, style="Inset.TFrame")
@@ -1057,6 +1511,7 @@ class UIMixin:
         ttk.Label(line1, text="Venue", style="Inset.TLabel", width=7).pack(side="left")
         ttk.Combobox(line1, textvariable=self.venue, values=["Local Gym", "Regional Arena", "Casino Ballroom", "National Sports Hall"], state="readonly", width=24).pack(side="left", padx=(4, 12))
         ttk.Button(line1, text="Schedule Show", command=self.schedule_event).pack(side="right", padx=(4, 0))
+        ttk.Button(line1, text="Earliest Valid Date", command=self.move_booking_to_earliest_card_date).pack(side="right", padx=(4, 0))
         ttk.Button(line1, text="Watch Event", command=self.watch_due_event).pack(side="right", padx=(4, 0))
         ttk.Button(line1, text="Skip Event", style="Accent.TButton", command=self.skip_due_event).pack(side="right", padx=(4, 0))
         ttk.Label(line2, text="Region", style="Inset.TLabel", width=7).pack(side="left")
@@ -1067,13 +1522,35 @@ class UIMixin:
         self.city_box = ttk.Combobox(line2, textvariable=self.event_city, values=REGION_CITIES["USA"], state="readonly", width=13)
         self.city_box.pack(side="left", padx=(4, 12))
         ttk.Label(line2, text="Month", style="Inset.TLabel", width=7).pack(side="left")
-        ttk.Spinbox(line2, from_=1, to=240, textvariable=self.event_month, width=5).pack(side="left", padx=(4, 12))
+        event_month_box = ttk.Combobox(line2, textvariable=self.event_calendar_month, values=CALENDAR_MONTH_ABBREVIATIONS, state="readonly", width=6)
+        event_month_box.pack(side="left", padx=(4, 5))
+        event_month_box.bind("<<ComboboxSelected>>", lambda _e: (self.sync_booking_internal_date(), self.refresh_available()))
+        ttk.Label(line2, text="Year", style="Inset.TLabel", width=5).pack(side="left")
+        event_year_box = ttk.Spinbox(line2, from_=GAME_START_YEAR, to=GAME_START_YEAR + 50, textvariable=self.event_year, width=6)
+        event_year_box.pack(side="left", padx=(4, 12))
+        event_year_box.bind("<FocusOut>", lambda _e: (self.sync_booking_internal_date(), self.refresh_available()))
+        event_year_box.bind("<Return>", lambda _e: (self.sync_booking_internal_date(), self.refresh_available()))
         ttk.Label(line2, text="Week", style="Inset.TLabel", width=5).pack(side="left")
-        ttk.Spinbox(line2, from_=1, to=4, textvariable=self.event_week, width=4).pack(side="left", padx=(4, 12))
+        event_week_box = ttk.Combobox(line2, textvariable=self.event_week, values=(1, 2, 3, 4), state="readonly", width=4)
+        event_week_box.pack(side="left", padx=(4, 12))
+        event_week_box.bind("<<ComboboxSelected>>", lambda _e: (self.sync_booking_internal_date(), self.refresh_available()))
         ttk.Label(line2, text="Provider", style="Inset.TLabel", width=7).pack(side="left")
         self.event_broadcaster_box = ttk.Combobox(line2, textvariable=self.event_broadcaster, values=["No Coverage"] + [item["name"] for item in self.broadcasters], state="readonly", width=23)
         self.event_broadcaster_box.pack(side="left", padx=(4, 0))
         self.event_broadcaster_box.bind("<<ComboboxSelected>>", self.refresh_event_broadcaster_status)
+        self.schedule_status = tk.Label(
+            header,
+            textvariable=self.schedule_status_var,
+            anchor="w",
+            justify="left",
+            bg="#252525",
+            fg=self.colors["text"],
+            font=("Tahoma", 9, "bold"),
+            padx=8,
+            pady=5,
+        )
+        self.schedule_status.pack(fill="x", pady=(4, 2))
+        self.schedule_status.bind("<Configure>", lambda event: self.schedule_status.configure(wraplength=max(300, event.width - 20)))
         self.event_broadcaster_status = ttk.Label(header, text="", style="Inset.TLabel", justify="left")
         self.event_broadcaster_status.pack(fill="x", pady=(4, 0))
         atmosphere_row = ttk.Frame(header, style="Inset.TFrame"); atmosphere_row.pack(fill="x", pady=(4, 0))
@@ -1081,12 +1558,24 @@ class UIMixin:
         self.event_atmosphere_status.pack(side="left", fill="x", expand=True, padx=4, pady=3)
         ttk.Button(atmosphere_row, text="Fanbase & Atmosphere", command=self.open_fanbase_window).pack(side="right", padx=4, pady=3)
 
-        body = ttk.Frame(self.booking_tab)
-        body.pack(fill="both", expand=True)
+        booking_resize = self.create_vertical_resizer(self.booking_tab, initial_fraction=0.8, min_top=250, min_bottom=120)
+        booking_resize.pack(fill="both", expand=True)
+        body = ttk.Panedwindow(booking_resize, orient="horizontal")
+        booking_resize.add(body, minsize=250)
         left_panel, left = self.section(body, "AVAILABLE FIGHTERS")
-        left_panel.pack(side="left", fill="both", expand=True, padx=(0, 6))
         right_panel, right = self.section(body, "CURRENT FIGHT CARD")
-        right_panel.pack(side="left", fill="both", expand=True)
+        body.add(left_panel, weight=3)
+        body.add(right_panel, weight=2)
+        self.booking_horizontal_split = body
+        self._booking_split_initialized = False
+
+        def initialize_booking_split(event):
+            if self._booking_split_initialized or event.width < 700:
+                return
+            self._booking_split_initialized = True
+            body.sashpos(0, int(event.width * 0.62))
+
+        body.bind("<Configure>", initialize_booking_split, add="+")
 
         available_filters = ttk.Frame(left, style="Inset.TFrame")
         available_filters.pack(fill="x", pady=(0, 5))
@@ -1096,45 +1585,84 @@ class UIMixin:
         available_search.bind("<KeyRelease>", lambda _e: self.refresh_available())
         ttk.Label(available_filters, text="Weight", style="Inset.TLabel").pack(side="left")
         available_weight = ttk.Combobox(available_filters, values=["All"] + WEIGHTS, textvariable=self.available_weight_filter, state="readonly", width=14)
+        self.available_weight_combo = available_weight
         available_weight.pack(side="left", padx=(4, 8))
         available_weight.bind("<<ComboboxSelected>>", lambda _e: self.refresh_available())
         ttk.Label(available_filters, text="Gender", style="Inset.TLabel").pack(side="left")
         available_gender = ttk.Combobox(available_filters, values=["All", "Male", "Female"], textvariable=self.available_gender_filter, state="readonly", width=8)
+        self.available_gender_combo = available_gender
         available_gender.pack(side="left", padx=(4, 8))
-        available_gender.bind("<<ComboboxSelected>>", lambda _e: self.refresh_available())
+        available_gender.bind("<<ComboboxSelected>>", lambda _e: (self.refresh_player_division_filter_options("matchmaking"), self.refresh_available()))
         ttk.Label(available_filters, text="Status", style="Inset.TLabel").pack(side="left")
         available_status = ttk.Combobox(available_filters, values=["All", "Ready", "Champion", "Injured", "Tired", "Expiring", "Unhappy"], textvariable=self.available_status_filter, state="readonly", width=9)
         available_status.pack(side="left", padx=(4, 0))
         available_status.bind("<<ComboboxSelected>>", lambda _e: self.refresh_available())
 
-        self.available_tree = ttk.Treeview(left, columns=("name", "gender", "weight", "rank", "record", "overall", "pop", "build", "status"), show="headings", selectmode="extended", height=14)
-        for col, text, width in (("name", "Name", 150), ("gender", "G", 42), ("weight", "Class", 96), ("rank", "Rank", 48), ("record", "Record", 66), ("overall", "OVR", 48), ("pop", "Pop", 48), ("build", "Build", 54), ("status", "Status", 90)):
+        # Keep the actions that turn a selected pair into a booked bout on the
+        # fighter side of the screen. On laptop widths the old right-aligned
+        # buttons were effectively on the other side of the horizontal page.
+        booking_actions = ttk.Frame(left, style="Inset.TFrame")
+        booking_actions.pack(fill="x", pady=(0, 5))
+        ttk.Button(booking_actions, text="Add Matchup", style="Accent.TButton", command=self.add_matchup).pack(side="left", padx=(2, 4), pady=3)
+        ttk.Button(booking_actions, text="Add TBA", command=self.add_tba_matchup).pack(side="left", padx=3, pady=3)
+        ttk.Button(booking_actions, text="Tournament", command=self.add_tournament_to_card).pack(side="left", padx=3, pady=3)
+        ttk.Button(booking_actions, text="Assistant Recommend", command=self.assistant_pick_matchup).pack(side="left", padx=3, pady=3)
+        ttk.Checkbutton(booking_actions, text="Title", variable=self.title_fight, command=self.toggle_divisional_title_booking).pack(side="left", padx=(12, 3))
+        ttk.Checkbutton(booking_actions, text="Main event", variable=self.main_event).pack(side="left", padx=3)
+        self.special_belt_choice = tk.StringVar(value="None")
+        ttk.Label(booking_actions, text="Special Belt", style="Inset.TLabel").pack(side="left", padx=(10, 2))
+        self.special_belt_box = ttk.Combobox(booking_actions, textvariable=self.special_belt_choice, state="readonly", width=14)
+        self.special_belt_box.pack(side="left", padx=(0, 3))
+        self.special_belt_box.bind("<<ComboboxSelected>>", self.select_special_belt_booking)
+        ttk.Label(booking_actions, text="Tier", style="Inset.TLabel").pack(side="left", padx=(10, 2))
+        ttk.Combobox(booking_actions, textvariable=self.card_tier, values=CARD_TIERS, state="readonly", width=12).pack(side="left", padx=(0, 3))
+
+        self.matchmaking_notice_var = tk.StringVar(value="")
+        self.matchmaking_notice = ttk.Label(left, textvariable=self.matchmaking_notice_var, style="Inset.TLabel", anchor="w")
+        self.matchmaking_notice.pack(fill="x", pady=(0, 4), padx=3)
+
+        self.matchmaking_title_warning_var = tk.StringVar(value="")
+        self.matchmaking_title_warning = tk.Label(
+            left, textvariable=self.matchmaking_title_warning_var, anchor="w", justify="left",
+            bg=self.colors["panel_dark"], fg="#ff766d", font=("Tahoma", 9, "bold"), padx=7, pady=3,
+        )
+        self.matchmaking_title_warning.pack(fill="x", pady=(0, 4), padx=3)
+
+        self.matchmaking_history_var = tk.StringVar(value="Select one fighter to compare prior meetings with every possible opponent.")
+        self.matchmaking_history = ttk.Label(left, textvariable=self.matchmaking_history_var, style="Inset.TLabel", anchor="w")
+        self.matchmaking_history.pack(fill="x", pady=(0, 4), padx=3)
+
+        self.matchmaking_brief_var = tk.StringVar(value="Select a fighter for a divisional recommendation and detailed booking context.")
+        self.matchmaking_brief = tk.Label(
+            left, textvariable=self.matchmaking_brief_var, anchor="w", justify="left",
+            bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 8), padx=7, pady=5,
+        )
+        self.matchmaking_brief.pack(fill="x", pady=(0, 4), padx=3)
+        self.matchmaking_brief.bind("<Configure>", lambda event: self.matchmaking_brief.configure(wraplength=max(300, event.width - 18)))
+
+        self.available_tree = ttk.Treeview(left, columns=("name", "gender", "weight", "rank", "record", "age", "overall", "elo", "pop", "build", "last", "form", "activity", "fit", "history", "status"), show="headings", selectmode="extended", height=14)
+        for col, text, width in (("name", "Name", 150), ("gender", "G", 38), ("weight", "Class", 92), ("rank", "Rank", 46), ("record", "Record", 66), ("age", "Age", 42), ("overall", "OVR", 46), ("elo", "ELO", 56), ("pop", "Pop", 44), ("build", "Build", 50), ("last", "Last Fight", 90), ("form", "Last 5", 58), ("activity", "Active", 52), ("fit", "Match Fit", 70), ("history", "History", 82), ("status", "Event Availability", 145)):
             self.available_tree.heading(col, text=text)
             self.available_tree.column(col, width=width, anchor="center")
         self.available_tree.column("name", anchor="w")
+        self.available_tree.tag_configure("not_ready", foreground="#ffb4a2")
+        self.available_tree.tag_configure("recommended", background="#554515", foreground="#ffe08a")
         self.make_tree_sortable(self.available_tree)
         available_scroll = ttk.Scrollbar(left, orient="vertical", command=self.available_tree.yview)
-        self.available_tree.configure(yscrollcommand=available_scroll.set)
+        available_scroll_x = ttk.Scrollbar(left, orient="horizontal", command=self.available_tree.xview)
+        self.available_tree.configure(yscrollcommand=available_scroll.set, xscrollcommand=available_scroll_x.set)
+        available_scroll_x.pack(side="bottom", fill="x")
         available_scroll.pack(side="right", fill="y")
         self.available_tree.pack(side="left", fill="both", expand=True, pady=5)
         self.available_tree.bind("<Double-1>", lambda _e: self.open_tree_fighter_profile(self.available_tree, "name"))
-
-        controls = ttk.Frame(left)
-        controls.pack(fill="x")
-        ttk.Checkbutton(controls, text="Title fight", variable=self.title_fight).pack(side="left")
-        ttk.Checkbutton(controls, text="Main event", variable=self.main_event).pack(side="left", padx=12)
-        ttk.Label(controls, text="Tier", style="Inset.TLabel").pack(side="left")
-        ttk.Combobox(controls, textvariable=self.card_tier, values=CARD_TIERS, state="readonly", width=14).pack(side="left", padx=6)
-        ttk.Button(controls, text="Add Matchup", command=self.add_matchup).pack(side="right")
-        ttk.Button(controls, text="Add Tournament", style="Accent.TButton", command=self.add_tournament_to_card).pack(side="right", padx=4)
-        ttk.Button(controls, text="Add TBA Opponent", command=self.add_tba_matchup).pack(side="right", padx=4)
-        ttk.Button(controls, text="Assistant Pick", command=self.assistant_pick_matchup).pack(side="right", padx=4)
+        self.available_tree.bind("<<TreeviewSelect>>", self.refresh_matchmaking_history_indicators, add="+")
 
         self.card_tree = ttk.Treeview(right, columns=("slot", "fight", "weight", "hype", "media"), show="headings", height=14)
         for col, text, width in (("slot", "Slot", 90), ("fight", "Fight", 250), ("weight", "Weight", 105), ("hype", "Hype", 60), ("media", "Build", 60)):
             self.card_tree.heading(col, text=text)
             self.card_tree.column(col, width=width, anchor="center")
         self.card_tree.column("fight", anchor="w")
+        self.card_tree.tag_configure("non_title_champion", background="#5c1a1a", foreground="#ffffff")
         self.make_tree_sortable(self.card_tree)
         self.card_tree.pack(fill="both", expand=True, pady=5)
         footer = ttk.Frame(right)
@@ -1146,8 +1674,8 @@ class UIMixin:
         ttk.Button(footer, text="Move Down", command=self.move_fight_down).pack(side="left", padx=4)
         ttk.Button(footer, text="Clear Card", command=self.clear_card).pack(side="right")
 
-        upcoming_panel, upcoming = self.section(self.booking_tab, "UPCOMING EVENTS")
-        upcoming_panel.pack(fill="x", pady=(6, 0))
+        upcoming_panel, upcoming = self.section(booking_resize, "UPCOMING EVENTS")
+        booking_resize.add(upcoming_panel, minsize=120)
         self.upcoming_tree = ttk.Treeview(upcoming, columns=("date", "event", "venue", "region", "fights", "status"), show="headings", height=4)
         for col, text, width in (("date", "Date", 90), ("event", "Event", 205), ("venue", "Venue", 120), ("region", "Region", 110), ("fights", "Fights", 60), ("status", "Status", 90)):
             self.upcoming_tree.heading(col, text=text)
@@ -1155,6 +1683,14 @@ class UIMixin:
         self.upcoming_tree.column("event", anchor="w")
         self.make_tree_sortable(self.upcoming_tree)
         self.upcoming_tree.pack(fill="x")
+        upcoming_actions = ttk.Frame(upcoming)
+        upcoming_actions.pack(fill="x", pady=(4, 0))
+        ttk.Button(upcoming_actions, text="Edit Selected Card", style="Accent.TButton", command=self.edit_selected_scheduled_event).pack(side="left", padx=2)
+        self.cancel_card_button = ttk.Button(upcoming_actions, text="Cancel Selected Card", command=self.cancel_selected_scheduled_event)
+        self.cancel_card_button.pack(side="left", padx=2)
+        ttk.Label(upcoming_actions, text="Select a future show to replace TBA fighters or revise the bill.", style="Panel.TLabel").pack(side="left", padx=8)
+        self.upcoming_tree.bind("<Double-1>", lambda _event: self.edit_selected_scheduled_event())
+        self.upcoming_tree.bind("<<TreeviewSelect>>", self.reset_cancel_card_confirmation, add="+")
 
     def build_market_tab(self):
         self.screen_header(self.market_tab, "FREE AGENTS", "Scout talent and negotiate new contracts")
@@ -1162,20 +1698,50 @@ class UIMixin:
         panel.pack(fill="both", expand=True, pady=(0, 8))
         filters = ttk.Frame(inner, style="Inset.TFrame")
         filters.pack(fill="x", pady=(0, 6))
-        ttk.Label(filters, text="Weight", style="Inset.TLabel").pack(side="left", padx=(4, 2))
-        market_weight = ttk.Combobox(filters, values=["All"] + WEIGHTS, textvariable=self.market_weight_filter, state="readonly", width=18)
+        filter_primary = ttk.Frame(filters, style="Inset.TFrame")
+        filter_primary.pack(fill="x", pady=(2, 0))
+        ttk.Label(filter_primary, text="Search", style="Inset.TLabel").pack(side="left", padx=(4, 2))
+        market_search = ttk.Entry(filter_primary, textvariable=self.market_search, width=16)
+        market_search.pack(side="left", padx=(0, 10))
+        market_search.bind("<KeyRelease>", lambda _e: self.refresh_market())
+        ttk.Label(filter_primary, text="Weight", style="Inset.TLabel").pack(side="left", padx=(4, 2))
+        market_weight = ttk.Combobox(filter_primary, values=["All"] + WEIGHTS, textvariable=self.market_weight_filter, state="readonly", width=18)
         market_weight.pack(side="left", padx=(0, 10))
         market_weight.bind("<<ComboboxSelected>>", lambda _e: self.refresh_market())
-        ttk.Label(filters, text="Gender", style="Inset.TLabel").pack(side="left", padx=(4, 2))
-        market_gender = ttk.Combobox(filters, values=["All", "Male", "Female"], textvariable=self.market_gender_filter, state="readonly", width=10)
+        ttk.Label(filter_primary, text="Gender", style="Inset.TLabel").pack(side="left", padx=(4, 2))
+        market_gender = ttk.Combobox(filter_primary, values=["All", "Male", "Female"], textvariable=self.market_gender_filter, state="readonly", width=10)
         market_gender.pack(side="left", padx=(0, 10))
         market_gender.bind("<<ComboboxSelected>>", lambda _e: self.refresh_market())
-        self.scouting_mode_var = tk.BooleanVar(value=self.rules.get("scouting_mode", False))
-        ttk.Checkbutton(filters, text="Scouting Mode", variable=self.scouting_mode_var, command=self.toggle_scouting_mode).pack(side="left", padx=(0, 8))
-        ttk.Button(filters, text="Basic Scout (2 wk)", command=lambda: self.start_selected_scout_report("basic")).pack(side="left", padx=2)
-        ttk.Button(filters, text="Full Scout (6 wk)", command=lambda: self.start_selected_scout_report("full")).pack(side="left", padx=2)
-        market_body = ttk.Frame(inner, style="Inset.TFrame")
-        market_body.pack(fill="both", expand=True)
+        ttk.Label(filter_primary, text="Market", style="Inset.TLabel").pack(side="left", padx=(2, 2))
+        market_status = ttk.Combobox(filter_primary, values=["All", "Available", "Rival Offer", "Retiring"], textvariable=self.market_status_filter, state="readonly", width=12)
+        market_status.pack(side="left", padx=(0, 10))
+        market_status.bind("<<ComboboxSelected>>", lambda _e: self.refresh_market())
+        ttk.Button(filter_primary, text="Basic Scout (2 wk)", command=lambda: self.start_selected_scout_report("basic")).pack(side="left", padx=2)
+        ttk.Button(filter_primary, text="Full Scout (6 wk)", command=lambda: self.start_selected_scout_report("full")).pack(side="left", padx=2)
+        filter_ranges = ttk.Frame(filters, style="Inset.TFrame")
+        filter_ranges.pack(fill="x", pady=(3, 2))
+        for label, variable, minimum, maximum, width in (
+            ("Age", self.market_age_min, 16, 60, 4), ("to", self.market_age_max, 16, 60, 4),
+            ("OVR", self.market_ovr_min, 0, 100, 4), ("to", self.market_ovr_max, 0, 100, 4),
+            ("Min Pop", self.market_pop_min, 0, 100, 4), ("Min Potential", self.market_potential_min, 0, 100, 4),
+        ):
+            ttk.Label(filter_ranges, text=label, style="Inset.TLabel").pack(side="left", padx=(7, 2))
+            spin = ttk.Spinbox(filter_ranges, from_=minimum, to=maximum, textvariable=variable, width=width, command=self.refresh_market)
+            spin.pack(side="left")
+            spin.bind("<KeyRelease>", lambda _e: self.refresh_market())
+            spin.bind("<FocusOut>", lambda _e: self.refresh_market())
+        ttk.Button(filter_ranges, text="Reset Filters", command=self.reset_market_filters).pack(side="left", padx=10)
+        # The market can contain hundreds of fighters. Reserve the lower part
+        # of the screen for a draggable split so large monitors can show more
+        # rows without making the filters or scouting read disappear.
+        self.market_resize_pane = self.create_vertical_resizer(
+            inner, initial_fraction=0.95, min_top=220, min_bottom=24
+        )
+        self.market_resize_pane.pack(fill="both", expand=True)
+        market_body = ttk.Frame(self.market_resize_pane, style="Inset.TFrame")
+        self.market_resize_pane.add(market_body, minsize=220)
+        self.market_resize_spacer = tk.Frame(self.market_resize_pane, bg=self.colors["paper"], height=24)
+        self.market_resize_pane.add(self.market_resize_spacer, minsize=0)
         scout_panel = tk.Frame(market_body, bg=self.colors["panel_dark"], width=300, highlightthickness=1, highlightbackground=self.colors["line"])
         scout_panel.pack(side="right", fill="y", padx=(8, 0))
         scout_panel.pack_propagate(False)
@@ -1187,10 +1753,11 @@ class UIMixin:
         tree_frame = ttk.Frame(market_body, style="Inset.TFrame")
         tree_frame.pack(side="left", fill="both", expand=True)
         self.market_tree = ttk.Treeview(tree_frame, columns=("name", "tag", "gender", "weight", "record", "age", "overall", "popularity", "star", "media", "pro", "style", "purse", "offer"), show="headings")
-        for col, text, width in (("name", "Name", 155), ("tag", "Scout", 88), ("gender", "G", 38), ("weight", "Weight", 100), ("record", "Record", 65), ("age", "Age", 45), ("overall", "OVR", 50), ("popularity", "Pop", 50), ("star", "Star", 50), ("media", "Media", 55), ("pro", "Pro", 45), ("style", "Style", 90), ("purse", "Asking", 80), ("offer", "Rival Offer", 145)):
+        for col, text, width in (("name", "Name", 155), ("tag", "Market Status", 120), ("gender", "G", 38), ("weight", "Weight", 100), ("record", "Record", 65), ("age", "Age", 45), ("overall", "OVR", 50), ("popularity", "Pop", 50), ("star", "Star", 50), ("media", "Media", 55), ("pro", "Pro", 45), ("style", "Style", 90), ("purse", "Asking", 80), ("offer", "Rival Offer", 145)):
             self.market_tree.heading(col, text=text)
             self.market_tree.column(col, width=width, anchor="center")
         self.market_tree.column("name", anchor="w")
+        self.market_tree.tag_configure("closed_division", background="#5f421b", foreground="#ffe7a3")
         self.make_tree_sortable(self.market_tree)
         market_scroll = ttk.Scrollbar(tree_frame, orient="vertical", command=self.market_tree.yview)
         self.market_tree.configure(yscrollcommand=market_scroll.set)
@@ -1234,8 +1801,8 @@ class UIMixin:
         ttk.Button(news_actions, text="Combat Sports", command=self.open_combat_sports_window).pack(side="left", padx=4, pady=3)
         ttk.Button(news_actions, text="World Chronicle", command=self.open_world_chronicle).pack(side="right", padx=4, pady=3)
         ttk.Label(right, text="GYM NETWORK", style="PanelTitle.TLabel").pack(anchor="w")
-        self.gym_tree = ttk.Treeview(right, columns=("name", "region", "quality", "rep", "morale", "members", "specialty"), show="headings", height=6)
-        for col, text, width in (("name", "Gym", 145), ("region", "Region", 70), ("quality", "Q", 42), ("rep", "Rep", 45), ("morale", "Room", 52), ("members", "Fighters", 64), ("specialty", "Specialties", 185)):
+        self.gym_tree = ttk.Treeview(right, columns=("name", "region", "tier", "effective", "morale", "members", "trend", "specialty"), show="headings", height=7)
+        for col, text, width in (("name", "Gym", 135), ("region", "Region", 66), ("tier", "Tier", 72), ("effective", "Effective", 54), ("morale", "Room", 46), ("members", "Load", 66), ("trend", "Form", 44), ("specialty", "Identity", 150)):
             self.gym_tree.heading(col, text=text)
             self.gym_tree.column(col, width=width, anchor="center")
         self.gym_tree.column("name", anchor="w")
@@ -1244,6 +1811,72 @@ class UIMixin:
         self.gym_tree.pack(fill="x")
         self.gym_tree.bind("<Double-1>", lambda _e: self.open_selected_gym_viewer())
         ttk.Button(right, text="View Gym", command=self.open_selected_gym_viewer).pack(anchor="e", pady=(6, 0))
+
+    def build_fighter_search_tab(self):
+        self.screen_header(self.fighter_search_tab, "FIGHTER SEARCH", "Search the full combat-sports world and inspect recent form")
+        controls = ttk.Frame(self.fighter_search_tab, style="Chrome.TFrame")
+        controls.pack(fill="x", pady=(0, 6))
+        self.world_fighter_search = tk.StringVar(value="")
+        self.world_fighter_company_filter = tk.StringVar(value="All")
+        self.world_fighter_gender_filter = tk.StringVar(value="All")
+        self.world_fighter_weight_filter = tk.StringVar(value="All")
+        self.world_fighter_sport_filter = tk.StringVar(value="All")
+        self.world_fighter_status_filter = tk.StringVar(value="Active")
+
+        ttk.Label(controls, text="Search").grid(row=0, column=0, sticky="w", padx=(4, 3), pady=4)
+        search_entry = ttk.Entry(controls, textvariable=self.world_fighter_search, width=24)
+        search_entry.grid(row=0, column=1, sticky="ew", padx=(0, 8), pady=4)
+        search_entry.bind("<KeyRelease>", lambda _event: self.refresh_world_fighter_search())
+        for column, label, variable, width in (
+            (2, "Company", self.world_fighter_company_filter, 25),
+            (4, "Gender", self.world_fighter_gender_filter, 10),
+            (6, "Division", self.world_fighter_weight_filter, 17),
+            (8, "Sport", self.world_fighter_sport_filter, 18),
+            (10, "Status", self.world_fighter_status_filter, 13),
+        ):
+            ttk.Label(controls, text=label).grid(row=0, column=column, sticky="w", padx=(2, 3), pady=4)
+            combo = ttk.Combobox(controls, textvariable=variable, state="readonly", width=width)
+            combo.grid(row=0, column=column + 1, sticky="ew", padx=(0, 6), pady=4)
+            combo.bind("<<ComboboxSelected>>", lambda _event: self.refresh_world_fighter_search())
+            if label == "Company":
+                self.world_fighter_company_combo = combo
+            elif label == "Gender":
+                combo.configure(values=["All", "Male", "Female"])
+            elif label == "Division":
+                combo.configure(values=["All"] + WEIGHTS)
+            elif label == "Sport":
+                self.world_fighter_sport_combo = combo
+            else:
+                combo.configure(values=["Active", "All", "Free Agents", "Retired"])
+        ttk.Button(controls, text="Clear", command=self.clear_world_fighter_filters).grid(row=0, column=12, padx=4, pady=4)
+        controls.columnconfigure(1, weight=1)
+
+        panel, inner = self.section(self.fighter_search_tab, "WORLD FIGHTER DIRECTORY")
+        panel.pack(fill="both", expand=True)
+        self.world_fighter_search_count = ttk.Label(inner, text="", style="Inset.TLabel")
+        self.world_fighter_search_count.pack(anchor="w", padx=4, pady=(3, 2))
+        table = ttk.Frame(inner, style="Inset.TFrame")
+        table.pack(fill="both", expand=True)
+        columns = ("name", "company", "sport", "gender", "division", "age", "universe", "career", "form", "last", "overall", "elo")
+        self.world_fighter_tree = ttk.Treeview(table, columns=columns, show="headings")
+        for column, label, width in (
+            ("name", "Fighter", 175), ("company", "Company", 175), ("sport", "Sport", 100), ("gender", "G", 38),
+            ("division", "Division", 112), ("age", "Age", 46), ("universe", "Universe W-L-D", 95),
+            ("career", "Career W-L-D", 90), ("form", "Last 5", 72), ("last", "Last Fight", 280), ("overall", "OVR", 58), ("elo", "ELO", 64),
+        ):
+            self.world_fighter_tree.heading(column, text=label)
+            self.world_fighter_tree.column(column, width=width, anchor="center")
+        for column in ("name", "company", "last"):
+            self.world_fighter_tree.column(column, anchor="w")
+        self.make_tree_sortable(self.world_fighter_tree)
+        scroll = ttk.Scrollbar(table, orient="vertical", command=self.world_fighter_tree.yview)
+        self.world_fighter_tree.configure(yscrollcommand=scroll.set)
+        self.world_fighter_tree.pack(side="left", fill="both", expand=True)
+        scroll.pack(side="right", fill="y")
+        self.world_fighter_tree.bind("<Double-1>", lambda _event: self.open_selected_world_fighter_profile())
+        actions = ttk.Frame(self.fighter_search_tab, style="Chrome.TFrame")
+        actions.pack(fill="x", pady=(5, 0))
+        ttk.Button(actions, text="View Fighter", style="Accent.TButton", command=self.open_selected_world_fighter_profile).pack(side="right", padx=4)
 
     def build_rankings_tab(self):
         self.screen_header(self.rankings_tab, "RANKINGS", "Division rankings and pound-for-pound rankings")
@@ -1269,7 +1902,11 @@ class UIMixin:
         ranking_gender.bind("<<ComboboxSelected>>", lambda _e: self.refresh_rankings())
         panel, inner = self.section(self.rankings_tab, "TOP CONTENDERS")
         panel.pack(fill="both", expand=True)
-        self.rankings_tree = ttk.Treeview(inner, columns=("company_rank", "world_rank", "move", "name", "gender", "company", "weight", "record", "overall", "form", "path", "score", "last", "status"), show="headings")
+        rankings_resize = self.create_vertical_resizer(inner, initial_fraction=0.78, min_top=220, min_bottom=95)
+        rankings_resize.pack(fill="both", expand=True)
+        ranking_table = ttk.Frame(rankings_resize, style="Inset.TFrame")
+        rankings_resize.add(ranking_table, minsize=220)
+        self.rankings_tree = ttk.Treeview(ranking_table, columns=("company_rank", "world_rank", "move", "name", "gender", "company", "weight", "record", "overall", "form", "path", "score", "last", "status"), show="headings")
         for col, text, width in (("company_rank", "Co Rank", 62), ("world_rank", "World", 58), ("move", "Move", 60), ("name", "Fighter", 150), ("gender", "G", 38), ("company", "Company", 135), ("weight", "Division", 100), ("record", "Record", 70), ("overall", "OVR", 55), ("form", "Form", 90), ("path", "Title Path", 135), ("score", "Score", 65), ("last", "Last Fight", 120), ("status", "Status", 85)):
             self.rankings_tree.heading(col, text=text)
             self.rankings_tree.column(col, width=width, anchor="center")
@@ -1277,14 +1914,38 @@ class UIMixin:
         self.rankings_tree.column("company", anchor="w")
         self.rankings_tree.column("last", anchor="w")
         self.make_tree_sortable(self.rankings_tree)
-        self.rankings_tree.bind("<Double-1>", lambda _e: self.open_tree_fighter_profile(self.rankings_tree, "name"))
         self.rankings_tree.pack(fill="both", expand=True)
-        self.ranking_detail = tk.Text(inner, height=4, wrap="word", bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 9), padx=10, pady=8)
-        self.ranking_detail.pack(fill="x", pady=(6, 0)); self.ranking_detail.config(state="disabled")
+        ranking_detail_frame = ttk.Frame(rankings_resize, style="Inset.TFrame")
+        rankings_resize.add(ranking_detail_frame, minsize=95)
+        self.ranking_detail = tk.Text(ranking_detail_frame, height=4, wrap="word", bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 9), padx=10, pady=8)
+        self.ranking_detail.pack(fill="both", expand=True); self.ranking_detail.config(state="disabled")
         self.rankings_tree.bind("<<TreeviewSelect>>", self.show_ranking_detail)
+        self.rankings_tree.bind("<Double-1>", self.open_selected_ranking_profile)
 
     def build_editor_tab(self):
-        self.screen_header(self.editor_tab, "DATABASE EDITOR", "Edit every active fighter, their ratings, contracts, ownership, and detailed fight attributes")
+        self.screen_header(self.editor_tab, "WORLD EDITOR", "Edit the current career or maintain the reusable starting universe")
+        self.editor_current_dirty = False
+        self.editor_career_target_var = tk.StringVar(value="Current career")
+        self.editor_database_target_var = tk.StringVar(value="Starting universe")
+        self.editor_edit_state_var = tk.StringVar(value="No unsaved editor changes")
+
+        scope_row = ttk.Frame(self.editor_tab, style="Chrome.TFrame")
+        scope_row.pack(fill="x", pady=(0, 6))
+        career_scope, career_inner = self.section(scope_row, "CURRENT CAREER")
+        career_scope.pack(side="left", fill="x", expand=True, padx=(0, 4))
+        ttk.Label(career_inner, textvariable=self.editor_career_target_var, style="Inset.TLabel", font=("Tahoma", 9, "bold")).pack(side="left", padx=8, pady=6)
+        ttk.Label(career_inner, textvariable=self.editor_edit_state_var, style="Inset.TLabel").pack(side="left", padx=8)
+        ttk.Button(career_inner, text="Save Career Now", style="Accent.TButton", command=self.save_editor_career_now).pack(side="right", padx=6, pady=4)
+
+        universe_scope, universe_inner = self.section(scope_row, "STARTING UNIVERSE - NEW GAMES")
+        universe_scope.pack(side="left", fill="x", expand=True, padx=(4, 0))
+        self.universe_section_choice = tk.StringVar(value="fighters")
+        ttk.Label(universe_inner, textvariable=self.editor_database_target_var, style="Inset.TLabel", font=("Tahoma", 9, "bold")).grid(row=0, column=0, sticky="w", padx=7)
+        ttk.Combobox(universe_inner, textvariable=self.universe_section_choice, values=["fighters", "companies", "combat_sports", "media", "regions"], width=14, state="readonly").grid(row=0, column=1, sticky="ew", padx=3, pady=4)
+        ttk.Button(universe_inner, text="Edit Starting Data", command=self.open_universe_section_editor).grid(row=0, column=2, sticky="ew", padx=3, pady=4)
+        ttk.Button(universe_inner, text="Validate", command=self.validate_active_universe_database).grid(row=0, column=3, sticky="ew", padx=3, pady=4)
+        universe_inner.columnconfigure(0, weight=1)
+
         controls = ttk.Frame(self.editor_tab, style="Chrome.TFrame")
         controls.pack(fill="x", pady=(0, 6))
         self.editor_search = tk.StringVar(value="")
@@ -1305,35 +1966,35 @@ class UIMixin:
         ttk.Combobox(filter_row, textvariable=self.editor_gender_filter, values=["All", "Male", "Female"], width=9, state="readonly").grid(row=0, column=7, sticky="ew", padx=(0, 4))
         for col in (1, 3, 5, 7):
             filter_row.columnconfigure(col, weight=1)
-        action_row = ttk.Frame(controls, style="Chrome.TFrame")
-        action_row.pack(fill="x")
-        self.universe_section_choice = tk.StringVar(value="fighters")
-        ttk.Label(action_row, text="Universe Section", style="Chrome.TLabel").grid(row=0, column=0, sticky="w", padx=(4, 2))
-        ttk.Combobox(action_row, textvariable=self.universe_section_choice, values=["fighters", "companies", "combat_sports", "media", "regions"], width=14, state="readonly").grid(row=0, column=1, sticky="ew", padx=(0, 4))
-        ttk.Button(action_row, text="Edit Section JSON", command=self.open_universe_section_editor).grid(row=0, column=2, sticky="ew", padx=2)
-        ttk.Button(action_row, text="Validate Universe", command=self.validate_active_universe_database).grid(row=0, column=3, sticky="ew", padx=2)
-        ttk.Button(action_row, text="Refresh", command=self.refresh_database_editor).grid(row=0, column=4, sticky="ew", padx=2)
-        for col in range(1, 5):
-            action_row.columnconfigure(col, weight=1)
+        ttk.Button(filter_row, text="Refresh Career", command=self.refresh_database_editor).grid(row=0, column=8, sticky="ew", padx=(4, 0))
         for variable in (self.editor_search, self.editor_company_filter, self.editor_weight_filter, self.editor_gender_filter):
             variable.trace_add("write", lambda *_args: self.schedule_database_editor_refresh())
 
         body = ttk.Frame(self.editor_tab, style="Chrome.TFrame")
         body.pack(fill="both", expand=True)
-        list_panel, list_inner = self.section(body, "FIGHTER DATABASE")
+        list_panel, list_inner = self.section(body, "CURRENT CAREER FIGHTERS")
         list_panel.pack(side="left", fill="both", expand=True, padx=(0, 6))
-        self.editor_tree = ttk.Treeview(list_inner, columns=("company", "name", "gender", "weight", "age", "overall", "potential", "pop", "record", "status"), show="headings", height=22)
+        editor_tree_shell = ttk.Frame(list_inner, style="Inset.TFrame")
+        editor_tree_shell.pack(fill="both", expand=True)
+        self.editor_tree = ttk.Treeview(editor_tree_shell, columns=("company", "name", "gender", "weight", "age", "overall", "potential", "pop", "record", "status"), show="headings", height=22)
         for col, title, width in (("company", "Employer", 135), ("name", "Fighter", 155), ("gender", "G", 38), ("weight", "Division", 95), ("age", "Age", 42), ("overall", "OVR", 48), ("potential", "Upside", 55), ("pop", "Pop", 45), ("record", "Record", 70), ("status", "Status", 84)):
             self.editor_tree.heading(col, text=title)
             self.editor_tree.column(col, width=width, anchor="center")
         self.editor_tree.column("company", anchor="w")
         self.editor_tree.column("name", anchor="w")
-        self.editor_tree.pack(fill="both", expand=True)
+        editor_tree_vertical = ttk.Scrollbar(editor_tree_shell, orient="vertical", command=self.editor_tree.yview)
+        editor_tree_horizontal = ttk.Scrollbar(editor_tree_shell, orient="horizontal", command=self.editor_tree.xview)
+        self.editor_tree.configure(yscrollcommand=editor_tree_vertical.set, xscrollcommand=editor_tree_horizontal.set)
+        self.editor_tree.grid(row=0, column=0, sticky="nsew")
+        editor_tree_vertical.grid(row=0, column=1, sticky="ns")
+        editor_tree_horizontal.grid(row=1, column=0, sticky="ew")
+        editor_tree_shell.rowconfigure(0, weight=1)
+        editor_tree_shell.columnconfigure(0, weight=1)
         self.make_tree_sortable(self.editor_tree)
         self.editor_tree.bind("<<TreeviewSelect>>", lambda _event: self.load_selected_editor_fighter())
         self.editor_tree.bind("<Double-1>", lambda _event: self.open_editor_selected_profile())
 
-        edit_panel, edit_inner = self.section(body, "FIGHTER WORKBENCH")
+        edit_panel, edit_inner = self.section(body, "CURRENT CAREER FIGHTER")
         edit_panel.pack(side="left", fill="both", expand=True)
         self.editor_vars = {
             "name": tk.StringVar(value="Custom Fighter"),
@@ -1414,7 +2075,7 @@ class UIMixin:
         actions = ttk.Frame(edit_inner, style="Inset.TFrame")
         actions.pack(fill="x", pady=(6, 0))
         ttk.Button(actions, text="New Fighter", command=self.new_database_editor_fighter).pack(side="left", padx=4, pady=4)
-        ttk.Button(actions, text="Save Changes", style="Accent.TButton", command=self.save_database_editor_fighter).pack(side="left", padx=4, pady=4)
+        ttk.Button(actions, text="Apply to Current Career", style="Accent.TButton", command=self.save_database_editor_fighter).pack(side="left", padx=4, pady=4)
         ttk.Button(actions, text="Detailed Skill Sheet", command=self.open_detailed_skill_editor).pack(side="left", padx=4, pady=4)
         ttk.Button(actions, text="View Profile", command=self.open_editor_selected_profile).pack(side="left", padx=4, pady=4)
         ttk.Button(actions, text="Retire Fighter", command=self.retire_database_editor_fighter).pack(side="right", padx=4, pady=4)
@@ -1423,6 +2084,24 @@ class UIMixin:
         self.screen_header(self.sim_lab_tab, "SIMULATION LAB", "Division-aware fight testing, scouting cards, bracket simulations, and engine audits")
         top = ttk.Frame(self.sim_lab_tab)
         top.pack(fill="x", pady=(0, 6))
+        balance_panel, balance = self.section(top, "COMPANY BALANCE")
+        balance_panel.pack(side="left", fill="y", padx=(0, 6))
+        self.sim_balance_label = ttk.Label(
+            balance,
+            text="",
+            style="Inset.TLabel",
+            justify="left",
+            width=31,
+        )
+        self.sim_balance_label.pack(fill="x", padx=4, pady=(4, 2))
+        self.sim_balance_edit_button = ttk.Button(
+            balance,
+            text="Edit Balance",
+            style="Accent.TButton",
+            command=self.edit_sim_company_balance,
+        )
+        self.sim_balance_edit_button.pack(fill="x", padx=4, pady=(2, 4))
+        self.update_sim_company_balance_display()
         settings_panel, settings = self.section(top, "ENGINE SETTINGS")
         settings_panel.pack(side="left", fill="x", expand=True, padx=(0, 6))
         self.engine_vars = {}
@@ -1453,6 +2132,24 @@ class UIMixin:
         self.play_audit_status.pack(side="left", padx=(6, 8))
         self.play_audit_progress = ttk.Progressbar(audit_progress, mode="determinate", maximum=100, value=0)
         self.play_audit_progress.pack(side="left", fill="x", expand=True, padx=(0, 6), pady=3)
+
+        population_panel, population = self.section(self.sim_lab_tab, "FREE-AGENT POPULATION TOOL")
+        population_panel.pack(fill="x", pady=(0, 6))
+        population_row = ttk.Frame(population, style="Inset.TFrame")
+        population_row.pack(fill="x", padx=4, pady=4)
+        ttk.Label(population_row, text="Create", style="Inset.TLabel").pack(side="left")
+        ttk.Spinbox(population_row, from_=1, to=2000, increment=1, textvariable=self.sim_generate_count, width=6).pack(side="left", padx=(4, 10))
+        ttk.Label(population_row, text="Age", style="Inset.TLabel").pack(side="left")
+        ttk.Combobox(population_row, textvariable=self.sim_generate_age, values=["Random"] + [str(value) for value in range(16, 61)], width=8, state="readonly").pack(side="left", padx=(4, 10))
+        ttk.Label(population_row, text="Ability", style="Inset.TLabel").pack(side="left")
+        ttk.Combobox(population_row, textvariable=self.sim_generate_ability, values=["Random"] + [str(value) for value in range(30, 100)], width=8, state="readonly").pack(side="left", padx=(4, 10))
+        ttk.Label(population_row, text="Gender", style="Inset.TLabel").pack(side="left")
+        ttk.Combobox(population_row, textvariable=self.sim_generate_gender, values=["Random", "Male", "Female"], width=9, state="readonly").pack(side="left", padx=(4, 10))
+        ttk.Label(population_row, text="Division", style="Inset.TLabel").pack(side="left")
+        ttk.Combobox(population_row, textvariable=self.sim_generate_weight, values=["Random"] + WEIGHTS, width=17, state="readonly").pack(side="left", padx=(4, 10))
+        ttk.Button(population_row, text="Generate Free Agents", style="Accent.TButton", command=self.generate_sim_lab_free_agents).pack(side="left", padx=(4, 10))
+        self.sim_generate_status = ttk.Label(population_row, text="Generated fighters are added only to this save.", style="Inset.TLabel", anchor="w")
+        self.sim_generate_status.pack(side="left", fill="x", expand=True)
 
         sim_panel, sim = self.section(self.sim_lab_tab, "QUICK FIGHT SIMULATOR")
         sim_panel.pack(fill="x", pady=(0, 6))

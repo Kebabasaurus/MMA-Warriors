@@ -6,13 +6,65 @@ from datetime import datetime
 import tkinter as tk
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from tkinter import messagebox, ttk
+from tkinter import messagebox, simpledialog, ttk
 
 from constants import *
 from models import Fighter, Gym, Promotion
 
 
 class AdminMixin:
+    def update_sim_company_balance_display(self):
+        """Keep the Sim Lab's controlled-company cash readout current."""
+        if not hasattr(self, "sim_balance_label"):
+            return
+        if getattr(self, "spectator_mode", False):
+            self.sim_balance_label.config(text="Spectator mode\nNo controlled company")
+            if hasattr(self, "sim_balance_edit_button"):
+                self.sim_balance_edit_button.config(state="disabled")
+            return
+        self.sim_balance_label.config(
+            text=f"{self.player_company_name}\nCurrent balance: ${self.cash:,.0f}"
+        )
+        if hasattr(self, "sim_balance_edit_button"):
+            self.sim_balance_edit_button.config(state="normal")
+
+    def edit_sim_company_balance(self):
+        """Set the controlled company's cash for a deliberate sandbox scenario."""
+        if getattr(self, "spectator_mode", False):
+            messagebox.showinfo("Company Balance", "Take control of a promotion before editing a company balance.")
+            return
+        current_balance = max(0, round(self.cash))
+        updated_balance = simpledialog.askinteger(
+            "Edit Company Balance",
+            f"Set the cash balance for {self.player_company_name}:\n\nCurrent balance: ${current_balance:,}",
+            initialvalue=current_balance,
+            minvalue=0,
+            parent=self.root,
+        )
+        if updated_balance is None:
+            return
+        updated_balance = int(updated_balance)
+        if updated_balance == current_balance:
+            return
+
+        change = updated_balance - current_balance
+        self.cash = updated_balance
+        self.ensure_finance_defaults()
+        self.record_finance_transaction(
+            "Simulation Lab balance adjustment",
+            revenue=max(0, change),
+            costs=max(0, -change),
+        )
+        self.finance["ledger"].insert(
+            0,
+            f"Month {self.month} Week {self.week}: Simulation Lab balance adjusted from ${current_balance:,} to ${updated_balance:,}.",
+        )
+        self.finance["ledger"] = self.finance["ledger"][:80]
+        self.close_finance_week()
+        self.news.insert(0, f"Simulation Lab: {self.player_company_name} balance adjusted to ${updated_balance:,}.")
+        self.update_sim_company_balance_display()
+        self.refresh_all()
+
     def apply_engine_settings(self):
         for key, var in self.engine_vars.items():
             self.engine_settings[key] = round(max(0.5, min(2.0, var.get())), 2)
@@ -25,21 +77,124 @@ class AdminMixin:
             var.set(self.engine_settings[key])
         self.refresh_all()
 
+    @staticmethod
+    def sim_generation_choice(value, minimum, maximum):
+        value = str(value or "Random").strip()
+        if value.lower() == "random":
+            return None
+        try:
+            return max(minimum, min(maximum, int(value)))
+        except (TypeError, ValueError):
+            return None
+
+    def set_generated_fighter_ability(self, fighter, target):
+        """Move a generated profile to a requested OVR without flattening its style."""
+        self.ensure_detailed_skills(fighter)
+        for _ in range(5):
+            adjustment = int(target) - fighter.overall
+            if not adjustment:
+                break
+            fighter.detailed_skills = {
+                key: max(1, min(99, value + adjustment))
+                for key, value in fighter.detailed_skills.items()
+            }
+            self.sync_broad_skills_from_details(fighter)
+        if fighter.overall != target:
+            adjustment = 1 if fighter.overall < target else -1
+            for key in fighter.detailed_skills:
+                if fighter.overall == target:
+                    break
+                fighter.detailed_skills[key] = max(1, min(99, fighter.detailed_skills[key] + adjustment))
+                self.sync_broad_skills_from_details(fighter)
+
+    def create_sim_lab_free_agents(self, count, age=None, ability=None, gender=None, weight=None):
+        """Create emergency population directly in the current save's FA market."""
+        count = max(1, min(2000, int(count)))
+        age = None if age is None else max(16, min(60, int(age)))
+        ability = None if ability is None else max(30, min(99, int(ability)))
+        gender = gender if gender in ("Male", "Female") else None
+        weight = weight if weight in WEIGHTS else None
+        existing_names = self.active_fighter_names()
+        created = []
+        current_year = 2026 + (max(1, int(getattr(self, "month", 1))) - 1) // 12
+        for _ in range(count):
+            fighter = self.create_generated_fighter(
+                2, 28,
+                ability if ability is not None else 38,
+                ability if ability is not None else 84,
+                weight=weight,
+                gender=gender,
+                apply_entry_balance=ability is None,
+                age_override=max(18, age) if age is not None else None,
+                pre_universe=False,
+            )
+            self.avoid_name_collision(fighter, existing_names)
+            if age is not None:
+                fighter.age = age
+            if ability is not None:
+                self.set_generated_fighter_ability(fighter, ability)
+            fighter.record_w = fighter.record_l = fighter.record_d = 0
+            fighter.record_history_baseline_w = fighter.record_history_baseline_l = fighter.record_history_baseline_d = 0
+            fighter.multi_sport_records = {"MMA": "0-0-0"}
+            fighter.contract_months = 0
+            fighter.exclusive = False
+            fighter.contract_type = "Free Agent"
+            fighter.free_agent_months = 0
+            fighter.ai_offer_company = ""
+            fighter.ai_offer_months = 0
+            fighter.ai_offer_purse = 0
+            fighter.ai_offer_signing_bonus = 0
+            fighter.market_origin = "Simulation Lab population tool"
+            fighter.available_week = self.calendar_week_index()
+            fighter.retired = False
+            fighter.retirement_pending = False
+            fighter.fight_history = []
+            fighter.bout_rating_history = []
+            fighter.annual_overalls = {str(current_year): fighter.overall}
+            fighter.potential = max(fighter.overall, min(99, fighter.potential))
+            fighter.rank_score = self.rank_value(fighter)
+            self.free_agents.append(fighter)
+            created.append(fighter)
+        return created
+
+    def generate_sim_lab_free_agents(self):
+        try:
+            count = max(1, min(2000, int(self.sim_generate_count.get())))
+        except (TypeError, ValueError, tk.TclError):
+            count = 1
+            self.sim_generate_count.set(count)
+        age = self.sim_generation_choice(self.sim_generate_age.get(), 16, 60)
+        ability = self.sim_generation_choice(self.sim_generate_ability.get(), 30, 99)
+        gender = self.sim_generate_gender.get()
+        weight = self.sim_generate_weight.get()
+        created = self.create_sim_lab_free_agents(count, age, ability, gender, weight)
+        male = sum(fighter.gender == "Male" for fighter in created)
+        female = len(created) - male
+        ability_range = f"OVR {min(f.overall for f in created)}-{max(f.overall for f in created)}"
+        summary = f"Added {len(created)} free agents ({male} M / {female} F), {ability_range}. Market total: {len(self.free_agents)}."
+        if hasattr(self, "sim_generate_status"):
+            self.sim_generate_status.config(text=summary)
+        self.news.insert(0, f"Simulation Lab population tool: {summary}")
+        self.refresh_sim_fighter_choices()
+        if getattr(self, "current_screen", "") == "market":
+            self.refresh_market()
+
     def all_database_fighters(self, include_retired=False):
         fighters = {}
         for fighter in self.roster:
-            fighters.setdefault(fighter.name, fighter)
+            fighters.setdefault(self.fighter_identity_key(fighter), fighter)
         for fighter in self.free_agents:
-            fighters.setdefault(fighter.name, fighter)
+            fighters.setdefault(self.fighter_identity_key(fighter), fighter)
         for promo in self.promotions:
             for fighter in promo.roster:
-                fighters.setdefault(fighter.name, fighter)
+                fighters.setdefault(self.fighter_identity_key(fighter), fighter)
         if include_retired:
             for fighter in self.retired_fighters:
-                fighters.setdefault(fighter.name, fighter)
+                fighters.setdefault(self.fighter_identity_key(fighter), fighter)
         return sorted(fighters.values(), key=lambda fighter: (fighter.weight, fighter.gender, fighter.name))
 
     def refresh_sim_fighter_choices(self):
+        self.update_sim_company_balance_display()
         if not hasattr(self, "sim_combo_a"):
             return
         fighters = self.sim_filtered_fighters()
@@ -719,6 +874,11 @@ class AdminMixin:
     def belt_key(self, gender, weight):
         return f"{gender} {weight}"
 
+    def promotion_division_open(self, promo, gender, weight):
+        weights = list(getattr(promo, "weight_classes", None) or WEIGHTS)
+        closed = set(getattr(promo, "closed_divisions", None) or [])
+        return weight in weights and self.belt_key(gender, weight) not in closed
+
     def blank_belts(self):
         return {self.belt_key(gender, weight): "" for gender in ("Male", "Female") for weight in WEIGHTS}
 
@@ -742,6 +902,59 @@ class AdminMixin:
             elif key in WEIGHTS:
                 normalized[self.belt_key("Male", key)] = list(entries or [])
         return normalized
+
+    def normalize_special_belts(self, belts):
+        """Normalize player-created championships such as BMF without mixing them into divisions."""
+        normalized = {}
+        for key, value in (belts or {}).items():
+            name = str((value or {}).get("name", key) if isinstance(value, dict) else key).strip()
+            if not name:
+                continue
+            row = dict(value) if isinstance(value, dict) else {}
+            row["name"] = name
+            row["holder"] = str(row.get("holder", "") or "")
+            row["defenses"] = max(0, int(row.get("defenses", 0) or 0))
+            row["history"] = list(row.get("history", []) or [])[:80]
+            normalized[name] = row
+        return normalized
+
+    def award_special_belt(self, belt_name, winner, loser, method):
+        self.special_belts = self.normalize_special_belts(getattr(self, "special_belts", {}))
+        belt = self.special_belts.get(belt_name)
+        if not belt:
+            return False
+        previous = belt.get("holder", "")
+        defense = previous == winner.name
+        belt["holder"] = winner.name
+        belt["defenses"] = belt.get("defenses", 0) + (1 if defense else 0)
+        action = "Defense" if defense else "Champion Crowned"
+        belt["history"].insert(0, {
+            "date": f"Month {getattr(self, 'month', 1)} Week {getattr(self, 'week', 1)}",
+            "action": action, "fighter": winner.name, "previous": previous,
+            "note": f"Defeated {loser.name} by {method}.",
+        })
+        belt["history"] = belt["history"][:80]
+        winner.special_titles = list(getattr(winner, "special_titles", None) or [])
+        if belt_name not in winner.special_titles:
+            winner.special_titles.append(belt_name)
+        if previous and previous != winner.name:
+            former = next((fighter for fighter in self.roster if fighter.name == previous), None)
+            if former:
+                former.special_titles = [name for name in (getattr(former, "special_titles", None) or []) if name != belt_name]
+        return True
+
+    def vacate_special_belts_held_by(self, fighter, reason):
+        self.special_belts = self.normalize_special_belts(getattr(self, "special_belts", {}))
+        for belt in self.special_belts.values():
+            if belt.get("holder") != fighter.name:
+                continue
+            belt["holder"] = ""
+            belt["history"].insert(0, {
+                "date": f"Month {getattr(self, 'month', 1)} Week {getattr(self, 'week', 1)}",
+                "action": "Vacated", "fighter": fighter.name, "previous": fighter.name, "note": reason,
+            })
+            belt["history"] = belt["history"][:80]
+        fighter.special_titles = []
 
     def belt_history_entry(self, action, key, fighter_name="", note=""):
         return {
@@ -789,6 +1002,10 @@ class AdminMixin:
         interim_belts[key] = champion.name
         if previous != champion.name:
             belt_history = self.record_belt_history(belt_history, key, "Interim Champion Crowned", champion.name, note)
+            champion.interim_title_wins = getattr(champion, "interim_title_wins", 0) + 1
+        else:
+            champion.interim_title_defenses = getattr(champion, "interim_title_defenses", 0) + 1
+            belt_history = self.record_belt_history(belt_history, key, "Interim Title Defense", champion.name, note)
         return interim_belts, belt_history
 
     def clear_interim_belt(self, roster, interim_belts, belt_history, key, note):
@@ -801,6 +1018,11 @@ class AdminMixin:
             interim_belts[key] = ""
             belt_history = self.record_belt_history(belt_history, key, "Interim Belt Cleared", holder, note)
         return interim_belts, belt_history
+
+    def interim_title_participates(self, interim_belts, winner, loser):
+        key = self.belt_key(winner.gender, winner.weight)
+        holder = self.normalize_belts(interim_belts).get(key, "")
+        return bool(holder and holder in {winner.name, loser.name})
 
     def vacate_fighter_belts(self, fighter, roster, belts, interim_belts, belt_history, reason):
         key = self.belt_key(fighter.gender, fighter.weight)
@@ -820,21 +1042,29 @@ class AdminMixin:
     def champion_sort_value(self, fighter):
         return fighter.overall * 1.35 + fighter.popularity * 0.62 + fighter.momentum * 8 + fighter.record_w * 1.4 - fighter.record_l * 2
 
-    def ensure_company_champions(self, roster, belts, company_name, region, size, player_owned=False, min_per_division=3, interim_belts=None, belt_history=None):
+    def ensure_company_champions(self, roster, belts, company_name, region, size, player_owned=False, min_per_division=3, interim_belts=None, belt_history=None, closed_divisions=None):
         belts = self.normalize_belts(belts)
         interim_belts = self.normalize_belts(interim_belts)
         belt_history = self.normalize_belt_history(belt_history)
         existing_names = self.active_fighter_names()
         existing_names.update(fighter.name for fighter in roster)
+        closed = set(closed_divisions or ())
         for weight in WEIGHTS:
             for gender in ("Male", "Female"):
+                key = self.belt_key(gender, weight)
+                # A player can deliberately shut down an unviable division. Do
+                # not silently regenerate a roster and champion during a save
+                # or monthly world repair.
+                if key in closed or (player_owned and key in (set(getattr(self, "closed_divisions", set())) | set(getattr(self, "player_managed_divisions", set())))):
+                    belts[key] = ""
+                    interim_belts[key] = ""
+                    continue
                 division = [fighter for fighter in roster if fighter.weight == weight and fighter.gender == gender]
                 while len(division) < min_per_division:
                     fighter = self.create_generated_fighter(8, min(72, max(32, size)), 42, min(90, 50 + max(20, size) // 2), weight=weight, gender=gender)
                     self.avoid_name_collision(fighter, existing_names)
                     roster.append(self.prepare_company_generated_fighter(fighter, region, company_name, player_owned=player_owned))
                     division.append(fighter)
-                key = self.belt_key(gender, weight)
                 current = next((fighter for fighter in division if fighter.name == belts.get(key)), None)
                 champion = current or max(division, key=self.champion_sort_value)
                 belts, belt_history = self.set_primary_champion(roster, belts, belt_history, champion, f"{company_name} title status normalized.")
@@ -860,7 +1090,7 @@ class AdminMixin:
                 promo.interim_belts = self.blank_belts()
                 promo.belt_history = self.blank_belt_history()
                 continue
-            promo.belts, promo.interim_belts, promo.belt_history = self.ensure_company_champions(promo.roster, promo.belts or {}, promo.name, promo.region, promo.reputation_score, player_owned=False, interim_belts=promo.interim_belts or {}, belt_history=promo.belt_history or {})
+            promo.belts, promo.interim_belts, promo.belt_history = self.ensure_company_champions(promo.roster, promo.belts or {}, promo.name, promo.region, promo.reputation_score, player_owned=False, interim_belts=promo.interim_belts or {}, belt_history=promo.belt_history or {}, closed_divisions=getattr(promo, "closed_divisions", None))
 
     def avoid_name_collision(self, fighter, existing_names):
         parts = fighter.name.rsplit(" ", 1)

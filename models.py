@@ -1,10 +1,16 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from uuid import uuid4
 
 from constants import DETAILED_SKILL_GROUPS
 
 
-@dataclass
+@dataclass(eq=False)
 class Fighter:
+    # Identity equality (eq=False) is deliberate: fighters are compared and looked
+    # up by object identity / fighter_id, never by value. The auto-generated
+    # value __eq__ over 150+ fields made membership checks in the world sim
+    # catastrophically slow (it dominated month processing). Identity __eq__ is
+    # O(1), matches how the code uses fighters, and keeps instances hashable.
     name: str
     weight: str
     age: int
@@ -23,6 +29,9 @@ class Fighter:
     gender: str = "Male"
     champion: bool = False
     interim_champion: bool = False
+    interim_title_wins: int = 0
+    interim_title_defenses: int = 0
+    special_titles: list = None
     injured: int = 0
     region: str = "USA"
     nationality: str = "American"
@@ -82,9 +91,14 @@ class Fighter:
     portrait_bg: str = "#333333"
     portrait_accent: str = "#c3a45d"
     fight_history: list = None
+    # Pre-bout ratings retained independently of the bounded card replay archive.
+    bout_rating_history: list = None
     annual_overalls: dict = None
     sport_rating_history: dict = None
     sport_development_log: list = None
+    # Compact, attributed MMA development history. Only meaningful rating
+    # changes are retained; the current factor breakdown is calculated live.
+    development_log: list = None
     motivation: int = 65
     retired: bool = False
     retirement_reason: str = ""
@@ -126,8 +140,17 @@ class Fighter:
     rating_profile_version: int = 0
     sport_profile_version: int = 0
     legend_prime_age_version: int = 0
+    prime_legend_age_override_version: int = 0
+    prime_rating_profile_version: int = 0
     career_arc_version: int = 0
     feeder_origin: str = ""
+    regional_record_w: int = 0
+    regional_record_l: int = 0
+    regional_record_d: int = 0
+    regional_record_month: int = 0
+    regional_entry_w: int = 0
+    regional_entry_l: int = 0
+    regional_entry_d: int = 0
     ai_offer_company: str = ""
     ai_offer_purse: int = 0
     ai_offer_months: int = 0
@@ -163,6 +186,22 @@ class Fighter:
     ranking_position: int = 0
     previous_ranking_position: int = 0
     ranking_reason: str = ""
+    # Stable career identity. Names, employers, sports and weight classes can all
+    # change; this value must not. It is intentionally not player-facing.
+    fighter_id: str = field(default_factory=lambda: f"FTR-{uuid4().hex[:16]}")
+    # Record carried into the current universe. The individual bouts behind this
+    # baseline were not simulated here, so profile history labels it separately.
+    record_history_baseline_w: int = -1
+    record_history_baseline_l: int = -1
+    record_history_baseline_d: int = -1
+    # Generated opening-universe fighters can carry a small established record.
+    # Fighters created after play begins are true in-universe entrants and begin
+    # at 0-0-0 with their first rating snapshot in their entry year.
+    generated: bool = False
+    universe_entry_month: int = 0
+    universe_entry_year: int = 0
+    camp_joined_month: int = 0
+    camp_history: list = None
 
     @property
     def overall(self):
@@ -211,6 +250,11 @@ class Gym:
     scouting: int = 50
     member_count: int = 0
     notes: str = ""
+    momentum: int = 0
+    development_reputation: int = 50
+    history: list = None
+    last_review_month: int = 0
+    capacity_growth: int = 0
 
 
 @dataclass
@@ -228,6 +272,7 @@ class Promotion:
     event_counter: int = 1
     belts: dict = None
     interim_belts: dict = None
+    special_belts: dict = None
     belt_history: dict = None
     rules: dict = None
     broadcasters: list = None
@@ -247,3 +292,4 @@ class Promotion:
     era_history: list = None
     legacy_score: int = 0
     academy: dict = None
+    closed_divisions: list = None

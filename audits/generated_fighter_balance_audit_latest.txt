@@ -5,31 +5,31 @@ Seed 20260714; isolated in memory; no save changed.
 GENERATED ENTRY COHORT
 --------------------------------------------------------------------------------------------
 Real create_generated_fighter calls: 5000 (default skill/population ranges).
-OVR:       n=5000 mean= 64.4 p10=50.0 p50=64.0 p90=79.0 min=36 max=90
-Potential: n=5000 mean= 75.0 p10=60.0 p50=75.0 p90=90.0 min=45 max=98
-POT gap:   n=5000 mean= 10.6 p10= 5.0 p50=10.0 p90=17.0 min= 2 max=18
+OVR:       n=5000 mean= 64.6 p10=50.0 p50=65.0 p90=79.0 min=39 max=91
+Potential: n=5000 mean= 78.3 p10=64.0 p50=78.0 p90=93.0 min=51 max=98
+POT gap:   n=5000 mean= 13.6 p10=10.0 p50=13.0 p90=17.0 min= 7 max=20
 Age:       n=5000 mean= 23.5 p10=19.0 p50=23.0 p90=29.0 min=18 max=33
-Bouts:     n=5000 mean= 10.2 p10= 2.0 p50=10.0 p90=19.0 min= 0 max=25
+Bouts:     n=5000 mean=  0.0 p10= 0.0 p50= 0.0 p90= 0.0 min= 0 max= 0
 
 By generated age band
-18-21: n=1781 OVR mean  62.4 (p10/p50/p90 48/62/77), gap 11.3, bouts  6.2, OVR>=75 16.0%
-22-25: n=1781 OVR mean  64.4 (p10/p50/p90 51/64/78), gap 10.3, bouts 12.4, OVR>=75 20.9%
-26-29: n= 977 OVR mean  67.0 (p10/p50/p90 53/67/81), gap 10.1, bouts 12.4, OVR>=75 29.2%
-30-33: n= 461 OVR mean  66.7 (p10/p50/p90 54/66/81), gap  9.9, bouts 12.6, OVR>=75 26.5%
+18-21: n=1776 OVR mean  62.4 (p10/p50/p90 49/62/76), gap 14.0, bouts  0.0, OVR>=75 14.3%
+22-25: n=1762 OVR mean  64.9 (p10/p50/p90 50/65/79), gap 13.5, bouts  0.0, OVR>=75 23.2%
+26-29: n=1017 OVR mean  66.9 (p10/p50/p90 52/67/81), gap 13.2, bouts  0.0, OVR>=75 27.8%
+30-33: n= 445 OVR mean  67.5 (p10/p50/p90 53/68/82), gap 13.3, bouts  0.0, OVR>=75 31.9%
 
-Age-to-OVR Pearson correlation: +0.165
-Age-to-bouts Pearson correlation: +0.432
+Age-to-OVR Pearson correlation: +0.183
+Age-to-bouts Pearson correlation: +0.000
 
 Debut-like generated fighters (0-2 recorded bouts)
-All ages: n= 543 mean= 63.0 p10=49.0 p50=62.0 p90=78.0 min=38 max=87
-Age <=21: n= 432 mean= 62.2 p10=49.0 p50=62.0 p90=77.0 min=38 max=86
-Age <=21 with 10+ bouts: 403/1781 (22.6%)
+All ages: n=5000 mean= 64.6 p10=50.0 p50=65.0 p90=79.0 min=39 max=91
+Age <=21: n=1776 mean= 62.4 p10=49.0 p50=62.0 p90=76.0 min=39 max=88
+Age <=21 with 10+ bouts: 0/1776 (0.0%)
 
 By career archetype at generation
-Early Maturation       n= 779 (15.6%) OVR  65.0 gap 10.4 prime 24.0-33.6
-Balanced Development   n=2697 (53.9%) OVR  64.3 gap 10.6 prime 25.0-35.6
-Late Maturation        n= 822 (16.4%) OVR  64.3 gap 10.8 prime 26.0-37.6
-Durable Career         n= 702 (14.0%) OVR  64.2 gap 10.3 prime 25.0-37.5
+Early Maturation       n= 803 (16.1%) OVR  64.5 gap 13.6 prime 23.9-33.7
+Balanced Development   n=2657 (53.1%) OVR  64.8 gap 13.6 prime 25.0-35.7
+Late Maturation        n= 855 (17.1%) OVR  64.5 gap 13.8 prime 26.0-37.5
+Durable Career         n= 685 (13.7%) OVR  64.3 gap 13.6 prime 25.1-37.5
 
 CONTROLLED 5-YEAR CAREER CURVES
 --------------------------------------------------------------------------------------------
@@ -39,45 +39,45 @@ Deltas are from each standardized starting OVR. POT% is the share ending at pote
 
 Early (age 20, OVR 58, POT 88)
 Archetype                Prime avg     24m     60m   End OVR    POT%  Decline%
-Early Maturation       23.9-32.9   +2.24   +5.48     63.48    0.0%      0.0%
-Balanced Development   25.1-34.6   +2.26   +5.59     63.59    0.0%      0.0%
-Late Maturation        25.8-37.0   +2.21   +5.47     63.47    0.0%      0.0%
-Durable Career         25.1-36.8   +2.18   +5.45     63.45    0.0%      0.0%
-Five-year archetype delta spread: 0.14 OVR
+Early Maturation       24.0-32.9   +7.28  +13.21     71.21    0.0%      0.0%
+Balanced Development   24.8-34.9   +7.43  +13.82     71.82    0.0%      0.0%
+Late Maturation        25.9-36.9   +7.87  +14.77     72.77    0.0%      0.0%
+Durable Career         24.8-36.8   +7.74  +14.49     72.49    0.0%      0.0%
+Five-year archetype delta spread: 1.56 OVR
 
 Mid (age 28, OVR 72, POT 86)
 Archetype                Prime avg     24m     60m   End OVR    POT%  Decline%
-Early Maturation       23.9-34.0   +1.31   +2.75     74.75    0.0%      0.0%
-Balanced Development   24.8-36.1   +1.70   +3.45     75.45    0.0%      0.0%
-Late Maturation        25.9-37.9   +2.04   +4.16     76.16    0.0%      0.0%
-Durable Career         25.2-37.6   +2.07   +4.05     76.05    0.0%      0.0%
-Five-year archetype delta spread: 1.41 OVR
+Early Maturation       24.0-34.0   +0.03   +0.03     72.03    0.0%      0.0%
+Balanced Development   24.9-35.9   +0.10   +0.10     72.10    0.0%      0.0%
+Late Maturation        25.8-38.0   +0.38   +0.39     72.39    0.0%      0.0%
+Durable Career         25.3-38.2   +0.39   +0.39     72.39    0.0%      0.0%
+Five-year archetype delta spread: 0.36 OVR
 
 Late (age 36, OVR 82, POT 87)
 Archetype                Prime avg     24m     60m   End OVR    POT%  Decline%
-Early Maturation       24.0-34.0   +0.05   +0.01     82.01    0.0%      3.0%
-Balanced Development   25.1-36.1   +0.29   +0.34     82.34    0.0%      0.0%
-Late Maturation        25.9-37.8   +0.55   +0.80     82.80    0.0%      0.0%
-Durable Career         24.9-37.9   +0.58   +1.07     83.07    0.0%      0.0%
-Five-year archetype delta spread: 1.06 OVR
+Early Maturation       24.1-33.9   -0.28   -1.93     80.07    0.0%     66.0%
+Balanced Development   24.9-35.8   +0.00   -0.81     81.19    0.0%     43.0%
+Late Maturation        26.3-37.5   +0.00   -0.15     81.85    0.0%     15.0%
+Durable Career         24.9-37.8   +0.00   -0.07     81.93    0.0%      7.0%
+Five-year archetype delta spread: 1.86 OVR
 
 
 POST-PATCH INVARIANT CHECKS
 --------------------------------------------------------------------------------------------
 PASS - age-bounded record violations: 0
 PASS - age-banded potential-floor violations: 0
-PASS - established (26-33) entry OVR exceeds young (18-21): 66.9 vs 62.4
+PASS - established (26-33) entry OVR exceeds young (18-21): 67.1 vs 62.4
 PASS - feeder-specific age/record/upside violations across 200 fighters: 0
 INTERPRETATION / PATCH DELTAS
 --------------------------------------------------------------------------------------------
-1. Age/OVR correlation moved from -0.002 to +0.165; young mean OVR fell from 64.9
+1. Age/OVR correlation moved from -0.002 to +0.183; young mean OVR fell from 64.9
    to 62.4 while ages 26-29 now average 67.0. Entry ability now has a modest career-age slope.
-2. Age/bouts correlation moved from +0.022 to +0.432. The share of ages 18-21
-   with 10+ bouts fell from 66.6% to 22.6%, with zero fighters exceeding the new age cap.
-3. Controlled five-year mean OVR change is early +5.50, mid +3.60,
-   late +0.56, versus +5.48/+4.45/+1.24 before the prime-window change.
-4. Mean prime_end is 33.6 Early / 35.6 Balanced /
-   37.6 Late / 37.5 Durable, down from 36.1/37.9/39.3/39.2.
+2. Age/bouts correlation moved from +0.022 to +0.000. The share of ages 18-21
+   with 10+ bouts fell from 66.6% to 0.0%, with zero fighters exceeding the new age cap.
+3. Controlled five-year mean OVR change is early +14.07, mid +0.23,
+   late -0.74, versus +5.48/+4.45/+1.24 before the prime-window change.
+4. Mean prime_end is 33.7 Early / 35.7 Balanced /
+   37.5 Late / 37.5 Durable, down from 36.1/37.9/39.3/39.2.
 5. Potential-gap p10 moved from 3 to 5 and the young floor is enforced without stacking another
    boost onto the regional-feeder pathway.
 

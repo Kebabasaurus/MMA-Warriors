@@ -1,0 +1,12 @@
+MMA WARRIORS - FREE AGENT MARKET VALIDATION
+Source: dist\MMA Warriors\Saves\Game 1\savegame.json
+Seed: 11227 | Simulated months: 12
+
+Month | Free | Opening-origin | M/F | Major roster | Major mean OVR | OVR bands
+    1 |  222 |            222 | 181/41 |         4159 |           69.5 | {'70-79': 51, '80+': 28, '60-69': 50, '50-59': 54, '<50': 39}
+   13 |  325 |            322 | 252/73 |         4194 |           70.7 | {'70-79': 69, '60-69': 77, '50-59': 112, '<50': 62, '80+': 5}
+
+Peak free agents: 325
+Opening-origin free-agent growth: +100
+Market flows: contract expiries added 13 | contract expiries removed 0 | contract market added 0 | contract market removed 93 | regional cards added 138 | regional cards removed 0 | retirements added 0 | retirements removed 0 | roster reviews added 45 | roster reviews removed 0 | upgrade reviews added 70 | upgrade reviews removed 70
+RESULT: PASS

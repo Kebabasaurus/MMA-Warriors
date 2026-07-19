@@ -1,0 +1,2887 @@
+{
+  "schema": 1,
+  "source": "Wikidata P19 (place of birth), P17 (birthplace country), and P27 (citizenship)",
+  "source_url": "https://www.wikidata.org/wiki/Property:P19",
+  "fighters": {
+    "Aaron Jeffery": {
+      "city": "Howick",
+      "birth_country": "New Zealand",
+      "citizenship": "Australia",
+      "wikidata": "http://www.wikidata.org/entity/Q302175"
+    },
+    "Aaron Pico": {
+      "city": "Whittier",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q18786737"
+    },
+    "Abdoul Abdouraguimov": {
+      "city": "Dagestan",
+      "birth_country": "Russia",
+      "citizenship": "France",
+      "wikidata": "http://www.wikidata.org/entity/Q56312066"
+    },
+    "Abus Magomedov": {
+      "city": "Batayurt",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q66132201"
+    },
+    "Adrian Yanez": {
+      "city": "Houston",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q107638714"
+    },
+    "Adriano Moraes": {
+      "city": "Bras\u00edlia",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q73490380"
+    },
+    "Agy Sardari": {
+      "city": "Tehran",
+      "birth_country": "Iran",
+      "citizenship": "Kingdom of the Netherlands",
+      "wikidata": "http://www.wikidata.org/entity/Q58766861"
+    },
+    "Aiemann Zahabi": {
+      "city": "Laval",
+      "birth_country": "Canada",
+      "citizenship": "Canada",
+      "wikidata": "http://www.wikidata.org/entity/Q30069975"
+    },
+    "Ailin Perez": {
+      "city": "Z\u00e1rate",
+      "birth_country": "Argentina",
+      "citizenship": "Argentina",
+      "wikidata": "http://www.wikidata.org/entity/Q123943563"
+    },
+    "Akihiro Gono": {
+      "city": "Higashikurume",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q4700928"
+    },
+    "Albert Tumenov": {
+      "city": "Babugent",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q16708361"
+    },
+    "Alex Morono": {
+      "city": "Houston",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q22007033"
+    },
+    "Alex Pereira": {
+      "city": "S\u00e3o Bernardo do Campo",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q15987809"
+    },
+    "Alexa Grasso": {
+      "city": "Guadalajara",
+      "birth_country": "Mexico",
+      "citizenship": "Mexico",
+      "wikidata": "http://www.wikidata.org/entity/Q19560601"
+    },
+    "Alexander Volkanovski": {
+      "city": "Wollongong",
+      "birth_country": "Australia",
+      "citizenship": "Australia",
+      "wikidata": "http://www.wikidata.org/entity/Q30123133"
+    },
+    "Alexander Volkov": {
+      "city": "Moscow",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q4123254"
+    },
+    "Alexandre Pantoja": {
+      "city": "Rio de Janeiro",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q27999203"
+    },
+    "Ali Bagov": {
+      "city": "Baksan",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q21088618"
+    },
+    "Alistair Overeem": {
+      "city": "Hounslow",
+      "birth_country": "United Kingdom",
+      "citizenship": "Kingdom of the Netherlands",
+      "wikidata": "http://www.wikidata.org/entity/Q458121"
+    },
+    "Aljamain Sterling": {
+      "city": "Uniondale",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q17403242"
+    },
+    "Alonzo Menifield": {
+      "city": "Los Angeles",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q96103548"
+    },
+    "Alyona Rassohyna": {
+      "city": "Dnipro",
+      "birth_country": "Ukraine",
+      "citizenship": "",
+      "wikidata": "http://www.wikidata.org/entity/Q106328234"
+    },
+    "Alyse Anderson": {
+      "city": "Mason",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q105595840"
+    },
+    "Amanda Lemos": {
+      "city": "Bel\u00e9m",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q98684485"
+    },
+    "Amanda Nunes": {
+      "city": "Pojuca",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q4739716"
+    },
+    "Amanda Ribas": {
+      "city": "Varginha",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q85868632"
+    },
+    "Amir Albazi": {
+      "city": "Baghdad",
+      "birth_country": "Iraq",
+      "citizenship": "Sweden",
+      "wikidata": "http://www.wikidata.org/entity/Q78095043"
+    },
+    "Amir Aliakbari": {
+      "city": "Shahriar",
+      "birth_country": "Iran",
+      "citizenship": "Iran",
+      "wikidata": "http://www.wikidata.org/entity/Q471964"
+    },
+    "Andre Fili": {
+      "city": "Federal Way",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q16233140"
+    },
+    "Andrzej Grzebyk": {
+      "city": "Rzesz\u00f3w",
+      "birth_country": "Poland",
+      "citizenship": "Poland",
+      "wikidata": "http://www.wikidata.org/entity/Q55392612"
+    },
+    "Angela Hill": {
+      "city": "Forestville",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q20979276"
+    },
+    "Angela Lee": {
+      "city": "Vancouver",
+      "birth_country": "Canada",
+      "citizenship": "Canada",
+      "wikidata": "http://www.wikidata.org/entity/Q21621798"
+    },
+    "Ante Delija": {
+      "city": "Dubrovnik",
+      "birth_country": "Croatia",
+      "citizenship": "Croatia",
+      "wikidata": "http://www.wikidata.org/entity/Q85859508"
+    },
+    "Anthony Hernandez": {
+      "city": "Dunnigan",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q96372195"
+    },
+    "Anthony Njokuani": {
+      "city": "Lagos",
+      "birth_country": "Nigeria",
+      "citizenship": "Nigeria",
+      "wikidata": "http://www.wikidata.org/entity/Q4773195"
+    },
+    "Anthony Pettis": {
+      "city": "Milwaukee",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q2057232"
+    },
+    "Anthony Romero": {
+      "city": "New York City",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q1568107"
+    },
+    "Antonio Banuelos": {
+      "city": "Tulare",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q4776437"
+    },
+    "Antonio Silva": {
+      "city": "Bras\u00edlia",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q2526336"
+    },
+    "Archie Colgan": {
+      "city": "Denver",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q136719187"
+    },
+    "Arjan Bhullar": {
+      "city": "Richmond",
+      "birth_country": "Canada",
+      "citizenship": "Canada",
+      "wikidata": "http://www.wikidata.org/entity/Q4791524"
+    },
+    "Arman Tsarukyan": {
+      "city": "Akhalkalaki",
+      "birth_country": "Georgia",
+      "citizenship": "Armenia",
+      "wikidata": "http://www.wikidata.org/entity/Q61996306"
+    },
+    "Arnold Allen": {
+      "city": "Suffolk",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q23007609"
+    },
+    "Artur Szpilka": {
+      "city": "Wieliczka",
+      "birth_country": "Poland",
+      "citizenship": "Poland",
+      "wikidata": "http://www.wikidata.org/entity/Q529630"
+    },
+    "Aspen Ladd": {
+      "city": "California",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q23799819"
+    },
+    "Asu Almabayev": {
+      "city": "Zhanatalap, Sarysu District",
+      "birth_country": "Kazakhstan",
+      "citizenship": "Kazakhstan",
+      "wikidata": "http://www.wikidata.org/entity/Q128803907"
+    },
+    "Aung La Nsang": {
+      "city": "Myitkyina",
+      "birth_country": "Myanmar",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q13080157"
+    },
+    "Awa Sow": {
+      "city": "Diokoul Diawrigne",
+      "birth_country": "Senegal",
+      "citizenship": "Senegal",
+      "wikidata": "http://www.wikidata.org/entity/Q136092970"
+    },
+    "Ayaka Hamasaki": {
+      "city": "Yamaguchi",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q11557673"
+    },
+    "Ayaka Watanabe": {
+      "city": "Toyokawa",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q119517846"
+    },
+    "Belal Muhammad": {
+      "city": "Chicago",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q27068531"
+    },
+    "Ben Askren": {
+      "city": "Cedar Rapids",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q203633"
+    },
+    "Ben Henderson WEC": {
+      "city": "New York City",
+      "birth_country": "United States",
+      "citizenship": "Canada",
+      "wikidata": "http://www.wikidata.org/entity/Q4885824"
+    },
+    "Beneil Dariush": {
+      "city": "Urmia",
+      "birth_country": "Iran",
+      "citizenship": "Iran",
+      "wikidata": "http://www.wikidata.org/entity/Q17505060"
+    },
+    "Benson Henderson": {
+      "city": "Colorado Springs",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q1349552"
+    },
+    "Billy Quarantillo": {
+      "city": "Ransomville",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q99317271"
+    },
+    "Bo Nickal": {
+      "city": "Rifle",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q86752584"
+    },
+    "Brad Pickett": {
+      "city": "London",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q2063710"
+    },
+    "Brandon Moreno": {
+      "city": "Tijuana",
+      "birth_country": "Mexico",
+      "citizenship": "Mexico",
+      "wikidata": "http://www.wikidata.org/entity/Q27957350"
+    },
+    "Brandon Royval": {
+      "city": "Denver",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q102225197"
+    },
+    "Brendan Allen": {
+      "city": "Beaufort",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q96694248"
+    },
+    "Brendan Allen LFA": {
+      "city": "Beaufort",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q96694248"
+    },
+    "Brennan Ward": {
+      "city": "Waterford",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q15428007"
+    },
+    "Brent Primus": {
+      "city": "Eugene",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q17580398"
+    },
+    "Brian Bowles": {
+      "city": "Charleston",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q2059631"
+    },
+    "Brian Ortega": {
+      "city": "Los Angeles",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q4964959"
+    },
+    "Bryce Mitchell": {
+      "city": "Cabot",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q47523144"
+    },
+    "Bubba Jenkins": {
+      "city": "Frankfurt",
+      "birth_country": "Germany",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q4982162"
+    },
+    "Calvin Kattar": {
+      "city": "Methuen",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q47539972"
+    },
+    "Carlos Condit": {
+      "city": "Albuquerque",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q1189705"
+    },
+    "Carlos Prates": {
+      "city": "Taubat\u00e9",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q131010375"
+    },
+    "Carlos Ulberg": {
+      "city": "New Zealand",
+      "birth_country": "New Zealand",
+      "citizenship": "New Zealand",
+      "wikidata": "http://www.wikidata.org/entity/Q105361122"
+    },
+    "Casey O'Neill": {
+      "city": "Irvine",
+      "birth_country": "United Kingdom",
+      "citizenship": "Australia",
+      "wikidata": "http://www.wikidata.org/entity/Q108779860"
+    },
+    "Cat Zingano": {
+      "city": "Broomfield",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q5051076"
+    },
+    "Cedric Doumbe": {
+      "city": "Douala",
+      "birth_country": "Cameroon",
+      "citizenship": "France",
+      "wikidata": "http://www.wikidata.org/entity/Q24452252"
+    },
+    "Chad Mendes": {
+      "city": "Hanford",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q2057808"
+    },
+    "Chael Sonnen": {
+      "city": "West Linn",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q1058745"
+    },
+    "Charles Jourdain": {
+      "city": "Montreal",
+      "birth_country": "Canada",
+      "citizenship": "Canada",
+      "wikidata": "http://www.wikidata.org/entity/Q96374792"
+    },
+    "Chase Beebe": {
+      "city": "Chicago",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q5087099"
+    },
+    "Chase Hooper": {
+      "city": "Enumclaw",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q95145837"
+    },
+    "Chase Sherman": {
+      "city": "D'Iberville",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q30323445"
+    },
+    "Chelsea Chandler": {
+      "city": "Stockton",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q98767350"
+    },
+    "Chihiro Suzuki": {
+      "city": "Yamagata Prefecture",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q1142396"
+    },
+    "Choi Doo-ho": {
+      "city": "Busan",
+      "birth_country": "South Korea",
+      "citizenship": "South Korea",
+      "wikidata": "http://www.wikidata.org/entity/Q16233713"
+    },
+    "Chris Curtis": {
+      "city": "Oldham",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q724457"
+    },
+    "Chris Duncan": {
+      "city": "Tucson",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q2964711"
+    },
+    "Chris Gutierrez": {
+      "city": "Delaware",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q5106746"
+    },
+    "Chris Horodecki": {
+      "city": "London",
+      "birth_country": "Canada",
+      "citizenship": "Canada",
+      "wikidata": "http://www.wikidata.org/entity/Q5106922"
+    },
+    "Christian Eckerlin": {
+      "city": "Erbach",
+      "birth_country": "Germany",
+      "citizenship": "Germany",
+      "wikidata": "http://www.wikidata.org/entity/Q66658787"
+    },
+    "Christian Jungwirth": {
+      "city": "Dittenheim",
+      "birth_country": "Germany",
+      "citizenship": "Germany",
+      "wikidata": "http://www.wikidata.org/entity/Q41216208"
+    },
+    "Christian Lee": {
+      "city": "Vancouver",
+      "birth_country": "Canada",
+      "citizenship": "Canada",
+      "wikidata": "http://www.wikidata.org/entity/Q98861601"
+    },
+    "Ciryl Gane": {
+      "city": "La Roche-sur-Yon",
+      "birth_country": "France",
+      "citizenship": "France",
+      "wikidata": "http://www.wikidata.org/entity/Q79372882"
+    },
+    "Clay Collard": {
+      "city": "Payson",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q20090479"
+    },
+    "Cody Law": {
+      "city": "Windber",
+      "birth_country": "United States",
+      "citizenship": "",
+      "wikidata": "http://www.wikidata.org/entity/Q96181757"
+    },
+    "Colby Covington": {
+      "city": "Clovis",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q19668838"
+    },
+    "Connor Wilson": {
+      "city": "Johannesburg",
+      "birth_country": "South Africa",
+      "citizenship": "South Africa",
+      "wikidata": "http://www.wikidata.org/entity/Q48425085"
+    },
+    "Conor McGregor": {
+      "city": "Crumlin",
+      "birth_country": "Ireland",
+      "citizenship": "Ireland",
+      "wikidata": "http://www.wikidata.org/entity/Q5162259"
+    },
+    "Corey Anderson": {
+      "city": "Rockton",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q17385566"
+    },
+    "Cory Sandhagen": {
+      "city": "Aurora",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q60769310"
+    },
+    "Costello van Steenis": {
+      "city": "Rotterdam",
+      "birth_country": "Netherlands",
+      "citizenship": "Spain",
+      "wikidata": "http://www.wikidata.org/entity/Q135420512"
+    },
+    "Cris Cyborg": {
+      "city": "Curitiba",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q264979"
+    },
+    "Cung Le": {
+      "city": "Ho Chi Minh City",
+      "birth_country": "Vietnam",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q952839"
+    },
+    "Curtis Blaydes": {
+      "city": "Naperville",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q28709155"
+    },
+    "Dakota Ditcheva": {
+      "city": "England",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q26703043"
+    },
+    "Dalton Rosta": {
+      "city": "New Castle",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q112990145"
+    },
+    "Damian Janikowski": {
+      "city": "Wroc\u0142aw",
+      "birth_country": "Poland",
+      "citizenship": "Poland",
+      "wikidata": "http://www.wikidata.org/entity/Q1158449"
+    },
+    "Damian Piwowarczyk": {
+      "city": "Bia\u0142ogard",
+      "birth_country": "Poland",
+      "citizenship": "Poland",
+      "wikidata": "http://www.wikidata.org/entity/Q134577847"
+    },
+    "Damian Stasiak": {
+      "city": "Zgierz",
+      "birth_country": "Poland",
+      "citizenship": "Poland",
+      "wikidata": "http://www.wikidata.org/entity/Q24430937"
+    },
+    "Dan Hardy": {
+      "city": "Nottingham",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q390290"
+    },
+    "Dan Hooker": {
+      "city": "Auckland",
+      "birth_country": "New Zealand",
+      "citizenship": "New Zealand",
+      "wikidata": "http://www.wikidata.org/entity/Q19946041"
+    },
+    "Dan Ige": {
+      "city": "Honolulu",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q48226886"
+    },
+    "Daniel Cormier": {
+      "city": "Lafayette",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q644831"
+    },
+    "Daniel Rodriguez": {
+      "city": "Alhambra",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q99500036"
+    },
+    "Daniel Rutkowski": {
+      "city": "Radom",
+      "birth_country": "Poland",
+      "citizenship": "Poland",
+      "wikidata": "http://www.wikidata.org/entity/Q65164201"
+    },
+    "Danny Sabatello": {
+      "city": "Chicago",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q113653005"
+    },
+    "Darren Stewart": {
+      "city": "Poplar",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q41251816"
+    },
+    "Darren Till": {
+      "city": "Liverpool",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q30134627"
+    },
+    "David Kozma": {
+      "city": "Karvin\u00e1",
+      "birth_country": "Czech Republic",
+      "citizenship": "Czech Republic",
+      "wikidata": "http://www.wikidata.org/entity/Q106962447"
+    },
+    "David Martinez": {
+      "city": "Tolosa",
+      "birth_country": "Spain",
+      "citizenship": "",
+      "wikidata": "http://www.wikidata.org/entity/Q58612511"
+    },
+    "Deiveson Figueiredo": {
+      "city": "Soure",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q48122905"
+    },
+    "Demetrious Johnson": {
+      "city": "Madisonville",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q2698272"
+    },
+    "Demian Maia": {
+      "city": "S\u00e3o Paulo",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q2408759"
+    },
+    "Denis Goltsov": {
+      "city": "Saint Petersburg",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q15065466"
+    },
+    "Denis Kang": {
+      "city": "Saint-Pierre",
+      "birth_country": "France",
+      "citizenship": "Canada",
+      "wikidata": "http://www.wikidata.org/entity/Q1142231"
+    },
+    "Denis Smoldarev": {
+      "city": "Narva-J\u00f5esuu",
+      "birth_country": "Estonia",
+      "citizenship": "Estonia",
+      "wikidata": "http://www.wikidata.org/entity/Q19918057"
+    },
+    "Denise Kielholtz": {
+      "city": "Amsterdam",
+      "birth_country": "Netherlands",
+      "citizenship": "Kingdom of the Netherlands",
+      "wikidata": "http://www.wikidata.org/entity/Q29345338"
+    },
+    "Derrick Lewis": {
+      "city": "New Orleans",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q17182975"
+    },
+    "Diego Lopes": {
+      "city": "Manaus",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q124217612"
+    },
+    "Diego Sanchez": {
+      "city": "Albuquerque",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q611391"
+    },
+    "Dominick Reyes": {
+      "city": "San Bernardino County",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q30323656"
+    },
+    "Don Frye": {
+      "city": "Sierra Vista",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q1239160"
+    },
+    "Donald Cerrone": {
+      "city": "Denver",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q2057895"
+    },
+    "Donald Cerrone WEC": {
+      "city": "Denver",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q2057895"
+    },
+    "Douglas Lima": {
+      "city": "Goi\u00e2nia",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q5221126"
+    },
+    "Dovletdzhan Yagshimuradov": {
+      "city": "T\u00fcrkmenabat",
+      "birth_country": "Turkmenistan",
+      "citizenship": "Turkmenistan",
+      "wikidata": "http://www.wikidata.org/entity/Q61944381"
+    },
+    "Drew Dober": {
+      "city": "Omaha",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q18685758"
+    },
+    "Dustin Jacoby": {
+      "city": "Fort Morgan",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q5317107"
+    },
+    "Eddie Alvarez": {
+      "city": "Philadelphia",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q3718919"
+    },
+    "Eddie Wineland": {
+      "city": "Houston",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q3718958"
+    },
+    "Edmen Shahbazyan": {
+      "city": "Glendale",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q65122318"
+    },
+    "Eldar Eldarov": {
+      "city": "Khunzakh",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q18280447"
+    },
+    "Emiliano Sordi": {
+      "city": "R\u00edo Cuarto",
+      "birth_country": "Argentina",
+      "citizenship": "Argentina",
+      "wikidata": "http://www.wikidata.org/entity/Q28858626"
+    },
+    "Erin Toughill": {
+      "city": "Chicago",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q10844253"
+    },
+    "Evgeny Erokhin": {
+      "city": "Komsomolsk-on-Amur",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q97352592"
+    },
+    "Fedor Emelianenko": {
+      "city": "Rubizhne",
+      "birth_country": "Ukraine",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q205953"
+    },
+    "Felicia Spencer": {
+      "city": "Montreal",
+      "birth_country": "Canada",
+      "citizenship": "Canada",
+      "wikidata": "http://www.wikidata.org/entity/Q46623920"
+    },
+    "Frankie Edgar": {
+      "city": "Toms River",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q552182"
+    },
+    "Gabriel Bonfim": {
+      "city": "Bras\u00edlia",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q121590551"
+    },
+    "Gadzhimurad Antigulov": {
+      "city": "Anapa",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q27537245"
+    },
+    "Garry Tonon": {
+      "city": "New Jersey",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q50892580"
+    },
+    "Gary Goodridge": {
+      "city": "Saint James",
+      "birth_country": "Trinidad and Tobago",
+      "citizenship": "Canada",
+      "wikidata": "http://www.wikidata.org/entity/Q524964"
+    },
+    "Gegard Mousasi": {
+      "city": "Tehran",
+      "birth_country": "Iran",
+      "citizenship": "Kingdom of the Netherlands",
+      "wikidata": "http://www.wikidata.org/entity/Q1188997"
+    },
+    "Genki Sudo": {
+      "city": "K\u014dt\u014d",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q1336512"
+    },
+    "Geoff Neal": {
+      "city": "Austin",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q61046269"
+    },
+    "George Hardwick": {
+      "city": "Saltburn-by-the-Sea",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q1507526"
+    },
+    "Georges St-Pierre": {
+      "city": "Saint-Isidore",
+      "birth_country": "Canada",
+      "citizenship": "Canada",
+      "wikidata": "http://www.wikidata.org/entity/Q356271"
+    },
+    "Germaine de Randamie": {
+      "city": "Utrecht",
+      "birth_country": "Netherlands",
+      "citizenship": "Kingdom of the Netherlands",
+      "wikidata": "http://www.wikidata.org/entity/Q14943759"
+    },
+    "Giga Chikadze": {
+      "city": "Tbilisi",
+      "birth_country": "Georgia",
+      "citizenship": "Georgia",
+      "wikidata": "http://www.wikidata.org/entity/Q95453345"
+    },
+    "Gilbert Burns": {
+      "city": "Niter\u00f3i",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q5560829"
+    },
+    "Gilbert Melendez": {
+      "city": "Santa Ana",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q2696560"
+    },
+    "Gillian Robertson": {
+      "city": "Niagara Falls",
+      "birth_country": "Canada",
+      "citizenship": "Canada",
+      "wikidata": "http://www.wikidata.org/entity/Q47523129"
+    },
+    "Gina Carano": {
+      "city": "Dallas",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q233017"
+    },
+    "Goiti Yamauchi": {
+      "city": "Anj\u014d",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q15987810"
+    },
+    "Grant Dawson": {
+      "city": "Stromsburg",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q86883135"
+    },
+    "Gregory Rodrigues": {
+      "city": "Belo Horizonte",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q113423046"
+    },
+    "Hayato Sakurai": {
+      "city": "Ibaraki Prefecture",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q3098857"
+    },
+    "Heath Herring": {
+      "city": "Waco",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q2157426"
+    },
+    "Hector Lombard": {
+      "city": "Matanzas",
+      "birth_country": "Cuba",
+      "citizenship": "Cuba",
+      "wikidata": "http://www.wikidata.org/entity/Q1032960"
+    },
+    "Holly Holm": {
+      "city": "Albuquerque",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q2414305"
+    },
+    "Ibragim Chuzhigaev": {
+      "city": "Kemerovo",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q18229208"
+    },
+    "Ibragim Ibragimov": {
+      "city": "Makhachkala",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q112990942"
+    },
+    "Igor Vovchanchyn": {
+      "city": "Zolochiv",
+      "birth_country": "Ukraine",
+      "citizenship": "Ukraine",
+      "wikidata": "http://www.wikidata.org/entity/Q2023524"
+    },
+    "Ikram Aliskerov": {
+      "city": "Kasumkent",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q25693551"
+    },
+    "Ikuhisa Minowa": {
+      "city": "Hashima",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q3098906"
+    },
+    "Ilia Topuria": {
+      "city": "Halle",
+      "birth_country": "Germany",
+      "citizenship": "Spain",
+      "wikidata": "http://www.wikidata.org/entity/Q97185032"
+    },
+    "Impa Kasanganay": {
+      "city": "Fort Lauderdale",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q106464255"
+    },
+    "Ion Surdu": {
+      "city": "\u0218erpeni",
+      "birth_country": "Moldova",
+      "citizenship": "Moldova",
+      "wikidata": "http://www.wikidata.org/entity/Q137190045"
+    },
+    "Irene Aldana": {
+      "city": "Culiac\u00e1n",
+      "birth_country": "Mexico",
+      "citizenship": "Mexico",
+      "wikidata": "http://www.wikidata.org/entity/Q19559930"
+    },
+    "Islam Makhachev": {
+      "city": "Makhachkala",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q18637676"
+    },
+    "Ismail Naurdiev": {
+      "city": "Grozny",
+      "birth_country": "Russia",
+      "citizenship": "Austria",
+      "wikidata": "http://www.wikidata.org/entity/Q48869871"
+    },
+    "Israel Adesanya": {
+      "city": "Lagos",
+      "birth_country": "Nigeria",
+      "citizenship": "New Zealand",
+      "wikidata": "http://www.wikidata.org/entity/Q27050195"
+    },
+    "JJ Aldrich": {
+      "city": "Denver",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q21004778"
+    },
+    "Jack Cartwright": {
+      "city": "Auchenflower",
+      "birth_country": "Australia",
+      "citizenship": "Australia",
+      "wikidata": "http://www.wikidata.org/entity/Q33527707"
+    },
+    "Jack Della Maddalena": {
+      "city": "Perth",
+      "birth_country": "Australia",
+      "citizenship": "Australia",
+      "wikidata": "http://www.wikidata.org/entity/Q115433201"
+    },
+    "Jailton Almeida": {
+      "city": "Salvador",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q116258683"
+    },
+    "Jairzinho Rozenstruik": {
+      "city": "Paramaribo",
+      "birth_country": "Suriname",
+      "citizenship": "Suriname",
+      "wikidata": "http://www.wikidata.org/entity/Q73362309"
+    },
+    "Jake Shields": {
+      "city": "San Francisco",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q511173"
+    },
+    "Jakub Kaszuba": {
+      "city": "Olsztyn",
+      "birth_country": "Poland",
+      "citizenship": "Poland",
+      "wikidata": "http://www.wikidata.org/entity/Q120488236"
+    },
+    "Jalin Turner": {
+      "city": "San Bernardino",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q59660366"
+    },
+    "Jamahal Hill": {
+      "city": "Chicago",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q97171293"
+    },
+    "Jameel Massouh": {
+      "city": "Kenosha",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q6127897"
+    },
+    "Jamie Varner": {
+      "city": "Phoenix",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q6125359"
+    },
+    "Jan Blachowicz": {
+      "city": "Cz\u0119stochowa",
+      "birth_country": "Poland",
+      "citizenship": "",
+      "wikidata": "http://www.wikidata.org/entity/Q115683186"
+    },
+    "Jared Cannonier": {
+      "city": "Dallas",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q27957217"
+    },
+    "Jarrah Al-Silawi": {
+      "city": "Amman",
+      "birth_country": "Jordan",
+      "citizenship": "Jordan",
+      "wikidata": "http://www.wikidata.org/entity/Q108114718"
+    },
+    "Jarred Brooks": {
+      "city": "Warsaw",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q32857433"
+    },
+    "Jens Pulver": {
+      "city": "Sunnyside",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q2526857"
+    },
+    "Jeremy Stephens": {
+      "city": "Des Moines",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q6181926"
+    },
+    "Jessica Andrade": {
+      "city": "Umuarama",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q15131640"
+    },
+    "Jessica-Rose Clark": {
+      "city": "Australia",
+      "birth_country": "Australia",
+      "citizenship": "Australia",
+      "wikidata": "http://www.wikidata.org/entity/Q42878185"
+    },
+    "Jesus Pinedo": {
+      "city": "Callao",
+      "birth_country": "Peru",
+      "citizenship": "Peru",
+      "wikidata": "http://www.wikidata.org/entity/Q122979655"
+    },
+    "Joanne Wood": {
+      "city": "Irvine",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q1690827"
+    },
+    "Joaquin Buckley": {
+      "city": "St. Louis",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q102221793"
+    },
+    "Joe Pyfer": {
+      "city": "Vineland",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q124447415"
+    },
+    "John Dodson": {
+      "city": "Albuquerque",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q2083860"
+    },
+    "John Lineker": {
+      "city": "Paranagu\u00e1",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q10307862"
+    },
+    "Johnny Case": {
+      "city": "Jefferson",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q19609855"
+    },
+    "Johnny Walker": {
+      "city": "Rio de Janeiro",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q61478503"
+    },
+    "Jon Jones": {
+      "city": "Rochester",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q285450"
+    },
+    "Jorge Masvidal": {
+      "city": "Miami",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q6136509"
+    },
+    "Jose Augusto": {
+      "city": "Bahia",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q134508558"
+    },
+    "Jose Torres": {
+      "city": "Chicago",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q55177979"
+    },
+    "Joselyne Edwards": {
+      "city": "Panama City",
+      "birth_country": "Panama",
+      "citizenship": "Panama",
+      "wikidata": "http://www.wikidata.org/entity/Q109186905"
+    },
+    "Joseph Benavidez": {
+      "city": "San Antonio",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q2059587"
+    },
+    "Joseph Morales": {
+      "city": "Clovis",
+      "birth_country": "United States",
+      "citizenship": "",
+      "wikidata": "http://www.wikidata.org/entity/Q48468642"
+    },
+    "Josh Barnett": {
+      "city": "Seattle",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q2407490"
+    },
+    "Josh Emmett": {
+      "city": "Phoenix",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q30070477"
+    },
+    "Josh Hokit": {
+      "city": "Bakersfield",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q108055029"
+    },
+    "Josh Reed": {
+      "city": "Rayne",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q6289285"
+    },
+    "Josh Thomson": {
+      "city": "San Jose",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q3810333"
+    },
+    "Joshua Pacio": {
+      "city": "La Trinidad",
+      "birth_country": "Philippines",
+      "citizenship": "",
+      "wikidata": "http://www.wikidata.org/entity/Q56821269"
+    },
+    "Joshua Van": {
+      "city": "Hakha",
+      "birth_country": "Myanmar",
+      "citizenship": "Myanmar",
+      "wikidata": "http://www.wikidata.org/entity/Q131411649"
+    },
+    "Juan Archuleta": {
+      "city": "Hesperia",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q79775921"
+    },
+    "Julia Avila": {
+      "city": "Los Angeles",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q65112853"
+    },
+    "Julia Budd": {
+      "city": "Roberts Creek",
+      "birth_country": "Canada",
+      "citizenship": "Canada",
+      "wikidata": "http://www.wikidata.org/entity/Q6306246"
+    },
+    "Julian Erosa": {
+      "city": "Seattle",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q97306946"
+    },
+    "Julie Kedzie": {
+      "city": "Chicago",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q10963573"
+    },
+    "Jun Yong Park": {
+      "city": "Seoul",
+      "birth_country": "South Korea",
+      "citizenship": "South Korea",
+      "wikidata": "http://www.wikidata.org/entity/Q104901720"
+    },
+    "Justin Gaethje": {
+      "city": "Temucuicui",
+      "birth_country": "Chile",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q15634226"
+    },
+    "Justin Tafa": {
+      "city": "Auckland",
+      "birth_country": "New Zealand",
+      "citizenship": "New Zealand",
+      "wikidata": "http://www.wikidata.org/entity/Q84625825"
+    },
+    "Kade Ruotolo": {
+      "city": "Hawaii",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q106640808"
+    },
+    "Kai Asakura": {
+      "city": "Toyohashi",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q53764876"
+    },
+    "Kai Kamaka III": {
+      "city": "\u02bbEwa Beach",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q106684765"
+    },
+    "Kamaru Usman": {
+      "city": "Benin City",
+      "birth_country": "Nigeria",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q21290332"
+    },
+    "Kana Watanabe": {
+      "city": "Tokyo",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q45819258"
+    },
+    "Kanna Asakura": {
+      "city": "Chiba Prefecture",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q47465008"
+    },
+    "Karine Silva": {
+      "city": "Dourados",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q121898004"
+    },
+    "Karl Moore": {
+      "city": "Belfast",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q124414482"
+    },
+    "Karol Rosa": {
+      "city": "Vila Velha",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q105359215"
+    },
+    "Karolina Kowalkiewicz": {
+      "city": "\u0141\u00f3d\u017a",
+      "birth_country": "Poland",
+      "citizenship": "Poland",
+      "wikidata": "http://www.wikidata.org/entity/Q16565693"
+    },
+    "Karolina Owczarz": {
+      "city": "\u0141\u00f3d\u017a",
+      "birth_country": "Poland",
+      "citizenship": "Poland",
+      "wikidata": "http://www.wikidata.org/entity/Q11736452"
+    },
+    "Kayla Harrison": {
+      "city": "Middletown",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q2358331"
+    },
+    "Kazuhiro Nakamura": {
+      "city": "Fukuyama",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q3174577"
+    },
+    "Kazushi Sakuraba": {
+      "city": "Katagami",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q1154771"
+    },
+    "Kerim Engizek": {
+      "city": "D\u00fcsseldorf",
+      "birth_country": "Germany",
+      "citizenship": "Turkey",
+      "wikidata": "http://www.wikidata.org/entity/Q90281774"
+    },
+    "Ketlen Vieira": {
+      "city": "Manaus",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q31966537"
+    },
+    "Kevin Belingon": {
+      "city": "Ifugao",
+      "birth_country": "Philippines",
+      "citizenship": "Philippines",
+      "wikidata": "http://www.wikidata.org/entity/Q56065055"
+    },
+    "Kevin Holland": {
+      "city": "Riverside",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q62788166"
+    },
+    "Kevin Lee": {
+      "city": "Grand Rapids",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q18157401"
+    },
+    "Kevin Randleman": {
+      "city": "Sandusky",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q1336425"
+    },
+    "Kevin Vallejos": {
+      "city": "Mar del Plata",
+      "birth_country": "Argentina",
+      "citizenship": "Argentina",
+      "wikidata": "http://www.wikidata.org/entity/Q135207548"
+    },
+    "Khabib Nurmagomedov": {
+      "city": "Sildi",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q3526023"
+    },
+    "Khalid Taha": {
+      "city": "Dortmund",
+      "birth_country": "Germany",
+      "citizenship": "Lebanon",
+      "wikidata": "http://www.wikidata.org/entity/Q69832238"
+    },
+    "Khalil Rountree Jr.": {
+      "city": "Los Angeles",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q31270277"
+    },
+    "Khamzat Chimaev": {
+      "city": "Gvardeyskoe",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q76476288"
+    },
+    "Kimbo Slice": {
+      "city": "Nassau",
+      "birth_country": "The Bahamas",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q459971"
+    },
+    "Kintaro": {
+      "city": "Okazaki",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q4132974"
+    },
+    "Kiyoshi Tamura": {
+      "city": "Okayama",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q6419127"
+    },
+    "Kleber Koike Erbst": {
+      "city": "S\u00e3o Paulo",
+      "birth_country": "Brazil",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q24956001"
+    },
+    "Koji Takeda": {
+      "city": "Ibaraki Prefecture",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q23822727"
+    },
+    "Krzysztof Jotko": {
+      "city": "Elbl\u0105g",
+      "birth_country": "Poland",
+      "citizenship": "Poland",
+      "wikidata": "http://www.wikidata.org/entity/Q11749319"
+    },
+    "Kurt Holobaugh": {
+      "city": "Denham Springs",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q59223348"
+    },
+    "Kyler Phillips": {
+      "city": "Torrance",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q47523147"
+    },
+    "Kyoji Horiguchi": {
+      "city": "Takasaki",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q6451952"
+    },
+    "Larissa Pacheco": {
+      "city": "Bel\u00e9m",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q17612713"
+    },
+    "Lazar Todev": {
+      "city": "Bansko",
+      "birth_country": "Bulgaria",
+      "citizenship": "Bulgaria",
+      "wikidata": "http://www.wikidata.org/entity/Q28792344"
+    },
+    "Leandro Higo": {
+      "city": "Mossor\u00f3",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q28465701"
+    },
+    "Leon Edwards": {
+      "city": "Kingston",
+      "birth_country": "Jamaica",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q19872938"
+    },
+    "Leonard Garcia": {
+      "city": "Plainview",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q6525306"
+    },
+    "Lerone Murphy": {
+      "city": "Manchester",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q104966783"
+    },
+    "Linton Vassell": {
+      "city": "London",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q6554924"
+    },
+    "Liz Carmouche": {
+      "city": "Lafayette",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q1523288"
+    },
+    "Logan Storley": {
+      "city": "Roslyn",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q90153995"
+    },
+    "Lorenz Larkin": {
+      "city": "Riverside",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q590329"
+    },
+    "Losene Keita": {
+      "city": "Conakry",
+      "birth_country": "Guinea",
+      "citizenship": "Belgium",
+      "wikidata": "http://www.wikidata.org/entity/Q115821268"
+    },
+    "Luke Riley": {
+      "city": "Liverpool",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q140374143"
+    },
+    "Luke Rockhold": {
+      "city": "Santa Cruz",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q967452"
+    },
+    "Lyoto Machida": {
+      "city": "Salvador",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q369167"
+    },
+    "Mackenzie Dern": {
+      "city": "Phoenix",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q21005601"
+    },
+    "Macy Chiasson": {
+      "city": "New Orleans",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q57210892"
+    },
+    "Mads Burnell": {
+      "city": "Husum",
+      "birth_country": "Denmark",
+      "citizenship": "Kingdom of Denmark",
+      "wikidata": "http://www.wikidata.org/entity/Q54860978"
+    },
+    "Magomed Ankalaev": {
+      "city": "Teletl",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q50278013"
+    },
+    "Magomed Bibulatov": {
+      "city": "Achkhoy-Martan",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q18215341"
+    },
+    "Magomed Ismailov": {
+      "city": "Nizhny Tagil",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q55106801"
+    },
+    "Magomed Umalatov": {
+      "city": "Zenzeli",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q63381595"
+    },
+    "Magomedrasul Khasbulaev": {
+      "city": "Makhachkala",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q4496443"
+    },
+    "Mamed Khalidov": {
+      "city": "Grozny",
+      "birth_country": "Russia",
+      "citizenship": "Poland",
+      "wikidata": "http://www.wikidata.org/entity/Q347936"
+    },
+    "Manel Kape": {
+      "city": "Luanda",
+      "birth_country": "Angola",
+      "citizenship": "Angola",
+      "wikidata": "http://www.wikidata.org/entity/Q56886154"
+    },
+    "Manny Gamburyan": {
+      "city": "Gyumri",
+      "birth_country": "Armenia",
+      "citizenship": "Armenia",
+      "wikidata": "http://www.wikidata.org/entity/Q3249868"
+    },
+    "Manon Fiorot": {
+      "city": "Nice",
+      "birth_country": "France",
+      "citizenship": "France",
+      "wikidata": "http://www.wikidata.org/entity/Q106358942"
+    },
+    "Mansur Azhiev": {
+      "city": "Chechnya",
+      "birth_country": "Russia",
+      "citizenship": "Poland",
+      "wikidata": "http://www.wikidata.org/entity/Q109660969"
+    },
+    "Marcin Tybura": {
+      "city": "Uniej\u00f3w",
+      "birth_country": "Poland",
+      "citizenship": "Poland",
+      "wikidata": "http://www.wikidata.org/entity/Q16574553"
+    },
+    "Marcirley Alves": {
+      "city": "Eldorado do Caraj\u00e1s",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q135264922"
+    },
+    "Marina Rodriguez": {
+      "city": "Bag\u00e9",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q66982192"
+    },
+    "Mario Bautista": {
+      "city": "Winnemucca",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q86954930"
+    },
+    "Mario Pinto": {
+      "city": "Brindisi",
+      "birth_country": "Italy",
+      "citizenship": "Italy",
+      "wikidata": "http://www.wikidata.org/entity/Q108895149"
+    },
+    "Mark Hominick": {
+      "city": "Thamesford",
+      "birth_country": "Canada",
+      "citizenship": "Canada",
+      "wikidata": "http://www.wikidata.org/entity/Q2060100"
+    },
+    "Mark Kerr": {
+      "city": "Toledo",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q1369125"
+    },
+    "Marloes Coenen": {
+      "city": "Olst",
+      "birth_country": "Netherlands",
+      "citizenship": "Kingdom of the Netherlands",
+      "wikidata": "http://www.wikidata.org/entity/Q441270"
+    },
+    "Marlon Vera": {
+      "city": "Chone",
+      "birth_country": "Ecuador",
+      "citizenship": "Ecuador",
+      "wikidata": "http://www.wikidata.org/entity/Q18704247"
+    },
+    "Martin Nguyen": {
+      "city": "Sydney",
+      "birth_country": "Australia",
+      "citizenship": "Australia",
+      "wikidata": "http://www.wikidata.org/entity/Q54731393"
+    },
+    "Marvin Vettori": {
+      "city": "Mezzocorona",
+      "birth_country": "Italy",
+      "citizenship": "Italy",
+      "wikidata": "http://www.wikidata.org/entity/Q26509559"
+    },
+    "Masanori Kanehara": {
+      "city": "Tokyo",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q6782587"
+    },
+    "Mateusz Gamrot": {
+      "city": "Bielsko-Bia\u0142a",
+      "birth_country": "Poland",
+      "citizenship": "Poland",
+      "wikidata": "http://www.wikidata.org/entity/Q19521996"
+    },
+    "Mateusz Rebecki": {
+      "city": "Gryfice",
+      "birth_country": "Poland",
+      "citizenship": "Poland",
+      "wikidata": "http://www.wikidata.org/entity/Q60837162"
+    },
+    "Matt Frevola": {
+      "city": "Huntington",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q51140985"
+    },
+    "Matt Hughes": {
+      "city": "Hillsboro",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q455763"
+    },
+    "Matt Schnell": {
+      "city": "Amory",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q39075126"
+    },
+    "Mauricio Ruffy": {
+      "city": "Coruripe",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q131228114"
+    },
+    "Max Griffin": {
+      "city": "Santa Barbara",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q39854162"
+    },
+    "Max Holloway": {
+      "city": "Waianae",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q6794874"
+    },
+    "Maycee Barber": {
+      "city": "Greeley",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q58454724"
+    },
+    "Mayra Bueno Silva": {
+      "city": "Uberl\u00e2ndia",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q99507110"
+    },
+    "Mehdi Ben Lakhdhar": {
+      "city": "Paris",
+      "birth_country": "France",
+      "citizenship": "France",
+      "wikidata": "http://www.wikidata.org/entity/Q97179204"
+    },
+    "Melsik Baghdasaryan": {
+      "city": "Yerevan",
+      "birth_country": "Armenia",
+      "citizenship": "Armenia",
+      "wikidata": "http://www.wikidata.org/entity/Q104704560"
+    },
+    "Meng Bo": {
+      "city": "Changzhou",
+      "birth_country": "People's Republic of China",
+      "citizenship": "People's Republic of China",
+      "wikidata": "http://www.wikidata.org/entity/Q8290540"
+    },
+    "Merab Dvalishvili": {
+      "city": "Vani",
+      "birth_country": "Georgia",
+      "citizenship": "Georgia",
+      "wikidata": "http://www.wikidata.org/entity/Q48471377"
+    },
+    "Michael Chandler": {
+      "city": "High Ridge",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q614630"
+    },
+    "Michael Johnson": {
+      "city": "St. Louis",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q4896337"
+    },
+    "Michael Morales": {
+      "city": "Machala",
+      "birth_country": "Ecuador",
+      "citizenship": "Ecuador",
+      "wikidata": "http://www.wikidata.org/entity/Q115298767"
+    },
+    "Michael Page": {
+      "city": "St Mary's Hospital",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q6833334"
+    },
+    "Michal Materla": {
+      "city": "Szczecin",
+      "birth_country": "Poland",
+      "citizenship": "Poland",
+      "wikidata": "http://www.wikidata.org/entity/Q11779014"
+    },
+    "Michel Pereira": {
+      "city": "Marab\u00e1",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q89157549"
+    },
+    "Michelle Montague": {
+      "city": "Matamata",
+      "birth_country": "New Zealand",
+      "citizenship": "New Zealand",
+      "wikidata": "http://www.wikidata.org/entity/Q55391191"
+    },
+    "Miesha Tate": {
+      "city": "Tacoma",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q1138101"
+    },
+    "Miguel Torres": {
+      "city": "East Chicago",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q2778180"
+    },
+    "Mike Brown": {
+      "city": "Portland",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q2757687"
+    },
+    "Mike Malott": {
+      "city": "Waterdown",
+      "birth_country": "Canada",
+      "citizenship": "Canada",
+      "wikidata": "http://www.wikidata.org/entity/Q108332236"
+    },
+    "Mike Perry": {
+      "city": "Flint",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q27749823"
+    },
+    "Mikey Musumeci": {
+      "city": "Marlboro",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q96187125"
+    },
+    "Mikuru Asakura": {
+      "city": "Toyohashi",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q53764960"
+    },
+    "Miranda Maverick": {
+      "city": "United States",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q50309878"
+    },
+    "Mirko Cro Cop": {
+      "city": "Vinkovci",
+      "birth_country": "Croatia",
+      "citizenship": "Croatia",
+      "wikidata": "http://www.wikidata.org/entity/Q354790"
+    },
+    "Mizuki": {
+      "city": "Kobe",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q17212016"
+    },
+    "Modestas Bukauskas": {
+      "city": "Klaip\u0117da",
+      "birth_country": "Lithuania",
+      "citizenship": "Lithuania",
+      "wikidata": "http://www.wikidata.org/entity/Q106241945"
+    },
+    "Molly McCann": {
+      "city": "Liverpool",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q64875539"
+    },
+    "Montel Jackson": {
+      "city": "Milwaukee",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q63208572"
+    },
+    "Movsar Evloev": {
+      "city": "Sunzha",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q47453148"
+    },
+    "Muhammed Lawal": {
+      "city": "Murfreesboro",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q983659"
+    },
+    "Murad Machaev": {
+      "city": "Makhachkala",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q6937189"
+    },
+    "Muslim Salikhov": {
+      "city": "Makhachkala",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q6942961"
+    },
+    "Naoki Inoue": {
+      "city": "Toyohashi",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q30502025"
+    },
+    "Nasrat Haqparast": {
+      "city": "Hamburg",
+      "birth_country": "Germany",
+      "citizenship": "Germany",
+      "wikidata": "http://www.wikidata.org/entity/Q58009240"
+    },
+    "Nassourdine Imavov": {
+      "city": "Khasavyurt",
+      "birth_country": "Russia",
+      "citizenship": "France",
+      "wikidata": "http://www.wikidata.org/entity/Q107641405"
+    },
+    "Natalia Silva": {
+      "city": "Medell\u00edn",
+      "birth_country": "Colombia",
+      "citizenship": "Colombia",
+      "wikidata": "http://www.wikidata.org/entity/Q124356723"
+    },
+    "Nate Diaz": {
+      "city": "Stockton",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q2698008"
+    },
+    "Nathan Fletcher": {
+      "city": "Carson City",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q16215776"
+    },
+    "Nathaniel Wood": {
+      "city": "London",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q61435520"
+    },
+    "Nazim Sadykhov": {
+      "city": "Moscow",
+      "birth_country": "Russia",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q131784043"
+    },
+    "Neil Magny": {
+      "city": "Brooklyn",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q15987654"
+    },
+    "Nick Diaz": {
+      "city": "Stockton",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q919177"
+    },
+    "Nicolas Dalby": {
+      "city": "Silkeborg",
+      "birth_country": "Denmark",
+      "citizenship": "Kingdom of Denmark",
+      "wikidata": "http://www.wikidata.org/entity/Q20080409"
+    },
+    "Nikita Krylov": {
+      "city": "Khrustalnyi",
+      "birth_country": "Ukraine",
+      "citizenship": "Ukraine",
+      "wikidata": "http://www.wikidata.org/entity/Q15710959"
+    },
+    "Norma Dumont": {
+      "city": "Belo Horizonte",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q106950074"
+    },
+    "Ode Osbourne": {
+      "city": "Kingston",
+      "birth_country": "Jamaica",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q83093836"
+    },
+    "Oumar Kane": {
+      "city": "Dakar",
+      "birth_country": "Senegal",
+      "citizenship": "Senegal",
+      "wikidata": "http://www.wikidata.org/entity/Q121225211"
+    },
+    "Paddy Pimblett": {
+      "city": "Liverpool",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q57409501"
+    },
+    "Paige VanZant": {
+      "city": "Dundee",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q10343583"
+    },
+    "Pannie Kianzad": {
+      "city": "Ahvaz",
+      "birth_country": "Iran",
+      "citizenship": "Sweden",
+      "wikidata": "http://www.wikidata.org/entity/Q16595472"
+    },
+    "Pat Healy": {
+      "city": "Salem",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q3897545"
+    },
+    "Patchy Mix": {
+      "city": "Angola",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q101079395"
+    },
+    "Patrick Habirora": {
+      "city": "Namur",
+      "birth_country": "Belgium",
+      "citizenship": "Belgium",
+      "wikidata": "http://www.wikidata.org/entity/Q116695967"
+    },
+    "Patryk Kaczmarczyk": {
+      "city": "Kozienice",
+      "birth_country": "Poland",
+      "citizenship": "Poland",
+      "wikidata": "http://www.wikidata.org/entity/Q106614979"
+    },
+    "Paul Daley": {
+      "city": "London",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q2064316"
+    },
+    "Paulo Costa": {
+      "city": "Belo Horizonte",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q30108735"
+    },
+    "Paulo Filho": {
+      "city": "Rio de Janeiro",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q3106875"
+    },
+    "Pearl Gonzalez": {
+      "city": "Chicago",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q51068727"
+    },
+    "Petr Yan": {
+      "city": "Dudinka",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q54218657"
+    },
+    "Phil Davis": {
+      "city": "Harrisburg",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q576360"
+    },
+    "Phil De Fries": {
+      "city": "Cleethorpes",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q7181834"
+    },
+    "Quillan Salkilld": {
+      "city": "Perth",
+      "birth_country": "Australia",
+      "citizenship": "Australia",
+      "wikidata": "http://www.wikidata.org/entity/Q134467028"
+    },
+    "Quinton Jackson": {
+      "city": "Memphis",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q437584"
+    },
+    "Rafael Cavalcante": {
+      "city": "Ilha Solteira",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q2057125"
+    },
+    "Rafael Fiziev": {
+      "city": "Korday",
+      "birth_country": "Kazakhstan",
+      "citizenship": "Azerbaijan",
+      "wikidata": "http://www.wikidata.org/entity/Q75012682"
+    },
+    "Randy Brown": {
+      "city": "Springfield",
+      "birth_country": "United States",
+      "citizenship": "Jamaica",
+      "wikidata": "http://www.wikidata.org/entity/Q22958637"
+    },
+    "Rani Yahya": {
+      "city": "Bras\u00edlia",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q4134787"
+    },
+    "Raoni Barcelos": {
+      "city": "Rio de Janeiro",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q20028301"
+    },
+    "Raquel Pennington": {
+      "city": "Colorado Springs",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q15987788"
+    },
+    "Rasul Magomedov": {
+      "city": "Dagestan",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q29078085"
+    },
+    "Raufeon Stots": {
+      "city": "Houston",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q97610279"
+    },
+    "Ray Borg": {
+      "city": "Albuquerque",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q18637177"
+    },
+    "Reinier de Ridder": {
+      "city": "Breda",
+      "birth_country": "Netherlands",
+      "citizenship": "Kingdom of the Netherlands",
+      "wikidata": "http://www.wikidata.org/entity/Q103783008"
+    },
+    "Ren Hiramoto": {
+      "city": "Tokyo",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q60194618"
+    },
+    "Rena Kubota": {
+      "city": "Osaka",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q4921076"
+    },
+    "Renan Ferreira": {
+      "city": "Porangatu",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q123531847"
+    },
+    "Renato Sobral": {
+      "city": "Rio de Janeiro",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q2482623"
+    },
+    "Ricardo Arona": {
+      "city": "Araruama",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q2701813"
+    },
+    "Ricardo Ramos": {
+      "city": "Campinas",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q44070424"
+    },
+    "Ricky Simon": {
+      "city": "Vancouver",
+      "birth_country": "Canada",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q61663571"
+    },
+    "Rin Nakai": {
+      "city": "Matsuyama",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q3242787"
+    },
+    "Rob Font": {
+      "city": "Massachusetts",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q17466006"
+    },
+    "Robbie Lawler": {
+      "city": "San Diego",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q4900149"
+    },
+    "Robert Whittaker": {
+      "city": "New Zealand",
+      "birth_country": "New Zealand",
+      "citizenship": "New Zealand",
+      "wikidata": "http://www.wikidata.org/entity/Q4845777"
+    },
+    "Rodrigo Nascimento": {
+      "city": "Belo Horizonte",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q97164717"
+    },
+    "Roman Dolidze": {
+      "city": "Batumi",
+      "birth_country": "Georgia",
+      "citizenship": "Georgia",
+      "wikidata": "http://www.wikidata.org/entity/Q64861182"
+    },
+    "Roman Paulus": {
+      "city": "Prague",
+      "birth_country": "Czech Republic",
+      "citizenship": "Czech Republic",
+      "wikidata": "http://www.wikidata.org/entity/Q17228400"
+    },
+    "Ronaldo Souza": {
+      "city": "Vila Velha",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q2528114"
+    },
+    "Ronda Rousey": {
+      "city": "Santa Monica",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q242201"
+    },
+    "Rose Namajunas": {
+      "city": "Milwaukee",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q16226725"
+    },
+    "Ross Pearson": {
+      "city": "Sunderland",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q2756376"
+    },
+    "Rousimar Palhares": {
+      "city": "Dores do Indai\u00e1",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q2060133"
+    },
+    "Ryan Bader": {
+      "city": "Reno",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q2479163"
+    },
+    "Ryan Spann": {
+      "city": "Memphis",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q70714552"
+    },
+    "Ryo Chonan": {
+      "city": "Tsuruoka",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q1151941"
+    },
+    "Sage Northcutt": {
+      "city": "Katy",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q21090267"
+    },
+    "Salahdine Parnasse": {
+      "city": "Aubervilliers",
+      "birth_country": "France",
+      "citizenship": "France",
+      "wikidata": "http://www.wikidata.org/entity/Q55392509"
+    },
+    "Sam Hughes": {
+      "city": "West Kirby",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q67373434"
+    },
+    "Santiago Ponzinibbio": {
+      "city": "La Plata",
+      "birth_country": "Argentina",
+      "citizenship": "Argentina",
+      "wikidata": "http://www.wikidata.org/entity/Q20078686"
+    },
+    "Sarah Kaufman": {
+      "city": "Victoria",
+      "birth_country": "Canada",
+      "citizenship": "Canada",
+      "wikidata": "http://www.wikidata.org/entity/Q2060995"
+    },
+    "Sarvarjon Khamidov": {
+      "city": "Tajikistan",
+      "birth_country": "Tajikistan",
+      "citizenship": "Tajikistan",
+      "wikidata": "http://www.wikidata.org/entity/Q138026866"
+    },
+    "Scott Jorgensen": {
+      "city": "Payson",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q429652"
+    },
+    "Scott Smith": {
+      "city": "Reno",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q5976023"
+    },
+    "Sean Brady": {
+      "city": "Philadelphia",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q98780764"
+    },
+    "Sean O'Malley": {
+      "city": "Helena",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q45189135"
+    },
+    "Sean Strickland": {
+      "city": "Anaheim",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q17180973"
+    },
+    "Sebastian Przybysz": {
+      "city": "Gda\u0144sk",
+      "birth_country": "Poland",
+      "citizenship": "Poland",
+      "wikidata": "http://www.wikidata.org/entity/Q85868087"
+    },
+    "Sebastian Rajewski": {
+      "city": "P\u0142ock",
+      "birth_country": "Poland",
+      "citizenship": "Poland",
+      "wikidata": "http://www.wikidata.org/entity/Q113665833"
+    },
+    "Seo Hee Ham": {
+      "city": "Gangwon Province",
+      "birth_country": "South Korea",
+      "citizenship": "South Korea",
+      "wikidata": "http://www.wikidata.org/entity/Q492621"
+    },
+    "Sergei Pavlovich": {
+      "city": "Orlovsky",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q72386202"
+    },
+    "Sergio Pettis": {
+      "city": "Milwaukee",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q14191086"
+    },
+    "Shamil Gasanov": {
+      "city": "Makhachkala",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q16235390"
+    },
+    "Shane Roller": {
+      "city": "Bixby",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q7488252"
+    },
+    "Shavkat Rakhmonov": {
+      "city": "Shurchi",
+      "birth_country": "Uzbekistan",
+      "citizenship": "Kazakhstan",
+      "wikidata": "http://www.wikidata.org/entity/Q110825847"
+    },
+    "Shintaro Ishiwatari": {
+      "city": "Osaka",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q7497781"
+    },
+    "Shinya Aoki": {
+      "city": "Shizuoka",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q926027"
+    },
+    "Si Woo Park": {
+      "city": "South Korea",
+      "birth_country": "South Korea",
+      "citizenship": "South Korea",
+      "wikidata": "http://www.wikidata.org/entity/Q107610826"
+    },
+    "Song Yadong": {
+      "city": "Hulan District",
+      "birth_country": "People's Republic of China",
+      "citizenship": "People's Republic of China",
+      "wikidata": "http://www.wikidata.org/entity/Q56809033"
+    },
+    "Stamp Fairtex": {
+      "city": "Rayong",
+      "birth_country": "Thailand",
+      "citizenship": "Thailand",
+      "wikidata": "http://www.wikidata.org/entity/Q67491306"
+    },
+    "Stephen Thompson": {
+      "city": "Simpsonville",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q11253984"
+    },
+    "Steve Erceg": {
+      "city": "Perth",
+      "birth_country": "Australia",
+      "citizenship": "Australia",
+      "wikidata": "http://www.wikidata.org/entity/Q121354731"
+    },
+    "Steve Garcia": {
+      "city": "Albuquerque",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q18043912"
+    },
+    "Sullivan Cauley": {
+      "city": "Scottsdale",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q135252862"
+    },
+    "Tagir Ulanbekov": {
+      "city": "Dagestan",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q101229278"
+    },
+    "Tai Tuivasa": {
+      "city": "Sydney",
+      "birth_country": "Australia",
+      "citizenship": "Australia",
+      "wikidata": "http://www.wikidata.org/entity/Q30675529"
+    },
+    "Taila Santos": {
+      "city": "Jaragu\u00e1 do Sul",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q104384202"
+    },
+    "Takanori Gomi": {
+      "city": "Kanagawa Prefecture",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q2525256"
+    },
+    "Tallison Teixeira": {
+      "city": "Vit\u00f3ria da Conquista",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q134289443"
+    },
+    "Tanner Boser": {
+      "city": "Bonnyville",
+      "birth_country": "Canada",
+      "citizenship": "Canada",
+      "wikidata": "http://www.wikidata.org/entity/Q96694117"
+    },
+    "Tarec Saffiedine": {
+      "city": "Brussels-Capital Region",
+      "birth_country": "Belgium",
+      "citizenship": "Belgium",
+      "wikidata": "http://www.wikidata.org/entity/Q3011868"
+    },
+    "Tatiana Suarez": {
+      "city": "Azusa",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q7688105"
+    },
+    "Tatsuro Taira": {
+      "city": "Naha",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q108109936"
+    },
+    "Tatsuya Kawajiri": {
+      "city": "Inashiki",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q2605547"
+    },
+    "Taylor Lapilus": {
+      "city": "Villepinte",
+      "birth_country": "France",
+      "citizenship": "France",
+      "wikidata": "http://www.wikidata.org/entity/Q20241019"
+    },
+    "Tim Elliott": {
+      "city": "Wichita",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q7803464"
+    },
+    "Tim Kennedy": {
+      "city": "San Luis Obispo",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q3991364"
+    },
+    "Toby Marlow": {
+      "city": "Henley-on-Thames",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q7811844"
+    },
+    "Tofiq Musayev": {
+      "city": "Sahil",
+      "birth_country": "Azerbaijan",
+      "citizenship": "Azerbaijan",
+      "wikidata": "http://www.wikidata.org/entity/Q68184874"
+    },
+    "Tom Aspinall": {
+      "city": "Salford",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q105612429"
+    },
+    "Tom Aspinall CW": {
+      "city": "Salford",
+      "birth_country": "United Kingdom",
+      "citizenship": "United Kingdom",
+      "wikidata": "http://www.wikidata.org/entity/Q105612429"
+    },
+    "Tomasz Narkun": {
+      "city": "Stargard",
+      "birth_country": "Poland",
+      "citizenship": "Poland",
+      "wikidata": "http://www.wikidata.org/entity/Q7818445"
+    },
+    "Tony Ferguson": {
+      "city": "Oxnard",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q7822327"
+    },
+    "Tonya Evinger": {
+      "city": "Odessa",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q7823747"
+    },
+    "Tracy Cortez": {
+      "city": "Phoenix",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q61983615"
+    },
+    "Tyron Woodley": {
+      "city": "Ferguson",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q2075426"
+    },
+    "Tyson Pedro": {
+      "city": "Sydney",
+      "birth_country": "Australia",
+      "citizenship": "Australia",
+      "wikidata": "http://www.wikidata.org/entity/Q29525226"
+    },
+    "Umar Nurmagomedov": {
+      "city": "Kizilyurt",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q56315142"
+    },
+    "Urijah Faber": {
+      "city": "Isla Vista",
+      "birth_country": "United States",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q2704462"
+    },
+    "Usman Nurmagomedov": {
+      "city": "Kizilyurt",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q65157751"
+    },
+    "Vadim Nemkov": {
+      "city": "Belgorod",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q19911249"
+    },
+    "Valentin Moldavsky": {
+      "city": "Aidar",
+      "birth_country": "Ukraine",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q24938217"
+    },
+    "Valentina Shevchenko": {
+      "city": "Bishkek",
+      "birth_country": "Kyrgyzstan",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q4522047"
+    },
+    "Valter Walker": {
+      "city": "Rio das Ostras",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q133797811"
+    },
+    "Vicente Luque": {
+      "city": "Westwood",
+      "birth_country": "United States",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q24053947"
+    },
+    "Vinicius Oliveira": {
+      "city": "Porto Alegre",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q132012973"
+    },
+    "Virna Jandiroba": {
+      "city": "Serrinha",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q56434195"
+    },
+    "Vitaly Minakov": {
+      "city": "Bryansk",
+      "birth_country": "Russia",
+      "citizenship": "Russia",
+      "wikidata": "http://www.wikidata.org/entity/Q4293976"
+    },
+    "Vitor Belfort": {
+      "city": "Rio de Janeiro",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q458716"
+    },
+    "Vitor Petrino": {
+      "city": "Santa Luzia",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q125798867"
+    },
+    "Vugar Karamov": {
+      "city": "Khachmaz",
+      "birth_country": "Azerbaijan",
+      "citizenship": "Azerbaijan",
+      "wikidata": "http://www.wikidata.org/entity/Q31305271"
+    },
+    "Wagnney Fabiano": {
+      "city": "Rio de Janeiro",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q7959637"
+    },
+    "Wanderlei Silva": {
+      "city": "Curitiba",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q458749"
+    },
+    "Wilson Reis": {
+      "city": "S\u00e3o Paulo",
+      "birth_country": "Brazil",
+      "citizenship": "Brazil",
+      "wikidata": "http://www.wikidata.org/entity/Q6121270"
+    },
+    "Xiong Jing Nan": {
+      "city": "Beijing",
+      "birth_country": "People's Republic of China",
+      "citizenship": "People's Republic of China",
+      "wikidata": "http://www.wikidata.org/entity/Q62642602"
+    },
+    "Yaroslav Amosov": {
+      "city": "Irpin",
+      "birth_country": "Ukraine",
+      "citizenship": "Ukraine",
+      "wikidata": "http://www.wikidata.org/entity/Q26255520"
+    },
+    "Yoel Romero": {
+      "city": "Pinar del R\u00edo",
+      "birth_country": "Cuba",
+      "citizenship": "United States",
+      "wikidata": "http://www.wikidata.org/entity/Q941268"
+    },
+    "Youssef Zalal": {
+      "city": "Casablanca",
+      "birth_country": "Morocco",
+      "citizenship": "",
+      "wikidata": "http://www.wikidata.org/entity/Q97163112"
+    },
+    "Yuki Kondo": {
+      "city": "Nagaoka",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q2090890"
+    },
+    "Yuya Wakamatsu": {
+      "city": "Satsumasendai",
+      "birth_country": "Japan",
+      "citizenship": "Japan",
+      "wikidata": "http://www.wikidata.org/entity/Q55407330"
+    },
+    "Zhalgas Zhumagulov": {
+      "city": "Aktobe",
+      "birth_country": "Kazakhstan",
+      "citizenship": "Kazakhstan",
+      "wikidata": "http://www.wikidata.org/entity/Q107485020"
+    },
+    "Zhang Weili": {
+      "city": "Handan",
+      "birth_country": "People's Republic of China",
+      "citizenship": "People's Republic of China",
+      "wikidata": "http://www.wikidata.org/entity/Q61949317"
+    }
+  }
+}

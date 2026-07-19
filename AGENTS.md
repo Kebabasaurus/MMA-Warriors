@@ -27,6 +27,9 @@ The game should remain:
 - Dark, readable, game-like, and not cluttered.
 - Data-rich, but navigable.
 
+Current working source path: `D:\CodexFILES\MMA Warriors`.
+Current packaged game: `D:\CodexFILES\MMA Warriors\dist\MMA Warriors\MMA Warriors.exe`.
+
 ## Important Files
 
 The app was split from one large `main.py` into flat sibling modules. `FightEmpireApp`
@@ -54,7 +57,7 @@ save-path anchoring is unchanged.
 - `Build Portable.bat` - Builds `dist\MMA Warriors\MMA Warriors.exe` with PyInstaller.
 - `README.md` - Player/build instructions.
 - `savegame.json`, `Saves/`, `Databases/` - Runtime data. Do not delete user saves unless explicitly asked.
-- `Logs/mma_warriors.log` - Rotating runtime log. `Logs/Crashes/` stores one timestamped report per unhandled error; crash autosaves are stored in `Saves/`.
+- `Logs/mma_warriors.log` - Rotating runtime log. `Logs/Crashes/` stores one timestamped report per unhandled error; crash autosaves are stored in the active slot's `Crash Recovery` folder.
 - `fight_sim_500_audit*.txt` - Historical fight balance audit logs.
 
 ## Required Commands
@@ -71,17 +74,20 @@ Run smoke tests:
 & "C:\Users\Tanks\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe" "D:\CodexFILES\MMA Warriors\smoke_test.py"
 ```
 
-Build portable exe:
+Build portable exe from the checked-in spec (use the local Python installation that has
+PyInstaller; the bundled test runtime may not include it):
 
 ```powershell
-& "C:\Users\Tanks\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe" -m PyInstaller --noconfirm --windowed --name "MMA Warriors" --distpath "D:\CodexFILES\MMA Warriors\dist" --workpath "D:\CodexFILES\MMA Warriors\build" --specpath "D:\CodexFILES\MMA Warriors\build" "D:\CodexFILES\MMA Warriors\main.py"
+& "C:\Users\Tanks\AppData\Local\Programs\Python\Python313\python.exe" -m PyInstaller --noconfirm --clean --distpath "D:\CodexFILES\MMA Warriors\output_current" --workpath "D:\CodexFILES\MMA Warriors\build_current" "D:\CodexFILES\MMA Warriors\MMA Warriors.spec"
 ```
 
-After a build, recreate:
+Copy the resulting EXE and `_internal` tree into the existing
+`dist\MMA Warriors` package. Preserve its runtime folders:
 
 ```text
 dist\MMA Warriors\Saves
 dist\MMA Warriors\Databases
+dist\MMA Warriors\Logs
 dist\MMA Warriors\README.md
 ```
 
@@ -132,8 +138,12 @@ The player starts as `BAMMA`. Rival promotions should include:
 - `Absolute Championship Akhmat`
 
 Regional feeder promotions are also core world objects: `Japan Fight Circuit`, `UK Regional MMA`,
-`North American Fighting League`, `European Challenge MMA`, and `Asia Rising Championship`. They
-have `is_regional_feeder=True`, no financial simulation, age-16 minimum prospects, and development-card logic.
+`North American Fighting League`, `European Challenge MMA`, `Asia Rising Championship`,
+`Brazilian Combat Circuit`, `Latin American MMA League`, `Canadian Fight Alliance`,
+`Oceania Combat League`, `African MMA Championship`, `Midwest Fight League`,
+`Nordic Combat League`, `Korean Fighting Championship`, `South American Vale Tudo Circuit`,
+and `British Fight League`. They have `is_regional_feeder=True`, no normal commercial
+finance simulation, young-prospect generation, and development-card/pathway logic.
 
 If adding/removing core promotions:
 
@@ -159,6 +169,45 @@ Current path behavior:
 - `APP_DIR` is derived from `__file__`, or from `sys.executable` when packaged.
 - `DATA_DIR` uses `APP_DIR` when writable (portable behavior). If the executable is in a protected location, it falls back to `%LOCALAPPDATA%\MMA Warriors`.
 - `SAVE_FILE`, `SAVE_DIR`, `DATABASE_DIR`, and `LOG_DIR` are anchored to `DATA_DIR`, never cwd-relative paths.
+- Existing ungrouped careers live at `Saves\<Slot>\savegame.json` and are presented as
+  the `Main` folder.
+- User-created save folders live at `Saves\Folders\<Folder>\<Slot>\savegame.json`.
+  `active_save_group` is serialized with the world. Backups, autosaves, snapshots, and
+  crash recovery remain inside the owning slot and must move with it.
+- Save discovery must use `primary_save_paths`, `save_slot_name_from_path`, and
+  `save_slot_group_from_path`; do not reintroduce assumptions that every slot is exactly
+  one directory below `SAVE_DIR`.
+
+## New Promotion Starts
+
+`Create Your Own Promotion` is a real starting mode, not an editor shortcut.
+
+- The player chooses region, scale, event philosophy, theme, genders, and active weights.
+- New starts use viable roster targets of 8, 10, or 12 fighters per active division.
+- The default is Men Only with Featherweight, Lightweight, and Welterweight selected;
+  do not silently reopen every division.
+- `Balanced`, `Star Led`, and `Prospect Heavy` alter automatic draft priorities.
+- The manual initial-roster draft shows fighter profiles and annual contract commitment.
+  Every active division must have at least six selected fighters and the total must remain
+  within the scale/division-based budget.
+- `auto_select_custom_roster` first reserves a complete affordable baseline for every
+  selected division, then upgrades it according to strategy. Do not return to sequential
+  spending that can starve the final weight class.
+- Closed divisions must persist when the custom company is handed to AI, saved/loaded, or
+  taken over later. Custom starts do not remove BAMMA; it becomes an AI promotion.
+
+## Matchmaking Availability
+
+The matchmaking roster is event-date aware.
+
+- `fighter.status` describes current condition and is not sufficient for future booking.
+- Use `fighter_booking_status(fighter, month, week)` and `fighter_available_for_date` for
+  the selected event date.
+- Changing event month, year, or week must refresh the available-fighter table immediately.
+- The default `Ready` filter means ready for that event date. The `All` filter may display
+  unavailable fighters with an exact return label such as `Available Mar W3 2026`.
+- Routine booking conflicts should use the inline matchmaking notice. Avoid Windows
+  message boxes for information already representable on the game screen.
 
 ## UI Rules
 
@@ -173,15 +222,19 @@ When editing UI:
 - Do not add giant explanatory landing pages.
 - Do not make text overlap. Keep buttons and badges stable in size.
 - Prefer dark, game-like panels.
+- Prefer inline status/decision areas over native Windows information popups. Reserve
+  modal confirmation for destructive or genuinely blocking decisions.
+- A label such as `CLOSED` is too ambiguous. Free agents in a player-disabled division
+  display `DIVISION CLOSED`, and the detail panel explains `Roster > Manage Divisions`.
 
 Known theme names:
 
 - `Fight Night`
 - `Classic Green`
 - `Light Office`
-- `UFC`
-- `Cage Warriors`
-- `PFL`
+- Promotion themes: `BAMMA`, `UFC`, `PFL`, `Cage Warriors`, `ONE Championship`, `RIZIN`, `KSW`, `LFA`, `Oktagon`, `BRAVE`, `ACA`
+- Combat-sport themes: `Boxing`, `Kickboxing`, `Muay Thai`, `Wrestling`, `BJJ`
+- Sports-media themes: `Sky Sports`, `ESPN`, `BBC Sport`
 
 ## Fight Engine Rules
 
@@ -279,6 +332,11 @@ Before finishing a meaningful change:
 - Do not add new core promotions without updating smoke tests.
 - Do not rely on `Cage Empire`; old references are only backward compatibility guards.
 - Avoid adding more tabs when an existing viewer/table can be improved.
+- Do not use `fighter.status` to decide availability for a future event.
+- Do not flatten grouped save paths back into `Saves\<Slot>` during load, move, backup,
+  delete, snapshot, or quick-save work.
+- Do not restore three-person custom divisions. Eight is the minimum normal target and six
+  is the hard draft viability floor.
 
 ## Current Product Direction
 
