@@ -2,6 +2,7 @@ import importlib.util
 import json
 import random
 import sys
+import tempfile
 import tkinter as tk
 from dataclasses import asdict
 from pathlib import Path
@@ -721,6 +722,36 @@ def main():
         legacy_probe.title_wins = 2
         legacy_probe.title_defenses = 3
         assert_true(app.compute_legacy_score(legacy_probe) > 0, "Legacy scoring failed")
+        volume_probe = app.create_generated_fighter(min_skill=82, max_skill=82, age_override=35)
+        volume_probe.primary_discipline = "Wrestling"
+        volume_probe.record_w, volume_probe.record_l, volume_probe.record_d = 887, 2, 0
+        assert_true(app.compute_legacy_score(volume_probe) < 600,
+                    "Extreme combat-sport record volume still overwhelms bounded legacy scoring")
+        assert_true(app.fighter_career_sport(volume_probe) == "Wrestling",
+                    "Historical leaderboards cannot separate careers by combat sport")
+        standings = app.industry_standings_rows()
+        tier_names = {row["tier"] for row in standings}
+        assert_true({"Global", "National", "Regional", "Local"}.issubset(tier_names),
+                    "Industry tier calibration does not provide all four levels in a starting world")
+        assert_true(all(row["power"] == round(sum(value for _label, value in row["components"])) for row in standings),
+                    "Displayed industry power does not equal its exposed component breakdown")
+        ufc_row = next(row for row in standings if row["name"] == "Ultimate Fighting Championship" and row["sport"] == "MMA")
+        wrestling_row = next(row for row in standings if row["sport"] == "Wrestling" and not row["player"])
+        assert_true(ufc_row["power"] > wrestling_row["power"],
+                    "Cross-sport record volume still inflates a circuit above the leading MMA promotion")
+        app.refresh_companies()
+        assert_true(app.select_company_by_name(wrestling_row["name"], wrestling_row["sport"]),
+                    "Combat-sport standings row could not be selected by its full identity")
+        circuit_data = app.selected_company_data()
+        assert_true(circuit_data and circuit_data.get("combat_sport") and circuit_data.get("sport") == "Wrestling",
+                    "Combat-sport standings row cannot resolve its company-hub data")
+        windows_before = set(root.winfo_children())
+        app.open_selected_company_hub()
+        root.update_idletasks()
+        circuit_windows = [child for child in root.winfo_children() if child not in windows_before and isinstance(child, tk.Toplevel)]
+        assert_true(circuit_windows, "Combat-sport standings row did not open a company hub")
+        for child in circuit_windows:
+            child.destroy()
         app.open_records_ledger_window()
         record_windows = [child for child in root.winfo_children() if isinstance(child, tk.Toplevel) and "Historical Records" in child.title()]
         assert_true(record_windows, "Historical records ledger did not open")
@@ -1006,8 +1037,105 @@ def main():
         )
         assert_true(app.market_tree.item(closed_row, "values")[1] == "DIVISION CLOSED",
                     "Free-agent market does not clearly identify a closed player division")
-        assert_true("Reopen it from Roster > Manage Divisions" in app.market_scout_summary(closed_market_fighter),
-                    "Free-agent scout panel does not explain how to reopen the fighter's division")
+        assert_true("You may still sign them" in app.market_scout_summary(closed_market_fighter),
+                    "Free-agent scout panel does not explain closed-division signings")
+
+        roster_fighter = next(fighter for fighter in app.roster if not fighter.retired)
+        original_closed = set(app.closed_divisions)
+        closed_key = app.belt_key(roster_fighter.gender, roster_fighter.weight)
+        app.closed_divisions.add(closed_key)
+        app.roster_gender_filter.set("All")
+        app.weight_filter.set("All")
+        app.roster_status_filter.set("All")
+        app.refresh_roster()
+        roster_row = next(
+            row_id for row_id, fighter in app.roster_tree_fighters.items()
+            if app.fighter_identity_key(fighter) == app.fighter_identity_key(roster_fighter)
+        )
+        assert_true(
+            app.roster_tree.item(roster_row, "values")[-1] == "DIVISION CLOSED - MOVE REQUIRED",
+            "A contracted fighter in a closed division is not visible with a clear roster warning",
+        )
+        assert_true(
+            roster_fighter.weight in app.player_roster_filter_weights(roster_fighter.gender),
+            "The roster weight filter hides an occupied closed division",
+        )
+        assert_true(
+            roster_fighter.weight not in app.player_weight_move_targets(roster_fighter),
+            "The weight-change picker offers the fighter's closed division as a destination",
+        )
+        app.closed_divisions = original_closed
+        app.refresh_roster()
+
+        title_holder = app.roster[0]
+        title_challenger = next(fighter for fighter in app.roster if fighter is not title_holder)
+        title_holder.champion = True
+        title_challenger.champion = False
+        title_challenger.interim_champion = False
+        holder_role, challenger_role = app.fight_corner_title_statuses(
+            {"title": True, "divisional_title": True, "interim": False}, title_holder, title_challenger,
+        )
+        assert_true(holder_role == "UNDISPUTED CHAMPION" and challenger_role == "TITLE CHALLENGER",
+                    "Fight-night title presentation does not distinguish the champion from the challenger")
+        app.rules["live_auto_play_card"] = True
+        app.rules["live_follow_commentary"] = False
+        serialized_preferences = app.serialize_world()["rules"]
+        assert_true(serialized_preferences["live_auto_play_card"] is True and serialized_preferences["live_follow_commentary"] is False,
+                    "Fight-night viewer preferences are not persisted with the save")
+
+        rival_fighter = next(fighter for promo in app.promotions for fighter in promo.roster if not fighter.retired)
+        saved_reports = dict(app.scouting_reports)
+        app.rules["scouting_mode"] = True
+        app.scouting_reports.pop(rival_fighter.name, None)
+        assert_true(not app.fighter_profile_stats_visible(rival_fighter, app.promotions[0].name),
+                    "Unscouted rival profile still exposes private ratings")
+        assert_true(app.start_scout_report_for_fighter(rival_fighter, "basic"),
+                    "A rival-promotion fighter cannot be scouted from their profile")
+        assert_true(app.scouting_reports[rival_fighter.name]["status"] == "In progress",
+                    "Rival profile scouting did not create a report")
+        profile_windows_before = set(root.winfo_children())
+        app.open_fighter_profile_window(rival_fighter)
+        root.update_idletasks()
+        rival_windows = [child for child in root.winfo_children() if child not in profile_windows_before and isinstance(child, tk.Toplevel)]
+        assert_true(rival_windows, "Unscouted rival fighter could not open a profile")
+        def nested_widgets(parent):
+            children = []
+            for child in parent.winfo_children():
+                children.append(child)
+                children.extend(nested_widgets(child))
+            return children
+        profile_buttons = [widget.cget("text") for window in rival_windows for widget in nested_widgets(window) if widget.winfo_class() == "TButton"]
+        assert_true("Basic Scout (2 wk)" in profile_buttons and "Full Scout (6 wk)" in profile_buttons,
+                    "Unscouted rival profile does not expose scout actions")
+        for child in rival_windows:
+            child.destroy()
+        app.scouting_reports = saved_reports
+
+        assert_true(app.player_bout_purse_factor({"tier": "Main Card"}) == 1.0, "Main-card player purse factor changed")
+        assert_true(app.player_bout_purse_factor({"tier": "Prelims"}) == 0.75, "Player prelim purse reduction missing")
+        assert_true(app.player_bout_purse_factor({"tier": "Early Prelims"}) == 0.55, "Player early-prelim purse reduction missing")
+        finance_probe = app.calculate_event_finance(
+            45, 55_000, {"venue": "Regional Arena", "broadcaster": "No Coverage", "fights": []}, [],
+            contracted_fighter_pay=100_000,
+        )
+        assert_true(finance_probe["tier_purse_savings"] > 0 and finance_probe["contracted_fighter_pay"] > finance_probe["fighter_pay"],
+                    "Player lower-card savings are not reflected in event finance")
+
+        import persistence
+        original_active_path = app.active_save_path
+        original_showinfo = persistence.messagebox.showinfo
+        with tempfile.TemporaryDirectory(prefix="mma_warriors_quick_save_") as temp_dir:
+            quick_path = Path(temp_dir) / "savegame.json"
+            app.active_save_path = lambda: quick_path
+            persistence.messagebox.showinfo = lambda *_args, **_kwargs: None
+            try:
+                assert_true(app.save_game(), "Quick save reported failure")
+            finally:
+                app.active_save_path = original_active_path
+                persistence.messagebox.showinfo = original_showinfo
+            quick_data = json.loads(quick_path.read_text(encoding="utf-8"))
+            assert_true(quick_data.get("_save_meta", {}).get("slot_name") == app.active_save_name,
+                        "Quick save did not write a valid save payload")
 
         print("SMOKE TEST PASSED")
         print(f"Roster: {len(app.roster)} | Free agents: {len(app.free_agents)} | Promotions: {promotion_names} | Gyms: {len(app.gyms)}")

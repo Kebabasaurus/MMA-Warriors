@@ -2,6 +2,7 @@ import json
 import random
 import sys
 import traceback
+import zlib
 from datetime import datetime
 import tkinter as tk
 from dataclasses import asdict, dataclass
@@ -85,6 +86,9 @@ class FightEngineMixin:
             del recent_commentary[:-18]
 
         for round_no in range(1, max_rounds + 1):
+            # Commentary beats are not evenly spaced in a real round.  Use a
+            # local, stable RNG so clock variety never changes combat rolls.
+            state["round_clock_seconds"] = self.fight_clock_schedule(a, b, round_no, ticks_per_round)
             round_stats = {a.name: {"impact": 0, "control": 0, "danger": 0}, b.name: {"impact": 0, "control": 0, "danger": 0}}
             # Every scored round begins standing. Ground and clinch control cannot
             # leak through the horn into the next round.
@@ -103,7 +107,7 @@ class FightEngineMixin:
             for tick in range(1, ticks_per_round + 1):
                 state["round"] = round_no
                 state["tick"] = tick
-                state["official_time"] = self.elapsed_round_time(tick, ticks_per_round)
+                state["official_time"] = self.elapsed_round_time(tick, ticks_per_round, state["round_clock_seconds"])
                 state["early_round"] = tick <= max(3, ticks_per_round // 3)
                 a_init = self.initiative(a, b, state)
                 b_init = self.initiative(b, a, state)
@@ -127,7 +131,7 @@ class FightEngineMixin:
                 if control_fighter:
                     state["stats"][control_fighter]["control_ticks"] += 1
                 ground_note = self.update_ground_inactivity(state, action)
-                clock = self.round_clock(tick, ticks_per_round)
+                clock = self.round_clock(tick, ticks_per_round, state["round_clock_seconds"])
                 if result:
                     add_fight_line(f"  [{clock}] {result}")
                     presence = self.fighter_presence_line(actor, defender, state)
@@ -366,7 +370,7 @@ class FightEngineMixin:
         resilience = self.ds(fighter, "resilience", fighter.toughness)
         cap = 92 + (conditioning - 50) * 0.18 + (fighter.cardio - 50) * 0.09 + (resilience - 50) * 0.04
         trait = 4 if fighter.trait == "Cardio Machine" else -5 if fighter.trait == "Bad Weight Cut" else 0
-        penalty = fighter.fatigue * 0.48 + fighter.weight_cut_penalty * 1.35
+        penalty = fighter.fatigue * 0.48 + fighter.weight_cut_penalty * 1.35 + getattr(fighter, "division_size_penalty", 0) * 0.32
         return max(18, min(100, round(cap + trait - penalty)))
 
     def update_ground_inactivity(self, state, action):
@@ -587,14 +591,45 @@ class FightEngineMixin:
         lines.append(f"  Judges' vote: {a.name} {decision['votes'][a.name]}, {b.name} {decision['votes'][b.name]}")
         return lines
 
-    def round_clock(self, tick, ticks_per_round):
+    def fight_clock_schedule(self, a, b, round_no, ticks_per_round):
+        """Return deterministic, naturally irregular commentary times.
+
+        The engine still resolves the same number of exchanges.  This only
+        spaces the broadcast calls, using a local RNG so simulation outcomes
+        remain exactly independent of presentation timing.
+        """
+        total_seconds = max(1, int(self.rules.get("round_length", 5) * 60))
+        seed_text = f"{getattr(a, 'fighter_id', a.name)}|{getattr(b, 'fighter_id', b.name)}|{round_no}|{ticks_per_round}|{total_seconds}"
+        rng = random.Random(zlib.crc32(seed_text.encode("utf-8")))
+        weights = [rng.triangular(0.48, 1.72, 0.96) for _ in range(max(1, ticks_per_round))]
+        total_weight = max(0.001, sum(weights))
+        elapsed = 0.0
+        schedule = []
+        previous = total_seconds
+        for weight in weights:
+            elapsed += weight
+            seconds_left = max(0, min(total_seconds, total_seconds - round(total_seconds * elapsed / total_weight)))
+            # Each commentary beat must visibly progress the clock.
+            seconds_left = min(seconds_left, max(0, previous - 1))
+            schedule.append(seconds_left)
+            previous = seconds_left
+        return schedule
+
+    def round_clock(self, tick, ticks_per_round, clock_seconds=None):
         total_seconds = self.rules.get("round_length", 5) * 60
-        seconds_left = max(0, round(total_seconds * (ticks_per_round - tick) / max(1, ticks_per_round)))
+        if clock_seconds:
+            seconds_left = clock_seconds[min(len(clock_seconds) - 1, max(0, tick - 1))]
+        else:
+            seconds_left = max(0, round(total_seconds * (ticks_per_round - tick) / max(1, ticks_per_round)))
         return f"{seconds_left // 60}:{seconds_left % 60:02d}"
 
-    def elapsed_round_time(self, tick, ticks_per_round):
+    def elapsed_round_time(self, tick, ticks_per_round, clock_seconds=None):
         total_seconds = self.rules.get("round_length", 5) * 60
-        elapsed = min(total_seconds, max(0, round(total_seconds * tick / max(1, ticks_per_round))))
+        if clock_seconds:
+            seconds_left = clock_seconds[min(len(clock_seconds) - 1, max(0, tick - 1))]
+            elapsed = total_seconds - seconds_left
+        else:
+            elapsed = min(total_seconds, max(0, round(total_seconds * tick / max(1, ticks_per_round))))
         return f"{elapsed // 60}:{elapsed % 60:02d}"
 
     def fighter_presence_line(self, actor, defender, state):
@@ -734,7 +769,7 @@ class FightEngineMixin:
         mobility = (self.ds(fighter, "mobility", 50) + self.ds(fighter, "reflexes", 50)) * 0.04
         context = self.context_edge(fighter, state, "home", "prime", "experience", "pressure", "rivalry", "stance", "style", "morale")
         night_form = state.get("night_form", {}).get(fighter.name, 0)
-        return freshness + mental + mobility + aggression + fighter.momentum * 0.95 + night_form * 0.78 + fighter.camp_boost * 1.3 - fighter.weight_cut_penalty * 0.9 + pressure + caution + context + random.randint(-10, 10)
+        return freshness + mental + mobility + aggression + fighter.momentum * 0.95 + night_form * 0.78 + fighter.camp_boost * 1.3 - fighter.weight_cut_penalty * 0.9 - getattr(fighter, "division_size_penalty", 0) * 0.55 + pressure + caution + context + random.randint(-10, 10)
 
     STYLE_BIAS = {
         "range": {
@@ -1733,7 +1768,8 @@ class FightEngineMixin:
             context += self.context_edge(fighter, state, "experience")
         leg_drag = leg_damage * (0.26 if action in ("kick", "shoot", "takedown", "stand_up") else 0.08)
         night_form = state.get("night_form", {}).get(fighter.name, 0)
-        return base + fatigue + fighter.momentum * 0.75 + night_form * 1.10 + fighter.camp_boost * 1.6 + trait + erratic + consistency + context - action_drag - leg_drag
+        size_drag = getattr(fighter, "division_size_penalty", 0) * (1.0 if action in ("power_punch", "kick", "dirty_boxing", "ground_strikes", "shoot", "takedown", "cage_control", "sweep") else 0.38)
+        return base + fatigue + fighter.momentum * 0.75 + night_form * 1.10 + fighter.camp_boost * 1.6 + trait + erratic + consistency + context - action_drag - leg_drag - size_drag
 
     def action_defence_value(self, fighter, action, state):
         gas = state["gas"][fighter.name]

@@ -113,8 +113,9 @@ def exercise_all_main_screens(app, root):
     app.open_fighter_profile_window(fighter)
     app.open_regional_identity_window(fighter)
 
-    app.company_list.selection_clear(0, "end")
-    app.company_list.selection_set(0)
+    company_children = app.company_list.get_children("")
+    if company_children:
+        app.company_list.selection_set(company_children[0])
     app.open_selected_company_hub()
 
     app.region_list.selection_clear(0, "end")
@@ -274,6 +275,11 @@ def exercise_normal_and_retirement_events(app, root):
     commentary = next((widget for widget in live_widgets if widget.winfo_class() == "Text"), None)
     require(commentary is not None and "courier" not in str(commentary.cget("font")).lower(), "Fight commentary should use a readable proportional font")
     require(any(widget.winfo_class() == "TButton" and widget.cget("text") == "Text +" for widget in live_widgets), "Live fight viewer text zoom controls missing")
+    require(any(widget.winfo_class() == "TButton" and widget.cget("text") == "Review Selected Bout" for widget in live_widgets), "Live fight viewer cannot reopen completed-bout commentary")
+    live_checks = {widget.cget("text"): widget for widget in live_widgets if widget.winfo_class() == "TCheckbutton"}
+    require("Auto-play card" in live_checks and "Follow live" in live_checks, "Live fight viewer preference controls missing")
+    require(bool(int(live_checks["Auto-play card"].getvar(live_checks["Auto-play card"].cget("variable")))) == bool(app.rules.get("live_auto_play_card", False)), "Auto-play preference did not persist into the next fight-night window")
+    require(bool(int(live_checks["Follow live"].getvar(live_checks["Follow live"].cget("variable")))) == bool(app.rules.get("live_follow_commentary", True)), "Follow-live preference did not persist into the next fight-night window")
     play = next((widget for widget in live_widgets if widget.winfo_class() == "TButton" and widget.cget("text") == "Play Fight"), None)
     require(play is not None, "Live fight viewer did not expose playback")
     play.invoke()

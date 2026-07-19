@@ -36,3 +36,7 @@ build_*/
 output/
 output_*/
 tmp/
+
+# Vendored third-party name corpus (has its own .git; only the generated
+# assets/corpora_human_names.json is shipped with the game)
+_vendor_corpora/

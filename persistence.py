@@ -672,6 +672,7 @@ class PersistenceMixin:
             "promotions": [asdict(p) for p in self.promotions],
             "combat_sport_worlds": {sport: {**world, "roster": [asdict(fighter) for fighter in world.get("roster", [])]} for sport, world in getattr(self, "combat_sport_worlds", {}).items()},
             "player_combat_divisions": getattr(self, "player_combat_divisions", {}),
+            "standings_history": getattr(self, "standings_history", {}),
             "regions": self.regions,
             "gyms": [asdict(g) for g in getattr(self, "gyms", [])],
             "result_history": self.result_history,
@@ -739,6 +740,7 @@ class PersistenceMixin:
                 try:
                     self.apply_world_data(json.loads(read_json_text(backup_path)))
                     self.booked.clear()
+                    self.ensure_player_event_name()
                     self.refresh_all()
                     self.write_log()
                     messagebox.showwarning("Backup loaded", f"The current quick save could not be read. Recovery snapshot {backup_path.stem} was loaded instead.")
@@ -753,6 +755,7 @@ class PersistenceMixin:
             )
             return
         self.booked.clear()
+        self.ensure_player_event_name()
         self.refresh_all()
         self.write_log()
 
@@ -840,6 +843,7 @@ class PersistenceMixin:
         for world in self.combat_sport_worlds.values():
             world["roster"] = [fighter if isinstance(fighter, Fighter) else Fighter(**fighter) for fighter in world.get("roster", [])]
         self.player_combat_divisions = data.get("player_combat_divisions", {}) or {}
+        self.standings_history = data.get("standings_history", {}) or {}
         self.independent_showcase_counter = max(1, data.get("independent_showcase_counter", 1))
         self.retired_fighters = [Fighter(**row) for row in data.get("retired_fighters", [])]
         for fighter in self.retired_fighters:
@@ -1414,10 +1418,14 @@ class PersistenceMixin:
         self.spectator_mode = False
 
     def take_control_selected_company(self):
-        if not hasattr(self, "company_list") or not self.company_list.curselection():
+        name, sport = self.company_selected_identity()
+        if not name:
             messagebox.showinfo("No company", "Select a company first.")
             return
-        self.take_control_of_company(self.company_list.get(self.company_list.curselection()[0]))
+        if sport != "MMA":
+            messagebox.showinfo("Combat-sport circuit", "Direct takeovers currently apply to MMA promotions. Open this circuit's history or manage your own child promotion instead.")
+            return
+        self.take_control_of_company(name)
 
     def take_control_of_company(self, company_name, keep_current=True):
         if company_name == self.player_company_name:
@@ -2542,7 +2550,7 @@ class PersistenceMixin:
         self.belt_history = self.blank_belt_history()
         self.closed_divisions = set()
         self.player_managed_divisions = set()
-        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "allow_mixed_gender": False, "active_fighter_target": 1200, "ai_offer_market_target": 100, "global_result_replay_limit": 2000, "auto_renew_enabled": False, "scouting_mode": True, "autosave_enabled": True, "autosave_interval_months": 2, "autosave_weekly_keep": 2, "autosave_monthly_keep": 2, "save_backup_keep": 2, "save_retention_version": 4}
+        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "allow_mixed_gender": False, "active_fighter_target": 1200, "ai_offer_market_target": 100, "global_result_replay_limit": 2000, "auto_renew_enabled": False, "scouting_mode": True, "fight_night_audio_enabled": True, "fight_night_audio_output": "System default", "fight_night_audio_volume": 55, "autosave_enabled": True, "autosave_interval_months": 2, "autosave_weekly_keep": 2, "autosave_monthly_keep": 2, "save_backup_keep": 2, "save_retention_version": 4}
         media_section = self.universe_section("media", {}) if hasattr(self, "universe_section") else {}
         self.broadcasters = media_section.get("player_broadcasters", self.default_player_media() if hasattr(self, "default_player_media") else [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}])
         self.media_companies = []

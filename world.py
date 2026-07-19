@@ -727,6 +727,13 @@ class WorldMixin:
     def mark_retirement_fight_required(self, fighter, reason="Career review"):
         if getattr(fighter, "retired", False):
             return
+        guaranteed = max(0, int(getattr(fighter, "guaranteed_fights", 0) or 0))
+        completed = max(0, int(getattr(fighter, "contract_fights_completed", 0) or 0))
+        if fighter in self.roster and completed < guaranteed:
+            remaining = guaranteed - completed
+            fighter.retirement_pending = False
+            fighter.retirement_reason = f"Retirement deferred: {remaining} guaranteed comeback fight{'s' if remaining != 1 else ''} remaining."
+            return
         fighter.retirement_pending = True
         fighter.retirement_fight_completed = False
         fighter.retirement_requested_month = getattr(fighter, "retirement_requested_month", 0) or self.month
@@ -962,6 +969,24 @@ class WorldMixin:
         append_snapshot(b, a, b_snapshot, a_snapshot, b_result)
         return {"a_rating": a_snapshot, "b_rating": b_snapshot}
 
+    def record_contract_fight_completion(self, fighter):
+        """Track a player comeback commitment only after an official bout."""
+        if fighter not in self.roster:
+            return
+        guaranteed = max(0, int(getattr(fighter, "guaranteed_fights", 0) or 0))
+        if not getattr(fighter, "comeback_contract", False) or guaranteed <= 0:
+            return
+        completed = min(guaranteed, max(0, int(getattr(fighter, "contract_fights_completed", 0) or 0)) + 1)
+        fighter.contract_fights_completed = completed
+        remaining = guaranteed - completed
+        fighter.fight_history = fighter.fight_history or []
+        fighter.fight_history.insert(0, f"Comeback commitment: {completed}/{guaranteed} guaranteed fights completed.")
+        if remaining:
+            self.inbox.append({"subject": "Comeback Commitment", "body": f"{fighter.name} has {remaining} guaranteed comeback fight{'s' if remaining != 1 else ''} remaining on their deal.", "type": "Contracts", "resolved": False})
+        else:
+            fighter.comeback_contract = False
+            self.inbox.append({"subject": "Comeback Commitment Complete", "body": f"{fighter.name} fulfilled all {guaranteed} guaranteed comeback fights. They may continue their career or retire normally later.", "type": "Contracts", "resolved": False})
+
     def apply_result(self, winner, loser, fight, method="Decision"):
         self.record_bout_rating_history(winner, loser, "W", "L", fight)
         self.complete_fight_observation(winner.name)
@@ -971,6 +996,8 @@ class WorldMixin:
         self.commit_career_stats(loser, method, won=False)
         winner.record_w += 1
         loser.record_l += 1
+        self.record_contract_fight_completion(winner)
+        self.record_contract_fight_completion(loser)
         winner.career_win_streak = getattr(winner, "career_win_streak", 0) + 1
         loser.career_win_streak = 0
         winner.momentum = min(5, winner.momentum + 1)
@@ -1064,6 +1091,8 @@ class WorldMixin:
         self.commit_career_stats(b)
         a.record_d = getattr(a, "record_d", 0) + 1
         b.record_d = getattr(b, "record_d", 0) + 1
+        self.record_contract_fight_completion(a)
+        self.record_contract_fight_completion(b)
         a.career_win_streak = 0
         b.career_win_streak = 0
         a.last_fight_month = self.month
@@ -1191,7 +1220,7 @@ class WorldMixin:
         fanbase["event_history"] = ([{"month": self.month, "event": package.get("event_name", "Event"), "mood": atmosphere.get("mood", "Engaged"), "intensity": atmosphere.get("intensity", 50), "attendance": finance.get("attendance", 0)}] + fanbase.get("event_history", []))[:30]
         self.fanbase = fanbase
 
-    def calculate_event_finance(self, total_hype, fighter_pay, event, results, excitement_score=50, build_score=50, regional_pull=1.0):
+    def calculate_event_finance(self, total_hype, fighter_pay, event, results, excitement_score=50, build_score=50, regional_pull=1.0, contracted_fighter_pay=None):
         # PLAYER-ONLY: this method is used exclusively for the player's shows (AI
         # promotions have their own revenue path). A promotion pays fight-night
         # purses scaled to its commercial stature: a small, low-drawing show cannot
@@ -1199,7 +1228,10 @@ class WorldMixin:
         # money every time. As popularity and stability grow the payout climbs toward
         # the fighters' full contract value. Stored contract purses are untouched.
         pay_scale = max(0.34, min(1.0, 0.12 + self.company_pop / 128 + self.company_stability / 640))
+        contracted_fighter_pay = fighter_pay if contracted_fighter_pay is None else contracted_fighter_pay
         fighter_pay = round(fighter_pay * pay_scale)
+        contracted_fighter_pay = round(contracted_fighter_pay * pay_scale)
+        tier_purse_savings = max(0, contracted_fighter_pay - fighter_pay)
         venue_capacity = {
             "Local Gym": 900,
             "Regional Arena": 4200,
@@ -1276,6 +1308,8 @@ class WorldMixin:
             "merchandise": merchandise,
             "total_revenue": total_revenue,
             "fighter_pay": fighter_pay,
+            "contracted_fighter_pay": contracted_fighter_pay,
+            "tier_purse_savings": tier_purse_savings,
             "bonuses": bonuses,
             "production": production,
             "medical": medical,
@@ -1446,6 +1480,7 @@ class WorldMixin:
             callback = None if job.get("stop_requested") else job.get("on_complete")
             self._complete_advance_cleanup()
             if not getattr(self, "spectator_mode", False):
+                self.show_final_month_contract_alerts()
                 self.prompt_due_event()
             if callback:
                 callback()
@@ -1571,6 +1606,7 @@ class WorldMixin:
     def process_pending_rebookings(self):
         """Move a cancelled bout to an existing future card or let it fall away."""
         pending = list(getattr(self, "pending_rebookings", []))
+        outcomes = []
         for entry in pending:
             names = entry.get("fighters", [])
             fighters = [self.get_fighter(name) for name in names]
@@ -1604,6 +1640,8 @@ class WorldMixin:
             self.pending_rebookings.remove(entry)
             self.inbox.append({"subject": subject, "body": note, "type": "Roster", "resolved": False})
             self.news.insert(0, note)
+            outcomes.append(note)
+        return outcomes
 
     def academy_defaults(self):
         return {
@@ -1866,8 +1904,9 @@ class WorldMixin:
         self.repair_academy_prospect(prospect)
         current = prospect.get("current_range", (prospect.get("rating", 40), prospect.get("rating", 40)))
         potential = prospect.get("potential_range", (prospect.get("potential", 70), prospect.get("potential", 70)))
+        gender = str(prospect.get("gender", "")).strip()[:1].upper() or "?"
         return (
-            f"{prospect['name']} | {prospect['age']} | {prospect['region']} | {prospect['amateur_weight']} | "
+            f"{prospect['name']} | {gender} | {prospect['age']} | {prospect['region']} | {prospect['amateur_weight']} | "
             f"Cur {current[0]}-{current[1]} | Pot {potential[0]}-{potential[1]} | "
             f"Conf {prospect.get('scout_confidence', 0)}% | ${prospect.get('signing_cost', 0):,} | {prospect.get('weeks_to_sign', 0)}w"
         )
@@ -2886,6 +2925,7 @@ class WorldMixin:
             self.news = self.news[:120]
 
         steps.append(("Finalising the month", finish_month))
+        steps.append(("Industry standings snapshot", self.snapshot_industry_standings))
         return steps
 
     def process_world_month(self, player_ran_show):
@@ -6011,6 +6051,7 @@ class WorldMixin:
                         self.inbox.append({"subject": f"Medical Clearance — {fighter.name}", "body": f"{fighter.name} has been medically cleared following {completed.lower()}.", "type": "Medical", "fighter": fighter.name, "resolved": False})
             fighter.fatigue = max(0, fighter.fatigue - random.randint(10, 22))
             fighter.media_heat = max(0, fighter.media_heat - random.randint(1, 4))
+            self.acclimatize_division_fit(fighter)
             months_inactive = max(0, self.month - getattr(fighter, "last_fight_month", 0))
             if months_inactive >= 10 and fighter.popularity > 18 and random.random() < min(0.55, 0.12 + months_inactive / 55):
                 fighter.popularity -= 1
@@ -9113,6 +9154,30 @@ class WorldMixin:
                 "type": "Contract", "resolved": False,
             })
             self.news.insert(0, f"{urgency}: {fighter.name}'s contract expires in {when}.")
+            if months == 1 and not getattr(self, "spectator_mode", False):
+                pending = getattr(self, "pending_final_month_contract_alerts", [])
+                pending.append({
+                    "name": fighter.name, "weight": fighter.weight, "gender": fighter.gender,
+                    "champion": bool(fighter.champion or fighter.interim_champion), "purse": fighter.purse,
+                })
+                self.pending_final_month_contract_alerts = pending
+
+    def show_final_month_contract_alerts(self):
+        """Show one compact, post-advance warning instead of interrupting the monthly sim loop."""
+        alerts = list(getattr(self, "pending_final_month_contract_alerts", []) or [])
+        self.pending_final_month_contract_alerts = []
+        if not alerts:
+            return
+        lines = []
+        for row in alerts[:12]:
+            crown = " - CHAMPION" if row.get("champion") else ""
+            lines.append(f"{row['name']} ({row['gender']} {row['weight']})${crown} - ${row['purse']:,}/fight")
+        remainder = f"\n+ {len(alerts) - 12} more final-month deal(s)." if len(alerts) > 12 else ""
+        messagebox.showwarning(
+            "Final-month contracts",
+            "These fighters now have one month left. Renew, release, or accept that they may leave.\n\n"
+            + "\n".join(lines) + remainder + "\n\nOpen Contracts to act.",
+        )
 
     def update_contracts(self):
         if getattr(self, "spectator_mode", False):

@@ -546,11 +546,131 @@ class UIMixin:
             # Both child panes may not exist until Tk completes this layout pass.
             pane.after_idle(lambda: self.initialize_vertical_resizer(pane))
 
+    def _show_tooltip(self, holder, text, x, y):
+        """Render a small themed hover tooltip at screen coordinates (x, y)."""
+        self._hide_tooltip(holder)
+        popup = tk.Toplevel(self.root)
+        popup.overrideredirect(True)
+        popup.attributes("-topmost", True)
+        popup.configure(bg=self.colors.get("gold", "#c9a13a"))
+        tk.Label(
+            popup, text=text, bg=self.colors.get("panel_dark", "#252525"),
+            fg=self.colors.get("text", "#f0f0f0"), font=("Tahoma", 8), justify="left",
+            wraplength=320, padx=8, pady=6,
+        ).pack(padx=1, pady=1)
+        popup.geometry(f"+{int(x)}+{int(y)}")
+        holder["window"] = popup
+
+    def _hide_tooltip(self, holder):
+        popup = holder.get("window")
+        holder["window"] = None
+        if popup is not None:
+            try:
+                if popup.winfo_exists():
+                    popup.destroy()
+            except tk.TclError:
+                pass
+
+    def attach_tooltip(self, widget, text):
+        """Attach reusable hover help to any widget."""
+        holder = {"window": None}
+        def show(_event=None):
+            if holder.get("window") or not widget.winfo_exists():
+                return
+            x = widget.winfo_rootx() + 14
+            y = widget.winfo_rooty() + widget.winfo_height() + 4
+            self._show_tooltip(holder, text, x, y)
+        def hide(_event=None):
+            self._hide_tooltip(holder)
+        widget.bind("<Enter>", show, add="+")
+        widget.bind("<Leave>", hide, add="+")
+        widget.bind("<ButtonPress>", hide, add="+")
+
+    def attach_tree_heading_tooltips(self, tree, tips):
+        """Show per-column help when the pointer hovers over a tree's header row.
+
+        `tips` maps column ids (as declared in the tree's `columns`) to help text.
+        Makes dense matchmaking tables self-explanatory without cluttering the UI.
+        """
+        holder = {"window": None, "column": None}
+        columns = list(tree["columns"])
+        def hide(_event=None):
+            holder["column"] = None
+            self._hide_tooltip(holder)
+        def on_motion(event):
+            if tree.identify_region(event.x, event.y) != "heading":
+                hide()
+                return
+            column_ref = tree.identify_column(event.x)  # e.g. "#3"
+            try:
+                index = int(column_ref.replace("#", "")) - 1
+            except ValueError:
+                hide()
+                return
+            if not (0 <= index < len(columns)):
+                hide()
+                return
+            column = columns[index]
+            if column == holder.get("column"):
+                return
+            hide()
+            text = tips.get(column)
+            if text:
+                holder["column"] = column
+                self._show_tooltip(holder, text, tree.winfo_rootx() + event.x + 12, tree.winfo_rooty() + event.y + 18)
+        tree.bind("<Motion>", on_motion, add="+")
+        tree.bind("<Leave>", hide, add="+")
+
     def make_tree_sortable(self, tree):
         tree._sort_reverse = {}
         for col in tree["columns"]:
             label = tree.heading(col, "text")
             tree.heading(col, text=label, command=lambda c=col: self.sort_treeview(tree, c))
+
+    @staticmethod
+    def _parse_duration_months(text):
+        """Turn a contract 'Time Left' label ('10 mo', '1y', '3y 10mo') into total months."""
+        compact = text.lower().replace(" ", "")
+        if not compact:
+            return None
+        index = 0
+        total = 0
+        found = False
+        while index < len(compact):
+            start = index
+            while index < len(compact) and compact[index].isdigit():
+                index += 1
+            if index == start:
+                return None  # expected a number before a unit
+            number = int(compact[start:index])
+            if compact[index:index + 2] == "mo":
+                total += number
+                index += 2
+            elif compact[index:index + 1] == "y":
+                total += number * 12
+                index += 1
+            else:
+                return None  # unrecognised unit -> not a duration label
+            found = True
+        return total if found else None
+
+    @staticmethod
+    def _parse_calendar_ordinal(text):
+        """Turn an expiry label ('May W1 2027') into a chronological sort key."""
+        parts = text.split()
+        if len(parts) != 3:
+            return None
+        month_abbr, week_token, year_token = parts
+        if month_abbr not in CALENDAR_MONTH_ABBREVIATIONS:
+            return None
+        if not (week_token[:1] in ("W", "w") and week_token[1:].isdigit()):
+            return None
+        if not year_token.isdigit():
+            return None
+        month_index = CALENDAR_MONTH_ABBREVIATIONS.index(month_abbr)
+        week = int(week_token[1:])
+        year = int(year_token)
+        return year * 48 + month_index * 4 + week
 
     def sort_treeview(self, tree, col):
         reverse = tree._sort_reverse.get(col, False)
@@ -559,6 +679,15 @@ class UIMixin:
             text = str(value).strip()
             if text == "C":
                 return (0, -1.0)
+            # Expired contracts sort ahead of any remaining term / future date.
+            if text.lower() == "expired":
+                return (0, -1e12)
+            duration = self._parse_duration_months(text)
+            if duration is not None:
+                return (0, float(duration))
+            calendar = self._parse_calendar_ordinal(text)
+            if calendar is not None:
+                return (0, float(calendar))
             cleaned = text.replace("$", "").replace(",", "").replace("%", "").replace("#", "")
             if cleaned.startswith("-") and cleaned[1:].replace(".", "", 1).isdigit():
                 return (0, float(cleaned))
@@ -1024,20 +1153,80 @@ class UIMixin:
         change_y.pack(side="right", fill="y")
 
     def build_companies_tab(self):
-        self.screen_header(self.companies_tab, "COMPANY BROWSER", "Company profiles, rosters, upcoming events, recent events, credibility, stability, and size")
-        body = ttk.Frame(self.companies_tab)
-        body.pack(fill="both", expand=True)
-        list_panel, list_inner = self.section(body, "COMPANIES")
-        list_panel.pack(side="left", fill="y", padx=(0, 6))
-        list_panel.configure(width=220)
-        list_panel.pack_propagate(False)
-        self.company_list = tk.Listbox(list_inner, font=("Tahoma", 9), bg="#c9c9c9")
+        self.screen_header(self.companies_tab, "INDUSTRY STANDINGS", "Every promotion and combat-sport circuit, ranked by power. Filter, sort, and open a profile to see why.")
+
+        filters = ttk.Frame(self.companies_tab, style="Inset.TFrame")
+        filters.pack(fill="x", pady=(0, 6))
+        self.company_sport_filter = tk.StringVar(value="All Sports")
+        self.company_region_filter = tk.StringVar(value="All Regions")
+        self.company_sort_by = tk.StringVar(value="Power ranking")
+        ttk.Label(filters, text="Sport", style="Inset.TLabel").pack(side="left", padx=(6, 2))
+        self.company_sport_combo = ttk.Combobox(filters, textvariable=self.company_sport_filter, values=("All Sports",), state="readonly", width=16)
+        self.company_sport_combo.pack(side="left", padx=(0, 8))
+        self.company_sport_combo.bind("<<ComboboxSelected>>", lambda _e: self.refresh_companies())
+        ttk.Label(filters, text="Region", style="Inset.TLabel").pack(side="left", padx=(4, 2))
+        self.company_region_combo = ttk.Combobox(filters, textvariable=self.company_region_filter, values=("All Regions",), state="readonly", width=16)
+        self.company_region_combo.pack(side="left", padx=(0, 8))
+        self.company_region_combo.bind("<<ComboboxSelected>>", lambda _e: self.refresh_companies())
+        ttk.Label(filters, text="Sort by", style="Inset.TLabel").pack(side="left", padx=(4, 2))
+        self.company_sort_combo = ttk.Combobox(
+            filters, textvariable=self.company_sort_by, state="readonly", width=18,
+            values=("Power ranking", "Richest", "Most stable", "Best reputation", "Deepest roster", "Most champions"),
+        )
+        self.company_sort_combo.pack(side="left", padx=(0, 8))
+        self.company_sort_combo.bind("<<ComboboxSelected>>", lambda _e: self.refresh_companies())
+        self.company_standings_summary = ttk.Label(filters, text="", style="Inset.TLabel")
+        self.company_standings_summary.pack(side="right", padx=8)
+
+        companies_resize = self.create_vertical_resizer(self.companies_tab, initial_fraction=0.56, min_top=200, min_bottom=190)
+        companies_resize.pack(fill="both", expand=True)
+
+        table_panel, table_inner = self.section(companies_resize, "STANDINGS")
+        companies_resize.add(table_panel, minsize=200)
+        columns = ("rank", "move", "name", "sport", "region", "tier", "power", "cred", "stability", "cash", "roster", "champs", "stars")
+        self.company_list = ttk.Treeview(table_inner, columns=columns, show="headings", selectmode="browse")
+        for col, text, width in (
+            ("rank", "#", 40), ("move", "Move", 52), ("name", "Company", 190), ("sport", "Sport", 92),
+            ("region", "Region", 96), ("tier", "Tier", 84), ("power", "Power", 60), ("cred", "Cred", 50),
+            ("stability", "Stab", 50), ("cash", "Cash", 100), ("roster", "Roster", 56), ("champs", "Champs", 58), ("stars", "Stars", 52),
+        ):
+            self.company_list.heading(col, text=text)
+            self.company_list.column(col, width=width, anchor="center")
+        self.company_list.column("name", anchor="w")
+        self.company_list.column("region", anchor="w")
+        self.company_list.column("cash", anchor="e")
+        self.company_list.tag_configure("player", background="#26405c", foreground="#ffffff")
+        self.company_list.tag_configure("tier_global", foreground="#e6c15a")
+        self.company_list.tag_configure("tier_national", foreground="#7fb0f0")
+        self.company_list.tag_configure("tier_regional", foreground="#7fd694")
+        self.company_list.tag_configure("tier_local", foreground="#b8bdc4")
+        standings_scroll = ttk.Scrollbar(table_inner, orient="vertical", command=self.company_list.yview)
+        self.company_list.configure(yscrollcommand=standings_scroll.set)
+        standings_scroll.pack(side="right", fill="y")
+        self.make_tree_sortable(self.company_list)
         self.company_list.pack(fill="both", expand=True)
-        self.company_list.bind("<<ListboxSelect>>", lambda _e: self.refresh_company_profile())
-        profile_panel, profile = self.section(body, "COMPANY PROFILE")
-        profile_panel.pack(side="left", fill="both", expand=True)
+        self.company_list.bind("<<TreeviewSelect>>", lambda _e: self.refresh_company_profile())
+        self.company_list.bind("<Double-1>", lambda _e: self.open_selected_company_hub())
+
+        lower = ttk.Frame(companies_resize, style="Inset.TFrame")
+        companies_resize.add(lower, minsize=190)
+        profile_panel, profile = self.section(lower, "COMPANY PROFILE")
+        profile_panel.pack(side="left", fill="both", expand=True, padx=(0, 6))
         self.company_profile = tk.Text(profile, wrap="word", font=("Tahoma", 9), bg=self.colors["cream"], fg=self.colors["text"], insertbackground=self.colors["text"], padx=10, pady=10)
         self.company_profile.pack(fill="both", expand=True)
+
+        detail_panel, detail = self.section(lower, "POWER BREAKDOWN & TREND")
+        detail_panel.pack(side="left", fill="both", expand=True)
+        detail_panel.configure(width=340)
+        detail_panel.pack_propagate(False)
+        self.company_breakdown = tk.Text(detail, wrap="word", font=("Consolas", 9), bg=self.colors["cream"], fg=self.colors["text"], padx=10, pady=8, height=9)
+        self.company_breakdown.pack(fill="both", expand=True)
+        spark_row = ttk.Frame(detail, style="Inset.TFrame")
+        spark_row.pack(fill="x", pady=(4, 0))
+        ttk.Label(spark_row, text="Power trend", style="Inset.TLabel").pack(side="left", padx=(2, 6))
+        self.company_sparkline = tk.Canvas(spark_row, height=38, width=240, bg=self.colors["cream"], highlightthickness=1, highlightbackground="#7a7f87")
+        self.company_sparkline.pack(side="left", fill="x", expand=True, padx=(0, 4))
+
         company_buttons = ttk.Frame(profile, style="Inset.TFrame")
         company_buttons.pack(fill="x", pady=4)
         ttk.Button(company_buttons, text="Open Company Hub", style="Accent.TButton", command=self.open_selected_company_hub).pack(side="left", padx=4)
@@ -1054,7 +1243,8 @@ class UIMixin:
         ttk.Button(company_actions, text="Watch Last Card", command=self.watch_selected_company_card).pack(side="left", padx=2)
         self.return_to_spectator_button = ttk.Button(company_actions, text="Return to Spectator", command=self.return_to_spectator_mode)
         self.return_to_spectator_button.pack(side="right", padx=4)
-        ttk.Button(company_actions, text="Take Control Of Selected Company", command=self.take_control_selected_company).pack(side="right", padx=4)
+        self.take_control_company_button = ttk.Button(company_actions, text="Take Control Of Selected Company", command=self.take_control_selected_company)
+        self.take_control_company_button.pack(side="right", padx=4)
 
     def build_regions_tab(self):
         self.screen_header(self.regions_tab, "GAME WORLD", "Regions, states, economies, legal status, drug testing, teams, and local show history")
@@ -1379,7 +1569,7 @@ class UIMixin:
         roster_gender.pack(side="left", padx=(4, 10))
         roster_gender.bind("<<ComboboxSelected>>", lambda _e: (self.refresh_player_division_filter_options("roster"), self.refresh_roster()))
         ttk.Label(top_primary, text="Status", style="Inset.TLabel").pack(side="left")
-        roster_status = ttk.Combobox(top_primary, values=["All", "Ready", "Champion", "Injured", "Tired", "Expiring", "Unhappy"], textvariable=self.roster_status_filter, state="readonly", width=10)
+        roster_status = ttk.Combobox(top_primary, values=["All", "Ready", "Champion", "Injured", "Tired", "Expiring", "Unhappy", "Closed Division"], textvariable=self.roster_status_filter, state="readonly", width=15)
         roster_status.pack(side="left", padx=(4, 0))
         roster_status.bind("<<ComboboxSelected>>", lambda _e: self.refresh_roster())
         ttk.Button(top_primary, text="Career Goals", command=self.open_career_goals_window).pack(side="right", padx=4)
@@ -1409,6 +1599,7 @@ class UIMixin:
         self.roster_tree.tag_configure("champ", foreground=self.colors["gold"])
         self.roster_tree.tag_configure("injured", foreground="#9a9a9a")
         self.roster_tree.tag_configure("expiring", background="#6b5a1e", foreground="#ffffff")
+        self.roster_tree.tag_configure("closed_division", background="#5a3516", foreground="#ffd27a")
         self.make_tree_sortable(self.roster_tree)
         roster_scroll = ttk.Scrollbar(left, orient="vertical", command=self.roster_tree.yview)
         self.roster_tree.configure(yscrollcommand=roster_scroll.set)
@@ -1509,8 +1700,12 @@ class UIMixin:
         ttk.Label(line1, text="Event", style="Inset.TLabel", width=7).pack(side="left")
         ttk.Entry(line1, textvariable=self.event_name, width=34).pack(side="left", padx=(4, 12))
         ttk.Label(line1, text="Venue", style="Inset.TLabel", width=7).pack(side="left")
-        ttk.Combobox(line1, textvariable=self.venue, values=["Local Gym", "Regional Arena", "Casino Ballroom", "National Sports Hall"], state="readonly", width=24).pack(side="left", padx=(4, 12))
-        ttk.Button(line1, text="Schedule Show", command=self.schedule_event).pack(side="right", padx=(4, 0))
+        venue_box = ttk.Combobox(line1, textvariable=self.venue, values=["Local Gym", "Regional Arena", "Casino Ballroom", "National Sports Hall"], state="readonly", width=24)
+        venue_box.pack(side="left", padx=(4, 12))
+        self.attach_tooltip(venue_box, "Bigger venues seat more fans and can lift the gate, but a half-empty large room hurts atmosphere and stability. Match the venue to your drawing power.")
+        schedule_btn = ttk.Button(line1, text="Schedule Show", command=self.schedule_event)
+        schedule_btn.pack(side="right", padx=(4, 0))
+        self.attach_tooltip(schedule_btn, "Lock in the card for the chosen date. A viable card needs at least one complete bout, every fighter available, and any champion's title correctly flagged.")
         ttk.Button(line1, text="Earliest Valid Date", command=self.move_booking_to_earliest_card_date).pack(side="right", padx=(4, 0))
         ttk.Button(line1, text="Watch Event", command=self.watch_due_event).pack(side="right", padx=(4, 0))
         ttk.Button(line1, text="Skip Event", style="Accent.TButton", command=self.skip_due_event).pack(side="right", padx=(4, 0))
@@ -1538,6 +1733,7 @@ class UIMixin:
         self.event_broadcaster_box = ttk.Combobox(line2, textvariable=self.event_broadcaster, values=["No Coverage"] + [item["name"] for item in self.broadcasters], state="readonly", width=23)
         self.event_broadcaster_box.pack(side="left", padx=(4, 0))
         self.event_broadcaster_box.bind("<<ComboboxSelected>>", self.refresh_event_broadcaster_status)
+        self.attach_tooltip(self.event_broadcaster_box, "A broadcast provider adds media income and exposure that grows your popularity. 'No Coverage' means sharply reduced reach and revenue.")
         self.schedule_status = tk.Label(
             header,
             textvariable=self.schedule_status_var,
@@ -1603,19 +1799,36 @@ class UIMixin:
         # buttons were effectively on the other side of the horizontal page.
         booking_actions = ttk.Frame(left, style="Inset.TFrame")
         booking_actions.pack(fill="x", pady=(0, 5))
-        ttk.Button(booking_actions, text="Add Matchup", style="Accent.TButton", command=self.add_matchup).pack(side="left", padx=(2, 4), pady=3)
-        ttk.Button(booking_actions, text="Add TBA", command=self.add_tba_matchup).pack(side="left", padx=3, pady=3)
-        ttk.Button(booking_actions, text="Tournament", command=self.add_tournament_to_card).pack(side="left", padx=3, pady=3)
-        ttk.Button(booking_actions, text="Assistant Recommend", command=self.assistant_pick_matchup).pack(side="left", padx=3, pady=3)
-        ttk.Checkbutton(booking_actions, text="Title", variable=self.title_fight, command=self.toggle_divisional_title_booking).pack(side="left", padx=(12, 3))
-        ttk.Checkbutton(booking_actions, text="Main event", variable=self.main_event).pack(side="left", padx=3)
+        add_matchup_btn = ttk.Button(booking_actions, text="Add Matchup", style="Accent.TButton", command=self.add_matchup)
+        add_matchup_btn.pack(side="left", padx=(2, 4), pady=3)
+        add_tba_btn = ttk.Button(booking_actions, text="Add TBA", command=self.add_tba_matchup)
+        add_tba_btn.pack(side="left", padx=3, pady=3)
+        tournament_btn = ttk.Button(booking_actions, text="Tournament", command=self.add_tournament_to_card)
+        tournament_btn.pack(side="left", padx=3, pady=3)
+        assistant_btn = ttk.Button(booking_actions, text="Assistant Recommend", command=self.assistant_pick_matchup)
+        assistant_btn.pack(side="left", padx=3, pady=3)
+        title_check = ttk.Checkbutton(booking_actions, text="Title", variable=self.title_fight, command=self.toggle_divisional_title_booking)
+        title_check.pack(side="left", padx=(12, 3))
+        main_event_check = ttk.Checkbutton(booking_actions, text="Main event", variable=self.main_event)
+        main_event_check.pack(side="left", padx=3)
         self.special_belt_choice = tk.StringVar(value="None")
-        ttk.Label(booking_actions, text="Special Belt", style="Inset.TLabel").pack(side="left", padx=(10, 2))
+        special_belt_label = ttk.Label(booking_actions, text="Special Belt", style="Inset.TLabel")
+        special_belt_label.pack(side="left", padx=(10, 2))
         self.special_belt_box = ttk.Combobox(booking_actions, textvariable=self.special_belt_choice, state="readonly", width=14)
         self.special_belt_box.pack(side="left", padx=(0, 3))
         self.special_belt_box.bind("<<ComboboxSelected>>", self.select_special_belt_booking)
-        ttk.Label(booking_actions, text="Tier", style="Inset.TLabel").pack(side="left", padx=(10, 2))
-        ttk.Combobox(booking_actions, textvariable=self.card_tier, values=CARD_TIERS, state="readonly", width=12).pack(side="left", padx=(0, 3))
+        tier_label = ttk.Label(booking_actions, text="Tier", style="Inset.TLabel")
+        tier_label.pack(side="left", padx=(10, 2))
+        tier_box = ttk.Combobox(booking_actions, textvariable=self.card_tier, values=CARD_TIERS, state="readonly", width=12)
+        tier_box.pack(side="left", padx=(0, 3))
+        self.attach_tooltip(add_matchup_btn, "Book the two selected available fighters into a bout. Pick same-gender fighters in the same (or a close) division for a viable, credible fight.")
+        self.attach_tooltip(add_tba_btn, "Add a bout with one side left open (To Be Announced). Reserve a slot now and fill it later from Upcoming Events once you've signed or freed an opponent.")
+        self.attach_tooltip(tournament_btn, "Add a full bracket of bouts in one division. A quick way to fill a card and build a division — you'll need several same-division, same-gender fighters.")
+        self.attach_tooltip(assistant_btn, "Let your matchmaker propose a competitive, fresh pairing from your available roster — a fast route to a sensible bout.")
+        self.attach_tooltip(title_check, "Book the bout for the divisional belt. Needs a champion or ranked contenders. A champion booked WITHOUT this defends no title — watch for the red warning.")
+        self.attach_tooltip(main_event_check, "Flag this as the headline bout. Your main event drives hype, gate, and the media rating, so put your biggest draw or title fight on top.")
+        self.attach_tooltip(self.special_belt_box, "Attach an interim, tournament, or other special title to raise the stakes and hype of a non-divisional-title bout.")
+        self.attach_tooltip(tier_box, "Card position tier (Main Card, Prelims, etc.). Lower tiers pay and cost less — stack prospects on the prelims and save stars for the main card.")
 
         self.matchmaking_notice_var = tk.StringVar(value="")
         self.matchmaking_notice = ttk.Label(left, textvariable=self.matchmaking_notice_var, style="Inset.TLabel", anchor="w")
@@ -1647,6 +1860,20 @@ class UIMixin:
         self.available_tree.column("name", anchor="w")
         self.available_tree.tag_configure("not_ready", foreground="#ffb4a2")
         self.available_tree.tag_configure("recommended", background="#554515", foreground="#ffe08a")
+        self.attach_tree_heading_tooltips(self.available_tree, {
+            "rank": "Divisional rank. C = champion, #n = ranked contender, - = unranked. Pairing similar ranks makes competitive, credible fights.",
+            "record": "Career wins-losses-draws.",
+            "overall": "Overall ability (OVR). A large OVR gap usually means a lopsided mismatch that fans and the media rate poorly.",
+            "elo": "Rating earned from actual results. Two fighters with close ELOs make the most competitive, unpredictable bout.",
+            "pop": "Fighter popularity. Popular names high on the card lift the gate, hype, and media rating.",
+            "build": "Match build — how compelling this fighter is to book right now (form, momentum, stakes, and story).",
+            "last": "Date of their last fight.",
+            "form": "Results over the last five bouts. A fighter riding a streak is a hotter, higher-hype booking.",
+            "activity": "How recently they competed. Long layoffs risk ring rust; booking too often risks fatigue and injury.",
+            "fit": "Match fitness: fatigue, injury, and camp readiness. Book 'Ready' fighters — tired or injured ones underperform or can't be booked.",
+            "history": "Prior meetings with the other selected fighter. Rematches and settled scores add stakes and hype.",
+            "status": "Whether this fighter can be booked on the chosen date (ready, injured, tired, contract issue, or already booked).",
+        })
         self.make_tree_sortable(self.available_tree)
         available_scroll = ttk.Scrollbar(left, orient="vertical", command=self.available_tree.yview)
         available_scroll_x = ttk.Scrollbar(left, orient="horizontal", command=self.available_tree.xview)
@@ -1663,16 +1890,29 @@ class UIMixin:
             self.card_tree.column(col, width=width, anchor="center")
         self.card_tree.column("fight", anchor="w")
         self.card_tree.tag_configure("non_title_champion", background="#5c1a1a", foreground="#ffffff")
+        self.attach_tree_heading_tooltips(self.card_tree, {
+            "slot": "Position on the card. The top row is your main event — order bouts from opener up to the headliner.",
+            "fight": "The booked matchup. A red row flags a champion booked without their title on the line.",
+            "weight": "Division the bout is contested at.",
+            "hype": "Projected fan interest in this bout — drives gate and media rating. Ranked names, titles, and rivalries raise it.",
+            "media": "Fight build score — how competitive and story-rich the matchup is. Even, high-stakes fights score highest.",
+        })
         self.make_tree_sortable(self.card_tree)
         self.card_tree.pack(fill="both", expand=True, pady=5)
         footer = ttk.Frame(right)
         footer.pack(fill="x")
         ttk.Button(footer, text="Remove Fight", command=self.remove_matchup).pack(side="left")
-        ttk.Button(footer, text="Fill TBA", command=self.fill_selected_tba_matchup).pack(side="left", padx=4)
-        ttk.Button(footer, text="Title / Interim", command=self.toggle_card_title).pack(side="left", padx=4)
-        ttk.Button(footer, text="Move Up", command=self.move_fight_up).pack(side="left", padx=4)
+        fill_tba_btn = ttk.Button(footer, text="Fill TBA", command=self.fill_selected_tba_matchup)
+        fill_tba_btn.pack(side="left", padx=4)
+        title_interim_btn = ttk.Button(footer, text="Title / Interim", command=self.toggle_card_title)
+        title_interim_btn.pack(side="left", padx=4)
+        move_up_btn = ttk.Button(footer, text="Move Up", command=self.move_fight_up)
+        move_up_btn.pack(side="left", padx=4)
         ttk.Button(footer, text="Move Down", command=self.move_fight_down).pack(side="left", padx=4)
         ttk.Button(footer, text="Clear Card", command=self.clear_card).pack(side="right")
+        self.attach_tooltip(fill_tba_btn, "Assign the selected available fighter to a highlighted TBA bout, completing a reserved slot.")
+        self.attach_tooltip(title_interim_btn, "Toggle the selected bout between a title fight and an interim title fight (or off).")
+        self.attach_tooltip(move_up_btn, "Reorder the selected bout. The top of the card is the main event, so move your biggest fight up.")
 
         upcoming_panel, upcoming = self.section(booking_resize, "UPCOMING EVENTS")
         booking_resize.add(upcoming_panel, minsize=120)

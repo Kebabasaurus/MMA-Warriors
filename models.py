@@ -59,6 +59,9 @@ class Fighter:
     prime_end: int = 33
     career_archetype: str = "Balanced Development"
     contract_months: int = 12
+    guaranteed_fights: int = 0
+    contract_fights_completed: int = 0
+    comeback_contract: bool = False
     fatigue: int = 0
     rank_score: int = 0
     title_shots: int = 0
@@ -114,6 +117,10 @@ class Fighter:
     scale_weight: float = 0.0
     missed_weight: bool = False
     weight_cut_penalty: int = 0
+    # A durable penalty for voluntarily competing above the fighter's natural
+    # frame. Unlike a bad cut, it applies every bout until they move again.
+    division_size_penalty: int = 0
+    division_size_note: str = ""
     elo_rating: int = 1500
     career_sig_strikes: int = 0
     career_takedowns: int = 0

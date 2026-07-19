@@ -20,9 +20,11 @@ from fight_engine import FightEngineMixin
 from world import WorldMixin
 from persistence import PersistenceMixin, configure_runtime_logging, install_global_exception_handlers, register_crash_app, write_crash_report
 from awards import AwardsMixin
+from audio import FightNightAudioMixin
 
 
 class FightEmpireApp(
+    FightNightAudioMixin,
     UIMixin,
     AdminMixin,
     SeedMixin,
@@ -93,6 +95,7 @@ class FightEmpireApp(
         finally:
             self._seeding_universe = False
         self.player_combat_divisions = {}
+        self.standings_history = {}
         self.regions = self.seed_regions()
         self.gyms = self.seed_gyms()
         self.normalize_gym_assignments()
@@ -114,7 +117,7 @@ class FightEmpireApp(
         self.inbox = []
         self.inbox_hidden_types = set()
         self.owner_goals = self.seed_owner_goals()
-        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "active_fighter_target": 1200, "ai_offer_market_target": 100, "global_result_replay_limit": 2000, "auto_renew_enabled": False, "scouting_mode": True, "autosave_enabled": True, "autosave_interval_months": 2, "autosave_weekly_keep": 2, "autosave_monthly_keep": 2, "save_backup_keep": 2, "save_retention_version": 4}
+        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "active_fighter_target": 1200, "ai_offer_market_target": 100, "global_result_replay_limit": 2000, "auto_renew_enabled": False, "scouting_mode": True, "fight_night_audio_enabled": True, "fight_night_audio_output": "System default", "fight_night_audio_volume": 55, "autosave_enabled": True, "autosave_interval_months": 2, "autosave_weekly_keep": 2, "autosave_monthly_keep": 2, "save_backup_keep": 2, "save_retention_version": 4}
         self.rules["allow_mixed_gender"] = False
         self.broadcasters = [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}]
         self.media_companies = []

@@ -408,12 +408,19 @@ class AwardsMixin:
 
         fighter_controls = ttk.Frame(fighter_tab, style="Inset.TFrame")
         fighter_controls.pack(fill="x", padx=6, pady=6)
+        ttk.Label(fighter_controls, text="Sport", style="Inset.TLabel").pack(side="left", padx=(6, 3))
+        record_sport = tk.StringVar(value="MMA")
+        sport_values = ["All Sports"] + sorted({
+            self.fighter_career_sport(fighter)
+            for _company, fighter in self.all_database_fighters_with_companies()
+        })
+        ttk.Combobox(fighter_controls, textvariable=record_sport, values=sport_values, state="readonly", width=18).pack(side="left", padx=(0, 8))
         ttk.Label(fighter_controls, text="Leaderboard", style="Inset.TLabel").pack(side="left", padx=(6, 3))
-        record_category = tk.StringVar(value="Career Wins")
+        record_category = tk.StringVar(value="Legacy Score")
         categories = (
-            "Career Wins", "Career Bouts", "Win Percentage (10+ bouts)", "ELO Rating",
+            "Legacy Score", "Career Wins", "Career Bouts", "Win Percentage (10+ bouts)", "ELO Rating",
             "Title Defenses", "Title Wins", "Career Significant Strikes", "Career Takedowns",
-            "Career Knockdowns", "Career Submissions", "Awards Won", "Legacy Score",
+            "Career Knockdowns", "Career Submissions", "Awards Won",
         )
         ttk.Combobox(fighter_controls, textvariable=record_category, values=categories, state="readonly", width=30).pack(side="left", padx=(0, 8))
         ttk.Label(fighter_controls, text="Career totals include the stats tracked since the save began.", style="Inset.TLabel").pack(side="left", padx=4)
@@ -455,9 +462,12 @@ class AwardsMixin:
             seen = set()
             rows = []
             for company, fighter in self.all_database_fighters_with_companies():
-                if fighter.name in seen:
+                identity = self.fighter_identity_key(fighter)
+                if identity in seen:
                     continue
-                seen.add(fighter.name)
+                seen.add(identity)
+                if record_sport.get() != "All Sports" and self.fighter_career_sport(fighter) != record_sport.get():
+                    continue
                 value, display = fighter_value(fighter, record_category.get())
                 if value >= 0:
                     rows.append((value, fighter.name, company, fighter, display))
@@ -474,6 +484,7 @@ class AwardsMixin:
                 self.open_fighter_profile_window(fighter)
 
         record_category.trace_add("write", refresh_fighter_records)
+        record_sport.trace_add("write", refresh_fighter_records)
         fighter_tree.bind("<Double-1>", open_selected_record)
         refresh_fighter_records()
 
@@ -664,8 +675,13 @@ class AwardsMixin:
         win_pct = fighter.record_w / max(1, bouts)
         peak = max(fighter.annual_overalls.values()) if fighter.annual_overalls else fighter.overall
         awards_won = sum(1 for entry in (fighter.fight_history or []) if "of the Year" in str(entry))
-        score = (fighter.record_w * 6
-                 + win_pct * 60
+        # Career schedules differ radically by sport. Diminishing returns and a hard
+        # ceiling stop a 300- or 800-win wrestling/Muay Thai record from overwhelming
+        # championship quality while still rewarding sustained success.
+        win_quality = max(0.35, min(1.35, (peak - 62) / 26))
+        win_value = min(220, (fighter.record_w ** 0.68) * 8 * (0.35 + 0.65 * win_pct) * win_quality)
+        score = (win_value
+                 + win_pct * 45
                  + getattr(fighter, "title_shots", 0) * 42
                  + getattr(fighter, "title_wins", 0) * 68
                  + getattr(fighter, "title_defenses", 0) * 34
@@ -676,6 +692,10 @@ class AwardsMixin:
                  + getattr(fighter, "award_count", 0) * 35
                  + len(getattr(fighter, "rivalry_history", []) or []) * 4)
         return round(score)
+
+    def fighter_career_sport(self, fighter):
+        discipline = str(getattr(fighter, "primary_discipline", "MMA") or "MMA").strip()
+        return "MMA" if discipline in ("MMA", "Mixed Martial Arts") else discipline
 
     def consider_hall_of_fame(self, fighter):
         """Called on retirement: score the career and enshrine the greats."""
@@ -710,10 +730,11 @@ class AwardsMixin:
         seen = set()
         hofers = []
         for fighter in everyone:
-            if getattr(fighter, "hall_of_fame", False) and fighter.name not in seen:
-                seen.add(fighter.name)
+            identity = self.fighter_identity_key(fighter)
+            if getattr(fighter, "hall_of_fame", False) and identity not in seen:
+                seen.add(identity)
                 hofers.append(fighter)
-        hofers.sort(key=lambda f: getattr(f, "legacy_score", 0), reverse=True)
+        hofers.sort(key=self.compute_legacy_score, reverse=True)
         return hofers
 
     def open_hall_of_fame_window(self):
@@ -733,7 +754,7 @@ class AwardsMixin:
             peak = max(fighter.annual_overalls.values()) if fighter.annual_overalls else fighter.overall
             awards_won = sum(1 for entry in (fighter.fight_history or []) if "of the Year" in str(entry))
             body.insert("end", f"\n{fighter.name}\n", "name")
-            body.insert("end", f"  {fighter.gender} {fighter.weight} | Record {fighter.record} | Peak overall {peak} | Legacy {getattr(fighter, 'legacy_score', 0)}\n", "detail")
+            body.insert("end", f"  {fighter.gender} {fighter.weight} | Record {fighter.record} | Peak overall {peak} | Legacy {self.compute_legacy_score(fighter)}\n", "detail")
             extras = []
             if awards_won:
                 extras.append(f"{awards_won} year-end award(s)")

@@ -790,6 +790,54 @@ for _group, _asset_group in (("male", "male"), ("female", "female")):
     _incoming = (_uk_name_payload.get(_asset_group, []) if isinstance(_uk_name_payload, dict) else []) + _uk_neutral_names
     _existing.extend(name for name in _incoming if isinstance(name, str) and name and name not in _existing)
 
+# Human-name data imported from the public corpora dataset. Norwegian data is
+# gendered at source, while the shared North American entries are explicitly
+# neutral. Surnames are safe to share across regional pools. Keeping the data
+# in an asset makes future name-bank refreshes a data update rather than code.
+try:
+    _corpora_name_payload = json.loads((ASSET_DIR / "corpora_human_names.json").read_text(encoding="utf-8"))
+except (OSError, ValueError, TypeError):
+    _corpora_name_payload = {}
+
+
+def _extend_unique_names(target, incoming):
+    """Append valid names once, treating case-only variants as duplicates."""
+    seen = {str(name).strip().casefold() for name in target if isinstance(name, str) and name.strip()}
+    for name in incoming if isinstance(incoming, list) else []:
+        if not isinstance(name, str):
+            continue
+        cleaned = name.strip()
+        normalized = cleaned.casefold()
+        if cleaned and normalized not in seen:
+            target.append(cleaned)
+            seen.add(normalized)
+
+
+_extend_unique_names(REGIONAL_NAME_POOLS["Europe"]["male"], _corpora_name_payload.get("norwegian_male", []))
+_extend_unique_names(REGIONAL_NAME_POOLS["Europe"]["female"], _corpora_name_payload.get("norwegian_female", []))
+_extend_unique_names(REGIONAL_NAME_POOLS["Europe"]["last"], _corpora_name_payload.get("norwegian_last", []))
+for _north_american_region in ("USA", "Canada", "Australia"):
+    _extend_unique_names(REGIONAL_NAME_POOLS[_north_american_region]["male"], _corpora_name_payload.get("unisex_first_names", []))
+    _extend_unique_names(REGIONAL_NAME_POOLS[_north_american_region]["female"], _corpora_name_payload.get("unisex_first_names", []))
+    _extend_unique_names(REGIONAL_NAME_POOLS[_north_american_region]["last"], _corpora_name_payload.get("north_american_last", []))
+for _hispanic_region in ("Brazil", "Mexico"):
+    _extend_unique_names(REGIONAL_NAME_POOLS[_hispanic_region]["last"], _corpora_name_payload.get("hispanic_last", []))
+_extend_unique_names(LAST_NAMES, _corpora_name_payload.get("north_american_last", []))
+_extend_unique_names(LAST_NAMES, _corpora_name_payload.get("hispanic_last", []))
+_extend_unique_names(LAST_NAMES, _corpora_name_payload.get("norwegian_last", []))
+
+# Older hand-written banks used direct list concatenation. Normalize every
+# shipped pool once so duplicate data cannot narrow the generator's real range.
+for _name_bank in (FIRST_NAMES, FEMALE_FIRST_NAMES, LAST_NAMES):
+    _deduplicated = []
+    _extend_unique_names(_deduplicated, _name_bank)
+    _name_bank[:] = _deduplicated
+for _regional_groups in REGIONAL_NAME_POOLS.values():
+    for _regional_bank in _regional_groups.values():
+        _deduplicated = []
+        _extend_unique_names(_deduplicated, _regional_bank)
+        _regional_bank[:] = _deduplicated
+
 STANDING_SKILLS = ["footwork", "feints", "head_movement", "punch_power", "punch_technique", "hand_speed", "high_kick_power", "high_kick_technique", "high_kick_speed", "low_kick_power", "low_kick_technique", "low_kick_speed", "creative_punches", "creative_kicks", "guard_defence", "kick_defence"]
 GROUND_SKILLS = ["guard_work", "scrambles", "transitions", "positional_ability", "ground_striking", "submission_attack", "submission_defence_detail", "top_control", "bottom_control", "back_control", "mount_control", "leg_locks"]
 WRESTLING_SKILLS = ["takedowns", "takedown_setup", "takedown_speed", "takedown_defence_detail", "sprawl", "throws", "slams", "chain_wrestling", "cage_wrestling", "ride_control", "get_ups"]
