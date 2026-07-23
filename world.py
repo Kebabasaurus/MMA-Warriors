@@ -7275,17 +7275,40 @@ class WorldMixin:
                 break
         return streak
 
+    def recent_real_win_rate(self, fighter, n=5):
+        """Win rate over the fighter's last n simulated-universe bouts, or None if unfought."""
+        history = [
+            entry for entry in list(getattr(fighter, "bout_rating_history", None) or [])
+            if isinstance(entry, dict)
+        ][:n]
+        if not history:
+            return None
+        wins = sum(1 for entry in history if str(entry.get("result", "")).upper() == "W")
+        return wins / len(history)
+
     def process_free_agent_retirements(self):
         """Free agency must not become a permanent retirement home for aging fighters."""
+        # Low-overall fighters stuck on a losing skid rarely accumulate the long
+        # unsigned "waiting" months the veteran checks below need, so they can
+        # clutter free agency indefinitely without ever qualifying for review.
+        # Checked twice a year rather than every month so a single rough patch
+        # doesn't end a career the moment a third loss lands.
+        stagnation_review_due = self.month % 6 == 0
         for fighter in list(self.free_agents):
             losing_streak = self.in_universe_loss_streak(fighter)
             losing_streak_exit = fighter.age > 30 and fighter.overall < 80 and losing_streak >= 7
+            recent_win_rate = self.recent_real_win_rate(fighter, 5)
+            low_overall_stagnation = (
+                stagnation_review_due and fighter.age >= 24 and fighter.overall < 55
+                and losing_streak >= 3 and recent_win_rate is not None and recent_win_rate <= 0.30
+                and not self.is_blue_chip_prospect(fighter)
+            )
             waiting = max(0, getattr(fighter, "free_agent_months", 0))
             accelerated_market_review = (
                 (fighter.age >= 43 and waiting >= 3)
                 or (fighter.age >= 40 and waiting >= 6)
             )
-            if (not losing_streak_exit and not accelerated_market_review
+            if (not losing_streak_exit and not accelerated_market_review and not low_overall_stagnation
                     and (self.month - 1) % 12 + 1 != self.retirement_review_month(fighter)):
                 continue
             aging_out = fighter.age >= 38
@@ -7293,17 +7316,20 @@ class WorldMixin:
                                and fighter.potential < 82 and not self.is_blue_chip_prospect(fighter))
             stalled_career = (fighter.age >= 30 and waiting >= 48 and fighter.overall < 68
                               and fighter.potential < 76 and not self.is_blue_chip_prospect(fighter))
-            if not (losing_streak_exit or aging_out or journeyman_exit or stalled_career):
+            if not (losing_streak_exit or aging_out or journeyman_exit or stalled_career or low_overall_stagnation):
                 continue
             age_pressure = max(0, fighter.age - 37) * 0.065
             market_pressure = max(0, waiting - 24) / 150
             inactivity = 0.08 + max(0, -fighter.momentum) * 0.035
             health = fighter.injury_proneness / 850 + max(0, fighter.fatigue - 45) / 420
             unsigned_veteran_pressure = 0.12 if fighter.age >= 43 and waiting >= 3 else 0.07 if fighter.age >= 40 and waiting >= 6 else 0
-            if losing_streak_exit or fighter.age >= 46 or random.random() < min(0.88, age_pressure + market_pressure + inactivity + health + unsigned_veteran_pressure):
+            if (losing_streak_exit or low_overall_stagnation or fighter.age >= 46
+                    or random.random() < min(0.88, age_pressure + market_pressure + inactivity + health + unsigned_veteran_pressure)):
                 if not getattr(fighter, "retirement_pending", False):
                     if losing_streak_exit:
                         reason = f"Independent career review after a {losing_streak}-fight in-universe losing streak"
+                    elif low_overall_stagnation:
+                        reason = f"Independent career review after {losing_streak} straight losses with no real progress ({fighter.overall} OVR)"
                     else:
                         reason = "Free-agent retirement review" if aging_out else "Independent-career review"
                     self.mark_retirement_fight_required(fighter, reason)
