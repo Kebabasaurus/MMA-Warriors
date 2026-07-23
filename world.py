@@ -8905,30 +8905,23 @@ class WorldMixin:
             self.rules["regional_exceptional_graduation_month"] = self.month
         return graduated
 
-    def promote_regional_emergency_talent(self, slots, max_per_circuit=8):
+    def promote_regional_emergency_talent(self, slots):
         """Use experienced feeder talent before inventing an emergency free agent.
 
-        A real market crash can need far more than one graduate per circuit.
-        A one-per-circuit ceiling meant any shortfall beyond the number of
-        feeders (~15) was always dumped into fabricated free agents, even
-        with a large, healthy regional pool sitting right there. Round-robin
-        up to max_per_circuit pulls per feeder instead, still protecting
-        each division's depth floor, before ever falling back to invention.
+        A real market crash can need far more than a couple of graduates per
+        circuit, and there's no need to protect it here: any vacancy this
+        leaves behind is refilled with a fresh generated prospect on the very
+        next monthly feeder pass regardless. So just pull evenly across every
+        circuit in turn, with no per-circuit ceiling, instead of letting one
+        circuit's best candidates supply the whole emergency.
         """
-        slots = max(0, min(200, int(slots)))
+        slots = max(0, int(slots))
         if not slots:
             return 0
         promo_candidates = {}
-        division_counts = {}
         for promo in self.promotions:
             if not getattr(promo, "is_regional_feeder", False):
                 continue
-            counts = {}
-            for fighter in promo.roster:
-                if not fighter.retired:
-                    key = (fighter.gender, fighter.weight)
-                    counts[key] = counts.get(key, 0) + 1
-            division_counts[promo.name] = counts
             ranked = []
             for fighter in promo.roster:
                 bouts = fighter.record_w + fighter.record_l + fighter.record_d
@@ -8948,41 +8941,30 @@ class WorldMixin:
             if getattr(promo, "is_regional_feeder", False)
         }
         moved = 0
-        per_circuit_taken = {name: 0 for name in promo_candidates}
         progress = True
         while progress and moved < slots:
             progress = False
             for name, ranked in promo_candidates.items():
-                if moved >= slots or per_circuit_taken[name] >= max_per_circuit:
+                if moved >= slots or not ranked:
                     continue
                 promo = promo_by_name[name]
-                counts = division_counts[name]
-                while ranked:
-                    _value, fighter = ranked.pop(0)
-                    if fighter not in promo.roster:
-                        continue
-                    key = (fighter.gender, fighter.weight)
-                    # Don't drain a division past its safe depth floor even
-                    # mid-emergency; the fallback fabricator can cover the rest.
-                    if counts.get(key, 0) <= 3:
-                        continue
-                    self.capture_regional_record(fighter)
-                    promo.roster.remove(fighter)
-                    fighter.feeder_origin = name
-                    fighter.last_regional_promotion = name
-                    fighter.regional_departure_month = self.month
-                    fighter.market_origin = "Regional emergency call-up"
-                    fighter.contract_months = 0
-                    fighter.exclusive = False
-                    fighter.contract_type = "Free Agent"
-                    fighter.free_agent_months = 0
-                    fighter.popularity = min(45, fighter.popularity + 3)
-                    self.free_agents.append(fighter)
-                    counts[key] = counts.get(key, 0) - 1
-                    per_circuit_taken[name] += 1
-                    moved += 1
-                    progress = True
-                    break
+                _value, fighter = ranked.pop(0)
+                if fighter not in promo.roster:
+                    continue
+                self.capture_regional_record(fighter)
+                promo.roster.remove(fighter)
+                fighter.feeder_origin = name
+                fighter.last_regional_promotion = name
+                fighter.regional_departure_month = self.month
+                fighter.market_origin = "Regional emergency call-up"
+                fighter.contract_months = 0
+                fighter.exclusive = False
+                fighter.contract_type = "Free Agent"
+                fighter.free_agent_months = 0
+                fighter.popularity = min(45, fighter.popularity + 3)
+                self.free_agents.append(fighter)
+                moved += 1
+                progress = True
         if moved:
             self.news.insert(0, f"Regional call-ups: {moved} experienced fighters entered free agency to meet market demand.")
         return moved
