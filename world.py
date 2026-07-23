@@ -8449,70 +8449,70 @@ class WorldMixin:
             criteria.append({"label": label, "met": bool(met), "missing": [item for item in missing if item]})
 
         early_missing = [
-            f"{20 - fighter.age} more year(s)" if fighter.age < 20 else "",
-            f"{5 - bouts} more bout(s)" if bouts < 5 else "",
-            f"potential {fighter.potential}/80" if fighter.potential < 80 else "",
-            "3 wins or +2 momentum" if real_w < 3 and fighter.momentum < 2 else "",
+            f"{21 - fighter.age} more year(s)" if fighter.age < 21 else "",
+            f"{8 - bouts} more bout(s)" if bouts < 8 else "",
+            f"potential {fighter.potential}/83" if fighter.potential < 83 else "",
+            "5 wins or +3 momentum" if real_w < 5 and fighter.momentum < 3 else "",
         ]
         add(
             "Early breakthrough",
-            fighter.age >= 20 and bouts >= 5 and fighter.potential >= 80
-            and (real_w >= 3 or fighter.momentum >= 2),
+            fighter.age >= 21 and bouts >= 8 and fighter.potential >= 83
+            and (real_w >= 5 or fighter.momentum >= 3),
             early_missing,
         )
         proven_missing = [
-            f"{22 - fighter.age} more year(s)" if fighter.age < 22 else "",
-            f"{7 - bouts} more bout(s)" if bouts < 7 else "",
-            f"{4 - real_w} more win(s)" if real_w < 4 else "",
-            f"win rate {win_rate:.0%}/45%" if win_rate < 0.45 else "",
+            f"{23 - fighter.age} more year(s)" if fighter.age < 23 else "",
+            f"{9 - bouts} more bout(s)" if bouts < 9 else "",
+            f"{5 - real_w} more win(s)" if real_w < 5 else "",
+            f"win rate {win_rate:.0%}/50%" if win_rate < 0.50 else "",
         ]
         add(
             "Proven regional",
-            fighter.age >= 22 and bouts >= 7 and real_w >= 4 and win_rate >= 0.45,
+            fighter.age >= 23 and bouts >= 9 and real_w >= 5 and win_rate >= 0.50,
             proven_missing,
         )
         established_missing = [
-            f"{24 - fighter.age} more year(s)" if fighter.age < 24 else "",
-            f"{10 - bouts} more bout(s)" if bouts < 10 else "",
-            f"win rate {win_rate:.0%}/45%" if win_rate < 0.45 else "",
+            f"{25 - fighter.age} more year(s)" if fighter.age < 25 else "",
+            f"{12 - bouts} more bout(s)" if bouts < 12 else "",
+            f"win rate {win_rate:.0%}/48%" if win_rate < 0.48 else "",
         ]
         add(
             "Established exit",
-            fighter.age >= 24 and bouts >= 10 and win_rate >= 0.45,
+            fighter.age >= 25 and bouts >= 12 and win_rate >= 0.48,
             established_missing,
         )
         hot_missing = [
             "regional origin not linked" if not origin_matches else "",
-            f"{3 - real_w} more win(s)" if real_w < 3 else "",
-            f"momentum {fighter.momentum:+d}/+3" if fighter.momentum < 3 else "",
-            f"popularity {fighter.popularity}/18" if fighter.popularity < 18 else "",
+            f"{5 - real_w} more win(s)" if real_w < 5 else "",
+            f"momentum {fighter.momentum:+d}/+4" if fighter.momentum < 4 else "",
+            f"popularity {fighter.popularity}/22" if fighter.popularity < 22 else "",
         ]
         add(
             "Hot regional run",
-            origin_matches and real_w >= 3 and fighter.momentum >= 3 and fighter.popularity >= 18,
+            origin_matches and real_w >= 5 and fighter.momentum >= 4 and fighter.popularity >= 22,
             hot_missing,
         )
-        circuit_path_a = max(0, 21 - fighter.age) + max(0, 16 - bouts)
-        circuit_path_b = max(0, 24 - bouts)
+        circuit_path_a = max(0, 22 - fighter.age) + max(0, 18 - bouts)
+        circuit_path_b = max(0, 26 - bouts)
         circuit_missing = (
-            [f"{max(0, 21 - fighter.age)} year(s) and {max(0, 16 - bouts)} bout(s) from a full run"]
-            if circuit_path_a <= circuit_path_b else [f"{max(0, 24 - bouts)} more bout(s)"]
+            [f"{max(0, 22 - fighter.age)} year(s) and {max(0, 18 - bouts)} bout(s) from a full run"]
+            if circuit_path_a <= circuit_path_b else [f"{max(0, 26 - bouts)} more bout(s)"]
         )
         add(
             "Circuit complete",
-            (fighter.age >= 21 and bouts >= 16) or bouts >= 24,
-            [] if (fighter.age >= 21 and bouts >= 16) or bouts >= 24 else circuit_missing,
+            (fighter.age >= 22 and bouts >= 18) or bouts >= 26,
+            [] if (fighter.age >= 22 and bouts >= 18) or bouts >= 26 else circuit_missing,
         )
         veteran_missing = [
-            f"{25 - fighter.age} more year(s)" if fighter.age < 25 else "",
-            f"{10 - bouts} more bout(s)" if bouts < 10 else "",
+            f"{26 - fighter.age} more year(s)" if fighter.age < 26 else "",
+            f"{12 - bouts} more bout(s)" if bouts < 12 else "",
         ]
-        add("Veteran exit", fighter.age >= 25 and bouts >= 10, veteran_missing)
+        add("Veteran exit", fighter.age >= 26 and bouts >= 12, veteran_missing)
         high_results = (
             win_rate >= 0.58
-            or real_w >= 8
-            or fighter.potential >= 84
-            or (fighter.momentum >= 3 and fighter.popularity >= 20)
+            or real_w >= 9
+            or fighter.potential >= 86
+            or (fighter.momentum >= 4 and fighter.popularity >= 24)
         )
         add(
             "Aging out",
@@ -8542,8 +8542,8 @@ class WorldMixin:
         # "Nearly" is intentionally broad enough to expose useful developing
         # fighters without labelling every new 17-year-old as one decision away.
         nearly = not sporting_reasons and fighter.age >= 18 and (
-            bouts >= 4 or fighter.potential >= 80 or fighter.momentum >= 2
-        ) and len(missing) <= 3
+            bouts >= 6 or fighter.potential >= 84 or fighter.momentum >= 3
+        ) and len(missing) <= 2
         if eligible:
             status = "Eligible Now"
             explanation = ", ".join(sporting_reasons)
