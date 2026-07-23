@@ -262,6 +262,22 @@ def main():
                         "An empty feeder candidate pool does not exit graduation cleanly")
         finally:
             feeder_probe.roster = original_feeder_roster
+        original_free_agents = app.free_agents
+        original_feeder_rosters = {id(promotion): list(promotion.roster) for promotion in app.promotions if promotion.is_regional_feeder}
+        app.free_agents = []
+        try:
+            year_end_callups = app.promote_year_end_regional_candidates()
+            assert_true(0 <= year_end_callups <= 5,
+                        "Year-end regional call-ups did not respect the five-fighter cap")
+            assert_true(len(app.free_agents) == year_end_callups,
+                        "Year-end regional call-ups did not move fighters into free agency")
+            assert_true(all(fighter.market_origin == "Year-end regional graduate" for fighter in app.free_agents),
+                        "Year-end call-ups were not marked as free-agent regional graduates")
+        finally:
+            for promotion in app.promotions:
+                if promotion.is_regional_feeder:
+                    promotion.roster = original_feeder_rosters[id(promotion)]
+            app.free_agents = original_free_agents
         assert_true("regional_prospects" in app.tab_pages,
                     "Regional Prospects is missing from World navigation")
         assert_true({"status", "promotion", "record", "overall", "potential", "path"}.issubset(set(app.regional_prospect_tree["columns"])),

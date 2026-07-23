@@ -1466,6 +1466,7 @@ class WorldMixin:
             if new_year != old_year:
                 steps.append((f"{old_year} awards", lambda old_year=old_year: self.run_end_of_year_awards(old_year)))
                 steps.append(("Aging the world", self.age_world_one_year))
+                steps.append(("Year-end regional call-ups", self.promote_year_end_regional_candidates))
             steps.extend(self.monthly_player_business_steps())
 
         interval = max(1, int(self.rules.get("autosave_interval_months", 2)))
@@ -8909,6 +8910,97 @@ class WorldMixin:
             moved += 1
         if moved:
             self.news.insert(0, f"Regional call-ups: {moved} experienced fighters entered free agency to meet market demand.")
+        return moved
+
+    def promote_year_end_regional_candidates(self, threshold=180, limit=5):
+        """Top up a thin free-agent market with the most promotion-ready regional fighters.
+
+        This is deliberately a small, once-per-year reserve mechanism. It is not
+        a replacement for normal feeder graduation: age leads the decision, then
+        regional wins, ability, current form, and public profile separate fighters
+        who are otherwise ready for the wider market.
+        """
+        threshold = max(0, int(threshold))
+        limit = max(0, int(limit))
+        active_free_agents = [
+            fighter for fighter in self.free_agents
+            if not getattr(fighter, "retired", False)
+        ]
+        vacancies = max(0, threshold - len(active_free_agents))
+        slots = min(limit, vacancies)
+        if not slots:
+            return 0
+
+        candidates = []
+        for promo in self.promotions:
+            if not getattr(promo, "is_regional_feeder", False):
+                continue
+            division_counts = {}
+            for member in promo.roster:
+                if not getattr(member, "retired", False):
+                    key = (member.gender, member.weight)
+                    division_counts[key] = division_counts.get(key, 0) + 1
+            for fighter in promo.roster:
+                assessment = self.regional_candidate_assessment(fighter, promo)
+                key = (fighter.gender, fighter.weight)
+                if (
+                    not (assessment["eligible"] or assessment["status"] == "Nearly Eligible")
+                    or fighter.retired
+                    or fighter.injured
+                    or fighter.retirement_pending
+                    or fighter.fatigue >= 65
+                    or division_counts.get(key, 0) <= 3
+                ):
+                    continue
+                bouts = assessment["bouts"]
+                # Age is the strongest factor: the annual market release is mainly
+                # for fighters who have had time to prove themselves in the feeder.
+                age_value = min(56, max(0, fighter.age - 18) * 7)
+                value = (
+                    age_value
+                    + fighter.record_w * 3.5
+                    + fighter.overall * 0.30
+                    + max(0, fighter.momentum) * 5
+                    + fighter.popularity * 0.20
+                    + min(12, bouts * 0.5)
+                    + random.uniform(-2, 2)
+                )
+                candidates.append((value, promo, fighter))
+
+        if not candidates:
+            return 0
+        candidates.sort(key=lambda item: item[0], reverse=True)
+        moved = 0
+        used_promotions = set()
+        for _value, promo, fighter in candidates:
+            if moved >= slots:
+                break
+            # Spread the annual intake across the feeder system where possible.
+            if promo.name in used_promotions or fighter not in promo.roster:
+                continue
+            self.capture_regional_record(fighter)
+            promo.roster.remove(fighter)
+            fighter.feeder_origin = promo.name
+            fighter.last_regional_promotion = promo.name
+            fighter.regional_departure_month = self.month
+            fighter.market_origin = "Year-end regional graduate"
+            fighter.contract_months = 0
+            fighter.exclusive = False
+            fighter.contract_type = "Free Agent"
+            fighter.free_agent_months = 0
+            fighter.popularity = min(45, fighter.popularity + 3)
+            self.free_agents.append(fighter)
+            used_promotions.add(promo.name)
+            moved += 1
+
+        if moved:
+            headline = f"Year-end regional class: {moved} promotion-ready fighters entered free agency as the market fell below {threshold}."
+            self.news.insert(0, headline)
+            self.record_world_story(
+                "Regional Year-End Call-Ups", headline,
+                "Older, winning, in-form regional fighters were prioritised to restore free-agent depth.",
+                list(used_promotions), [], importance=2,
+            )
         return moved
 
     def spawn_annual_regional_wonderkid(self):
