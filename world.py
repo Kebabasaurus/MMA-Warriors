@@ -7299,7 +7299,7 @@ class WorldMixin:
             losing_streak_exit = fighter.age > 30 and fighter.overall < 80 and losing_streak >= 7
             recent_win_rate = self.recent_real_win_rate(fighter, 5)
             low_overall_stagnation = (
-                stagnation_review_due and fighter.age >= 24 and fighter.overall < 55
+                stagnation_review_due and fighter.age >= 30 and fighter.overall < 55
                 and losing_streak >= 3 and recent_win_rate is not None and recent_win_rate <= 0.30
                 and not self.is_blue_chip_prospect(fighter)
             )
