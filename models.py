@@ -94,6 +94,14 @@ class Fighter:
     portrait_bg: str = "#333333"
     portrait_accent: str = "#c3a45d"
     fight_history: list = None
+    # Academy results are a separate amateur ledger. They inform a fighter's
+    # background, but never count toward the professional record or universe
+    # record shown on the main profile history tab.
+    amateur_w: int = 0
+    amateur_l: int = 0
+    amateur_d: int = 0
+    amateur_bout_history: list = None
+    amateur_history_migration_version: int = 0
     # Pre-bout ratings retained independently of the bounded card replay archive.
     bout_rating_history: list = None
     annual_overalls: dict = None
@@ -145,12 +153,14 @@ class Fighter:
     title_shot_clause: bool = False
     owed_title_shot: bool = False
     rating_profile_version: int = 0
+    realism_profile_version: int = 0
     sport_profile_version: int = 0
     legend_prime_age_version: int = 0
     prime_legend_age_override_version: int = 0
     prime_rating_profile_version: int = 0
     career_arc_version: int = 0
     feeder_origin: str = ""
+    market_origin: str = ""
     regional_record_w: int = 0
     regional_record_l: int = 0
     regional_record_d: int = 0

@@ -16,10 +16,11 @@ def main():
         checks = []
         app.rules["scouting_mode"] = True
         target = app.free_agents[0]
-        app.market_tree.selection_set(target.name)
+        target_row = next(row_id for row_id, fighter in app.market_tree_fighters.items() if fighter is target)
+        app.market_tree.selection_set(target_row)
         app.start_selected_scout_report("basic")
-        for _ in range(2): app.process_scouting_reports()
-        checks.append(("Basic scouting", app.scouting_reports[target.name]["status"] == "Complete"))
+        for _ in range(3): app.process_scouting_reports()
+        checks.append(("Basic scouting", app.scouting_reports[target.fighter_id]["status"] == "Complete"))
         app.academy.update({
             "owned": True, "level": 1, "capacity": 8, "weekly_cost": 4500,
             "network_active": True, "network_weeks": 0, "network_region": app.player_region,
@@ -38,11 +39,9 @@ def main():
         ready = [f for f in promo.roster if not f.injured and f.fatigue < app.ai_fatigue_limit(promo)]
         card = app.build_ai_card(promo, ready, 7)
         checks.append(("AI event hierarchy", bool(card) and any(f.get("main") for f in card) and all(f.get("tier") for f in card)))
-        a, b = app.roster[:2]
-        entry = {"fighters": [a.name, b.name], "tier": "Prelims", "main": False, "source_event": "Validation", "target_month": 1}
-        app.pending_rebookings = [entry]
-        app.process_pending_rebookings()
-        checks.append(("Automatic rebooking", not app.pending_rebookings and bool(app.scheduled_events)))
+        initial_estimate = dict(app.scouting_reports[target.fighter_id].get("estimates", {}).get("overall", {}))
+        app.refresh_market(); app.refresh_market()
+        checks.append(("Stable scouting estimate", bool(initial_estimate) and app.scouting_reports[target.fighter_id]["estimates"]["overall"] == initial_estimate))
         lines = ["MMA WARRIORS - FRESH FEATURE VALIDATION", "=" * 72]
         for name, passed in checks: lines.append(f"{'PASS' if passed else 'FAIL'}  {name}")
         lines.append("\nThis harness uses a new in-memory world only; no user save was opened or written.")

@@ -57,10 +57,31 @@ class EventMixin:
             self.refresh_available()
             return
         self.normalize_card_order()
+        super_project = getattr(self, "super_event_project", None)
+        if super_project:
+            if month < int(super_project.get("earliest_month", month)) or month > int(super_project.get("deadline_month", month)):
+                message = f"This project must be scheduled between {self.format_game_date(super_project.get('earliest_month', month), 1)} and {self.format_game_date(super_project.get('deadline_month', month), 4)}."
+                self.set_schedule_status("SCHEDULING BLOCKED: " + message, "error")
+                messagebox.showwarning("Super-event date", message)
+                return
+            missing = self.validate_super_event_card(super_project, self.booked)
+            if missing:
+                message = "Super-event card approval still requires: " + ", ".join(missing) + "."
+                self.set_schedule_status("SCHEDULING BLOCKED: " + message, "error")
+                messagebox.showwarning("Super-event card approval", message)
+                return
         event_number = self.next_player_event_number()
         current_name = self.event_name.get().strip()
         auto_named = self.is_auto_event_name(current_name)
         event_name = self.default_event_name(event_number) if auto_named else current_name
+        scheduled_fights = []
+        for booked_fight in self.booked:
+            snapshot = dict(booked_fight)
+            snapshot["fighter_ids"] = [
+                getattr(self.get_fighter(reference), "fighter_id", "") if reference != "TBA" else ""
+                for reference in self.event_fight_participants(snapshot)
+            ]
+            scheduled_fights.append(snapshot)
         event = {
             "name": event_name,
             "auto_named": auto_named,
@@ -70,16 +91,28 @@ class EventMixin:
             "month": month,
             "week": week,
             "broadcaster": self.event_broadcaster.get(),
-            "fights": [dict(fight) for fight in self.booked],
+            "fights": scheduled_fights,
         }
+        if super_project:
+            project = dict(super_project)
+            project["status"] = "Scheduled"
+            project["scheduled_month"] = month
+            event["super_event"] = project
+            self.super_event_project = None
+            for offer in self.super_event_offers:
+                if offer.get("id") == project.get("id"):
+                    offer.update(project)
         self.scheduled_events.append(event)
         self.assign_event_camps(event)
-        self.news.insert(0, f"{event['name']} has been scheduled for {self.event_date_label(event)} at {event['venue']}.")
+        prefix = "SUPER EVENT SCHEDULED: " if event.get("super_event") else ""
+        self.news.insert(0, f"{prefix}{event['name']} has been scheduled for {self.event_date_label(event)} at {event['venue']}.")
         self.set_schedule_status(f"SCHEDULED: {event['name']} | {self.event_date_label(event)} | {len(event['fights'])} fights.", "success")
         self.booked.clear()
         self.event_name.set(self.default_event_name())
         self.set_booking_date(month if week < 4 else month + 1, week + 1 if week < 4 else 1)
         self.event_broadcaster.set(self.broadcasters[0]["name"] if self.broadcasters else "No Coverage")
+        if hasattr(self, "event_venue_box"):
+            self.event_venue_box.configure(values=self.available_event_venues())
         self.refresh_all()
 
     def repair_booking_conflicts(self):
@@ -209,8 +242,8 @@ class EventMixin:
             if not self.adjust_combat_sport_training_key(fighter, sport, key, 1, f"{fighter.camp_focus} camp focus"):
                 return
         else:
-            fighter.detailed_skills[key] = min(99, fighter.detailed_skills.get(key, 50) + 1)
-            self.sync_broad_skills_from_details(fighter)
+            if not self.improve_detailed_skill(fighter, key, 1):
+                return
         self.news.insert(0, f"Camp report: {fighter.name}'s {fighter.camp_focus.lower()} work improved {key.replace('_', ' ')}.")
 
     def selected_due_event(self):
@@ -404,23 +437,61 @@ class EventMixin:
         title_var = tk.BooleanVar(value=False)
         tier_var = tk.StringVar(value="Main Card")
         ttk.Label(filters, text="Weight", style="Inset.TLabel").pack(side="left", padx=(4, 2))
-        weight_box = ttk.Combobox(filters, values=["All"] + WEIGHTS, textvariable=weight_var, state="readonly", width=14)
+        weight_box = ttk.Combobox(filters, values=["All"] + self.active_player_division_weights("All"), textvariable=weight_var, state="readonly", width=14)
         weight_box.pack(side="left", padx=(0, 7))
         ttk.Label(filters, text="Gender", style="Inset.TLabel").pack(side="left", padx=(2, 2))
         gender_box = ttk.Combobox(filters, values=["All", "Male", "Female"], textvariable=gender_var, state="readonly", width=8)
         gender_box.pack(side="left", padx=(0, 5))
 
+        def sync_editor_divisions(*_args):
+            """Only offer weight classes this promotion actually operates."""
+            options = ["All"] + self.active_player_division_weights(gender_var.get())
+            weight_box.configure(values=options)
+            if weight_var.get() not in options:
+                weight_var.set("All")
+
+        legend = tk.Frame(available, bg=self.colors["panel_dark"])
+        legend.pack(fill="x", padx=6, pady=(2, 0))
+        for swatch_color, swatch_text in (("#7fd694", "winning record"), ("#e8837a", "losing record"), ("#9298a1", "unavailable this date")):
+            tk.Label(legend, text="■", bg=self.colors["panel_dark"], fg=swatch_color, font=("Tahoma", 9)).pack(side="left", padx=(6, 1))
+            tk.Label(legend, text=swatch_text, bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 8)).pack(side="left")
+
         history_var = tk.StringVar(value="Select one fighter to compare prior meetings.")
         history_label = ttk.Label(available, textvariable=history_var, style="Inset.TLabel", anchor="w")
         history_label.pack(fill="x", padx=6, pady=(2, 0))
 
-        available_tree = ttk.Treeview(available, columns=("name", "gender", "weight", "record", "ovr", "pop", "history", "status"), show="headings", selectmode="extended", height=18)
-        for key, label, size in (("name", "Name", 158), ("gender", "G", 38), ("weight", "Class", 100), ("record", "Record", 66), ("ovr", "OVR", 46), ("pop", "Pop", 46), ("history", "History", 82), ("status", "Status", 110)):
+        available_tree = ttk.Treeview(available, columns=("name", "gender", "weight", "rank", "titlepath", "record", "age", "overall", "elo", "pop", "build", "last", "form", "trend", "activity", "fatigue", "recovery", "fit", "history", "status"), show="headings", selectmode="extended", height=18)
+        for key, label, size in (("name", "Name", 148), ("gender", "G", 34), ("weight", "Class", 90), ("rank", "Rank", 44), ("titlepath", "Title Path", 104), ("record", "Record", 66), ("age", "Age", 40), ("overall", "OVR", 44), ("elo", "ELO", 54), ("pop", "Pop", 42), ("build", "Build", 48), ("last", "Last Fight", 84), ("form", "Last 5 (→latest)", 82), ("trend", "Form", 56), ("activity", "Active", 50), ("fatigue", "Fatigue", 88), ("recovery", "Medical Return", 104), ("fit", "Match Fit", 66), ("history", "History", 74), ("status", "Event Availability", 132)):
             available_tree.heading(key, text=label)
             available_tree.column(key, width=size, anchor="center")
         available_tree.column("name", anchor="w")
+        available_tree.column("titlepath", anchor="w")
+        available_tree.tag_configure("not_ready", foreground="#9298a1")
+        available_tree.tag_configure("rec_win", foreground="#7fd694")
+        available_tree.tag_configure("rec_loss", foreground="#e8837a")
+        self.make_tree_sortable(available_tree)
+        self.attach_tree_heading_tooltips(available_tree, {
+            "rank": "Divisional rank. C = champion, #n = ranked contender, - = unranked.",
+            "titlepath": "Where this fighter sits on the road to a belt (champion, owed a title shot, #1 or top-five contender, or building merit).",
+            "record": "Career wins-losses-draws. Row colour: green = winning record, red = losing record, grey = unavailable on this date.",
+            "overall": "Overall ability (OVR). A large OVR gap usually means a lopsided mismatch.",
+            "elo": "Rating earned from actual results. Close ELOs make the most competitive bout.",
+            "pop": "Fighter popularity. Popular names high on the card lift the gate, hype, and media rating.",
+            "build": "Match build - how compelling this fighter is to book right now.",
+            "last": "Date of their last fight.",
+            "form": "Wins-losses over the last five bouts, oldest to newest (latest result last).",
+            "trend": "Momentum read from the rankings: a win streak, rising, sliding, or steady.",
+            "activity": "How recently they competed. Long layoffs risk ring rust; too-frequent bouts risk fatigue.",
+            "fatigue": "Current fatigue, 0-100. 0-19 Fresh; 20-39 Manageable; 40-54 Elevated; 55-64 Tired; 65+ Unfit and cannot be booked.",
+            "recovery": "Earliest medical return date after the previous bout or injury. This is separate from accumulated fatigue.",
+            "fit": "Match fitness vs the selected anchor: fatigue, injury, and camp readiness.",
+            "history": "Prior meetings with the other selected fighter.",
+            "status": "Whether this fighter can be booked on this event's date.",
+        })
         available_scroll = ttk.Scrollbar(available, orient="vertical", command=available_tree.yview)
-        available_tree.configure(yscrollcommand=available_scroll.set)
+        available_scroll_x = ttk.Scrollbar(available, orient="horizontal", command=available_tree.xview)
+        available_tree.configure(yscrollcommand=available_scroll.set, xscrollcommand=available_scroll_x.set)
+        available_scroll_x.pack(side="bottom", fill="x")
         available_scroll.pack(side="right", fill="y", pady=5)
         available_tree.pack(fill="both", expand=True, padx=6, pady=5)
 
@@ -432,11 +503,15 @@ class EventMixin:
         ttk.Label(add_controls, text="Tier", style="Inset.TLabel").pack(side="left", padx=(8, 2))
         ttk.Combobox(add_controls, values=CARD_TIERS, textvariable=tier_var, state="readonly", width=12).pack(side="left", padx=(0, 3))
 
-        card_tree = ttk.Treeview(card, columns=("slot", "fight", "tier", "title", "weight", "build"), show="headings", height=18)
-        for key, label, size in (("slot", "Slot", 90), ("fight", "Fight", 240), ("tier", "Tier", 92), ("title", "Stakes", 92), ("weight", "Class", 100), ("build", "Build", 52)):
+        card_tree = ttk.Treeview(card, columns=("slot", "fight", "tier", "title", "weight", "build", "fatigue", "recovery"), show="headings", height=18)
+        for key, label, size in (("slot", "Slot", 90), ("fight", "Fight", 240), ("tier", "Tier", 92), ("title", "Stakes", 92), ("weight", "Class", 100), ("build", "Build", 52), ("fatigue", "Fatigue A/B", 92), ("recovery", "Medical Return A/B", 150)):
             card_tree.heading(key, text=label)
             card_tree.column(key, width=size, anchor="center")
         card_tree.column("fight", anchor="w")
+        self.attach_tree_heading_tooltips(card_tree, {
+            "fatigue": "Current fatigue for each fighter in the same order as the matchup. 65 or higher is unfit.",
+            "recovery": "Earliest medical return for each fighter in matchup order. Now means medically cleared today.",
+        })
         card_tree.pack(fill="both", expand=True, padx=6, pady=5)
 
         card_controls = ttk.Frame(card, style="Inset.TFrame")
@@ -465,16 +540,33 @@ class EventMixin:
             available_tree.delete(*available_tree.get_children())
             booked_here = current_names()
             booked_elsewhere = other_booked_names()
+            division_ranks = self.player_division_rank_map()
+            closed = set(getattr(self, "closed_divisions", set()))
             for fighter in sorted(self.roster, key=lambda item: (item.weight, item.gender, -item.overall, item.name)):
                 if fighter.name in booked_here or fighter.name in booked_elsewhere:
+                    continue
+                # Never offer fighters from a division the promotion has closed.
+                if self.belt_key(fighter.gender, fighter.weight) in closed:
                     continue
                 if weight_var.get() != "All" and fighter.weight != weight_var.get():
                     continue
                 if gender_var.get() != "All" and fighter.gender != gender_var.get():
                     continue
-                if fighter.injured or fighter.fatigue >= 65 or not self.fighter_available_for_date(fighter, event["month"], event.get("week", 1)):
-                    continue
-                available_tree.insert("", "end", iid=fighter.fighter_id, values=(fighter.name, fighter.gender[0], fighter.weight, fighter.record, fighter.overall, fighter.popularity, "-", self.fighter_booking_status(fighter, event["month"], event.get("week", 1))))
+                rank = division_ranks.get(self.fighter_identity_key(fighter))
+                rank_label = "C" if fighter.champion else f"#{rank}" if rank else "-"
+                status = self.fighter_booking_status(fighter, event["month"], event.get("week", 1))
+                available_tree.insert(
+                    "", "end", iid=fighter.fighter_id, tags=self.available_row_tags(fighter, status),
+                    values=(
+                        fighter.name, fighter.gender[0], fighter.weight, rank_label,
+                        self.matchmaking_title_path_label(fighter), fighter.record, fighter.age,
+                        fighter.overall, fighter.elo_rating, fighter.popularity,
+                        self.fight_build_score(fighter, rank=rank), self.fighter_last_fight_date_label(fighter),
+                        self.world_fighter_last_five(fighter), self.matchmaking_form_label(fighter),
+                        self.fighter_activity_rating(fighter), self.fighter_fatigue_label(fighter),
+                        self.fighter_recovery_date_label(fighter), "-", "-", status,
+                    ),
+                )
             refresh_history_editor()
 
         def refresh_history_editor(_event=None):
@@ -483,6 +575,7 @@ class EventMixin:
             fighters = [fighter for fighter in fighters if fighter]
             for row_id in available_tree.get_children():
                 available_tree.set(row_id, "history", "-")
+                available_tree.set(row_id, "fit", "-")
             if not fighters:
                 history_var.set("Select one fighter to compare prior meetings.")
                 return
@@ -491,13 +584,18 @@ class EventMixin:
                 for row_id in available_tree.get_children():
                     opponent = next((item for item in self.roster if item.fighter_id == row_id), None)
                     available_tree.set(row_id, "history", self.matchup_history_indicator(anchor, opponent))
+                    fit = self.matchmaking_fit_score(anchor, opponent)
+                    if fit is not None:
+                        available_tree.set(row_id, "fit", str(fit))
                 history_var.set(f"OPPONENT CHECK: comparing every fighter with {anchor.name}.")
                 return
             a, b = fighters[:2]
             meetings, latest_month = self.matchup_history_summary(a, b)
             indicator = self.matchup_history_indicator(a, b)
+            fit = self.matchmaking_fit_score(a, b)
             for row_id in selected_ids[:2]:
                 available_tree.set(row_id, "history", indicator)
+                available_tree.set(row_id, "fit", str(fit or "-"))
             if meetings:
                 last_met = f"; last met {self.format_game_date(latest_month, 1)}" if latest_month else ""
                 history_var.set(f"REMATCH: {a.name} and {b.name} have {meetings} prior meeting{'s' if meetings != 1 else ''}{last_met}.")
@@ -507,12 +605,16 @@ class EventMixin:
         def refresh_card_editor(select_index=None):
             normalize_event_order()
             card_tree.delete(*card_tree.get_children())
+            tier_counts = {}
             for index, fight in enumerate(event.get("fights", [])):
                 names = fight.get("fighters", [])
                 matchup = " vs ".join(names) if names else "Tournament"
                 named = [self.get_fighter(name) for name in names if name != "TBA"]
                 build = round(self.match_build_score(*named, fight)) if len(named) == 2 else "-"
-                slot = "Main Event" if fight.get("main") else f"Bout {index + 1}"
+                # Make the segment of the card explicit, not just a running number.
+                tier_name = fight.get("tier", "Main Card")
+                tier_counts[tier_name] = tier_counts.get(tier_name, 0) + 1
+                slot = "MAIN EVENT" if fight.get("main") else f"{tier_name} {tier_counts[tier_name]}"
                 stake_parts = []
                 if fight.get("divisional_title", fight.get("title") and not fight.get("special_belt")):
                     stake_parts.append("Interim Title" if fight.get("interim") else "Divisional Title")
@@ -520,7 +622,9 @@ class EventMixin:
                     stake_parts.append(f"{fight['special_belt']} Title")
                 stakes = " + ".join(stake_parts) or "-"
                 weight = named[0].weight if named else fight.get("tba_weight", "-")
-                card_tree.insert("", "end", iid=str(index), values=(slot, matchup, fight.get("tier", "Main Card"), stakes, weight, build))
+                fatigue = " / ".join(str(fighter.fatigue) for fighter in named) or "-"
+                recovery = " / ".join(self.fighter_recovery_date_label(fighter) for fighter in named) or "-"
+                card_tree.insert("", "end", iid=str(index), values=(slot, matchup, fight.get("tier", "Main Card"), stakes, weight, build, fatigue, recovery))
             if select_index is not None and str(select_index) in card_tree.get_children():
                 card_tree.selection_set(str(select_index))
                 card_tree.focus(str(select_index))
@@ -539,6 +643,17 @@ class EventMixin:
                 return
             fighters = [next((fighter for fighter in self.roster if fighter.fighter_id == fighter_id), None) for fighter_id in selected]
             if any(fighter is None for fighter in fighters):
+                return
+            unavailable = [
+                fighter for fighter in fighters
+                if self.fighter_booking_status(fighter, event["month"], event.get("week", 1)) != "Ready"
+            ]
+            if unavailable:
+                details = ", ".join(
+                    f"{fighter.name}: {self.fighter_booking_status(fighter, event['month'], event.get('week', 1))}"
+                    for fighter in unavailable
+                )
+                messagebox.showwarning("Fighter unavailable", details, parent=window)
                 return
             if not tba and (fighters[0].gender != fighters[1].gender or fighters[0].weight != fighters[1].weight):
                 messagebox.showwarning("Division mismatch", "Booked opponents must share a gender and weight class.", parent=window)
@@ -601,6 +716,10 @@ class EventMixin:
             replacement = next((fighter for fighter in self.roster if fighter.fighter_id == selected[0]), None)
             if not replacement:
                 return
+            replacement_status = self.fighter_booking_status(replacement, event["month"], event.get("week", 1))
+            if replacement_status != "Ready":
+                messagebox.showwarning("Fighter unavailable", f"{replacement.name}: {replacement_status}", parent=window)
+                return
             tba_weight = fight.get("tba_weight") or next((self.get_fighter(name).weight for name in fight.get("fighters", []) if name != "TBA" and self.get_fighter(name)), "")
             tba_gender = fight.get("tba_gender") or next((self.get_fighter(name).gender for name in fight.get("fighters", []) if name != "TBA" and self.get_fighter(name)), "")
             if replacement.weight != tba_weight or replacement.gender != tba_gender:
@@ -644,7 +763,8 @@ class EventMixin:
                 self.open_fighter_profile_window(fighter)
 
         weight_box.bind("<<ComboboxSelected>>", refresh_available_editor)
-        gender_box.bind("<<ComboboxSelected>>", refresh_available_editor)
+        gender_box.bind("<<ComboboxSelected>>", lambda _event: (sync_editor_divisions(), refresh_available_editor()))
+        sync_editor_divisions()
         available_tree.bind("<Double-1>", show_selected_profile)
         available_tree.bind("<<TreeviewSelect>>", refresh_history_editor, add="+")
         refresh_card_editor()
@@ -656,7 +776,29 @@ class EventMixin:
         if not due:
             return False
         event = due[0]
-        choice = messagebox.askyesnocancel("Fight Day", f"{event['name']} is due in {self.event_date_label(event)}.\n\nYes = Watch live\nNo = Sim instantly\nCancel = stay on this week")
+        references = set()
+        for fight in event.get("fights", []):
+            references.update(self.event_fight_participants(fight))
+            references.update(ref for ref in fight.get("fighter_ids", []) if ref)
+        retirement_names = []
+        final_comeback_names = []
+        for fighter in list(self.roster) + list(self.retired_fighters):
+            if fighter.name not in references and getattr(fighter, "fighter_id", "") not in references:
+                continue
+            if getattr(fighter, "retirement_pending", False) or getattr(fighter, "retired", False):
+                retirement_names.append(fighter.name)
+            guaranteed = max(0, int(getattr(fighter, "guaranteed_fights", 0) or 0))
+            completed = max(0, int(getattr(fighter, "contract_fights_completed", 0) or 0))
+            if getattr(fighter, "comeback_contract", False) and guaranteed - completed == 1:
+                final_comeback_names.append(fighter.name)
+        retirement_warning = ""
+        if retirement_names:
+            retirement_warning = "\n\nRETIREMENT NOTICE: " + ", ".join(sorted(set(retirement_names))) + " has announced retirement and will leave after completing their final scheduled commitment."
+        comeback_warning = ""
+        if final_comeback_names:
+            comeback_warning = ("\n\nCOMEBACK COMMITMENT: " + ", ".join(sorted(set(final_comeback_names)))
+                                + " will complete their guaranteed comeback commitment in this bout. Normal retirement review can resume afterward.")
+        choice = messagebox.askyesnocancel("Fight Day", f"{event['name']} is due in {self.event_date_label(event)}.{retirement_warning}{comeback_warning}\n\nYes = Watch live\nNo = Sim instantly\nCancel = stay on this week")
         if choice is True:
             package = self.prepare_event_result(event)
             self.open_live_fight_window(event, package)
@@ -721,8 +863,8 @@ class EventMixin:
             if key not in native_keys or not self.adjust_combat_sport_training_key(fighter, sport, key, amount, f"{gym.name} camp development"):
                 return
         else:
-            fighter.detailed_skills[key] = max(1, min(99, fighter.detailed_skills.get(key, 50) + amount))
-            self.sync_broad_skills_from_details(fighter)
+            if not self.improve_detailed_skill(fighter, key, amount):
+                return
         if random.random() < 0.35:
             self.news.insert(0, f"Camp report: {fighter.name} sharpened {key.replace('_', ' ')} at {gym.name}.")
 
@@ -775,6 +917,32 @@ class EventMixin:
         if package.get("tournament_brackets"):
             ttk.Button(replay_controls, text="View Tournament Bracket", style="Accent.TButton", command=lambda: self.open_event_tournament_bracket(package, window)).pack(side="left")
         ttk.Button(replay_controls, text="Close", command=window.destroy).pack(side="right")
+
+    def live_fight_official_outcome(self, log):
+        """Return (is_draw, winner_name) for current and legacy fight logs."""
+        result = str(log.get("result", "") or "")
+        method = str(log.get("method", "") or "")
+        a_name = str(log.get("a", "") or "")
+        b_name = str(log.get("b", "") or "")
+        structured_winner = str(log.get("winner", "") or "").strip()
+        draw = (
+            bool(log.get("draw"))
+            or structured_winner.casefold() == "draw"
+            or method.casefold() == "draw"
+            or bool(re.search(r"\b(?:draw|fought to a draw)\b", result, re.IGNORECASE))
+        )
+        if draw:
+            return True, ""
+        if structured_winner in (a_name, b_name):
+            return False, structured_winner
+        if " - " in result:
+            legacy_winner = result.split(" - ", 1)[0].strip()
+            if legacy_winner in (a_name, b_name):
+                return False, legacy_winner
+        for name in (a_name, b_name):
+            if name and re.search(rf"{re.escape(name)}\s+(?:def\.|defeats\b|beat\b|wins\b)", result, re.IGNORECASE):
+                return False, name
+        return False, ""
 
     def open_live_fight_window(self, event, package, apply_results=True, on_complete=None):
         # Matchmaking displays the headline at the top of the bill, but a live
@@ -865,6 +1033,13 @@ class EventMixin:
         right_condition = tk.Label(condition_row, text="BLUE CORNER READY", width=24, anchor="w", bg=self.colors["chrome"], fg=self.colors["muted"], font=("Tahoma", 8, "bold"))
         right_condition.pack(side="left", padx=(5, 0))
 
+        # Broadcast-style tug-of-war momentum meter: who is winning the exchanges.
+        momentum_frame = tk.Frame(window, bg=self.colors["chrome"])
+        momentum_frame.pack(fill="x", padx=28, pady=(0, 4))
+        tk.Label(momentum_frame, text="ROUND MOMENTUM", font=("Tahoma", 8, "bold"), bg=self.colors["chrome"], fg=self.colors["muted"]).pack(anchor="center")
+        momentum_canvas = tk.Canvas(momentum_frame, height=22, bg=self.colors["panel_dark"], highlightthickness=1, highlightbackground=self.colors["line"])
+        momentum_canvas.pack(fill="x", padx=4)
+
         moment_panel = tk.Frame(window, bg=self.colors["tree"], highlightthickness=1, highlightbackground=self.colors["line"])
         moment_panel.pack(fill="x", padx=8, pady=(0, 5))
         current_moment_label = tk.Label(
@@ -896,12 +1071,14 @@ class EventMixin:
         controls3 = ttk.Frame(controls_area, style="Chrome.TFrame")
         controls3.pack(fill="x")
 
-        body = ttk.Frame(window, style="Chrome.TFrame")
+        body = tk.PanedWindow(
+            window, orient="horizontal", bg=self.colors["line"], bd=0,
+            sashwidth=8, sashrelief="raised", showhandle=True, handlesize=10,
+        )
         body.pack(side="top", fill="both", expand=True, padx=8, pady=8)
         list_frame = ttk.Frame(body, style="Chrome.TFrame")
-        list_frame.pack(side="left", fill="y", padx=(0, 8))
         fight_list = tk.Listbox(list_frame, width=29, font=("Tahoma", 9), bg=self.colors["tree"], fg=self.colors["text"], selectbackground=self.colors["red"], selectforeground="#ffffff", activestyle="none")
-        fight_list.pack(side="left", fill="y")
+        fight_list.pack(side="left", fill="both", expand=True)
         fight_scroll = ttk.Scrollbar(list_frame, orient="vertical", command=fight_list.yview)
         fight_scroll.pack(side="right", fill="y")
         fight_list.configure(yscrollcommand=fight_scroll.set)
@@ -910,7 +1087,8 @@ class EventMixin:
             fight_list.insert("end", f"{index}. PENDING - {heading[:28]}")
 
         text_frame = ttk.Frame(body, style="Chrome.TFrame")
-        text_frame.pack(side="left", fill="both", expand=True)
+        body.add(list_frame, minsize=170, width=270, stretch="never")
+        body.add(text_frame, minsize=420, stretch="always")
         stats_panel = ttk.Frame(text_frame, style="Panel.TFrame")
         stats_panel.pack(side="bottom", fill="x", pady=(5, 0))
         ttk.Label(stats_panel, text="LIVE ROUND READ", style="Section.TLabel", anchor="center").pack(fill="x")
@@ -986,6 +1164,37 @@ class EventMixin:
             left_condition.config(text=f"RED {condition_word(gas_a)}  {gas_a}%{left_marker}")
             right_condition.config(text=f"{right_marker}{gas_b}%  {condition_word(gas_b)} BLUE")
 
+        live_stats.tag_configure("edge", foreground="#7fd694")
+
+        def draw_momentum_bar():
+            canvas = momentum_canvas
+            canvas.delete("all")
+            canvas_w = int(canvas.winfo_width() or 0) or 600
+            canvas_h = int(canvas.winfo_height() or 0) or 22
+            current_log = fight_logs[state["fight"]] if 0 <= state["fight"] < len(fight_logs) else {}
+            a_name, b_name = current_log.get("a", ""), current_log.get("b", "")
+            values = state.get("round_values", {})
+            a_row, b_row = values.get(a_name, {}), values.get(b_name, {})
+            strength_a = sum(float(a_row.get(key, 0) or 0) for key in ("impact", "control", "danger"))
+            strength_b = sum(float(b_row.get(key, 0) or 0) for key in ("impact", "control", "danger"))
+            total = strength_a + strength_b
+            lean_a = 0.5 if total <= 0 else max(0.06, min(0.94, strength_a / total))
+            split = int(canvas_w * lean_a)
+            red = self.colors.get("red", "#c0392b")
+            blue = "#3f7bd6"
+            canvas.create_rectangle(0, 0, split, canvas_h, fill=red, width=0)
+            canvas.create_rectangle(split, 0, canvas_w, canvas_h, fill=blue, width=0)
+            canvas.create_line(canvas_w // 2, 0, canvas_w // 2, canvas_h, fill="#ffffff", width=1, dash=(2, 2))
+            canvas.create_line(split, 0, split, canvas_h, fill=self.colors.get("gold", "#c9a13a"), width=3)
+            if a_name:
+                canvas.create_text(7, canvas_h // 2, text=a_name[:18], anchor="w", fill="#ffffff", font=("Tahoma", 8, "bold"))
+            if b_name:
+                canvas.create_text(canvas_w - 7, canvas_h // 2, text=b_name[:18], anchor="e", fill="#ffffff", font=("Tahoma", 8, "bold"))
+            if total > 0:
+                canvas.create_text(canvas_w // 2, canvas_h // 2, text=f"{round(lean_a * 100)}—{round((1 - lean_a) * 100)}", anchor="center", fill="#ffffff", font=("Consolas", 8, "bold"))
+
+        momentum_canvas.bind("<Configure>", lambda _event: draw_momentum_bar())
+
         def refresh_live_stats(round_values=None):
             current_log = fight_logs[state["fight"]] if 0 <= state["fight"] < len(fight_logs) else {}
             names = (current_log.get("a", "Red corner"), current_log.get("b", "Blue corner"))
@@ -995,14 +1204,16 @@ class EventMixin:
                 live_stats.delete(item)
             for index, name in enumerate(names):
                 row = values.get(name, {})
-                marker = "EDGE" if state.get("momentum") == name else "-"
-                live_stats.insert("", "end", values=(
+                leads = state.get("momentum") == name
+                marker = "EDGE" if leads else "-"
+                live_stats.insert("", "end", tags=("edge",) if leads else (), values=(
                     name,
                     int(round(float(row.get("impact", 0) or 0))),
                     int(round(float(row.get("control", 0) or 0))),
                     int(round(float(row.get("danger", 0) or 0))),
                     int(gas[index]), marker,
                 ))
+            draw_momentum_bar()
 
         def round_summary_presentation(value):
             """Turn engine telemetry into a readable broadcast summary.
@@ -1398,18 +1609,18 @@ class EventMixin:
                     w, l, d = (int(part) for part in str(record).split("-")[:3])
                     if outcome == "win": w += 1
                     elif outcome == "loss": l += 1
-                    else: d += 1
+                    elif outcome == "draw": d += 1
+                    else: return record or "-"
                     return f"{w}-{l}-{d}"
                 except (TypeError, ValueError):
                     return record or "-"
-            draw = "Draw" in result
-            winner_name = result.split(" - ", 1)[0] if " - " in result else "DRAW"
-            a_outcome = "draw" if draw else "win" if log.get("a") == winner_name else "loss"
-            b_outcome = "draw" if draw else "win" if log.get("b") == winner_name else "loss"
+            draw, winner_name = self.live_fight_official_outcome(log)
+            a_outcome = "draw" if draw else "win" if log.get("a") == winner_name else "loss" if winner_name else "unknown"
+            b_outcome = "draw" if draw else "win" if log.get("b") == winner_name else "loss" if winner_name else "unknown"
             scorecards = log.get("scorecards", "") or "No scorecards required"
             excitement = int(round(float(log.get("excitement", 0) or 0)))
             contender = "Bonus contender" if excitement >= 62 else "Solid performance" if excitement >= 45 else "Low bonus contention"
-            result_winner_label.config(text="OFFICIAL DRAW" if draw else f"WINNER: {winner_name}")
+            result_winner_label.config(text="OFFICIAL DRAW" if draw else f"WINNER: {winner_name}" if winner_name else "OFFICIAL RESULT")
             result_detail_label.config(text=(f"{result or 'Official result'}  |  Time: {finish_time}\n"
                 f"Records: {log.get('a', 'Red')} {a_record} -> {next_record(a_record, a_outcome)}   |   "
                 f"{log.get('b', 'Blue')} {b_record} -> {next_record(b_record, b_outcome)}\n"
@@ -1703,12 +1914,14 @@ class EventMixin:
         self.refresh_all()
         self.write_log()
 
-    def open_contract_negotiation(self, fighter, existing=False, comeback=False, farewell=False):
+    def open_contract_negotiation(self, fighter, existing=False, comeback=False, farewell=False, source_promotion=None):
         # A farewell deal is a comeback that resolves in a single retirement bout
         # rather than a multi-fight commitment.
         if farewell:
             comeback = True
-        report = getattr(self, "scouting_reports", {}).get(fighter.name, {})
+        prior_comeback_guaranteed = max(0, int(getattr(fighter, "guaranteed_fights", 0) or 0))
+        prior_comeback_completed = max(0, int(getattr(fighter, "contract_fights_completed", 0) or 0))
+        report = self.scouting_report_for(fighter)
         ratings_known = existing or not self.rules.get("scouting_mode", False) or report.get("reveal", 0) >= 100
         window = tk.Toplevel(self.root)
         window.title(f"Negotiate - {fighter.name}")
@@ -1792,7 +2005,9 @@ class EventMixin:
         )
         scout_warning = "" if ratings_known else "\nYou may negotiate now, but you are pricing risk without a full scouting report."
         status_line = ("Retired athlete signing for one final farewell bout" if farewell
-                       else "Retired athlete considering a comeback" if comeback else "Active contract discussion")
+                       else "Retired athlete considering a comeback" if comeback
+                       else f"Regional prospect under developmental terms with {source_promotion.name}" if source_promotion
+                       else "Active contract discussion")
         info.insert("end", f"{fighter.name} ({fighter.gender}, {fighter.weight})\n{status_line}\nAgent: {fighter.agent_name} | Negotiation style: {persona}\nRecord {fighter.record} | {rating_line}\nCareer goal: {career_goal or 'Undeclared'} ({getattr(fighter, 'career_goal_progress', 0)}%).\nCamp says they value: {', '.join(dict.fromkeys(wants))}.\nOpening ask: about ${ask:,}/fight. {rival_text}{scout_warning}")
         info.config(state="disabled")
 
@@ -1883,7 +2098,10 @@ class EventMixin:
             input_widget = ttk.Spinbox(row, from_=lo, to=hi, increment=step, textvariable=var, width=11)
             input_widget.pack(side="left", padx=6)
             if label == "Guaranteed fights" and comeback:
-                tip = "Comeback commitment: this is the number of official fights the retired fighter must complete before normal retirement review can resume."
+                tip = ("Additional comeback fights: these are added to the fighter's prior commitment history. "
+                       "Normal retirement review resumes only after the new cumulative total is complete."
+                       if prior_comeback_guaranteed or prior_comeback_completed else
+                       "Comeback commitment: this is the number of official fights the retired fighter must complete before normal retirement review can resume.")
                 attach_tooltip(label_widget, tip)
                 attach_tooltip(input_widget, tip)
         clause_row = ttk.Frame(grid, style="Panel.TFrame")
@@ -1919,6 +2137,12 @@ class EventMixin:
         refresh_meter()
 
         def submit():
+            if source_promotion is not None and fighter not in source_promotion.roster:
+                result_label.config(text=f"{fighter.name} has already left {source_promotion.name}. No money was charged.")
+                submit_button.config(state="disabled")
+                if hasattr(self, "refresh_regional_prospects"):
+                    self.refresh_regional_prospects()
+                return
             purse, term, fights = purse_var.get(), term_var.get(), fights_var.get()
             bonus, signing, exclusive = bonus_var.get(), signing_var.get(), exclusive_var.get()
             score, target, _pct, unmet = evaluate()
@@ -1928,6 +2152,20 @@ class EventMixin:
                 if self.cash < signing_cost:
                     result_label.config(text=f"Not enough cash for ${signing_cost:,} up-front cost.")
                     return
+                if source_promotion is not None:
+                    # The transfer and payment are one decision. If the feeder
+                    # no longer owns the fighter, stop before touching cash.
+                    if fighter not in source_promotion.roster:
+                        result_label.config(text=f"{fighter.name} is no longer available from {source_promotion.name}. No money was charged.")
+                        submit_button.config(state="disabled")
+                        return
+                    self.capture_regional_record(fighter)
+                    source_promotion.roster.remove(fighter)
+                    fighter.last_regional_promotion = source_promotion.name
+                    fighter.regional_departure_month = self.month
+                    fighter.market_origin = "Player regional signing"
+                    if fighter not in self.roster:
+                        self.roster.append(fighter)
                 self.cash -= signing_cost
                 self.record_finance_transaction(f"Contract agreement: {fighter.name}", costs=signing_cost)
                 if comeback:
@@ -1940,9 +2178,11 @@ class EventMixin:
                     fighter.injured = 0
                     if fighter not in self.roster:
                         self.roster.append(fighter)
-                elif not existing and fighter in self.free_agents:
-                    self.free_agents.remove(fighter)
-                    self.roster.append(fighter)
+                elif not existing:
+                    if source_promotion is None and fighter in self.free_agents:
+                        self.free_agents.remove(fighter)
+                    if fighter not in self.roster:
+                        self.roster.append(fighter)
                 fighter.purse = purse
                 fighter.contract_months = term
                 if farewell:
@@ -1956,9 +2196,7 @@ class EventMixin:
                     fighter.retirement_requested_month = self.month
                     fighter.retirement_reason = "Signed for one final retirement bout."
                 else:
-                    fighter.guaranteed_fights = fights if comeback else getattr(fighter, "guaranteed_fights", 0)
-                    fighter.contract_fights_completed = 0 if comeback else getattr(fighter, "contract_fights_completed", 0)
-                    fighter.comeback_contract = bool(comeback)
+                    comeback_extension = self.extend_comeback_commitment(fighter, fights) if comeback else None
                 fighter.exclusive = exclusive
                 fighter.contract_type = "Exclusive" if exclusive else "Non-Exclusive"
                 fighter.win_bonus = win_bonus_var.get()
@@ -1989,10 +2227,18 @@ class EventMixin:
                 clause_text = (" Clauses: " + ", ".join(clause_notes) + ".") if clause_notes else ""
                 contract_note = (" Farewell bout: they retire immediately after their next fight." if farewell
                                  else " Comeback commitment: retirement is deferred until the guaranteed fights are complete." if comeback else "")
-                fights_note = "1 farewell bout" if farewell else f"{fights} guaranteed fights"
+                if comeback and not farewell and comeback_extension:
+                    fights_note = (f"{fights} additional guaranteed fights; cumulative commitment "
+                                   f"{comeback_extension['previous_completed']}/{comeback_extension['total']}")
+                else:
+                    fights_note = "1 farewell bout" if farewell else f"{fights} guaranteed fights"
                 fighter.fight_history.insert(0, f"Signed contract: {term} months, {fights_note}, ${purse:,}/fight, ${signing:,} signing bonus, {bonus}% finish bonus.{clause_text}{contract_note}")
+                if source_promotion is not None:
+                    fighter.fight_history.insert(1, f"Left {source_promotion.name} after a regional record of {fighter.regional_record_w}-{fighter.regional_record_l}-{fighter.regional_record_d}.")
+                    self.regional_recruit_fighter(source_promotion, slots=1)
                 self.news.insert(0, (f"{fighter.name} signed a one-fight farewell deal with {self.player_company_name} before retiring." if farewell
                                      else f"{fighter.name} came out of retirement to join {self.player_company_name}." if comeback
+                                     else f"{fighter.name} left {source_promotion.name} to join {self.player_company_name}." if source_promotion
                                      else f"{fighter.name} agreed terms with {self.player_company_name}."))
                 self.refresh_all()
                 window.destroy()
@@ -2008,7 +2254,7 @@ class EventMixin:
             if state["attempts"] <= 0:
                 if active_offer_purse:
                     result_label.config(text=f"Your talks ended. {rival.name}'s live offer remains in place until next month.")
-                elif not existing and not comeback and state["rival_bid"] and random.random() < 0.5:
+                elif not existing and not comeback and source_promotion is None and state["rival_bid"] and random.random() < 0.5:
                     rival_purse = max(round(ask * 1.08 / 500) * 500, fighter.purse)
                     rival_term = random.randint(10, 22)
                     rival_bonus = max(rival_purse, round(rival_purse * random.uniform(0.8, 1.5) / 500) * 500)
@@ -2209,7 +2455,15 @@ class EventMixin:
         self.normalize_card_order()
         current_name = self.event_name.get().strip()
         event_name = self.default_event_name(self.next_player_event_number()) if self.is_auto_event_name(current_name) else current_name
-        event = {"name": event_name, "venue": self.venue.get(), "region": self.event_region.get(), "city": self.event_city.get(), "month": self.month, "week": self.week, "fights": [dict(fight) for fight in self.booked]}
+        immediate_fights = []
+        for booked_fight in self.booked:
+            snapshot = dict(booked_fight)
+            snapshot["fighter_ids"] = [
+                getattr(self.get_fighter(reference), "fighter_id", "") if reference != "TBA" else ""
+                for reference in self.event_fight_participants(snapshot)
+            ]
+            immediate_fights.append(snapshot)
+        event = {"name": event_name, "venue": self.venue.get(), "region": self.event_region.get(), "city": self.event_city.get(), "month": self.month, "week": self.week, "fights": immediate_fights}
         package = self.prepare_event_result(event)
         self.finish_event(None, package)
         self.booked.clear()
@@ -2295,6 +2549,8 @@ class EventMixin:
 
         def status(fighter):
             labels = []
+            if getattr(fighter, "retirement_pending", False):
+                labels.append("RETIREMENT FIGHT")
             if special_name and fighter.name == special_holder:
                 labels.append(f"{special_name.upper()} CHAMPION")
             if divisional_stakes:
@@ -2989,11 +3245,16 @@ class EventMixin:
 
     def resolve_fight_fighters(self, fight):
         if "TBA" not in fight["fighters"]:
-            return [self.get_fighter(name) for name in fight["fighters"]]
-        known_name = next(name for name in fight["fighters"] if name != "TBA")
-        known = self.get_fighter(known_name)
+            fighter_ids = list(fight.get("fighter_ids", []))
+            references = fighter_ids if len(fighter_ids) == len(fight["fighters"]) and all(fighter_ids) else fight["fighters"]
+            return [self.get_fighter(reference) for reference in references]
+        known_index = next(index for index, name in enumerate(fight["fighters"]) if name != "TBA")
+        fighter_ids = list(fight.get("fighter_ids", []))
+        known_reference = fighter_ids[known_index] if len(fighter_ids) > known_index and fighter_ids[known_index] else fight["fighters"][known_index]
+        known = self.get_fighter(known_reference)
         replacement = self.find_tba_replacement(fight.get("tba_weight", known.weight), fight.get("tba_gender", known.gender), known=known, short_notice=True)
         fight["fighters"] = [known.name, replacement.name]
+        fight["fighter_ids"] = [getattr(known, "fighter_id", ""), getattr(replacement, "fighter_id", "")]
         fight["tba_filled"] = True
         fight["tba_note"] = f"{replacement.name} accepted a short-notice fight against {known.name}."
         self.news.insert(0, fight["tba_note"])
@@ -3152,6 +3413,7 @@ class EventMixin:
             "finance": package.get("finance", {}),
         })
         self.evaluate_promotion_achievements(self.player_company_name, package)
+        self.complete_super_event(event, package)
         self.refresh_historical_records()
         self.refresh_promotion_rankings()
         self.update_player_fanbase(package)

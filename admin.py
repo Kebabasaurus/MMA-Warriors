@@ -971,7 +971,7 @@ class AdminMixin:
         history[key] = history[key][:80]
         return history
 
-    def set_primary_champion(self, roster, belts, belt_history, champion, note, defense=False):
+    def set_primary_champion(self, roster, belts, belt_history, champion, note, defense=False, appointed=False):
         key = self.belt_key(champion.gender, champion.weight)
         belts = self.normalize_belts(belts)
         belt_history = self.normalize_belt_history(belt_history)
@@ -983,9 +983,11 @@ class AdminMixin:
                     fighter.interim_champion = False
         belts[key] = champion.name
         if previous != champion.name:
-            action = "Champion Crowned" if previous else "Inaugural Champion"
+            prior_lineage = bool(belt_history.get(key))
+            action = "Champion Crowned" if previous or prior_lineage else ("Inaugural Champion Appointed" if appointed else "Inaugural Champion")
             belt_history = self.record_belt_history(belt_history, key, action, champion.name, note)
-            champion.title_wins = getattr(champion, "title_wins", 0) + 1
+            if not appointed:
+                champion.title_wins = getattr(champion, "title_wins", 0) + 1
         elif defense:
             champion.title_defenses = getattr(champion, "title_defenses", 0) + 1
             belt_history = self.record_belt_history(belt_history, key, "Title Defense", champion.name, note)
@@ -1033,14 +1035,112 @@ class AdminMixin:
             belts[key] = ""
             fighter.champion = False
             belt_history = self.record_belt_history(belt_history, key, "Vacated", fighter.name, reason)
+            if roster is getattr(self, "roster", None):
+                self.queue_vacant_title_alert(key, f"{fighter.name}'s reign ended. Reason: {reason}", getattr(fighter, "fighter_id", ""))
         if interim_belts.get(key) == fighter.name:
             interim_belts[key] = ""
             fighter.interim_champion = False
             belt_history = self.record_belt_history(belt_history, key, "Interim Vacated", fighter.name, reason)
         return belts, interim_belts, belt_history
 
+    def queue_vacant_title_alert(self, key, reason="No champion is currently recognized.", fighter_id=""):
+        """Create one actionable player alert per unresolved vacant title."""
+        if not hasattr(self, "inbox"):
+            return
+        subject = f"Vacant Championship - {key}"
+        if any(message.get("subject") == subject and not message.get("resolved", False) for message in self.inbox):
+            return
+        self.inbox.append({
+            "subject": subject,
+            "body": f"The {key} championship is vacant. {reason} Book a title fight to crown the next champion; no replacement will be appointed automatically.",
+            "type": "Roster",
+            "resolved": False,
+            "fighter_id": fighter_id,
+            "action": "booking",
+        })
+
+    def sync_player_vacant_title_alerts(self):
+        """Alert on valid vacancies and retire the warning once a belt is filled."""
+        if getattr(self, "spectator_mode", False) or not hasattr(self, "inbox"):
+            return
+        belts = self.normalize_belts(getattr(self, "belts", {}))
+        closed = set(getattr(self, "closed_divisions", set()))
+        active_vacancies = set()
+        for weight in WEIGHTS:
+            for gender in ("Male", "Female"):
+                key = self.belt_key(gender, weight)
+                depth = sum(not fighter.retired and fighter.gender == gender and fighter.weight == weight for fighter in self.roster)
+                if key not in closed and depth >= 2 and not belts.get(key):
+                    active_vacancies.add(key)
+                    self.queue_vacant_title_alert(key)
+        for message in self.inbox:
+            subject = str(message.get("subject", ""))
+            if subject.startswith("Vacant Championship - ") and subject.removeprefix("Vacant Championship - ") not in active_vacancies:
+                message["resolved"] = True
+
     def champion_sort_value(self, fighter):
         return fighter.overall * 1.35 + fighter.popularity * 0.62 + fighter.momentum * 8 + fighter.record_w * 1.4 - fighter.record_l * 2
+
+    def repair_appointed_title_credits(self):
+        """Appointments establish a belt holder but are not championship wins."""
+        if int(getattr(self, "rules", {}).get("appointment_title_credit_version", 0) or 0) >= 1:
+            return
+        fighter_lookup = {fighter.name: fighter for fighter in list(self.roster) + list(self.free_agents) + list(self.retired_fighters)}
+        for entries in self.normalize_belt_history(getattr(self, "belt_history", {})).values():
+            for entry in entries:
+                action = str(entry.get("action", ""))
+                note = str(entry.get("note", "")).lower()
+                if "appointed" not in action.lower() and not (action == "Inaugural Champion" and "status normalized" in note):
+                    continue
+                fighter = fighter_lookup.get(entry.get("fighter", ""))
+                if fighter and getattr(fighter, "title_wins", 0) > 0:
+                    fighter.title_wins -= 1
+        self.rules["appointment_title_credit_version"] = 1
+
+    def review_player_champion_credibility(self):
+        """Stop appointed player champions retaining belts through prolonged non-title failure."""
+        self.repair_appointed_title_credits()
+        if getattr(self, "spectator_mode", False) or getattr(self, "month", 1) < 6:
+            return
+        self.belts = self.normalize_belts(getattr(self, "belts", {}))
+        self.interim_belts = self.normalize_belts(getattr(self, "interim_belts", {}))
+        self.belt_history = self.normalize_belt_history(getattr(self, "belt_history", {}))
+        for key, holder in list(self.belts.items()):
+            if not holder:
+                continue
+            champion = next((fighter for fighter in self.roster if fighter.name == holder), None)
+            if not champion:
+                continue
+            reign_entry = next((entry for entry in self.belt_history.get(key, []) if entry.get("fighter") == holder and entry.get("action") in ("Champion Crowned", "Inaugural Champion", "Inaugural Champion Appointed")), None)
+            if not reign_entry:
+                continue
+            date_parts = str(reign_entry.get("date", "Month 1 Week 1")).split()
+            try:
+                reign_month = int(date_parts[1]) if date_parts and date_parts[0] == "Month" else 1
+            except (ValueError, IndexError):
+                reign_month = 1
+            reign_bouts = []
+            for bout in list(getattr(champion, "bout_rating_history", None) or []):
+                parts = str(bout.get("date", "")).split()
+                try:
+                    bout_month = int(parts[1]) if parts and parts[0] == "Month" else 0
+                except (ValueError, IndexError):
+                    bout_month = 0
+                if bout_month >= reign_month:
+                    reign_bouts.append(bout)
+            title_bouts = [bout for bout in reign_bouts if bout.get("title") or bout.get("divisional_title")]
+            non_title_losses = [bout for bout in reign_bouts if bout.get("result") == "L" and not (bout.get("title") or bout.get("divisional_title"))]
+            months_held = max(0, self.month - reign_month)
+            appointed = "appointed" in str(reign_entry.get("action", "")).lower() or "status normalized" in str(reign_entry.get("note", "")).lower()
+            reason = ""
+            if len(non_title_losses) >= 2:
+                reason = f"Championship credibility review: {len(non_title_losses)} non-title losses during the reign."
+            elif appointed and not title_bouts:
+                reason = "Championship governance review: an appointed holder must earn the vacant title in a championship fight."
+            if not reason:
+                continue
+            self.belts, self.interim_belts, self.belt_history = self.vacate_fighter_belts(champion, self.roster, self.belts, self.interim_belts, self.belt_history, reason)
+            self.news.insert(0, f"{key} title vacated: {champion.name} failed the championship credibility review.")
 
     def ensure_company_champions(self, roster, belts, company_name, region, size, player_owned=False, min_per_division=3, interim_belts=None, belt_history=None, closed_divisions=None):
         belts = self.normalize_belts(belts)
@@ -1066,9 +1166,20 @@ class AdminMixin:
                     roster.append(self.prepare_company_generated_fighter(fighter, region, company_name, player_owned=player_owned))
                     division.append(fighter)
                 current = next((fighter for fighter in division if fighter.name == belts.get(key)), None)
-                champion = current or max(division, key=self.champion_sort_value)
-                belts, belt_history = self.set_primary_champion(roster, belts, belt_history, champion, f"{company_name} title status normalized.")
-                interim_holder = next((fighter for fighter in division if fighter.name == interim_belts.get(key) and fighter.name != champion.name), None)
+                # Player vacancies are always decided in the cage. AI companies
+                # may receive inaugural holders during initial world seeding,
+                # but once a lineage exists their later vacancies also stay open
+                # until an AI-booked title fight crowns a champion.
+                if not current and (player_owned or belt_history.get(key)):
+                    belts[key] = ""
+                    for fighter in division:
+                        fighter.champion = False
+                    champion = None
+                else:
+                    champion = current or max(division, key=self.champion_sort_value)
+                    belts, belt_history = self.set_primary_champion(roster, belts, belt_history, champion, f"{company_name} title status normalized.", appointed=not current)
+                primary_name = champion.name if champion else ""
+                interim_holder = next((fighter for fighter in division if fighter.name == interim_belts.get(key) and fighter.name != primary_name), None)
                 for fighter in division:
                     fighter.interim_champion = bool(interim_holder and fighter.name == interim_holder.name)
                 if not interim_holder:
@@ -1077,7 +1188,9 @@ class AdminMixin:
 
     def ensure_all_company_champions(self):
         if not getattr(self, "spectator_mode", False):
+            self.review_player_champion_credibility()
             self.belts, self.interim_belts, self.belt_history = self.ensure_company_champions(self.roster, self.belts, self.player_company_name, self.player_region, self.company_pop, player_owned=True, interim_belts=self.interim_belts, belt_history=self.belt_history)
+            self.sync_player_vacant_title_alerts()
         for promo in self.promotions:
             # Development circuits create records and prospects, not parallel
             # world-title ecosystems. Keeping their belts empty also prevents

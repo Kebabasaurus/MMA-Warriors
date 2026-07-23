@@ -6,6 +6,7 @@ __pycache__/
 # Build/package output
 build/
 dist/
+dist_*/
 *.spec
 
 # Runtime data
@@ -31,11 +32,12 @@ Databases/*.broken_*.json
 Thumbs.db
 Desktop.ini
 
-# Extra PyInstaller build/output experiment folders
+# Extra PyInstaller build/output experiment folders (collated under _build_artifacts/)
 build_*/
 output/
 output_*/
 tmp/
+_build_artifacts/
 
 # Vendored third-party name corpus (has its own .git; only the generated
 # assets/corpora_human_names.json is shipped with the game)

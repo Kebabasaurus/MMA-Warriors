@@ -4,6 +4,7 @@ import logging
 import os
 import platform
 import random
+import re
 import shutil
 import stat
 import sys
@@ -665,6 +666,11 @@ class PersistenceMixin:
             "cash": self.cash,
             "company_pop": self.company_pop,
             "company_stability": self.company_stability,
+            "company_safety": getattr(self, "company_safety", 60),
+            "company_milestone_progress": getattr(self, "company_milestone_progress", {}),
+            "super_event_offers": getattr(self, "super_event_offers", []),
+            "super_event_history": getattr(self, "super_event_history", []),
+            "super_event_project": getattr(self, "super_event_project", None),
             "month": self.month,
             "week": self.week,
             "roster": [asdict(f) for f in self.roster],
@@ -692,11 +698,14 @@ class PersistenceMixin:
             "staff_candidates": self.staff_candidates,
             "scouting": self.scouting,
             "scouting_reports": getattr(self, "scouting_reports", {}),
+            "scouting_searches": getattr(self, "scouting_searches", []),
+            "scouting_shortlist": list(getattr(self, "scouting_shortlist", [])),
             "achievement_log": getattr(self, "achievement_log", []),
             "historical_records": getattr(self, "historical_records", {}),
             "fanbase": getattr(self, "fanbase", {}),
             "academy": getattr(self, "academy", {}),
             "inbox": self.inbox,
+            "inbox_hidden_types": sorted(getattr(self, "inbox_hidden_types", set())),
             "owner_goals": self.owner_goals,
             "belts": self.belts,
             "interim_belts": self.interim_belts,
@@ -756,6 +765,7 @@ class PersistenceMixin:
             return
         self.booked.clear()
         self.ensure_player_event_name()
+        self.reconcile_title_shot_alerts()
         self.refresh_all()
         self.write_log()
 
@@ -866,7 +876,16 @@ class PersistenceMixin:
         self.ensure_staff_profiles()
         self.scouting = data.get("scouting", [])
         self.scouting_reports = data.get("scouting_reports", {})
+        self.scouting_searches = data.get("scouting_searches", [])
+        self.scouting_shortlist = list(dict.fromkeys(str(key) for key in data.get("scouting_shortlist", []) if key))
+        self._scouting_state_migrated = False
+        self.migrate_scouting_state()
         self.achievement_log = data.get("achievement_log", [])
+        self.company_safety = max(0, min(100, int(data.get("company_safety", 60) or 60)))
+        self.company_milestone_progress = data.get("company_milestone_progress", {}) or {}
+        self.super_event_offers = data.get("super_event_offers", []) or []
+        self.super_event_history = data.get("super_event_history", []) or []
+        self.super_event_project = data.get("super_event_project")
         self.fanbase = data.get("fanbase", {"core_support": 42, "casual_reach": 30, "identity": "Regional Fight Community", "home_region": self.player_region, "event_history": []})
         self.historical_records = data.get("historical_records", {}) or {}
         for key, value in {"core_support": 42, "casual_reach": 30, "identity": "Regional Fight Community", "home_region": self.player_region, "event_history": []}.items():
@@ -879,6 +898,7 @@ class PersistenceMixin:
         for prospect in self.academy["prospects"] + self.academy["talent_pool"]:
             prospect.setdefault("amateur_weight", "Youth Openweight")
         self.inbox = data.get("inbox", [])
+        self.inbox_hidden_types = set(data.get("inbox_hidden_types", []))
         self.owner_goals = data.get("owner_goals", self.seed_owner_goals())
         self.belts = self.normalize_belts(data.get("belts", self.blank_belts()))
         self.interim_belts = self.normalize_belts(data.get("interim_belts", self.blank_belts()))
@@ -919,15 +939,87 @@ class PersistenceMixin:
         self.season_stats = data.get("season_stats", {})
         self.awards_history = data.get("awards_history", [])
         self.clean_numbered_fighter_names()
+        regional_repairs = self.repair_regional_fighter_tracking()
+        if regional_repairs["origin"] or regional_repairs["activity"]:
+            self.change_journal.append({
+                "date": self.format_game_date(),
+                "type": "Migration",
+                "summary": (
+                    f"Regional tracking repaired {regional_repairs['origin']} feeder origins and "
+                    f"{regional_repairs['activity']} last-fight activity dates."
+                ),
+            })
+            self.change_journal = self.change_journal[-400:]
         self.normalize_gym_assignments()
         self.sync_gym_membership()
         loaded_fighters = list(self.roster) + list(self.free_agents) + list(self.retired_fighters)
         for promo in self.promotions:
             loaded_fighters.extend(promo.roster)
+        for sport_world in self.combat_sport_worlds.values():
+            loaded_fighters.extend(sport_world.get("roster", []))
         for fighter in loaded_fighters:
             fighter.camp_quality = self.gym_quality(fighter.camp)
+        migration = self.migrate_detailed_skill_balance(loaded_fighters)
+        if migration.get("fighters", 0):
+            summary = (
+                f"Detailed-skill balance repair updated {migration['fighters']:,} saturated fighter profiles "
+                f"across {migration['groups']:,} skill groups. Average OVR change {migration['average_delta']:+.2f}; "
+                f"largest change {migration['minimum_delta']} point(s)."
+            )
+            self.inbox.append({"subject": "Detailed Skill Balance Repair", "body": summary, "type": "Rules", "resolved": False})
+            self.change_journal.append({"date": self.format_game_date(), "type": "Migration", "summary": summary})
+            self.change_journal = self.change_journal[-400:]
+        realism_updates = self.migrate_signature_real_fighter_profiles(loaded_fighters)
+        if realism_updates:
+            names = ", ".join(realism_updates)
+            self.inbox.append({
+                "subject": "Real Fighter Profile Update",
+                "body": f"Authored engine profiles were applied to {names}. Existing career-earned rating movement was preserved.",
+                "type": "Rules", "resolved": False,
+            })
         self.ensure_all_company_champions()
         self.rebalance_ai_finance_model()
+        self.maintain_inbox()
+
+    def migrate_detailed_skill_balance(self, fighters):
+        """One-time repair for saves created by group-wide detailed growth."""
+        version = int(getattr(self, "rules", {}).get("detailed_skill_balance_version", 0) or 0)
+        if version >= 1:
+            return {"fighters": 0, "groups": 0, "average_delta": 0.0, "minimum_delta": 0}
+        seen = set()
+        reports = []
+        for fighter in fighters:
+            identity = id(fighter)
+            if identity in seen:
+                continue
+            seen.add(identity)
+            report = self.rebalance_saturated_detailed_skills(fighter, max_overall_drop=2)
+            if report.get("groups"):
+                reports.append(report)
+        self.rules["detailed_skill_balance_version"] = 1
+        deltas = [report["after"] - report["before"] for report in reports]
+        return {
+            "fighters": len(reports),
+            "groups": sum(len(report["groups"]) for report in reports),
+            "average_delta": round(sum(deltas) / max(1, len(deltas)), 2),
+            "minimum_delta": min(deltas, default=0),
+            "capped_before": sum(report.get("original_capped", 0) for report in reports),
+            "capped_after": sum(report.get("new_capped", 0) for report in reports),
+        }
+
+    def migrate_signature_real_fighter_profiles(self, fighters):
+        """Apply authored technique profiles once without resetting simulated careers."""
+        updated = []
+        seen = set()
+        for fighter in fighters:
+            if id(fighter) in seen or getattr(fighter, "primary_discipline", "MMA") != "MMA":
+                continue
+            seen.add(id(fighter))
+            if getattr(fighter, "realism_profile_version", 0) >= 1:
+                continue
+            if self.apply_signature_real_fighter_profile(fighter, preserve_career=True):
+                updated.append(fighter.name)
+        return sorted(set(updated))
 
     def migrate_real_fighter_profiles(self, fighters):
         """One-time migration for saves made before deterministic real-fighter profiles."""
@@ -1011,6 +1103,7 @@ class PersistenceMixin:
             cleaned_history.append(entry)
         fighter.fight_history = cleaned_history
         fighter.bout_rating_history = getattr(fighter, "bout_rating_history", None) or []
+        self.migrate_academy_amateur_history(fighter)
         self.repair_legacy_generated_entry(fighter)
         self.ensure_fighter_history_baseline(fighter)
         entry_year = max(2026, int(getattr(fighter, "universe_entry_year", 0) or 2026))
@@ -1121,6 +1214,65 @@ class PersistenceMixin:
         if not fighter.annual_overalls:
             fighter.annual_overalls = {str(entry_year): fighter.overall}
 
+    def migrate_academy_amateur_history(self, fighter):
+        """Move old academy text rows out of a graduate's pro record ledger.
+
+        Earlier saves stored academy bouts as plain ``fight_history`` strings.
+        That made a graduate's amateur losses appear in their professional
+        in-universe record. The migration is deliberately additive: it retains
+        each old bout as a structured amateur entry, then removes only those
+        academy rows from the professional history.
+        """
+        existing = list(getattr(fighter, "amateur_bout_history", None) or [])
+        history = list(getattr(fighter, "fight_history", None) or [])
+        academy_lines = [str(entry) for entry in history if "amateur" in str(entry).lower()]
+        if not academy_lines:
+            fighter.amateur_bout_history = existing
+            return
+
+        known = {
+            (str(record.get("month", "")), str(record.get("week", "")), str(record.get("opponent", "")), str(record.get("result", "")), str(record.get("method", "")))
+            for record in existing if isinstance(record, dict)
+        }
+        converted = []
+        fighter_name = re.escape(str(fighter.name))
+        for line in academy_lines:
+            month_match = re.search(r"Month\s+(\d+)(?:\s*,?\s*Week\s+(\d+))?", line, re.IGNORECASE)
+            month = int(month_match.group(1)) if month_match else 0
+            week = int(month_match.group(2)) if month_match and month_match.group(2) else 1
+            result, opponent, method, round_no = "-", "Unknown opponent", "-", 0
+            winner = re.search(rf"Amateur\s*-\s*{fighter_name}\s+def\.\s+(.+?)\s+by\s+(.+?)\s*\(R(\d+)", line, re.IGNORECASE)
+            loser = re.search(rf"Amateur\s*-\s*(.+?)\s+def\.\s+{fighter_name}\s+by\s+(.+?)\s*\(R(\d+)", line, re.IGNORECASE)
+            draw = re.search(r"Amateur\s+draw\s*-\s*(.+?)\s+vs\s+(.+?)\s*\((.+?),\s*R(\d+)\)", line, re.IGNORECASE)
+            if winner:
+                result, opponent, method, round_no = "W", winner.group(1).strip(), winner.group(2).strip(), int(winner.group(3))
+            elif loser:
+                result, opponent, method, round_no = "L", loser.group(1).strip(), loser.group(2).strip(), int(loser.group(3))
+            elif draw:
+                first, second = draw.group(1).strip(), draw.group(2).strip()
+                result, opponent, method, round_no = "D", (second if first.casefold() == fighter.name.casefold() else first), "Draw", int(draw.group(4))
+            weight_match = re.search(r",\s*([^,()]+?)\s+Academy\s+Showcase\)", line, re.IGNORECASE)
+            weight = weight_match.group(1).strip() if weight_match else "Youth Openweight"
+            record = {"month": month, "week": week, "event": "Academy Showcase", "opponent": opponent,
+                      "result": result, "method": method, "round": round_no, "weight": weight, "legacy": True}
+            key = (str(month), str(week), opponent, result, method)
+            if key not in known:
+                known.add(key)
+                converted.append(record)
+
+        fighter.amateur_bout_history = (existing + converted)[:100]
+        fighter.fight_history = [entry for entry in history if "amateur" not in str(entry).lower()]
+        fighter.amateur_w = max(int(getattr(fighter, "amateur_w", 0) or 0), sum(item.get("result") == "W" for item in fighter.amateur_bout_history))
+        fighter.amateur_l = max(int(getattr(fighter, "amateur_l", 0) or 0), sum(item.get("result") == "L" for item in fighter.amateur_bout_history))
+        fighter.amateur_d = max(int(getattr(fighter, "amateur_d", 0) or 0), sum(item.get("result") == "D" for item in fighter.amateur_bout_history))
+        fighter.amateur_history_migration_version = 1
+        # Academy graduates start their professional career in-universe. This
+        # avoids preserving a stale baseline derived from the old mixed ledger.
+        if "Fighting Academy" in str(getattr(fighter, "feeder_origin", "")) or any("Promoted from the Fighting Academy" in str(entry) for entry in fighter.fight_history):
+            fighter.record_history_baseline_w = 0
+            fighter.record_history_baseline_l = 0
+            fighter.record_history_baseline_d = 0
+
     def ensure_fighter_history_baseline(self, fighter):
         """Separate imported records from fights actually played in this universe."""
         baseline_fields = ("record_history_baseline_w", "record_history_baseline_l", "record_history_baseline_d")
@@ -1130,11 +1282,15 @@ class PersistenceMixin:
         name = str(fighter.name)
         for entry in getattr(fighter, "fight_history", []) or []:
             line = str(entry)
-            if f"{name} def. " in line or "Amateur W" in line or "W over" in line:
+            # Amateur rows belong to their separate background ledger and must
+            # never contribute to a professional universe baseline.
+            if "amateur" in line.lower():
+                continue
+            if f"{name} def. " in line or "W over" in line:
                 wins += 1
-            elif "fought to a draw" in line or "Amateur D" in line:
+            elif "fought to a draw" in line:
                 draws += 1
-            elif " def. " in line and name in line or "Amateur L" in line or "L to" in line:
+            elif " def. " in line and name in line or "L to" in line:
                 losses += 1
         baseline = (
             max(0, int(getattr(fighter, "record_w", 0)) - wins),
@@ -1205,6 +1361,62 @@ class PersistenceMixin:
         except Exception as exc:
             LOGGER.exception("Could not move save folder %s: %s", source_root, exc)
             self.set_save_manager_status(f"Move failed: {type(exc).__name__}: {exc}")
+        self.refresh_game_menu()
+
+    def duplicate_selected_save(self):
+        """Copy a complete save slot without changing the active career.
+
+        Slot-local backups, autosaves, crash recovery and spectator snapshots
+        belong to the career, so duplication deliberately copies the directory
+        rather than only the primary JSON file.
+        """
+        selected_path = self.selected_save_path()
+        if not selected_path.exists():
+            self.set_save_manager_status("Select an existing save to duplicate.")
+            return
+        source_root = self.save_slot_root_from_path(selected_path)
+        source_primary = source_root / "savegame.json"
+        if not source_primary.exists():
+            self.set_save_manager_status("The selected entry is not attached to a complete save slot.")
+            return
+        source_name = self.save_slot_name_from_path(source_primary)
+        target_group = self.normalized_save_group(
+            self.save_folder_target.get() if hasattr(self, "save_folder_target") else self.save_slot_group_from_path(source_primary)
+        )
+        requested = self.safe_filename(self.save_slot_name.get()) if hasattr(self, "save_slot_name") else ""
+        if not requested or requested.casefold() == source_name.casefold():
+            base = f"{source_name} Copy"
+            requested = base
+            suffix = 2
+            while (self.save_group_root(target_group, create=False) / requested).exists():
+                requested = f"{base} {suffix}"
+                suffix += 1
+        target_root = self.save_group_root(target_group) / requested
+        if target_root.exists():
+            self.set_save_manager_status(f"Cannot duplicate: {target_group} already contains '{requested}'.")
+            return
+        try:
+            target_root.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(source_root, target_root, copy_function=shutil.copy2)
+            copied_primary = target_root / "savegame.json"
+            copied_data = json.loads(read_json_text(copied_primary))
+            copied_data["active_save_name"] = requested
+            copied_data["active_save_group"] = target_group
+            metadata = dict(copied_data.get("_save_meta", {}) or {})
+            metadata.update({"slot_name": requested, "folder": target_group, "saved_at": datetime.now().isoformat(timespec="seconds")})
+            copied_data["_save_meta"] = metadata
+            atomic_write_json_compact(copied_primary, copied_data)
+        except Exception as exc:
+            LOGGER.exception("Could not duplicate save slot %s to %s: %s", source_root, target_root, exc)
+            if target_root.exists():
+                try:
+                    remove_save_folder(target_root)
+                except Exception:
+                    LOGGER.exception("Could not clean incomplete duplicated slot %s", target_root)
+            self.set_save_manager_status(f"Copy failed: {type(exc).__name__}: {exc}")
+            self.refresh_game_menu()
+            return
+        self.set_save_manager_status(f"Duplicated {source_name} as {requested} in {target_group}. The original remains active.")
         self.refresh_game_menu()
 
     def refresh_game_menu(self):
@@ -1467,6 +1679,10 @@ class PersistenceMixin:
         self.staff = promo.staff or self.seed_staff()
         self.staff_candidates = self.seed_staff_candidates()
         self.scouting = promo.scouting or []
+        self.scouting_reports = {}
+        self.scouting_searches = []
+        self.scouting_shortlist = []
+        self._scouting_state_migrated = True
         self.inbox = promo.inbox or []
         self.owner_goals = promo.owner_goals or self.seed_owner_goals()
         self.post_show_bonuses = promo.post_show_bonuses or {"fight": 5000, "ko": 5000, "sub": 5000}
@@ -2449,6 +2665,9 @@ class PersistenceMixin:
         self.ensure_staff_profiles()
         self.scouting = []
         self.scouting_reports = {}
+        self.scouting_searches = []
+        self.scouting_shortlist = []
+        self._scouting_state_migrated = True
         self.academy = self.academy_defaults() if hasattr(self, "academy_defaults") else {}
         self.inbox = []
         self.owner_goals = [
@@ -2541,6 +2760,9 @@ class PersistenceMixin:
         self.ensure_staff_profiles()
         self.scouting = []
         self.scouting_reports = {}
+        self.scouting_searches = []
+        self.scouting_shortlist = []
+        self._scouting_state_migrated = True
         self.academy = self.academy_defaults() if hasattr(self, "academy_defaults") else {"owned": False, "level": 0, "capacity": 0, "prospects": [], "talent_pool": [], "weekly_cost": 0, "auto_train": True}
         self.inbox = []
         self.owner_goals = self.seed_owner_goals()
@@ -2550,7 +2772,7 @@ class PersistenceMixin:
         self.belt_history = self.blank_belt_history()
         self.closed_divisions = set()
         self.player_managed_divisions = set()
-        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "allow_mixed_gender": False, "active_fighter_target": 1200, "ai_offer_market_target": 100, "global_result_replay_limit": 2000, "auto_renew_enabled": False, "scouting_mode": True, "fight_night_audio_enabled": True, "fight_night_audio_output": "System default", "fight_night_audio_volume": 55, "autosave_enabled": True, "autosave_interval_months": 2, "autosave_weekly_keep": 2, "autosave_monthly_keep": 2, "save_backup_keep": 2, "save_retention_version": 4}
+        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "allow_mixed_gender": False, "active_fighter_target": 1200, "ai_offer_market_target": 100, "global_result_replay_limit": 2000, "auto_renew_enabled": False, "scouting_mode": True, "fight_night_audio_enabled": True, "fight_night_audio_output": "System default", "fight_night_audio_volume": 55, "autosave_enabled": True, "autosave_interval_months": 2, "autosave_weekly_keep": 2, "autosave_monthly_keep": 2, "save_backup_keep": 2, "save_retention_version": 4, "detailed_skill_balance_version": 1}
         media_section = self.universe_section("media", {}) if hasattr(self, "universe_section") else {}
         self.broadcasters = media_section.get("player_broadcasters", self.default_player_media() if hasattr(self, "default_player_media") else [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}])
         self.media_companies = []

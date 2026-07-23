@@ -30,7 +30,13 @@ def main():
     root.withdraw()
     try:
         app = game.FightEmpireApp(root)
-        champion_probe = next(fighter for fighter in app.roster if fighter.champion or fighter.interim_champion)
+        champion_probe = next((fighter for fighter in app.roster if fighter.champion or fighter.interim_champion), None)
+        if champion_probe is None:
+            champion_probe = max(app.roster, key=app.champion_sort_value)
+            app.belts, app.belt_history = app.set_primary_champion(
+                app.roster, app.belts, app.belt_history, champion_probe,
+                "Smoke-test championship fixture.",
+            )
         assert_true("TITLE WARNING" in app.champion_non_title_warning_text([champion_probe], False),
                     "Matchmaking does not warn when a champion is booked without Title selected")
         assert_true(app.champion_non_title_warning_text([champion_probe], True) == "",
@@ -71,6 +77,25 @@ def main():
                     "Double-title profile history does not display both championships distinctly")
         assert_true(app.fight_stakes_label({"title": True, "divisional_title": True, "interim": True}) == "INTERIM TITLE",
                     "Interim title history is not labelled distinctly from the primary championship")
+        ai_title_probe = next(
+            promotion for promotion in app.promotions
+            if not getattr(promotion, "is_regional_feeder", False)
+            and any((promotion.belts or {}).values())
+        )
+        ai_holders = {name for name in (ai_title_probe.belts or {}).values() if name}
+        ai_ready = [fighter for fighter in ai_title_probe.roster if not fighter.retired]
+        random_state = random.getstate()
+        champion_appearances = 0
+        for seed in range(20):
+            random.seed(seed)
+            ai_card = app.build_ai_card(ai_title_probe, ai_ready, 12)
+            for fight in ai_card:
+                participating_champions = {fight["a"].name, fight["b"].name} & ai_holders
+                champion_appearances += len(participating_champions)
+                assert_true(not participating_champions or fight.get("title"),
+                            "AI booked a recognized champion in their division without putting the title at stake")
+        random.setstate(random_state)
+        assert_true(champion_appearances > 0, "AI title-booking regression probe produced no champion appearances")
         champion_probe.bout_rating_history = original_a_history
         title_challenger.bout_rating_history = original_b_history
         champion_probe.special_titles = original_special_titles
@@ -207,6 +232,40 @@ def main():
         regional_form_probe.record_w, regional_form_probe.record_l, regional_form_probe.record_d = 8, 2, 0
         assert_true(app.regional_record_development_bonus(regional_form_probe) == 10,
                     "A genuinely strong regional record did not boost development")
+        feeder_probe = next(promotion for promotion in app.promotions if promotion.is_regional_feeder)
+        feeder_fighter_probe = feeder_probe.roster[0]
+        assert_true(feeder_fighter_probe.feeder_origin == feeder_probe.name,
+                    "New regional fighters store a region instead of their actual feeder promotion")
+        original_feeder_values = (
+            feeder_fighter_probe.age, feeder_fighter_probe.record_w, feeder_fighter_probe.record_l,
+            feeder_fighter_probe.record_d, feeder_fighter_probe.momentum, feeder_fighter_probe.popularity,
+            feeder_fighter_probe.injured, feeder_fighter_probe.retirement_pending,
+        )
+        feeder_fighter_probe.age = 22
+        feeder_fighter_probe.record_w, feeder_fighter_probe.record_l, feeder_fighter_probe.record_d = 8, 2, 0
+        feeder_fighter_probe.momentum = 4
+        feeder_fighter_probe.popularity = 24
+        feeder_fighter_probe.injured = 0
+        feeder_fighter_probe.retirement_pending = False
+        assessment = app.regional_candidate_assessment(feeder_fighter_probe, feeder_probe)
+        assert_true(assessment["eligible"] and assessment["status"] == "Eligible Now",
+                    "Regional prospects browser and graduation engine do not recognize a proven candidate")
+        (
+            feeder_fighter_probe.age, feeder_fighter_probe.record_w, feeder_fighter_probe.record_l,
+            feeder_fighter_probe.record_d, feeder_fighter_probe.momentum, feeder_fighter_probe.popularity,
+            feeder_fighter_probe.injured, feeder_fighter_probe.retirement_pending,
+        ) = original_feeder_values
+        original_feeder_roster = feeder_probe.roster
+        feeder_probe.roster = []
+        try:
+            assert_true(app.regional_graduate_fighters(feeder_probe) == 0,
+                        "An empty feeder candidate pool does not exit graduation cleanly")
+        finally:
+            feeder_probe.roster = original_feeder_roster
+        assert_true("regional_prospects" in app.tab_pages,
+                    "Regional Prospects is missing from World navigation")
+        assert_true({"status", "promotion", "record", "overall", "potential", "path"}.issubset(set(app.regional_prospect_tree["columns"])),
+                    "Regional Prospects is missing readiness, promotion, or fighter-stat columns")
         development_factors = app.fighter_development_factors(regional_form_probe)
         assert_true({label.split(" (")[0] for label, _value in development_factors}.issuperset({
             "Gym quality", "Gym facilities", "Coaching and style fit", "Age and remaining prime",
@@ -214,6 +273,63 @@ def main():
         }), "Fighter development explanation is missing a material simulation input")
         assert_true(abs(sum(value for _label, value in development_factors) - app.monthly_development_score(regional_form_probe)) < 0.001,
                     "Displayed fighter development factors do not equal the actual growth score")
+        division_key = app.belt_key("Male", "Flyweight")
+        app.closed_divisions.add(division_key)
+        app.player_managed_divisions.add(division_key)
+        if "Flyweight" in app.weight_classes:
+            app.weight_classes.remove("Flyweight")
+        original_showinfo = game.messagebox.showinfo
+        game.messagebox.showinfo = lambda *_args, **_kwargs: None
+        try:
+            assert_true(app.reopen_selected_division("Male", "Flyweight"),
+                        "A contracted gendered division could not be reopened")
+        finally:
+            game.messagebox.showinfo = original_showinfo
+        assert_true(division_key not in app.closed_divisions and division_key not in app.player_managed_divisions,
+                    "Reopened division retained a hidden closed/managed flag")
+        assert_true("Flyweight" in app.weight_classes and "Flyweight" in app.active_player_division_weights("Male"),
+                    "Reopened division did not return to player matchmaking")
+        saturated_probe = game.Fighter(**asdict(regional_form_probe))
+        saturated_probe.name = "Saturated Skill Repair Probe"
+        saturated_probe.fighter_id = "smoke-saturated-skill-repair"
+        saturated_probe.style = "Kickboxer"
+        app.ensure_detailed_skills(saturated_probe)
+        for key in saturated_probe.detailed_skills:
+            if key not in {"reach", "natural_size"}:
+                saturated_probe.detailed_skills[key] = 99
+        app.sync_broad_skills_from_details(saturated_probe)
+        saturated_before = saturated_probe.overall
+        repair = app.rebalance_saturated_detailed_skills(saturated_probe, max_overall_drop=2)
+        standing_after = [saturated_probe.detailed_skills[key] for key in game.DETAILED_SKILL_GROUPS["Standing"]]
+        assert_true(repair["groups"] and not all(value >= 98 for value in standing_after),
+                    "Saturated detailed-skill repair left an entire technical tab at 98-99")
+        assert_true(saturated_probe.overall >= saturated_before - 2,
+                    "Detailed-skill repair changed headline OVR beyond its migration bound")
+        growth_probe = game.Fighter(**asdict(regional_form_probe))
+        growth_probe.name = "Sparse Detailed Growth Probe"
+        growth_probe.style = "Kickboxer"
+        growth_probe.trait = "Gym Rat"
+        growth_probe.potential = 99
+        app.ensure_detailed_skills(growth_probe)
+        for key in growth_probe.detailed_skills:
+            if key not in {"reach", "natural_size"}:
+                growth_probe.detailed_skills[key] = 95
+        app.sync_broad_skills_from_details(growth_probe)
+        growth_before = dict(growth_probe.detailed_skills)
+        random.seed(220726)
+        app.apply_development_growth(growth_probe, 3)
+        changed_growth = [key for key, value in growth_probe.detailed_skills.items() if value != growth_before.get(key)]
+        assert_true(len(changed_growth) <= 14, "One development month altered an entire detailed-skill profile")
+        assert_true(not {"reach", "natural_size"}.intersection(changed_growth),
+                    "Training development changed fixed body measurements")
+        for _index in range(20):
+            elite_generated = app.create_generated_fighter(min_skill=94, max_skill=96, age_override=27)
+            for group_name, keys in game.DETAILED_SKILL_GROUPS.items():
+                values = [elite_generated.detailed_skills.get(key, 50) for key in keys]
+                assert_true(not all(value >= 98 for value in values),
+                            f"Generated elite began with a fully capped {group_name} profile")
+                assert_true(len(set(values)) >= 4,
+                            f"Generated elite began with an unnaturally flat {group_name} profile")
         promotion_names = [promo.name for promo in app.promotions]
         for company in (
             "Ultimate Fighting Championship",
@@ -234,6 +350,20 @@ def main():
         assert_true(app.player_company_name not in promotion_names, "Player company duplicated in AI promotions")
         ufc = next(promo for promo in app.promotions if promo.name == "Ultimate Fighting Championship")
         assert_true(any(fighter.name == "Islam Makhachev" for fighter in ufc.roster), "Initial UFC seed lost its authored fighters")
+        conor = app.find_fighter_anywhere("Conor McGregor")
+        topuria = app.find_fighter_anywhere("Ilia Topuria")
+        khabib = app.find_fighter_anywhere("Khabib Nurmagomedov")
+        assert_true(all(fighter and fighter.realism_profile_version == 1 for fighter in (conor, topuria, khabib)),
+                    "A signature real fighter did not receive its authored engine profile")
+        assert_true(conor.detailed_skills["punch_power"] >= 98 and conor.detailed_skills["takedowns"] <= 85
+                    and conor.detailed_skills["takedown_defence_detail"] >= 93,
+                    "Prime McGregor profile does not distinguish counter striking from offensive wrestling")
+        assert_true(topuria.detailed_skills["punch_power"] >= 98 and topuria.detailed_skills["submission_attack"] >= 93
+                    and topuria.detailed_skills["takedown_defence_detail"] >= 92,
+                    "Topuria profile does not represent his boxing and complete grappling base")
+        assert_true(khabib.detailed_skills["chain_wrestling"] >= 98 and khabib.detailed_skills["top_control"] >= 98
+                    and khabib.striking <= 84 and khabib.wrestling >= 96,
+                    "Khabib profile does not separate historically elite grappling from open-space striking")
         pride = next(promo for promo in app.promotions if promo.name == "PRIDE Fighting Championships")
         strikeforce = next(promo for promo in app.promotions if promo.name == "Strikeforce")
         wec = next(promo for promo in app.promotions if promo.name == "World Extreme Cagefighting")
@@ -797,10 +927,14 @@ def main():
             for fighter in promotion["roster"]:
                 if fighter["name"] == "Yair Rodriguez":
                     fighter["rating_profile_version"] = 0
+                if fighter["name"] in {"Conor McGregor", "Ilia Topuria"}:
+                    fighter["realism_profile_version"] = 0
         for fighter in data["free_agents"]:
             if fighter["name"] == "Georges St-Pierre":
                 fighter["age"] = 45
                 fighter["legend_prime_age_version"] = 0
+            if fighter["name"] == "Khabib Nurmagomedov":
+                fighter["realism_profile_version"] = 0
         app.apply_world_data(data)
         assert_true(app.rules.get("active_fighter_target") == 1200, "Legacy active-fighter floor was not migrated")
         assert_true(app.gym_by_name("American Top Team") is not None, "Gym load repair failed")
@@ -810,6 +944,9 @@ def main():
         assert_true(yair and yair.rating_profile_version == 0, "Save load recalibrated an existing real fighter from the database")
         gsp = app.find_fighter_anywhere("Georges St-Pierre")
         assert_true(gsp and gsp.age == 45 and gsp.legend_prime_age_version == 0, "Save load changed a serialized legend from the database")
+        migrated_signatures = [app.find_fighter_anywhere(name) for name in ("Conor McGregor", "Ilia Topuria", "Khabib Nurmagomedov")]
+        assert_true(all(fighter and fighter.realism_profile_version == 1 for fighter in migrated_signatures),
+                    "Existing-save signature fighter migration did not run")
         active_fighters = app.roster + app.free_agents + [fighter for promo in app.promotions for fighter in promo.roster]
         assert_true(all(getattr(fighter, "career_arc_version", 0) >= 2 for fighter in active_fighters), "Career-arc migration failed")
         assert_true(all(getattr(fighter, "birth_region", "") in game.REGIONS and getattr(fighter, "regional_popularity", None) for fighter in active_fighters), "Regional identity migration failed")
@@ -1011,8 +1148,11 @@ def main():
                     "Weekly Assistant reports deliberately closed divisions as roster shortages")
         assert_true(len(app.roster) == 8 and all(fighter.gender == "Female" and fighter.weight == "Flyweight" for fighter in app.roster),
                     "Limited custom promotion generated fighters outside its selected division")
-        assert_true(app.belts.get(active_key) and all(not champion for key, champion in app.belts.items() if key != active_key),
-                    "Limited custom promotion created championships in closed divisions")
+        assert_true(not any(app.belts.values()),
+                    "Limited custom promotion appointed a champion instead of leaving the selected title vacant")
+        assert_true(any(message.get("subject") == f"Vacant Championship - {active_key}" and not message.get("resolved", False)
+                        for message in app.inbox),
+                    "Limited custom promotion did not alert the player about its vacant championship")
         assert_true(app.fanbase.get("home_region") == "Canada" and app.event_name.get().startswith("Northern Women's Fighting 1"),
                     "Custom promotion inherited the database company's fanbase or event identity")
         app.enter_spectator_mode()
@@ -1086,12 +1226,14 @@ def main():
         rival_fighter = next(fighter for promo in app.promotions for fighter in promo.roster if not fighter.retired)
         saved_reports = dict(app.scouting_reports)
         app.rules["scouting_mode"] = True
+        rival_report_key = rival_fighter.fighter_id
+        app.scouting_reports.pop(rival_report_key, None)
         app.scouting_reports.pop(rival_fighter.name, None)
         assert_true(not app.fighter_profile_stats_visible(rival_fighter, app.promotions[0].name),
                     "Unscouted rival profile still exposes private ratings")
         assert_true(app.start_scout_report_for_fighter(rival_fighter, "basic"),
                     "A rival-promotion fighter cannot be scouted from their profile")
-        assert_true(app.scouting_reports[rival_fighter.name]["status"] == "In progress",
+        assert_true(app.scouting_reports[rival_report_key]["status"] == "In progress",
                     "Rival profile scouting did not create a report")
         profile_windows_before = set(root.winfo_children())
         app.open_fighter_profile_window(rival_fighter)
@@ -1105,7 +1247,7 @@ def main():
                 children.extend(nested_widgets(child))
             return children
         profile_buttons = [widget.cget("text") for window in rival_windows for widget in nested_widgets(window) if widget.winfo_class() == "TButton"]
-        assert_true("Basic Scout (2 wk)" in profile_buttons and "Full Scout (6 wk)" in profile_buttons,
+        assert_true("Basic Dossier" in profile_buttons and "Full Evaluation" in profile_buttons and "Observe Next Fight" in profile_buttons,
                     "Unscouted rival profile does not expose scout actions")
         for child in rival_windows:
             child.destroy()

@@ -993,6 +993,18 @@
           0,
           "Europe",
           "Muay Thai"
+        ],
+        [
+          "Matthew Green",
+          "Middleweight",
+          "Free Agent",
+          78,
+          90,
+          24,
+          14,
+          1,
+          "UK",
+          "Kickboxer"
         ]
       ],
       "promotions": {
@@ -9006,18 +9018,6 @@
             3,
             "USA",
             "Wrestler"
-          ],
-          [
-            "Matthew Green",
-            "Middleweight",
-            "BAMMA",
-            45,
-            85,
-            17,
-            0,
-            0,
-            "UK",
-            "Kickboxer"
           ]
         ],
         "ONE Championship": [

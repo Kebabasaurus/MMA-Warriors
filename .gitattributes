@@ -1,0 +1,14 @@
+# Normalise line endings: let Git decide text vs binary, store text as LF in the
+# repo, and check out platform-native endings. This quiets the "LF will be
+# replaced by CRLF" warnings without rewriting history.
+* text=auto
+
+# Windows launch/build scripts should keep CRLF on checkout.
+*.bat text eol=crlf
+
+# Treat these as binary so Git never tries to normalise or diff them.
+*.png binary
+*.ico binary
+*.gz binary
+*.exe binary
+*.zip binary

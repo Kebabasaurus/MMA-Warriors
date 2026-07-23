@@ -1,0 +1,14 @@
+# MMA Warriors — Python dependencies
+#
+# The game runs on the Python standard library (Tkinter) alone. The packages
+# below are OPTIONAL enhancements and a build tool:
+#
+#   numpy + sounddevice  -> richer procedural fight-night audio. Without them the
+#                           game falls back to simple winsound beeps (Windows).
+#   pyinstaller          -> only needed to build the portable exe (Build Portable.bat).
+#
+# Install everything with:  pip install -r requirements.txt
+
+numpy>=1.24
+sounddevice>=0.4
+pyinstaller>=6.0

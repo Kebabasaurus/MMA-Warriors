@@ -212,6 +212,23 @@ class SeedMixin:
         if len(filtered_agents) != len(free_agents):
             fighters["free_agents"] = filtered_agents
             changed = True
+        # Data correction: Matthew Green is a 90-rated UK kickboxing free agent,
+        # not a low-rated company prospect. Fix any existing universe that seeded
+        # the earlier version so he appears correctly without a full rebuild.
+        target_mg = ["Matthew Green", "Middleweight", "Free Agent", 78, 90, 24, 14, 1, "UK", "Kickboxer"]
+        for company, rows in promotions.items():
+            trimmed = [row for row in rows if not (isinstance(row, (list, tuple)) and row and row[0] == "Matthew Green")]
+            if len(trimmed) != len(rows):
+                promotions[company] = trimmed
+                changed = True
+        agents = fighters.setdefault("free_agents", [])
+        existing_mg = next((row for row in agents if isinstance(row, (list, tuple)) and row and row[0] == "Matthew Green"), None)
+        if existing_mg is None:
+            agents.append(list(target_mg))
+            changed = True
+        elif list(existing_mg) != target_mg:
+            agents[agents.index(existing_mg)] = list(target_mg)
+            changed = True
         fighters["real_roster_depth_version"] = 1
         return changed
 
@@ -639,22 +656,37 @@ class SeedMixin:
             fighter.prime_end = max(fighter.prime_start + 5, prime_age + 6)
             fighter.prime_legend_age_override_version = 1
         if fighter.name == "Matthew Green":
+            # A McGregor-style southpaw striker whose signature is devastating
+            # power kicks — low kicks above all: the hardest, most technical
+            # weapon in his arsenal.
             fighter.height = "5'10"
             fighter.stance = "Southpaw"
             fighter.trait = "Prospect Mindset"
             fighter.behaviour = "Dynamic Attacker"
             fighter.walk_weight = 185
-            fighter.striking = max(fighter.striking, 92)
-            fighter.wrestling = max(fighter.wrestling, 82)
-            fighter.grappling = max(fighter.grappling, 82)
-            fighter.cardio = max(fighter.cardio, 88)
-            fighter.chin = max(fighter.chin, 86)
-            for key in MENTAL_SKILLS + PHYSICAL_SKILLS:
-                fighter.detailed_skills[key] = max(fighter.detailed_skills.get(key, 50), 84)
-            for key in ("high_kick_power", "high_kick_speed", "high_kick_technique", "low_kick_power", "creative_kicks"):
-                fighter.detailed_skills[key] = max(fighter.detailed_skills.get(key, 50), 94)
-            fighter.power = max(fighter.power, 92)
+            fighter.detailed_skills.update({
+                "low_kick_power": 98, "low_kick_technique": 96, "low_kick_speed": 94,
+                "high_kick_power": 90, "high_kick_technique": 88, "high_kick_speed": 88,
+                "creative_kicks": 94, "kick_defence": 88,
+                "punch_power": 95, "punch_technique": 92, "hand_speed": 92, "creative_punches": 92,
+                "footwork": 92, "feints": 92, "head_movement": 90,
+            })
+            for key in MENTAL_SKILLS:
+                fighter.detailed_skills[key] = max(fighter.detailed_skills.get(key, 50), 92)
+            for key in PHYSICAL_SKILLS:
+                fighter.detailed_skills[key] = max(fighter.detailed_skills.get(key, 50), 90)
+            fighter.detailed_skills["killer_instinct"] = 95
+            fighter.detailed_skills["confidence"] = 96
             self.sync_broad_skills_from_details(fighter)
+            # Lock the headline ratings so he debuts as a true 90 with a 96 ceiling.
+            fighter.striking = 95
+            fighter.wrestling = 86
+            fighter.grappling = 85
+            fighter.cardio = 91
+            fighter.chin = 90
+            fighter.power = 95
+            fighter.star_quality = max(fighter.star_quality, 82)
+            fighter.charisma = max(fighter.charisma, 85)
         if fighter.name == "Mikey Musumeci":
             fighter.height = "5'4"
             fighter.stance = "Orthodox"
@@ -996,6 +1028,60 @@ class SeedMixin:
             "Gillian Robertson": {"rating": 84, "style": "BJJ", "trait": "Submission Ace", "behaviour": "Submission Hunter", "skills": {"submission_attack": 9, "back_control": 8, "top_control": 7, "transitions": 8}},
         }
 
+    def signature_real_fighter_detailed_profiles(self):
+        """Complete engine-facing profiles for fighters a generic style cannot represent."""
+        grouped = {
+            "Conor McGregor": {
+                "Standing": [95, 96, 93, 99, 98, 97, 90, 92, 94, 85, 87, 89, 96, 94, 88, 87],
+                "Ground": [88, 92, 90, 87, 89, 85, 94, 85, 89, 82, 80, 72],
+                "Wrestling": [83, 87, 89, 95, 94, 81, 79, 83, 89, 82, 95],
+                "Muay Thai Clinch": [88, 93, 89, 87, 83, 85, 81, 92],
+                "Mental": [92, 98, 93, 99, 96, 94, 97, 99],
+                "Physical": [94, 88, 94, 92, 99, 96, 99, 93, 93, 94, 90, 89],
+            },
+            "Ilia Topuria": {
+                "Standing": [93, 94, 93, 99, 98, 97, 92, 90, 91, 93, 92, 92, 95, 90, 93, 92],
+                "Ground": [91, 94, 94, 94, 96, 95, 94, 93, 90, 96, 92, 88],
+                "Wrestling": [92, 91, 92, 94, 94, 88, 87, 91, 91, 90, 95],
+                "Muay Thai Clinch": [91, 93, 92, 90, 86, 92, 91, 93],
+                "Mental": [95, 96, 93, 99, 95, 94, 96, 98],
+                "Physical": [89, 91, 94, 94, 95, 93, 97, 95, 95, 95, 91, 89],
+            },
+            "Khabib Nurmagomedov": {
+                "Standing": [84, 82, 84, 88, 86, 84, 78, 76, 78, 82, 82, 80, 80, 76, 87, 86],
+                "Ground": [96, 96, 98, 99, 98, 96, 98, 99, 95, 96, 99, 91],
+                "Wrestling": [99, 98, 95, 95, 96, 95, 97, 99, 99, 99, 96],
+                "Muay Thai Clinch": [99, 93, 90, 88, 82, 99, 99, 96],
+                "Mental": [96, 99, 98, 96, 96, 99, 99, 99],
+                "Physical": [84, 95, 99, 97, 91, 90, 93, 96, 99, 98, 96, 92],
+            },
+        }
+        profiles = {}
+        for name, groups in grouped.items():
+            profiles[name] = {
+                key: value
+                for group_name, values in groups.items()
+                for key, value in zip(DETAILED_SKILL_GROUPS[group_name], values)
+            }
+        return profiles
+
+    def apply_signature_real_fighter_profile(self, fighter, preserve_career=False):
+        targets = self.signature_real_fighter_detailed_profiles().get(fighter.name)
+        if not targets:
+            return False
+        before_overall = fighter.overall
+        fighter.detailed_skills.update(targets)
+        self.sync_broad_skills_from_details(fighter)
+        if preserve_career:
+            delta = max(-5, min(5, before_overall - fighter.overall))
+            if delta:
+                for key in targets:
+                    if key not in {"reach", "natural_size"}:
+                        fighter.detailed_skills[key] = max(25, min(99, fighter.detailed_skills[key] + delta))
+                self.sync_broad_skills_from_details(fighter)
+        fighter.realism_profile_version = 1
+        return True
+
     def real_fighter_stances(self):
         return {
             "Islam Makhachev": "Southpaw", "Conor McGregor": "Southpaw", "Leon Edwards": "Southpaw",
@@ -1089,6 +1175,12 @@ class SeedMixin:
                 for key, value in fighter.detailed_skills.items()
             }
             self.sync_broad_skills_from_details(fighter)
+        signature_profile = self.apply_signature_real_fighter_profile(fighter, preserve_career=False)
+        # Broad rating calibration can push an elite specialist's whole tab to
+        # the same ceiling. Retain the authored OVR while restoring technique
+        # differences that make styles and individual matchups meaningful.
+        if not signature_profile:
+            self.rebalance_saturated_detailed_skills(fighter, max_overall_drop=1)
         fighter.finishing_instinct = max(fighter.finishing_instinct, min(99, rating + (8 if fighter.trait in ("Knockout Artist", "Big Finisher", "Submission Ace") else 2)))
         fighter.fight_iq = max(fighter.fight_iq, min(99, rating + mental - 2))
         business_seed = sum((index + 7) * ord(char) for index, char in enumerate(fighter.name))
@@ -1103,7 +1195,7 @@ class SeedMixin:
         fighter.record_d = self.real_fighter_draws().get(fighter.name, fighter.record_d)
         fighter.multi_sport_records = dict(fighter.multi_sport_records or {})
         fighter.multi_sport_records["MMA"] = f"{fighter.record_w}-{fighter.record_l}-{fighter.record_d}"
-        fighter.rating_profile_version = 3
+        fighter.rating_profile_version = 4
 
     def cage_empire_fighter_data(self):
         return [
@@ -1154,6 +1246,7 @@ class SeedMixin:
 
     def independent_fighter_data(self):
         return [
+            ("Matthew Green", "Middleweight", "Free Agent", 78, 90, 24, 14, 1, "UK", "Kickboxer"),
             ("Nick Diaz", "Welterweight", "Free Agent", 84, 76, 42, 26, 10, "USA", "BJJ"),
             ("Frankie Edgar", "Bantamweight", "Free Agent", 74, 76, 44, 24, 11, "USA", "Wrestler"),
             ("Donald Cerrone", "Lightweight", "Free Agent", 80, 75, 43, 36, 17, "USA", "Kickboxer"),
@@ -1511,7 +1604,6 @@ class SeedMixin:
             ("Bobby Lashley", "Heavyweight", "BAMMA", 72, 70, 50, 15, 2, "USA", "Wrestler"),
             ("Shayna Baszler", "Bantamweight", "BAMMA", 62, 67, 45, 15, 11, "USA", "Grappler"),
             ("Matt Riddle", "Middleweight", "BAMMA", 65, 71, 40, 8, 3, "USA", "Wrestler"),
-            ("Matthew Green", "Middleweight", "BAMMA", 45, 85, 17, 0, 0, "UK", "Kickboxer"),
             ("Will Currie", "Middleweight", "Cage Warriors", 41, 72, 27, 12, 4, "UK", "Wrestler"),
             ("Justin Burlinson", "Welterweight", "Cage Warriors", 42, 73, 29, 9, 2, "UK", "Boxer"),
             ("Tobias Harila", "Featherweight", "Cage Warriors", 40, 72, 31, 13, 5, "Europe", "Kickboxer"),
@@ -2725,6 +2817,123 @@ class SeedMixin:
         fighter.toughness = round((skills.get("resilience", fighter.toughness) + skills.get("chin_strength", fighter.chin)) / 2)
         fighter.fight_iq = round((skills.get("adaptability", fighter.fight_iq) + skills.get("composure", fighter.fight_iq) + skills.get("discipline", fighter.fight_iq)) / 3)
 
+    def fighter_signature_detailed_skills(self, fighter):
+        """Return the small set of techniques that define a fighter's style."""
+        signatures = {
+            "Boxer": ("punch_power", "punch_technique", "hand_speed", "head_movement"),
+            "Kickboxer": ("high_kick_power", "high_kick_technique", "low_kick_technique", "kick_defence"),
+            "Dutch Kickboxer": ("punch_technique", "low_kick_power", "low_kick_technique", "guard_defence"),
+            "Karate": ("footwork", "high_kick_speed", "creative_kicks", "head_movement"),
+            "Taekwondo": ("high_kick_technique", "high_kick_speed", "creative_kicks", "footwork"),
+            "Sanda": ("creative_kicks", "clinch_takedowns", "throws", "footwork"),
+            "Muay Thai": ("knees", "elbows", "thai_plum", "low_kick_power"),
+            "Wrestler": ("takedowns", "takedown_setup", "chain_wrestling", "sprawl"),
+            "Freestyle Wrestler": ("takedown_speed", "chain_wrestling", "scrambles", "sprawl"),
+            "Catch Wrestler": ("chain_wrestling", "ride_control", "submission_attack", "top_control"),
+            "BJJ": ("submission_attack", "submission_defence_detail", "guard_work", "back_control"),
+            "Submission Grappler": ("submission_attack", "transitions", "back_control", "leg_locks"),
+            "Sambo": ("takedowns", "throws", "submission_attack", "leg_locks"),
+            "Judo": ("throws", "clinch_takedowns", "top_control", "positional_ability"),
+            "Grappler": ("top_control", "submission_attack", "transitions", "scrambles"),
+            "Luta Livre": ("leg_locks", "submission_attack", "scrambles", "top_control"),
+        }
+        return set(signatures.get(getattr(fighter, "style", ""), ("adaptability", "conditioning")))
+
+    @staticmethod
+    def detailed_group_statistics(values):
+        if not values:
+            return 0.0, 0.0
+        mean = sum(values) / len(values)
+        deviation = (sum((value - mean) ** 2 for value in values) / len(values)) ** 0.5
+        return mean, deviation
+
+    def rebalance_saturated_detailed_skills(self, fighter, max_overall_drop=2):
+        """Restore variation to old profiles whose entire skill groups hit the cap."""
+        self.ensure_detailed_skills(fighter)
+        details = fighter.detailed_skills
+        before_overall = fighter.overall
+        signature_keys = self.fighter_signature_detailed_skills(fighter)
+        fixed_keys = {"reach", "natural_size"}
+        repaired_groups = []
+        changed_keys = set()
+        original = dict(details)
+        technical_groups = {"Standing", "Ground", "Wrestling", "Muay Thai Clinch"}
+
+        style_group = {
+            "Boxer": "Standing", "Kickboxer": "Standing", "Dutch Kickboxer": "Standing",
+            "Karate": "Standing", "Taekwondo": "Standing", "Sanda": "Standing",
+            "Muay Thai": "Muay Thai Clinch", "Wrestler": "Wrestling",
+            "Freestyle Wrestler": "Wrestling", "Catch Wrestler": "Wrestling", "Judo": "Wrestling",
+            "BJJ": "Ground", "Luta Livre": "Ground", "Submission Grappler": "Ground",
+            "Grappler": "Ground", "Sambo": "Ground",
+        }.get(getattr(fighter, "style", ""), "")
+
+        for group_name, keys in DETAILED_SKILL_GROUPS.items():
+            values = [details.get(key, 50) for key in keys]
+            mean, deviation = self.detailed_group_statistics(values)
+            capped = sum(value >= 98 for value in values)
+            saturated = capped >= max(4, round(len(keys) * 0.45)) or (mean >= 92 and deviation <= 2.25)
+            if not saturated:
+                continue
+            signature_group = group_name == style_group
+            if group_name in technical_groups:
+                target_ceiling = min(96, before_overall + (6 if signature_group else 3))
+            else:
+                target_ceiling = min(95, before_overall + 4)
+            target_mean = min(mean, max(72, target_ceiling))
+            mutable = [key for key in keys if key not in fixed_keys]
+            if not mutable:
+                continue
+            seed = sum((index + 1) * ord(char) for index, char in enumerate(f"{fighter.fighter_id}:{group_name}"))
+            proposed = {}
+            for index, key in enumerate(mutable):
+                old_value = details.get(key, 50)
+                inherited_shape = (old_value - mean) * 0.45
+                jitter = ((seed + index * 17) % 7) - 3
+                signature_bonus = 2 if key in signature_keys else 0
+                proposed[key] = max(25, min(99, round(target_mean + inherited_shape + jitter + signature_bonus)))
+
+            fixed_total = sum(details.get(key, 50) for key in keys if key not in mutable)
+            desired_total = round(target_mean * len(keys))
+            mutable_target = max(len(mutable) * 25, min(len(mutable) * 99, desired_total - fixed_total))
+            difference = mutable_target - sum(proposed.values())
+            order = sorted(mutable, key=lambda key: (key not in signature_keys, proposed[key], key))
+            cursor = 0
+            while difference and order and cursor < len(order) * 100:
+                key = order[cursor % len(order)]
+                step = 1 if difference > 0 else -1
+                if 25 <= proposed[key] + step <= 99:
+                    proposed[key] += step
+                    difference -= step
+                cursor += 1
+            for key, value in proposed.items():
+                if value != details.get(key, 50):
+                    details[key] = value
+                    changed_keys.add(key)
+            repaired_groups.append(group_name)
+
+        if not repaired_groups:
+            return {"fighter": fighter.name, "groups": [], "changed": 0, "before": before_overall, "after": before_overall}
+
+        self.sync_broad_skills_from_details(fighter)
+        minimum_overall = max(1, before_overall - max(0, int(max_overall_drop)))
+        # Restore a little ability if several inflated groups were corrected at
+        # once. This bounds migration impact without flattening a whole tab again.
+        restoration_order = sorted(changed_keys, key=lambda key: (key not in signature_keys, details.get(key, 50), key))
+        cursor = 0
+        while fighter.overall < minimum_overall and restoration_order and cursor < len(restoration_order) * 120:
+            key = restoration_order[cursor % len(restoration_order)]
+            if details.get(key, 50) < 99:
+                details[key] += 1
+                self.sync_broad_skills_from_details(fighter)
+            cursor += 1
+        return {
+            "fighter": fighter.name, "groups": repaired_groups, "changed": len(changed_keys),
+            "before": before_overall, "after": fighter.overall,
+            "original_capped": sum(value >= 98 for value in original.values()),
+            "new_capped": sum(value >= 98 for value in details.values()),
+        }
+
     def seed_relationships(self, fighters):
         by_weight = {}
         for fighter in fighters:
@@ -2807,6 +3016,10 @@ class SeedMixin:
         fighter.career_archetype = ""
         self.enrich_fighter(fighter, player_owned=False)
         fighter.generated = True
+        # Exceptional generated fighters still need an identifiable profile.
+        # High broad rolls plus style boosts can otherwise cap most techniques
+        # before their career even begins.
+        self.rebalance_saturated_detailed_skills(fighter, max_overall_drop=1)
         fighter.universe_entry_month = entry_month
         fighter.universe_entry_year = entry_year
         fighter.record_history_baseline_w = record_w if pre_universe else 0
@@ -2982,7 +3195,7 @@ class SeedMixin:
         promotions.extend(self.seed_regional_feeder_promotions(global_names))
         return promotions
 
-    def create_regional_feeder_fighter(self, region, used_names, gender):
+    def create_regional_feeder_fighter(self, region, used_names, gender, feeder_name=""):
         pre_universe = bool(getattr(self, "_seeding_universe", False))
         fighter = self.create_generated_fighter(2, 22, 40, 70, gender=gender, region=region, apply_entry_balance=False, pre_universe=pre_universe)
         fighter.age = random.choices(range(17, 22), weights=[5, 8, 10, 8, 5], k=1)[0]
@@ -3015,7 +3228,7 @@ class SeedMixin:
         fighter.contract_months = 0
         fighter.exclusive = False
         fighter.contract_type = "Developmental"
-        fighter.feeder_origin = region
+        fighter.feeder_origin = feeder_name or region
         pool = REGIONAL_NAME_POOLS.get(region, {})
         allowed_first = set(pool.get("female" if gender == "Female" else "male", ()))
         allowed_last = set(pool.get("last", ()))
@@ -3063,7 +3276,7 @@ class SeedMixin:
                 male_count = 5 if weight in ("Light Heavyweight", "Heavyweight") else 6
                 for gender, count in (("Male", male_count), ("Female", 3)):
                     for _ in range(count):
-                        fighter = self.create_regional_feeder_fighter(region, global_names, gender)
+                        fighter = self.create_regional_feeder_fighter(region, global_names, gender, feeder_name=name)
                         fighter.weight = weight
                         fighter.region = region
                         fighter.nationality = self.infer_nationality(fighter.name, region)

@@ -95,6 +95,271 @@ class AwardsMixin:
         if package.get("profit", 0) >= 250_000:
             self.unlock_achievement("Promotion", company, company, "major_profit", "Big Night", f"Generated ${package['profit']:,} in event profit.")
 
+    # Long-term company milestones intentionally reuse the achievement ledger.
+    # Progress is separate because it is live and may fall; an unlock is permanent.
+    def company_milestone_registry(self):
+        return (
+            {"id": "financially_secure", "name": "Financially Secure", "cash": 1_000_000, "months": 6,
+             "stability": 45, "popularity": 0, "safety": 0, "events": 0,
+             "description": "Sustain $1M while operating positively for six months.", "unlock": "Company project and special-format invitations."},
+            {"id": "national_power", "name": "National Power", "cash": 5_000_000, "months": 12,
+             "stability": 55, "popularity": 65, "safety": 0, "events": 15,
+             "description": "Build national recognition and a durable $5M operation.", "unlock": "National Stadium record-attempt invitations."},
+            {"id": "major_organisation", "name": "Major Organisation", "cash": 15_000_000, "months": 12,
+             "stability": 65, "popularity": 75, "safety": 0, "events": 30,
+             "description": "Prove a $15M company can consistently deliver major shows.", "unlock": "Mega Stadium and historic-venue opportunities."},
+            {"id": "combat_sports_institution", "name": "Combat Sports Institution", "cash": 40_000_000, "months": 12,
+             "stability": 72, "popularity": 84, "safety": 78, "events": 60,
+             "description": "Combine scale with an excellent safety and standing record.", "unlock": "Ceremonial capital showcases."},
+            {"id": "legacy_empire", "name": "Legacy Empire", "cash": 100_000_000, "months": 24,
+             "stability": 80, "popularity": 90, "safety": 85, "events": 100,
+             "description": "Reach the once-in-a-save peak of commercial and sporting credibility.", "unlock": "White House Fight Night invitation."},
+        )
+
+    def company_unlocked_milestone_ids(self):
+        company = getattr(self, "player_company_name", "")
+        return {
+            entry.get("id") for entry in getattr(self, "achievement_log", [])
+            if entry.get("scope") == "Promotion" and entry.get("target") == company
+            and entry.get("id") in {row["id"] for row in self.company_milestone_registry()}
+        }
+
+    def company_event_count(self):
+        return sum(1 for record in getattr(self, "result_records", []) if record.get("company") == self.player_company_name)
+
+    def update_company_safety_and_standing(self):
+        """Derived welfare/reliability score; never a hidden random punishment."""
+        prior = int(getattr(self, "company_safety", 60) or 60)
+        serious = sum(1 for fighter in getattr(self, "roster", []) if getattr(fighter, "serious_injury", ""))
+        injured = sum(1 for fighter in getattr(self, "roster", []) if getattr(fighter, "injured", 0) >= 4)
+        testing = {"None": -7, "Standard": 0, "Strict": 5}.get(getattr(self, "rules", {}).get("drug_testing", "Standard"), 0)
+        failures = sum(1 for row in getattr(self, "super_event_history", [])[-12:] if row.get("outcome") in ("Cancelled", "Failed"))
+        medical_base = int((getattr(self, "finance", {}) or {}).get("medical_base", 0) or 0)
+        medical = 3 if medical_base >= 25_000 else 1 if medical_base >= 12_000 else -2
+        target = 67 + testing + medical - serious * 5 - injured * 2 - failures * 4
+        self.company_safety = max(0, min(100, round(prior * 0.72 + target * 0.28)))
+        return self.company_safety
+
+    def company_valuation(self):
+        return round(self.company_power_score(self.player_company_name, self.roster, self.company_pop, self.company_stability, self.cash))
+
+    def process_company_milestones_and_super_events(self):
+        """Monthly player-side milestone, safety, offer-expiry and invitation pass."""
+        if getattr(self, "spectator_mode", False):
+            return
+        self.ensure_season_containers()
+        self.update_company_safety_and_standing()
+        progress = getattr(self, "company_milestone_progress", {}) or {}
+        prior_cash = int(progress.get("_last_cash", self.cash) or self.cash)
+        positive_month = self.cash >= prior_cash
+        progress["_last_cash"] = int(self.cash)
+        events = self.company_event_count()
+        for rule in self.company_milestone_registry():
+            row = progress.setdefault(rule["id"], {"months": 0})
+            qualifies = (
+                self.cash >= rule["cash"] and positive_month and self.company_stability >= rule["stability"]
+                and self.company_pop >= rule["popularity"] and self.company_safety >= rule["safety"] and events >= rule["events"]
+            )
+            row["months"] = min(rule["months"], int(row.get("months", 0) or 0) + 1) if qualifies else 0
+            row["qualifies"] = qualifies
+            if row["months"] >= rule["months"]:
+                unlocked = self.unlock_achievement("Promotion", self.player_company_name, self.player_company_name, rule["id"], rule["name"], rule["description"] + " Unlock: " + rule["unlock"])
+                if unlocked:
+                    self.record_world_story("Company Milestone", f"{self.player_company_name} becomes {rule['name']}", rule["unlock"], [self.player_company_name], importance=4)
+        self.company_milestone_progress = progress
+        self.expire_super_event_offers()
+        self.roll_super_event_opportunity()
+
+    def expire_super_event_offers(self):
+        active = []
+        for offer in list(getattr(self, "super_event_offers", []) or []):
+            if offer.get("status") == "Offered" and self.month > int(offer.get("deadline_month", self.month)):
+                offer["status"] = "Expired"
+                self.company_safety = max(0, self.company_safety - 2)
+                self.news.insert(0, f"Super-event invitation expired: {offer.get('name', 'Opportunity')}. The industry questions the missed window.")
+            if offer.get("status") in ("Offered", "Planning", "Scheduled"):
+                active.append(offer)
+        self.super_event_offers = active[-12:]
+
+    def super_event_templates(self):
+        return {
+            "financially_secure": {"kind": "Special Format", "name": "Grand Prix Showcase", "venue": "Casino Ballroom", "region": "USA", "city": "Las Vegas", "deposit": 45_000, "setup": 35_000, "security": 15_000, "reserve": 300_000, "min_fights": 6, "min_titles": 0, "min_stars": 1, "revenue": 1.12, "reward": 3},
+            "national_power": {"kind": "Record Attempt", "name": "National Stadium Record Attempt", "venue": "National Stadium", "region": "USA", "city": "Las Vegas", "deposit": 180_000, "setup": 320_000, "security": 120_000, "reserve": 1_000_000, "min_fights": 8, "min_titles": 2, "min_stars": 2, "revenue": 1.32, "reward": 5},
+            "major_organisation": {"kind": "Historic Venue", "name": "Historic Amphitheatre Championship", "venue": "Historic Amphitheatre", "region": "Europe", "city": "London", "deposit": 320_000, "setup": 480_000, "security": 170_000, "reserve": 2_500_000, "min_fights": 8, "min_titles": 2, "min_stars": 3, "revenue": 1.42, "reward": 7},
+            "combat_sports_institution": {"kind": "Ceremonial", "name": "Ceremonial Capital Showcase", "venue": "Ceremonial Capital Grounds", "region": "USA", "city": "Washington", "deposit": 500_000, "setup": 900_000, "security": 450_000, "reserve": 6_000_000, "min_fights": 9, "min_titles": 3, "min_stars": 3, "revenue": 1.26, "reward": 9},
+            "legacy_empire": {"kind": "Once-per-save Ceremonial", "name": "White House Fight Night", "venue": "White House South Lawn", "region": "USA", "city": "Washington", "deposit": 1_000_000, "setup": 3_500_000, "security": 2_500_000, "reserve": 40_000_000, "min_fights": 10, "min_titles": 3, "min_stars": 4, "revenue": 1.12, "reward": 14, "once": True},
+        }
+
+    def roll_super_event_opportunity(self, force=False):
+        if getattr(self, "super_event_project", None) or any(offer.get("status") == "Offered" for offer in getattr(self, "super_event_offers", [])):
+            return None
+        unlocked = self.company_unlocked_milestone_ids()
+        eligible = [rule["id"] for rule in self.company_milestone_registry() if rule["id"] in unlocked]
+        if not eligible or (not force and random.random() >= 0.22):
+            return None
+        milestone_id = eligible[-1]
+        template = dict(self.super_event_templates()[milestone_id])
+        if template.get("once") and any(row.get("milestone") == milestone_id for row in getattr(self, "super_event_history", [])):
+            return None
+        offer = {
+            "id": f"SE-{self.month}-{len(getattr(self, 'super_event_history', [])) + len(getattr(self, 'super_event_offers', [])) + 1}",
+            "milestone": milestone_id, "status": "Offered", "earliest_month": self.month + 2,
+            "deadline_month": self.month + 8, "issued_month": self.month, **template,
+        }
+        self.super_event_offers.insert(0, offer)
+        headline = f"Super-event invitation: {offer['name']}"
+        body = f"{offer['kind']} opportunity at {offer['venue']}. Accept by {self.format_game_date(offer['deadline_month'], 1)}; projected setup ${offer['deposit'] + offer['setup'] + offer['security']:,}."
+        self.inbox.append({"subject": headline, "body": body, "type": "Super Events", "fighter": "", "resolved": False, "super_event_id": offer["id"]})
+        self.news.insert(0, headline)
+        self.record_world_story("Super Event", headline, body, [self.player_company_name], importance=4)
+        return offer
+
+    def super_event_readiness(self, offer):
+        offer = offer or {}
+        fights = list(getattr(self, "booked", []) or [])
+        participants = [self.get_fighter(name) for fight in fights for name in fight.get("fighters", []) if name != "TBA" and self.get_fighter(name)]
+        unique = list({fighter.fighter_id: fighter for fighter in participants}.values())
+        title_bouts = sum(1 for fight in fights if fight.get("title"))
+        star_count = sum(1 for fighter in unique if fighter.popularity >= 55 or fighter.star_quality >= 72)
+        financial = min(100, round(self.cash / max(1, int(offer.get("reserve", 1))) * 100))
+        prestige = min(100, self.company_pop)
+        card = min(100, round((len(fights) / max(1, offer.get("min_fights", 1)) * 45) + (title_bouts / max(1, offer.get("min_titles", 1)) * 30) + (star_count / max(1, offer.get("min_stars", 1)) * 25)))
+        safety = min(100, self.company_safety)
+        venue = 100 if offer.get("venue") in self.available_event_venues() else 0
+        readiness = round(financial * .25 + prestige * .20 + card * .20 + min(100, star_count * 34) * .15 + safety * .10 + venue * .10)
+        return {"score": readiness, "financial": financial, "prestige": prestige, "card": card, "star_power": min(100, star_count * 34), "safety": safety, "venue": venue, "title_bouts": title_bouts, "stars": star_count, "fights": len(fights)}
+
+    def super_event_novelty(self, offer):
+        """Spectacles remain useful, but repeated versions stop printing hype."""
+        kind = str((offer or {}).get("kind", ""))
+        recent = [row for row in getattr(self, "super_event_history", []) if row.get("kind") == kind and self.month - int(row.get("month", 0) or 0) <= 48]
+        return (1.0, 0.8, 0.6, 0.4)[min(3, len(recent))]
+
+    def validate_super_event_card(self, offer, fights=None):
+        fights = list(fights if fights is not None else getattr(self, "booked", []))
+        participants = [self.get_fighter(name) for fight in fights for name in fight.get("fighters", []) if name != "TBA" and self.get_fighter(name)]
+        stars = len({fighter.fighter_id for fighter in participants if fighter.popularity >= 55 or fighter.star_quality >= 72})
+        titles = sum(1 for fight in fights if fight.get("title"))
+        missing = []
+        if len(fights) < int(offer.get("min_fights", 1)): missing.append(f"{offer['min_fights']} completed fights")
+        if titles < int(offer.get("min_titles", 0)): missing.append(f"{offer['min_titles']} title fights")
+        if stars < int(offer.get("min_stars", 0)): missing.append(f"{offer['min_stars']} recognisable stars")
+        return missing
+
+    def accept_super_event_offer(self, offer):
+        if offer.get("status") != "Offered":
+            return False, "That invitation is no longer open."
+        total_commitment = int(offer.get("deposit", 0)) + int(offer.get("setup", 0)) + int(offer.get("security", 0))
+        if self.cash - total_commitment < int(offer.get("reserve", 0)):
+            return False, f"Approval requires ${offer['reserve']:,} to remain after the projected ${total_commitment:,} commitment."
+        self.cash -= int(offer.get("deposit", 0))
+        self.record_finance_transaction(f"Super-event approval: {offer['name']}", costs=int(offer.get("deposit", 0)))
+        offer["status"] = "Planning"
+        offer["accepted_month"] = self.month
+        offer["remaining_setup_cost"] = int(offer.get("setup", 0))
+        offer["novelty"] = self.super_event_novelty(offer)
+        self.super_event_project = offer
+        self.event_name.set(f"{self.player_company_name}: {offer['name']}")
+        self.venue.set(offer["venue"]); self.event_region.set(offer["region"]); self.event_city.set(offer["city"])
+        earliest = int(offer.get("earliest_month", self.month + 2))
+        self.set_booking_date(earliest, 2)
+        if hasattr(self, "event_venue_box"):
+            self.event_venue_box.configure(values=self.available_event_venues())
+        self.news.insert(0, f"Approved: {offer['name']}. Build the card and clear approval before {self.format_game_date(offer['deadline_month'], 1)}.")
+        return True, "Project approved. The booking screen has been prepared."
+
+    def complete_super_event(self, event, package):
+        offer = dict(event.get("super_event", {}) or {})
+        if not offer:
+            return
+        finance = package.get("finance", {}) or {}
+        attendance_ratio = finance.get("attendance", 0) / max(1, finance.get("venue_capacity", 1))
+        success = package.get("profit", 0) >= 0 and attendance_ratio >= .45 and package.get("average_excitement", 0) >= 43
+        outcome = "Success" if success else "Failed"
+        pop_delta = int(offer.get("reward", 3)) if success else -max(2, int(offer.get("reward", 3)) // 2)
+        stability_delta = max(1, int(offer.get("reward", 3)) // 2) if success else -3
+        self.company_pop = max(1, min(100, self.company_pop + pop_delta))
+        self.company_stability = max(1, min(100, self.company_stability + stability_delta))
+        self.company_safety = max(0, min(100, self.company_safety + (2 if success else -4)))
+        history = {"id": offer.get("id"), "name": offer.get("name"), "kind": offer.get("kind"), "milestone": offer.get("milestone"), "month": self.month, "outcome": outcome, "attendance": finance.get("attendance", 0), "profit": package.get("profit", 0), "event": package.get("event_name", "")}
+        self.super_event_history.insert(0, history)
+        self.super_event_history = self.super_event_history[:60]
+        offer["status"] = outcome
+        self.super_event_offers = [row for row in self.super_event_offers if row.get("id") != offer.get("id")]
+        self.super_event_project = None
+        headline = f"{offer.get('name', 'Super Event')} {outcome.lower()}: {package.get('event_name', '')}"
+        detail = f"Attendance {finance.get('attendance', 0):,}; profit ${package.get('profit', 0):,}; popularity {pop_delta:+}; stability {stability_delta:+}."
+        self.news.insert(0, headline)
+        self.record_world_story("Super Event", headline, detail, [self.player_company_name], importance=5 if success else 3)
+
+    def open_company_milestones_window(self):
+        self.update_company_safety_and_standing()
+        window = tk.Toplevel(self.root)
+        window.title("MMA Warriors - Company Milestones & Super Events")
+        window.geometry("1120x700")
+        window.minsize(900, 560)
+        window.configure(bg=self.colors["chrome"])
+        header = ttk.Frame(window, style="Header.TFrame"); header.pack(fill="x", padx=8, pady=(8, 0))
+        ttk.Label(header, text="COMPANY MILESTONES & SUPER EVENTS", style="ScreenTitle.TLabel").pack(side="left", padx=10, pady=7)
+        stats = ttk.Label(header, style="Chrome.TLabel"); stats.pack(side="right", padx=10)
+        body = ttk.Panedwindow(window, orient="horizontal"); body.pack(fill="both", expand=True, padx=8, pady=8)
+        left = ttk.Frame(body, style="Inset.TFrame"); right = ttk.Frame(body, style="Inset.TFrame"); body.add(left, weight=1); body.add(right, weight=1)
+        ttk.Label(left, text="MILESTONE PATH", style="Section.TLabel").pack(fill="x")
+        milestone_tree = ttk.Treeview(left, columns=("status", "progress", "cash", "unlock"), show="headings", height=11)
+        for col, label, width in (("status", "Status", 95), ("progress", "Sustained", 90), ("cash", "Cash Gate", 105), ("unlock", "Unlock", 300)):
+            milestone_tree.heading(col, text=label); milestone_tree.column(col, width=width, anchor="w")
+        milestone_tree.pack(fill="both", expand=True, padx=6, pady=6)
+        ttk.Label(right, text="SUPER-EVENT OPPORTUNITIES", style="Section.TLabel").pack(fill="x")
+        offer_tree = ttk.Treeview(right, columns=("kind", "venue", "deadline", "status", "ready"), show="headings", height=11)
+        for col, label, width in (("kind", "Kind", 115), ("venue", "Venue", 165), ("deadline", "Decision By", 110), ("status", "Status", 85), ("ready", "Readiness", 80)):
+            offer_tree.heading(col, text=label); offer_tree.column(col, width=width, anchor="w")
+        offer_tree.pack(fill="both", expand=True, padx=6, pady=6)
+        detail = tk.Text(window, height=8, wrap="word", bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 9), padx=10, pady=8)
+        detail.pack(fill="x", padx=8, pady=(0, 6)); detail.config(state="disabled")
+        footer = ttk.Frame(window, style="Inset.TFrame"); footer.pack(fill="x", padx=8, pady=(0, 8))
+        offers = []
+        def render():
+            stats.config(text=f"Cash ${self.cash:,.0f}  |  Valuation {self.company_valuation():,}  |  Safety & Standing {self.company_safety}/100")
+            milestone_tree.delete(*milestone_tree.get_children())
+            progress = getattr(self, "company_milestone_progress", {}) or {}
+            unlocked = self.company_unlocked_milestone_ids()
+            for rule in self.company_milestone_registry():
+                state = progress.get(rule["id"], {})
+                status = "UNLOCKED" if rule["id"] in unlocked else "Building"
+                milestone_tree.insert("", "end", iid=rule["id"], values=(status, f"{state.get('months', 0)}/{rule['months']} mo", f"${rule['cash']:,}", rule["unlock"]))
+            offers[:] = list(getattr(self, "super_event_offers", []) or [])
+            offer_tree.delete(*offer_tree.get_children())
+            for index, offer in enumerate(offers):
+                ready = self.super_event_readiness(offer)["score"]
+                offer_tree.insert("", "end", iid=str(index), values=(offer.get("kind", ""), offer.get("venue", ""), self.format_game_date(offer.get("deadline_month", self.month), 1), offer.get("status", ""), f"{ready}/100"))
+        def selected_offer():
+            selected = offer_tree.selection()
+            return offers[int(selected[0])] if selected else None
+        def show_offer(_event=None):
+            offer = selected_offer()
+            if not offer: return
+            read = self.super_event_readiness(offer)
+            missing = self.validate_super_event_card(offer)
+            text = (f"{offer['name']}\n\n{offer['kind']} at {offer['venue']}\n"
+                    f"Approval deposit ${offer['deposit']:,}; remaining setup/security ${offer['setup'] + offer['security']:,}; reserve ${offer['reserve']:,}.\n"
+                    f"Spectacle novelty: {int(self.super_event_novelty(offer) * 100)}% commercial impact.\n"
+                    f"Card approval: {offer['min_fights']} fights, {offer['min_titles']} title fights, {offer['min_stars']} recognisable stars.\n\n"
+                    f"READINESS {read['score']}/100\nFinancial {read['financial']} | Prestige {read['prestige']} | Card {read['card']} | Star power {read['star_power']} | Safety {read['safety']} | Venue {read['venue']}\n"
+                    + ("Current card still needs: " + ", ".join(missing) if missing else "Current card meets the project approval checklist."))
+            detail.config(state="normal"); detail.delete("1.0", "end"); detail.insert("end", text); detail.config(state="disabled")
+        def accept():
+            offer = selected_offer()
+            if not offer: return
+            ok, message = self.accept_super_event_offer(offer)
+            if ok:
+                self.show_tab("booking"); window.destroy()
+            else:
+                messagebox.showwarning("Project cannot be approved", message, parent=window)
+        ttk.Button(footer, text="Accept Selected Project", style="Accent.TButton", command=accept).pack(side="left", padx=4, pady=4)
+        ttk.Button(footer, text="Refresh", command=render).pack(side="left", padx=4, pady=4)
+        ttk.Button(footer, text="Close", command=window.destroy).pack(side="right", padx=4, pady=4)
+        offer_tree.bind("<<TreeviewSelect>>", show_offer); render()
+
     def open_achievements_window(self):
         self.ensure_season_containers()
         window = tk.Toplevel(self.root)
@@ -103,6 +368,7 @@ class AwardsMixin:
         window.configure(bg=self.colors["chrome"])
         header = ttk.Frame(window, style="Header.TFrame"); header.pack(fill="x", padx=8, pady=(8, 0))
         ttk.Label(header, text="ACHIEVEMENTS & MILESTONES", style="ScreenTitle.TLabel").pack(side="left", padx=10, pady=6)
+        ttk.Button(header, text="Company Milestones & Super Events", command=self.open_company_milestones_window).pack(side="right", padx=8, pady=4)
         ttk.Label(header, text="Career landmarks and promotion accomplishments", style="Chrome.TLabel").pack(side="right", padx=10)
         controls = ttk.Frame(window, style="Inset.TFrame"); controls.pack(fill="x", padx=8, pady=8)
         ttk.Label(controls, text="Show", style="Inset.TLabel").pack(side="left", padx=(6, 4))

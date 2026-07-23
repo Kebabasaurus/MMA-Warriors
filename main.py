@@ -65,6 +65,11 @@ class FightEmpireApp(
         self.cash = 275_000
         self.company_pop = 38
         self.company_stability = 52
+        self.company_safety = 60
+        self.company_milestone_progress = {}
+        self.super_event_offers = []
+        self.super_event_history = []
+        self.super_event_project = None
         self.theme_name = "UFC"
         self.player_company_name = PLAYER_PROMOTION_NAME
         self.spectator_mode = False
@@ -113,11 +118,14 @@ class FightEmpireApp(
         self.ensure_staff_profiles()
         self.scouting = []
         self.scouting_reports = {}
+        self.scouting_searches = []
+        self.scouting_shortlist = []
+        self._scouting_state_migrated = True
         self.academy = self.academy_defaults()
         self.inbox = []
         self.inbox_hidden_types = set()
         self.owner_goals = self.seed_owner_goals()
-        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "active_fighter_target": 1200, "ai_offer_market_target": 100, "global_result_replay_limit": 2000, "auto_renew_enabled": False, "scouting_mode": True, "fight_night_audio_enabled": True, "fight_night_audio_output": "System default", "fight_night_audio_volume": 55, "autosave_enabled": True, "autosave_interval_months": 2, "autosave_weekly_keep": 2, "autosave_monthly_keep": 2, "save_backup_keep": 2, "save_retention_version": 4}
+        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "active_fighter_target": 1200, "ai_offer_market_target": 100, "global_result_replay_limit": 2000, "auto_renew_enabled": False, "scouting_mode": True, "fight_night_audio_enabled": True, "fight_night_audio_output": "System default", "fight_night_audio_volume": 55, "autosave_enabled": True, "autosave_interval_months": 2, "autosave_weekly_keep": 2, "autosave_monthly_keep": 2, "save_backup_keep": 2, "save_retention_version": 4, "detailed_skill_balance_version": 1}
         self.rules["allow_mixed_gender"] = False
         self.broadcasters = [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}]
         self.media_companies = []

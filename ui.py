@@ -332,8 +332,8 @@ class UIMixin:
         nav_scroll.pack(side="right", fill="y")
         groups = (
             ("TODAY", (("Assistant", "assistant"), ("Inbox", "inbox"), ("Media Desk", "website"), ("Fight Night", "log"))),
-            ("PROMOTION", (("Roster", "roster"), ("Matchmaking", "booking"), ("Contracts", "contracts"), ("Free Agents", "market"), ("Fight Academy", "academy"), ("Staff", "staff"), ("Finance", "finance"))),
-            ("WORLD", (("World", "world"), ("Fighter Search", "fighter_search"), ("Combat Sports", "combat_sports"), ("Companies", "companies"), ("Rankings", "rankings"), ("Results", "results"), ("Regions", "regions"))),
+            ("PROMOTION", (("Roster", "roster"), ("Matchmaking", "booking"), ("Contracts", "contracts"), ("Free Agents", "market"), ("Scouting", "scouting"), ("Fight Academy", "academy"), ("Staff", "staff"), ("Finance", "finance"))),
+            ("WORLD", (("World", "world"), ("Regional Prospects", "regional_prospects"), ("Fighter Search", "fighter_search"), ("Combat Sports", "combat_sports"), ("Companies", "companies"), ("Rankings", "rankings"), ("Results", "results"), ("Regions", "regions"))),
             ("TOOLS", (("Game & Saves", "game_menu"), ("Company Rules", "company_editor"), ("World Editor", "editor"), ("Sim Lab", "sim_lab"))),
         )
         self.nav_buttons = {}
@@ -366,10 +366,12 @@ class UIMixin:
             ("company_editor", "company_editor_tab", "Company Editor"),
             ("inbox", "inbox_tab", "Inbox"),
             ("staff", "staff_tab", "Staff"),
+            ("scouting", "scouting_tab", "Scouting"),
             ("finance", "finance_tab", "Finance"),
             ("booking", "booking_tab", "Booking"),
             ("market", "market_tab", "Free Agents"),
             ("world", "world_tab", "World"),
+            ("regional_prospects", "regional_prospects_tab", "Regional Prospects"),
             ("fighter_search", "fighter_search_tab", "Fighter Search"),
             ("rankings", "rankings_tab", "Rankings"),
             ("editor", "editor_tab", "Editor"),
@@ -393,10 +395,12 @@ class UIMixin:
         self.build_company_editor_tab()
         self.build_inbox_tab()
         self.build_staff_tab()
+        self.build_scouting_tab()
         self.build_finance_tab()
         self.build_booking_tab()
         self.build_market_tab()
         self.build_world_tab()
+        self.build_regional_prospects_tab()
         self.build_fighter_search_tab()
         self.build_rankings_tab()
         self.build_editor_tab()
@@ -460,10 +464,12 @@ class UIMixin:
             "company_editor": self.tab_pages["company_editor"],
             "inbox": self.tab_pages["inbox"],
             "staff": self.tab_pages["staff"],
+            "scouting": self.tab_pages["scouting"],
             "finance": self.tab_pages["finance"],
             "booking": self.tab_pages["booking"],
             "market": self.tab_pages["market"],
             "world": self.tab_pages["world"],
+            "regional_prospects": self.tab_pages["regional_prospects"],
             "fighter_search": self.tab_pages["fighter_search"],
             "rankings": self.tab_pages["rankings"],
             "editor": self.tab_pages["editor"],
@@ -736,11 +742,12 @@ class UIMixin:
         row = ttk.Frame(save_inner, style="Inset.TFrame")
         row.pack(fill="x", pady=6)
         self.save_slot_name = tk.StringVar(value="Game 1")
-        ttk.Entry(row, textvariable=self.save_slot_name, width=18).grid(row=0, column=0, columnspan=3, sticky="ew", padx=4, pady=2)
+        ttk.Entry(row, textvariable=self.save_slot_name, width=18).grid(row=0, column=0, columnspan=4, sticky="ew", padx=4, pady=2)
         ttk.Button(row, text="Save Slot", command=self.save_selected_slot).grid(row=1, column=0, sticky="ew", padx=3, pady=2)
         ttk.Button(row, text="Load Slot", command=self.load_selected_slot).grid(row=1, column=1, sticky="ew", padx=3, pady=2)
-        ttk.Button(row, text="Delete Slot", command=self.delete_selected_slot).grid(row=1, column=2, sticky="ew", padx=3, pady=2)
-        for col in range(3):
+        ttk.Button(row, text="Copy Slot", command=self.duplicate_selected_save).grid(row=1, column=2, sticky="ew", padx=3, pady=2)
+        ttk.Button(row, text="Delete Slot", command=self.delete_selected_slot).grid(row=1, column=3, sticky="ew", padx=3, pady=2)
+        for col in range(4):
             row.columnconfigure(col, weight=1)
         save_tools = ttk.Frame(save_inner, style="Inset.TFrame")
         save_tools.pack(fill="x", pady=(0, 6))
@@ -1359,7 +1366,8 @@ class UIMixin:
         self.company_belts_tree.bind("<<TreeviewSelect>>", lambda _e: self.refresh_belt_history_view())
         self.belt_history_text = tk.Text(belt, wrap="word", font=("Tahoma", 9), bg=self.colors["cream"], fg=self.colors["text"], height=7, padx=8, pady=8)
         self.belt_history_text.pack(fill="x", pady=(6, 0))
-        ttk.Button(belt, text="Toggle Selected Weight Class", command=self.toggle_weight_class).pack(anchor="e", pady=4)
+        self.company_division_toggle_button = ttk.Button(belt, text="Open / Close Selected Division", command=self.toggle_selected_company_division)
+        self.company_division_toggle_button.pack(anchor="e", pady=4)
         ttk.Label(belt, text="SPECIAL BELTS", style="Section.TLabel", anchor="center").pack(fill="x", pady=(5, 3))
         special_entry = ttk.Frame(belt, style="Inset.TFrame")
         special_entry.pack(fill="x", pady=(0, 3))
@@ -1412,16 +1420,28 @@ class UIMixin:
         controls.pack(fill="x", pady=(0, 6))
         self.inbox_filter = tk.StringVar(value="Open")
         self.inbox_type_filter = tk.StringVar(value="All")
+        self.inbox_search = tk.StringVar(value="")
+        self.inbox_sort = tk.StringVar(value="Newest")
+        ttk.Label(controls, text="Search", style="Inset.TLabel").pack(side="left", padx=(5, 2))
+        search = ttk.Entry(controls, textvariable=self.inbox_search, width=25)
+        search.pack(side="left", fill="x", expand=True, padx=(0, 7))
+        search.bind("<KeyRelease>", lambda _event: self.refresh_inbox())
         ttk.Label(controls, text="Status", style="Inset.TLabel").pack(side="left", padx=(5, 2))
-        status = ttk.Combobox(controls, textvariable=self.inbox_filter, values=("Open", "All", "Read"), state="readonly", width=8)
+        status = ttk.Combobox(controls, textvariable=self.inbox_filter, values=("Open", "Needs Action", "Unread", "Read", "Archived", "All"), state="readonly", width=13)
         status.pack(side="left", padx=(0, 7))
         ttk.Label(controls, text="Type", style="Inset.TLabel").pack(side="left", padx=(0, 2))
-        kind = ttk.Combobox(controls, textvariable=self.inbox_type_filter, values=("All", "Contract", "Scouting", "Medical", "Roster", "Business", "Staff", "Media", "Rules", "Talent Relations"), state="readonly", width=16)
-        kind.pack(side="left")
+        self.inbox_type_box = ttk.Combobox(controls, textvariable=self.inbox_type_filter, values=("All",), state="readonly", width=16)
+        self.inbox_type_box.pack(side="left", padx=(0, 7))
+        ttk.Label(controls, text="Sort", style="Inset.TLabel").pack(side="left", padx=(0, 2))
+        order = ttk.Combobox(controls, textvariable=self.inbox_sort, values=("Newest", "Oldest", "Priority", "Type"), state="readonly", width=9)
+        order.pack(side="left")
         status.bind("<<ComboboxSelected>>", lambda _event: self.refresh_inbox())
-        kind.bind("<<ComboboxSelected>>", lambda _event: self.refresh_inbox())
-        self.inbox_tree = ttk.Treeview(inbox, columns=("state", "type", "subject"), show="headings", height=14)
-        for column, text, width in (("state", "", 32), ("type", "Type", 110), ("subject", "Subject", 390)):
+        self.inbox_type_box.bind("<<ComboboxSelected>>", lambda _event: self.refresh_inbox())
+        order.bind("<<ComboboxSelected>>", lambda _event: self.refresh_inbox())
+        self.inbox_summary = ttk.Label(inbox, text="", style="Inset.TLabel", anchor="w")
+        self.inbox_summary.pack(fill="x", padx=5, pady=(0, 4))
+        self.inbox_tree = ttk.Treeview(inbox, columns=("state", "date", "type", "subject"), show="headings", height=14)
+        for column, text, width in (("state", "", 32), ("date", "Received", 100), ("type", "Type", 110), ("subject", "Subject", 390)):
             self.inbox_tree.heading(column, text=text)
             self.inbox_tree.column(column, width=width, anchor="w")
         self.inbox_tree.tag_configure("unread", foreground="#ffe08a")
@@ -1435,14 +1455,18 @@ class UIMixin:
             ("Open Context", self.open_inbox_context, "Accent.TButton"),
             ("Medical Decision", self.resolve_serious_injury_inbox, None),
             ("Mark Read", self.mark_inbox_read, None),
+            ("Mark Visible Read", self.mark_visible_inbox_read, None),
             ("Hide Type", self.hide_selected_inbox_type, None),
             ("Show Hidden", self.show_all_inbox_types, None),
             ("Resolve / Archive", self.resolve_inbox_item, None),
+            ("Clear Old Mail", self.clear_old_inbox, None),
         )):
             button = ttk.Button(inbox_actions, text=text, command=command, style=style) if style else ttk.Button(inbox_actions, text=text, command=command)
-            button.grid(row=col // 3, column=col % 3, sticky="ew", padx=3, pady=2)
-        for col in range(3):
+            button.grid(row=col // 4, column=col % 4, sticky="ew", padx=3, pady=2)
+        for col in range(4):
             inbox_actions.columnconfigure(col, weight=1)
+        self.inbox_notice = ttk.Label(inbox, text="", style="Inset.TLabel", anchor="w")
+        self.inbox_notice.pack(fill="x", padx=5, pady=(4, 0))
         goals_panel, goals = self.section(body, "OWNER GOALS")
         goals_panel.pack(side="left", fill="both", expand=True)
         self.goals_tree = ttk.Treeview(goals, columns=("goal", "progress", "deadline", "status"), show="headings", height=14)
@@ -1485,7 +1509,7 @@ class UIMixin:
         staff_buttons.pack(fill="x", pady=4)
         for col, (text, command) in enumerate((
             ("Hire Candidate", self.hire_staff),
-            ("Assign Scout", self.assign_scouting),
+            ("Scouting Centre", lambda: self.select_tab("scouting")),
             ("Run Drug Tests", self.run_drug_tests),
             ("Hire Commentator", self.hire_commentator),
             ("View Staff Profile", self.open_selected_staff_profile),
@@ -1494,10 +1518,220 @@ class UIMixin:
             ttk.Button(staff_buttons, text=text, command=command).grid(row=col // 3, column=col % 3, sticky="ew", padx=3, pady=2)
         for col in range(3):
             staff_buttons.columnconfigure(col, weight=1)
-        bonus_panel, bonus = self.section(self.staff_tab, "POST-SHOW BONUSES / SCOUTING")
+        bonus_panel, bonus = self.section(self.staff_tab, "POST-SHOW BONUSES / STAFF EFFECTS")
         bonus_panel.pack(fill="both", expand=True)
         self.staff_text = tk.Text(bonus, wrap="word", font=("Tahoma", 9), bg=self.colors["cream"], fg=self.colors["text"], insertbackground=self.colors["text"])
         self.staff_text.pack(fill="both", expand=True)
+
+    def build_scouting_tab(self):
+        self.screen_header(self.scouting_tab, "SCOUTING", "Evaluate fighters, observe upcoming bouts, search regions, and turn uncertain reports into recruitment decisions")
+        self.scouting_scout_var = tk.StringVar()
+        self.scouting_region_var = tk.StringVar(value=self.player_region)
+        self.scouting_gender_var = tk.StringVar(value="All")
+        self.scouting_weight_var = tk.StringVar(value="All")
+        scouting_tabs = ttk.Notebook(self.scouting_tab)
+        scouting_tabs.pack(fill="both", expand=True)
+        target_page = ttk.Frame(scouting_tabs, style="Chrome.TFrame")
+        assignment_page = ttk.Frame(scouting_tabs, style="Chrome.TFrame")
+        scouting_tabs.add(target_page, text="Target Board")
+        scouting_tabs.add(assignment_page, text="Assignments & Searches")
+
+        target_panel, target = self.section(target_page, "RECRUITMENT TARGETS")
+        target_panel.pack(fill="both", expand=True)
+        target_filters = ttk.Frame(target, style="Inset.TFrame")
+        target_filters.pack(fill="x", padx=4, pady=4)
+        self.scouting_target_search = tk.StringVar()
+        self.scouting_target_company = tk.StringVar(value="All")
+        self.scouting_target_gender = tk.StringVar(value="All")
+        self.scouting_target_weight = tk.StringVar(value="All")
+        self.scouting_target_status = tk.StringVar(value="All")
+        self.scouting_target_count_var = tk.StringVar(value="")
+        self.scouting_target_page = 0
+        self.scouting_target_page_size = 400
+        search_label = ttk.Label(target_filters, text="Search", style="Inset.TLabel")
+        search_label.pack(side="left", padx=(4, 2))
+        search_entry = ttk.Entry(target_filters, textvariable=self.scouting_target_search, width=22)
+        search_entry.pack(side="left", padx=(0, 6))
+        search_entry.bind("<KeyRelease>", lambda _event: self.reset_scouting_target_page())
+        self.attach_tooltip(search_label, "Find fighters by name or current company.")
+        self.attach_tooltip(search_entry, "Type part of a fighter or company name. Results update while you type.")
+        target_combos = (
+            ("Company", self.scouting_target_company, (), 20),
+            ("Gender", self.scouting_target_gender, ("All", "Male", "Female"), 9),
+            ("Division", self.scouting_target_weight, ("All", *WEIGHTS), 14),
+            ("Intel", self.scouting_target_status, ("All", "Recommended Signings", "Monitor", "Pass", "Shortlisted", "Unscouted", "In Progress", "Scouted", "Stale", "Free Agents", "Rival Rosters"), 18),
+        )
+        filter_help = {
+            "Company": "Limit the board to free agents, independent fighters, or one promotion's roster.",
+            "Gender": "Show male fighters, female fighters, or both.",
+            "Division": "Limit results to one MMA weight class.",
+            "Intel": "Filter by scouting state or recommendation. Monitor means the scout sees value, but price, uncertainty, or current division need makes an immediate offer hard to justify.",
+        }
+        for label, variable, values, width in target_combos:
+            label_widget = ttk.Label(target_filters, text=label, style="Inset.TLabel")
+            label_widget.pack(side="left", padx=(3, 2))
+            combo = ttk.Combobox(target_filters, textvariable=variable, values=values, state="readonly", width=width)
+            combo.pack(side="left", padx=(0, 5))
+            combo.bind("<<ComboboxSelected>>", lambda _event: self.reset_scouting_target_page())
+            self.attach_tooltip(label_widget, filter_help[label])
+            self.attach_tooltip(combo, filter_help[label])
+            if label == "Company":
+                self.scouting_target_company_box = combo
+
+        scouting_legend = ttk.Label(
+            target,
+            text="Scout advice: RECOMMEND SIGNING = pursue now  |  MONITOR = promising, but wait for a better fit, price, or clearer report  |  PASS = no current roster-value case",
+            style="Inset.TLabel", anchor="w", justify="left", wraplength=1450,
+        )
+        scouting_legend.pack(fill="x", padx=8, pady=(0, 2))
+        self.attach_tooltip(scouting_legend, "Recommendations are advisory, not restrictions. They combine projected ability, potential, market pull, your divisional depth, asking price, and available cash.")
+
+        # Actionable summary strip: at a glance, what the board wants you to do.
+        summary_row = tk.Frame(target, bg=self.colors["panel_dark"])
+        summary_row.pack(fill="x", padx=8, pady=(0, 4))
+        self.scouting_board_summary_var = tk.StringVar(value="")
+        tk.Label(summary_row, textvariable=self.scouting_board_summary_var, bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 8, "bold"), anchor="w", justify="left").pack(side="left", padx=(6, 10), pady=2)
+        for swatch_color, swatch_text in (("#7fd694", "recommend"), ("#e6c15a", "monitor"), ("#8a8f97", "pass"), ("#9de6ff", "shortlisted"), ("#e7bd72", "stale")):
+            tk.Label(summary_row, text="■", bg=self.colors["panel_dark"], fg=swatch_color, font=("Tahoma", 9)).pack(side="left", padx=(6, 1))
+            tk.Label(summary_row, text=swatch_text, bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 8)).pack(side="left")
+
+        target_tree_frame = ttk.Frame(target, style="Inset.TFrame")
+        target_tree_frame.pack(fill="both", expand=True, padx=4, pady=(0, 4))
+        self.scouting_target_tree = ttk.Treeview(target_tree_frame, columns=("watch", "name", "company", "gender", "division", "record", "age", "intel", "advice", "ovr", "potential", "last"), show="headings", height=15, selectmode="browse")
+        for col, text, width in (("watch", "Watch", 48), ("name", "Fighter", 150), ("company", "Company", 165), ("gender", "G", 34), ("division", "Division", 88), ("record", "Record", 65), ("age", "Age", 38), ("intel", "Intel", 82), ("advice", "Scout Advice", 125), ("ovr", "OVR", 58), ("potential", "Ceiling", 62), ("last", "Last Fight", 88)):
+            self.scouting_target_tree.heading(col, text=text)
+            self.scouting_target_tree.column(col, width=width, anchor="center")
+        self.scouting_target_tree.column("name", anchor="w")
+        self.scouting_target_tree.column("company", anchor="w")
+        self.make_tree_sortable(self.scouting_target_tree)
+        # Shortlist/stale keep priority as deliberate user/quality signals; the
+        # scout's verdict colours the rest of the board so recommendations pop.
+        self.scouting_target_tree.tag_configure("shortlisted", foreground="#9de6ff")
+        self.scouting_target_tree.tag_configure("stale", foreground="#e7bd72")
+        self.scouting_target_tree.tag_configure("advice_sign", foreground="#7fd694")
+        self.scouting_target_tree.tag_configure("advice_monitor", foreground="#e6c15a")
+        self.scouting_target_tree.tag_configure("advice_pass", foreground="#8a8f97")
+        target_y_scroll = ttk.Scrollbar(target_tree_frame, orient="vertical", command=self.scouting_target_tree.yview)
+        target_x_scroll = ttk.Scrollbar(target_tree_frame, orient="horizontal", command=self.scouting_target_tree.xview)
+        self.scouting_target_tree.configure(yscrollcommand=target_y_scroll.set, xscrollcommand=target_x_scroll.set)
+        target_y_scroll.pack(side="right", fill="y")
+        target_x_scroll.pack(side="bottom", fill="x")
+        self.scouting_target_tree.pack(side="left", fill="both", expand=True)
+        self.scouting_target_tree.bind("<Double-1>", lambda _event: self.open_selected_recruitment_target())
+        self.scouting_target_tree.bind("<<TreeviewSelect>>", lambda _event: self.show_selected_recruitment_target_summary())
+        self.attach_tree_heading_tooltips(self.scouting_target_tree, {
+            "watch": "WATCH marks fighters on your persistent recruitment shortlist.",
+            "name": "Double-click a fighter to open their profile. Hidden attributes remain hidden while scouting mode is active.",
+            "company": "The fighter's current employer. Only free agents can enter immediate contract negotiations.",
+            "gender": "M = male, F = female. Rankings and divisions remain gender-specific.",
+            "division": "The fighter's current MMA competition class.",
+            "record": "Overall professional win-loss-draw record.",
+            "age": "Current age. Age affects development room, likely career stage, and long-term value.",
+            "intel": "Unscouted: no report. In Progress: assigned. Basic: broad ranges. Observed: live-fight evidence. Full: strongest report. Stale: over one year old.",
+            "advice": "RECOMMEND SIGNING means pursue now. MONITOR means useful but not an immediate value fit. PASS means the projected return does not justify the commitment today.",
+            "ovr": "Your scout's estimated current overall ability range. A question mark means no reliable estimate exists.",
+            "potential": "Estimated career ceiling, not guaranteed future ability. Development, activity, gym quality, age, and injuries affect whether it is reached.",
+            "last": "Most recent known fight date. Long inactivity can make an otherwise complete report less dependable.",
+        })
+        target_nav = ttk.Frame(target, style="Inset.TFrame")
+        target_nav.pack(fill="x", padx=4, pady=(0, 3))
+        ttk.Button(target_nav, text="Previous Page", command=lambda: self.change_scouting_target_page(-1)).pack(side="left", padx=(0, 4))
+        ttk.Button(target_nav, text="Next Page", command=lambda: self.change_scouting_target_page(1)).pack(side="left")
+        ttk.Label(target_nav, textvariable=self.scouting_target_count_var, style="Inset.TLabel", anchor="center").pack(side="left", fill="x", expand=True, padx=8)
+        ttk.Label(target_nav, text="All matching fighters are available across pages.", style="Inset.TLabel").pack(side="right", padx=4)
+        target_actions = ttk.Frame(target, style="Inset.TFrame")
+        target_actions.pack(fill="x", padx=4, pady=(0, 4))
+        assign_label = ttk.Label(target_actions, text="Assign", style="Inset.TLabel")
+        assign_label.pack(side="left", padx=(4, 2))
+        self.scouting_target_scout_box = ttk.Combobox(target_actions, textvariable=self.scouting_scout_var, values=(), state="readonly", width=22)
+        self.scouting_target_scout_box.pack(side="left", padx=(0, 6))
+        self.attach_tooltip(assign_label, "Choose a scout for the report. Auto Assign selects a suitable scout with a free assignment slot.")
+        self.attach_tooltip(self.scouting_target_scout_box, "Each scout has limited assignment capacity. Better judging and reliability produce tighter, more dependable estimates.")
+        report_help = {
+            "Basic Dossier": "~$2,500, ~2 weeks. A quicker, cheaper initial report revealing broad ability and potential ranges. Out-of-region +35%, independent contractor +50%.",
+            "Full Evaluation": "~$7,500, ~6 weeks. Reveals exact current ratings and the most reliable view of potential. Out-of-region +35%, independent contractor +50%.",
+            "Observe Next Fight": "~$4,000. Keeps the slot open until the fighter competes; live evidence improves confidence, but the report expires if they stay inactive.",
+        }
+        for text, kind in (("Basic Dossier", "basic"), ("Full Evaluation", "full"), ("Observe Next Fight", "observation")):
+            button = ttk.Button(target_actions, text=text, command=lambda report_kind=kind: self.start_selected_recruitment_report(report_kind))
+            button.pack(side="left", padx=3)
+            self.attach_tooltip(button, report_help[text])
+        shortlist_button = ttk.Button(target_actions, text="Toggle Shortlist", command=self.toggle_selected_scouting_shortlist)
+        shortlist_button.pack(side="left", padx=3)
+        profile_button = ttk.Button(target_actions, text="Open Profile", command=self.open_selected_recruitment_target)
+        profile_button.pack(side="right", padx=3)
+        negotiate_button = ttk.Button(target_actions, text="Negotiate", style="Accent.TButton", command=self.negotiate_selected_recruitment_target)
+        negotiate_button.pack(side="right", padx=3)
+        self.attach_tooltip(shortlist_button, "Add or remove the selected fighter from your persistent watch list. This does not spend money or consume a scout slot.")
+        self.attach_tooltip(profile_button, "Open the complete fighter profile. Information your scouts have not uncovered remains hidden.")
+        self.attach_tooltip(negotiate_button, "Approach a free agent even without a scouting report. Hidden ratings stay hidden, so signing unscouted talent carries more risk.")
+        self.scouting_target_status_var = tk.StringVar(value="Select a fighter to evaluate, monitor, or approach.")
+        ttk.Label(target, textvariable=self.scouting_target_status_var, style="Inset.TLabel", anchor="w", justify="left", wraplength=1450).pack(fill="x", padx=8, pady=(0, 5))
+
+        panel, bonus = self.section(assignment_page, "SCOUTING CONTROL CENTRE")
+        panel.pack(fill="both", expand=True)
+        scout_controls = ttk.Frame(bonus, style="Inset.TFrame")
+        scout_controls.pack(fill="x", padx=4, pady=4)
+        for label, variable, values, width in (
+            ("Scout", self.scouting_scout_var, (), 22),
+            ("Region", self.scouting_region_var, REGIONS, 16),
+            ("Gender", self.scouting_gender_var, ("All", "Male", "Female"), 10),
+            ("Division", self.scouting_weight_var, ("All", *WEIGHTS), 15),
+        ):
+            label_widget = ttk.Label(scout_controls, text=label, style="Inset.TLabel")
+            label_widget.pack(side="left", padx=(5, 2))
+            combo = ttk.Combobox(scout_controls, textvariable=variable, values=values, state="readonly", width=width)
+            combo.pack(side="left", padx=(0, 5))
+            search_help = {
+                "Scout": "Assign a specific scout or let Auto Assign choose an available one.",
+                "Region": "The geographical market to search. Regional knowledge and scout specialties can improve the lead.",
+                "Gender": "Choose which fighter market the search should prioritize.",
+                "Division": "Choose a specific weight class or search across all divisions.",
+            }[label]
+            self.attach_tooltip(label_widget, search_help)
+            self.attach_tooltip(combo, search_help)
+            if label == "Scout":
+                self.scouting_scout_box = combo
+        start_search_button = ttk.Button(scout_controls, text="Start Search", style="Accent.TButton", command=self.assign_scouting)
+        start_search_button.pack(side="left", padx=4)
+        cancel_assignment_button = ttk.Button(scout_controls, text="Cancel Assignment", command=self.cancel_selected_scouting_assignment)
+        cancel_assignment_button.pack(side="left", padx=4)
+        open_fighter_button = ttk.Button(scout_controls, text="Open Fighter", command=self.open_selected_scouting_target)
+        open_fighter_button.pack(side="left", padx=4)
+        self.attach_tooltip(start_search_button, "Send the selected scout to find a new lead matching this brief. Searches cost money and occupy one assignment slot until complete.")
+        self.attach_tooltip(cancel_assignment_button, "End the selected active report or talent search and release its scout slot. Spent scouting costs are not refunded.")
+        self.attach_tooltip(open_fighter_button, "Open the fighter attached to the selected report. Talent searches without a completed lead have no fighter to open.")
+
+        self.scouting_status_var = tk.StringVar(value="Select a scout and a search brief. Fighter evaluations are started from fighter profiles.")
+        ttk.Label(bonus, textvariable=self.scouting_status_var, style="Inset.TLabel", anchor="w").pack(fill="x", padx=8, pady=(0, 4))
+        self.scouting_assignment_tree = ttk.Treeview(bonus, columns=("type", "target", "scout", "status", "due", "confidence", "advice", "cost"), show="headings", height=7, selectmode="browse")
+        for col, text, width in (("type", "Assignment", 120), ("target", "Target / Region", 190), ("scout", "Scout", 145), ("status", "Status", 82), ("due", "Due", 82), ("confidence", "Confidence", 78), ("advice", "Scout Advice", 135), ("cost", "Cost", 78)):
+            self.scouting_assignment_tree.heading(col, text=text)
+            self.scouting_assignment_tree.column(col, width=width, anchor="center")
+        self.scouting_assignment_tree.column("target", anchor="w")
+        self.make_tree_sortable(self.scouting_assignment_tree)
+        self.scouting_assignment_tree.tag_configure("advice_sign", foreground="#7fd694")
+        self.scouting_assignment_tree.tag_configure("advice_monitor", foreground="#e6c15a")
+        self.scouting_assignment_tree.tag_configure("advice_pass", foreground="#8a8f97")
+        self.scouting_assignment_tree.tag_configure("assignment_pending", foreground="#9db4c0")
+        self.scouting_assignment_tree.pack(fill="both", expand=True, padx=4, pady=(0, 4))
+        self.scouting_assignment_tree.bind("<Double-1>", lambda _event: self.open_selected_scouting_target())
+        self.attach_tree_heading_tooltips(self.scouting_assignment_tree, {
+            "type": "Basic, full, observation, automatic, academy-network, or regional talent-search assignment.",
+            "target": "The fighter being evaluated or the market covered by a talent search.",
+            "scout": "The staff member using one of their available assignment slots.",
+            "status": "In Progress is active work; Complete is available intelligence; Expired means an observation ended before the fighter competed.",
+            "due": "Estimated weeks remaining, or Next fight for an observation assignment.",
+            "confidence": "How dependable the report is. Higher confidence narrows estimated ranges; only a full evaluation reveals exact current ratings.",
+            "advice": "The scout's current recruitment conclusion, based on the completed evidence and your promotion's needs.",
+            "cost": "Up-front scouting expense. Cancelling an assignment does not refund this cost.",
+        })
+
+        detail_panel, detail = self.section(assignment_page, "SCOUT RECOMMENDATION")
+        detail_panel.pack(fill="x", pady=(6, 0))
+        self.scouting_detail_text = tk.Text(detail, height=8, wrap="word", font=("Tahoma", 9), bg=self.colors["cream"], fg=self.colors["text"], insertbackground=self.colors["text"])
+        self.scouting_detail_text.pack(fill="x")
+        self.scouting_assignment_tree.bind("<<TreeviewSelect>>", lambda _event: self.show_selected_scouting_assignment())
 
     def build_finance_tab(self):
         self.screen_header(self.finance_tab, "FINANCE", "Ticketing, broadcast income, sponsorship, payroll, production, medical, tax, and ledger")
@@ -1700,8 +1934,9 @@ class UIMixin:
         ttk.Label(line1, text="Event", style="Inset.TLabel", width=7).pack(side="left")
         ttk.Entry(line1, textvariable=self.event_name, width=34).pack(side="left", padx=(4, 12))
         ttk.Label(line1, text="Venue", style="Inset.TLabel", width=7).pack(side="left")
-        venue_box = ttk.Combobox(line1, textvariable=self.venue, values=["Local Gym", "Regional Arena", "Casino Ballroom", "National Sports Hall"], state="readonly", width=24)
+        venue_box = ttk.Combobox(line1, textvariable=self.venue, values=self.available_event_venues(), state="readonly", width=24)
         venue_box.pack(side="left", padx=(4, 12))
+        self.event_venue_box = venue_box
         self.attach_tooltip(venue_box, "Bigger venues seat more fans and can lift the gate, but a half-empty large room hurts atmosphere and stability. Match the venue to your drawing power.")
         schedule_btn = ttk.Button(line1, text="Schedule Show", command=self.schedule_event)
         schedule_btn.pack(side="right", padx=(4, 0))
@@ -1753,6 +1988,10 @@ class UIMixin:
         self.event_atmosphere_status = ttk.Label(atmosphere_row, text="", style="Inset.TLabel", justify="left")
         self.event_atmosphere_status.pack(side="left", fill="x", expand=True, padx=4, pady=3)
         ttk.Button(atmosphere_row, text="Fanbase & Atmosphere", command=self.open_fanbase_window).pack(side="right", padx=4, pady=3)
+        superfight_btn = ttk.Button(atmosphere_row, text="★ Superfight Night", style="Accent.TButton", command=self.open_superfight_night_window)
+        superfight_btn.pack(side="right", padx=4, pady=3)
+        self.attach_tooltip(superfight_btn, "Promote a Crossover Superfight Night: pay rival promotions to sanction champion-vs-champion superfights (non-title, no belts change) plus prelims from your roster.")
+        ttk.Button(atmosphere_row, text="Super Events", command=self.open_company_milestones_window).pack(side="right", padx=4, pady=3)
 
         booking_resize = self.create_vertical_resizer(self.booking_tab, initial_fraction=0.8, min_top=250, min_bottom=120)
         booking_resize.pack(fill="both", expand=True)
@@ -1830,6 +2069,17 @@ class UIMixin:
         self.attach_tooltip(self.special_belt_box, "Attach an interim, tournament, or other special title to raise the stakes and hype of a non-divisional-title bout.")
         self.attach_tooltip(tier_box, "Card position tier (Main Card, Prelims, etc.). Lower tiers pay and cost less — stack prospects on the prelims and save stars for the main card.")
 
+        legend = tk.Frame(left, bg=self.colors["panel_dark"])
+        legend.pack(fill="x", pady=(0, 4), padx=3)
+        tk.Label(legend, text="Row colour:", bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 8)).pack(side="left", padx=(4, 6), pady=2)
+        for swatch_color, swatch_text in (
+            ("#7fd694", "winning record"),
+            ("#e8837a", "losing record"),
+            ("#9298a1", "unavailable this date"),
+        ):
+            tk.Label(legend, text="■", bg=self.colors["panel_dark"], fg=swatch_color, font=("Tahoma", 9)).pack(side="left", padx=(4, 1))
+            tk.Label(legend, text=swatch_text, bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 8)).pack(side="left", padx=(0, 4))
+
         self.matchmaking_notice_var = tk.StringVar(value="")
         self.matchmaking_notice = ttk.Label(left, textvariable=self.matchmaking_notice_var, style="Inset.TLabel", anchor="w")
         self.matchmaking_notice.pack(fill="x", pady=(0, 4), padx=3)
@@ -1853,23 +2103,32 @@ class UIMixin:
         self.matchmaking_brief.pack(fill="x", pady=(0, 4), padx=3)
         self.matchmaking_brief.bind("<Configure>", lambda event: self.matchmaking_brief.configure(wraplength=max(300, event.width - 18)))
 
-        self.available_tree = ttk.Treeview(left, columns=("name", "gender", "weight", "rank", "record", "age", "overall", "elo", "pop", "build", "last", "form", "activity", "fit", "history", "status"), show="headings", selectmode="extended", height=14)
-        for col, text, width in (("name", "Name", 150), ("gender", "G", 38), ("weight", "Class", 92), ("rank", "Rank", 46), ("record", "Record", 66), ("age", "Age", 42), ("overall", "OVR", 46), ("elo", "ELO", 56), ("pop", "Pop", 44), ("build", "Build", 50), ("last", "Last Fight", 90), ("form", "Last 5", 58), ("activity", "Active", 52), ("fit", "Match Fit", 70), ("history", "History", 82), ("status", "Event Availability", 145)):
+        self.available_tree = ttk.Treeview(left, columns=("name", "gender", "weight", "rank", "titlepath", "record", "age", "overall", "elo", "pop", "build", "last", "form", "trend", "activity", "fatigue", "recovery", "fit", "history", "status"), show="headings", selectmode="extended", height=14)
+        for col, text, width in (("name", "Name", 148), ("gender", "G", 34), ("weight", "Class", 90), ("rank", "Rank", 44), ("titlepath", "Title Path", 104), ("record", "Record", 66), ("age", "Age", 40), ("overall", "OVR", 44), ("elo", "ELO", 54), ("pop", "Pop", 42), ("build", "Build", 48), ("last", "Last Fight", 84), ("form", "Last 5 (→latest)", 82), ("trend", "Form", 56), ("activity", "Active", 50), ("fatigue", "Fatigue", 88), ("recovery", "Medical Return", 104), ("fit", "Match Fit", 66), ("history", "History", 74), ("status", "Event Availability", 132)):
             self.available_tree.heading(col, text=text)
             self.available_tree.column(col, width=width, anchor="center")
         self.available_tree.column("name", anchor="w")
-        self.available_tree.tag_configure("not_ready", foreground="#ffb4a2")
+        self.available_tree.column("titlepath", anchor="w")
+        # Unavailable fighters are greyed out; available fighters are tinted by
+        # record (green winning / red losing) so the two never look alike.
+        self.available_tree.tag_configure("not_ready", foreground="#9298a1")
         self.available_tree.tag_configure("recommended", background="#554515", foreground="#ffe08a")
+        self.available_tree.tag_configure("rec_win", foreground="#7fd694")
+        self.available_tree.tag_configure("rec_loss", foreground="#e8837a")
         self.attach_tree_heading_tooltips(self.available_tree, {
             "rank": "Divisional rank. C = champion, #n = ranked contender, - = unranked. Pairing similar ranks makes competitive, credible fights.",
-            "record": "Career wins-losses-draws.",
+            "titlepath": "Where this fighter sits on the road to a belt (champion, owed a title shot, #1 or top-five contender, or building merit) — book title-relevant fights to move contenders up.",
+            "record": "Career wins-losses-draws. Row colour: green = winning record, red = losing record, grey = unavailable on this date.",
             "overall": "Overall ability (OVR). A large OVR gap usually means a lopsided mismatch that fans and the media rate poorly.",
             "elo": "Rating earned from actual results. Two fighters with close ELOs make the most competitive, unpredictable bout.",
             "pop": "Fighter popularity. Popular names high on the card lift the gate, hype, and media rating.",
             "build": "Match build — how compelling this fighter is to book right now (form, momentum, stakes, and story).",
             "last": "Date of their last fight.",
-            "form": "Results over the last five bouts. A fighter riding a streak is a hotter, higher-hype booking.",
+            "form": "Wins-losses over the last five bouts (the raw recent results).",
+            "trend": "Momentum read from the rankings: a win streak, rising, sliding, or steady — who's hot to book right now.",
             "activity": "How recently they competed. Long layoffs risk ring rust; booking too often risks fatigue and injury.",
+            "fatigue": "Current fatigue, 0-100. 0-19 Fresh; 20-39 Manageable; 40-54 Elevated; 55-64 Tired; 65+ Unfit and cannot be booked.",
+            "recovery": "Earliest medical return date after the fighter's previous bout or injury. This is separate from accumulated fatigue.",
             "fit": "Match fitness: fatigue, injury, and camp readiness. Book 'Ready' fighters — tired or injured ones underperform or can't be booked.",
             "history": "Prior meetings with the other selected fighter. Rematches and settled scores add stakes and hype.",
             "status": "Whether this fighter can be booked on the chosen date (ready, injured, tired, contract issue, or already booked).",
@@ -1884,8 +2143,8 @@ class UIMixin:
         self.available_tree.bind("<Double-1>", lambda _e: self.open_tree_fighter_profile(self.available_tree, "name"))
         self.available_tree.bind("<<TreeviewSelect>>", self.refresh_matchmaking_history_indicators, add="+")
 
-        self.card_tree = ttk.Treeview(right, columns=("slot", "fight", "weight", "hype", "media"), show="headings", height=14)
-        for col, text, width in (("slot", "Slot", 90), ("fight", "Fight", 250), ("weight", "Weight", 105), ("hype", "Hype", 60), ("media", "Build", 60)):
+        self.card_tree = ttk.Treeview(right, columns=("slot", "fight", "weight", "hype", "media", "fatigue", "recovery"), show="headings", height=14)
+        for col, text, width in (("slot", "Slot", 90), ("fight", "Fight", 250), ("weight", "Weight", 105), ("hype", "Hype", 60), ("media", "Build", 60), ("fatigue", "Fatigue A/B", 92), ("recovery", "Medical Return A/B", 150)):
             self.card_tree.heading(col, text=text)
             self.card_tree.column(col, width=width, anchor="center")
         self.card_tree.column("fight", anchor="w")
@@ -1896,6 +2155,8 @@ class UIMixin:
             "weight": "Division the bout is contested at.",
             "hype": "Projected fan interest in this bout — drives gate and media rating. Ranked names, titles, and rivalries raise it.",
             "media": "Fight build score — how competitive and story-rich the matchup is. Even, high-stakes fights score highest.",
+            "fatigue": "Current fatigue for each fighter in the same order as the matchup. 65 or higher is unfit.",
+            "recovery": "Earliest medical return for each fighter in matchup order. Now means medically cleared today.",
         })
         self.make_tree_sortable(self.card_tree)
         self.card_tree.pack(fill="both", expand=True, pady=5)
@@ -1956,8 +2217,9 @@ class UIMixin:
         market_status = ttk.Combobox(filter_primary, values=["All", "Available", "Rival Offer", "Retiring"], textvariable=self.market_status_filter, state="readonly", width=12)
         market_status.pack(side="left", padx=(0, 10))
         market_status.bind("<<ComboboxSelected>>", lambda _e: self.refresh_market())
-        ttk.Button(filter_primary, text="Basic Scout (2 wk)", command=lambda: self.start_selected_scout_report("basic")).pack(side="left", padx=2)
-        ttk.Button(filter_primary, text="Full Scout (6 wk)", command=lambda: self.start_selected_scout_report("full")).pack(side="left", padx=2)
+        ttk.Button(filter_primary, text="Basic Dossier", command=lambda: self.start_selected_scout_report("basic")).pack(side="left", padx=2)
+        ttk.Button(filter_primary, text="Full Evaluation", command=lambda: self.start_selected_scout_report("full")).pack(side="left", padx=2)
+        ttk.Button(filter_primary, text="Observe Next Fight", command=lambda: self.start_selected_scout_report("observation")).pack(side="left", padx=2)
         filter_ranges = ttk.Frame(filters, style="Inset.TFrame")
         filter_ranges.pack(fill="x", pady=(3, 2))
         for label, variable, minimum, maximum, width in (
@@ -2117,6 +2379,89 @@ class UIMixin:
         actions = ttk.Frame(self.fighter_search_tab, style="Chrome.TFrame")
         actions.pack(fill="x", pady=(5, 0))
         ttk.Button(actions, text="View Fighter", style="Accent.TButton", command=self.open_selected_world_fighter_profile).pack(side="right", padx=4)
+
+    def build_regional_prospects_tab(self):
+        self.screen_header(
+            self.regional_prospects_tab,
+            "REGIONAL PROSPECTS",
+            "Browse feeder-circuit graduates, scout developing talent, and negotiate before the wider market reacts",
+        )
+        controls = ttk.Frame(self.regional_prospects_tab, style="Chrome.TFrame")
+        controls.pack(fill="x", pady=(0, 6))
+        self.regional_prospect_search = tk.StringVar(value="")
+        self.regional_prospect_status_filter = tk.StringVar(value="Eligible + Nearly")
+        self.regional_prospect_company_filter = tk.StringVar(value="All")
+        self.regional_prospect_gender_filter = tk.StringVar(value="All")
+        self.regional_prospect_weight_filter = tk.StringVar(value="All")
+        for column, label, variable, values, width in (
+            (0, "Search", self.regional_prospect_search, None, 20),
+            (2, "Status", self.regional_prospect_status_filter, ["Eligible + Nearly", "Eligible Now", "Nearly Eligible", "Medical Hold", "Developing", "All Regional"], 18),
+            (4, "Promotion", self.regional_prospect_company_filter, ["All"], 27),
+            (6, "Gender", self.regional_prospect_gender_filter, ["All", "Male", "Female"], 10),
+            (8, "Division", self.regional_prospect_weight_filter, ["All"] + WEIGHTS, 16),
+        ):
+            ttk.Label(controls, text=label).grid(row=0, column=column, sticky="w", padx=(4, 3), pady=4)
+            if values is None:
+                widget = ttk.Entry(controls, textvariable=variable, width=width)
+                widget.bind("<KeyRelease>", lambda _event: self.refresh_regional_prospects())
+            else:
+                widget = ttk.Combobox(controls, textvariable=variable, values=values, state="readonly", width=width)
+                widget.bind("<<ComboboxSelected>>", lambda _event: self.refresh_regional_prospects())
+            widget.grid(row=0, column=column + 1, sticky="ew", padx=(0, 6), pady=4)
+            if label == "Promotion":
+                self.regional_prospect_company_combo = widget
+        ttk.Button(controls, text="Reset", command=self.clear_regional_prospect_filters).grid(row=0, column=10, padx=4, pady=4)
+        controls.columnconfigure(1, weight=1)
+
+        panel, inner = self.section(self.regional_prospects_tab, "FEEDER-CIRCUIT TALENT")
+        panel.pack(fill="both", expand=True)
+        self.regional_prospect_count = ttk.Label(inner, text="", style="Inset.TLabel")
+        self.regional_prospect_count.pack(anchor="w", padx=4, pady=(2, 3))
+        table = ttk.Frame(inner, style="Inset.TFrame")
+        table.pack(fill="both", expand=True)
+        columns = (
+            "name", "status", "promotion", "region", "gender", "division", "age", "record",
+            "winrate", "overall", "potential", "momentum", "popularity", "last", "path",
+        )
+        self.regional_prospect_tree = ttk.Treeview(table, columns=columns, show="headings", selectmode="browse")
+        for column, label, width in (
+            ("name", "Fighter", 155), ("status", "Readiness", 105), ("promotion", "Promotion", 190),
+            ("region", "Region", 76), ("gender", "G", 36), ("division", "Division", 100),
+            ("age", "Age", 42), ("record", "Record", 68), ("winrate", "Win %", 54),
+            ("overall", "OVR", 50), ("potential", "Potential", 62), ("momentum", "Mom", 48),
+            ("popularity", "Pop", 44), ("last", "Last Fight", 86), ("path", "Qualification / Next Step", 310),
+        ):
+            self.regional_prospect_tree.heading(column, text=label)
+            self.regional_prospect_tree.column(column, width=width, anchor="center")
+        for column in ("name", "promotion", "path"):
+            self.regional_prospect_tree.column(column, anchor="w")
+        self.regional_prospect_tree.tag_configure("eligible", background="#173d2b", foreground="#a8f0bd")
+        self.regional_prospect_tree.tag_configure("nearly", background="#4b3b12", foreground="#ffe28a")
+        self.regional_prospect_tree.tag_configure("medical", background="#512020", foreground="#ffaaa2")
+        self.regional_prospect_tree.tag_configure("developing", foreground="#aab0b8")
+        self.make_tree_sortable(self.regional_prospect_tree)
+        scroll_y = ttk.Scrollbar(table, orient="vertical", command=self.regional_prospect_tree.yview)
+        scroll_x = ttk.Scrollbar(table, orient="horizontal", command=self.regional_prospect_tree.xview)
+        self.regional_prospect_tree.configure(yscrollcommand=scroll_y.set, xscrollcommand=scroll_x.set)
+        scroll_x.pack(side="bottom", fill="x")
+        scroll_y.pack(side="right", fill="y")
+        self.regional_prospect_tree.pack(side="left", fill="both", expand=True)
+        self.regional_prospect_tree.bind("<<TreeviewSelect>>", self.show_selected_regional_prospect)
+        self.regional_prospect_tree.bind("<Double-1>", lambda _event: self.open_selected_regional_prospect())
+
+        self.regional_prospect_detail_var = tk.StringVar(value="Select a prospect to see exactly why they qualify or what remains.")
+        detail = tk.Label(
+            inner, textvariable=self.regional_prospect_detail_var, anchor="w", justify="left",
+            bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 9), padx=8, pady=7,
+        )
+        detail.pack(fill="x", pady=(5, 0))
+        detail.bind("<Configure>", lambda event: detail.configure(wraplength=max(420, event.width - 20)))
+        actions = ttk.Frame(self.regional_prospects_tab, style="Chrome.TFrame")
+        actions.pack(fill="x", pady=(5, 0))
+        ttk.Button(actions, text="View Profile", command=self.open_selected_regional_prospect).pack(side="left", padx=4)
+        ttk.Button(actions, text="Basic Scout", command=lambda: self.scout_selected_regional_prospect("basic")).pack(side="left", padx=4)
+        ttk.Button(actions, text="Full Scout", command=lambda: self.scout_selected_regional_prospect("full")).pack(side="left", padx=4)
+        ttk.Button(actions, text="Negotiate", style="Accent.TButton", command=self.negotiate_selected_regional_prospect).pack(side="right", padx=4)
 
     def build_rankings_tab(self):
         self.screen_header(self.rankings_tab, "RANKINGS", "Division rankings and pound-for-pound rankings")
