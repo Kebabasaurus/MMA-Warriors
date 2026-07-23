@@ -8588,49 +8588,72 @@ class WorldMixin:
         by_division = {}
         for fighter in ready:
             by_division.setdefault((fighter.gender, fighter.weight), []).append(fighter)
-        fights = []
-        for division, fighters in by_division.items():
-            random.shuffle(fighters)
-            # Developmental cards should build believable records, not repeatedly
-            # feed a 0-12 novice to a much stronger prospect.
-            def match_rating(item):
+
+        # Developmental cards should build believable records, not repeatedly
+        # feed a 0-12 novice to a much stronger prospect.
+        def match_rating(item):
+            bouts = item.record_w + item.record_l + item.record_d
+            retirement_priority = 120 if getattr(item, "retirement_pending", False) else 0
+            return retirement_priority + item.overall + (item.record_w - item.record_l) * 0.7 + min(12, bouts) * 0.25 + random.uniform(-2, 2)
+
+        def pick_opponent_index(a, fighters):
+            a_bouts = a.record_w + a.record_l + a.record_d
+            a_rate = a.record_w / max(1, a_bouts)
+
+            def rematch_count(item):
+                """Keep developmental cards from becoming a two-person loop."""
+                opponent_id = str(getattr(item, "fighter_id", "") or "")
+                return sum(
+                    1 for entry in (getattr(a, "bout_rating_history", None) or [])
+                    if isinstance(entry, dict)
+                    and (str(entry.get("opponent_id", "") or "") == opponent_id
+                         or (not opponent_id and entry.get("opponent_name") == item.name))
+                )
+
+            def matchup_distance(item):
                 bouts = item.record_w + item.record_l + item.record_d
-                retirement_priority = 120 if getattr(item, "retirement_pending", False) else 0
-                return retirement_priority + item.overall + (item.record_w - item.record_l) * 0.7 + min(12, bouts) * 0.25 + random.uniform(-2, 2)
+                win_rate = item.record_w / max(1, bouts)
+                prior_meetings = rematch_count(item)
+                return (abs(item.overall - a.overall) * 3.0
+                        + abs(bouts - a_bouts) * 0.35
+                        + abs(win_rate - a_rate) * 18
+                        + abs(item.age - a.age) * 0.25
+                        # A third meeting should lose to a slightly less tidy
+                        # matchup. This still permits rematches in a thin division.
+                        + prior_meetings * 22)
 
+            fresh_indices = [index for index, item in enumerate(fighters) if rematch_count(item) < 2]
+            candidate_indices = fresh_indices or list(range(len(fighters)))
+            return min(candidate_indices, key=lambda index: matchup_distance(fighters[index]))
+
+        for fighters in by_division.values():
+            random.shuffle(fighters)
             fighters.sort(key=match_rating, reverse=True)
-            while len(fighters) >= 2 and len(fights) < 7:
+
+        # A shared bout budget used to drain itself on whichever divisions
+        # happened to appear first in roster order, starving every division
+        # further down the list for months or years at a time. Rotate a fresh
+        # random division order each month and hand out one bout per division
+        # per pass, so every division with enough ready fighters gets a fair
+        # shot at the card before any division gets a second bout.
+        max_card_bouts = 15
+        division_order = list(by_division.keys())
+        random.shuffle(division_order)
+        fights = []
+        progress = True
+        while progress and len(fights) < max_card_bouts:
+            progress = False
+            for division in division_order:
+                if len(fights) >= max_card_bouts:
+                    break
+                fighters = by_division[division]
+                if len(fighters) < 2:
+                    continue
                 a = fighters.pop(0)
-                a_bouts = a.record_w + a.record_l + a.record_d
-                a_rate = a.record_w / max(1, a_bouts)
-
-                def rematch_count(item):
-                    """Keep developmental cards from becoming a two-person loop."""
-                    opponent_id = str(getattr(item, "fighter_id", "") or "")
-                    return sum(
-                        1 for entry in (getattr(a, "bout_rating_history", None) or [])
-                        if isinstance(entry, dict)
-                        and (str(entry.get("opponent_id", "") or "") == opponent_id
-                             or (not opponent_id and entry.get("opponent_name") == item.name))
-                    )
-
-                def matchup_distance(item):
-                    bouts = item.record_w + item.record_l + item.record_d
-                    win_rate = item.record_w / max(1, bouts)
-                    prior_meetings = rematch_count(item)
-                    return (abs(item.overall - a.overall) * 3.0
-                            + abs(bouts - a_bouts) * 0.35
-                            + abs(win_rate - a_rate) * 18
-                            + abs(item.age - a.age) * 0.25
-                            # A third meeting should lose to a slightly less tidy
-                            # matchup. This still permits rematches in a thin division.
-                            + prior_meetings * 22)
-
-                fresh_indices = [index for index, item in enumerate(fighters) if rematch_count(item) < 2]
-                candidate_indices = fresh_indices or list(range(len(fighters)))
-                opponent_index = min(candidate_indices, key=lambda index: matchup_distance(fighters[index]))
+                opponent_index = pick_opponent_index(a, fighters)
                 b = fighters.pop(opponent_index)
                 fights.append((a, b))
+                progress = True
         if not fights:
             self.regional_recruit_fighter(promo, slots=max(1, self.regional_roster_vacancies(promo)))
             return
