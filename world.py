@@ -8426,6 +8426,8 @@ class WorldMixin:
         bouts = fighter.record_w + fighter.record_l + fighter.record_d
         win_rate = fighter.record_w / max(1, bouts)
         origin_matches = getattr(fighter, "feeder_origin", "") == promo.name
+        baseline_w, baseline_l, baseline_d = self.ensure_fighter_history_baseline(fighter)
+        real_bouts = max(0, bouts - (baseline_w + baseline_l + baseline_d))
         criteria = []
 
         def add(label, met, missing):
@@ -8539,6 +8541,14 @@ class WorldMixin:
         else:
             status = "Developing"
             explanation = f"{nearest['label']}: {', '.join(missing)}" if nearest else "Building a regional record"
+        # A backstory record (pre-universe flavour) is not the same as having
+        # actually competed here. A fighter must have at least one real,
+        # in-engine bout before the pathway can call them ready for the wider
+        # market, no matter how their fabricated record reads.
+        if real_bouts <= 0 and (eligible or status == "Nearly Eligible"):
+            eligible = False
+            status = "Developing"
+            explanation = "Has not yet fought in this circuit; awaiting a debut bout before regional readiness can be confirmed"
         return {
             "eligible": eligible,
             "status": status,
