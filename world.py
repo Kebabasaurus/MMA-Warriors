@@ -3620,7 +3620,16 @@ class WorldMixin:
             ("Free-agent recovery and development", lambda: self.age_and_develop_fighters(self.free_agents)),
             ("Annual regional wonderkid intake", self.spawn_annual_regional_wonderkid),
         ]
-        for promo in list(self.promotions):
+        # Feeders used to always process in the same fixed list order (Japan
+        # Fight Circuit first among them), so whichever circuit ran first each
+        # month systematically won the once-per-month-global regional
+        # graduation overflow slots (emergency thin-division and exceptional
+        # aging-out call-ups). Randomize only the execution order here; the
+        # underlying self.promotions list order stays stable for company
+        # listings elsewhere.
+        monthly_promotion_order = list(self.promotions)
+        random.shuffle(monthly_promotion_order)
+        for promo in monthly_promotion_order:
             def process_promotion_month(promo=promo):
                 self.age_and_develop_fighters(promo.roster)
                 if getattr(promo, "is_regional_feeder", False):
