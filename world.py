@@ -8423,11 +8423,17 @@ class WorldMixin:
 
     def regional_candidate_assessment(self, fighter, promo):
         """Use one sporting-readiness model for the feeder sim and player browser."""
-        bouts = fighter.record_w + fighter.record_l + fighter.record_d
-        win_rate = fighter.record_w / max(1, bouts)
         origin_matches = getattr(fighter, "feeder_origin", "") == promo.name
         baseline_w, baseline_l, baseline_d = self.ensure_fighter_history_baseline(fighter)
-        real_bouts = max(0, bouts - (baseline_w + baseline_l + baseline_d))
+        # A fabricated pre-universe backstory record must not do the work of
+        # actual regional experience. Every readiness threshold below is
+        # measured against bouts and wins fought for real, in this circuit,
+        # not the flavour record a fighter was generated with.
+        real_w = max(0, fighter.record_w - baseline_w)
+        real_l = max(0, fighter.record_l - baseline_l)
+        real_d = max(0, fighter.record_d - baseline_d)
+        bouts = real_w + real_l + real_d
+        win_rate = real_w / max(1, bouts)
         criteria = []
 
         def add(label, met, missing):
@@ -8437,23 +8443,23 @@ class WorldMixin:
             f"{20 - fighter.age} more year(s)" if fighter.age < 20 else "",
             f"{5 - bouts} more bout(s)" if bouts < 5 else "",
             f"potential {fighter.potential}/80" if fighter.potential < 80 else "",
-            "3 wins or +2 momentum" if fighter.record_w < 3 and fighter.momentum < 2 else "",
+            "3 wins or +2 momentum" if real_w < 3 and fighter.momentum < 2 else "",
         ]
         add(
             "Early breakthrough",
             fighter.age >= 20 and bouts >= 5 and fighter.potential >= 80
-            and (fighter.record_w >= 3 or fighter.momentum >= 2),
+            and (real_w >= 3 or fighter.momentum >= 2),
             early_missing,
         )
         proven_missing = [
             f"{22 - fighter.age} more year(s)" if fighter.age < 22 else "",
             f"{7 - bouts} more bout(s)" if bouts < 7 else "",
-            f"{4 - fighter.record_w} more win(s)" if fighter.record_w < 4 else "",
+            f"{4 - real_w} more win(s)" if real_w < 4 else "",
             f"win rate {win_rate:.0%}/45%" if win_rate < 0.45 else "",
         ]
         add(
             "Proven regional",
-            fighter.age >= 22 and bouts >= 7 and fighter.record_w >= 4 and win_rate >= 0.45,
+            fighter.age >= 22 and bouts >= 7 and real_w >= 4 and win_rate >= 0.45,
             proven_missing,
         )
         established_missing = [
@@ -8468,13 +8474,13 @@ class WorldMixin:
         )
         hot_missing = [
             "regional origin not linked" if not origin_matches else "",
-            f"{3 - fighter.record_w} more win(s)" if fighter.record_w < 3 else "",
+            f"{3 - real_w} more win(s)" if real_w < 3 else "",
             f"momentum {fighter.momentum:+d}/+3" if fighter.momentum < 3 else "",
             f"popularity {fighter.popularity}/18" if fighter.popularity < 18 else "",
         ]
         add(
             "Hot regional run",
-            origin_matches and fighter.record_w >= 3 and fighter.momentum >= 3 and fighter.popularity >= 18,
+            origin_matches and real_w >= 3 and fighter.momentum >= 3 and fighter.popularity >= 18,
             hot_missing,
         )
         circuit_path_a = max(0, 21 - fighter.age) + max(0, 16 - bouts)
@@ -8495,7 +8501,7 @@ class WorldMixin:
         add("Veteran exit", fighter.age >= 25 and bouts >= 10, veteran_missing)
         high_results = (
             win_rate >= 0.58
-            or fighter.record_w >= 8
+            or real_w >= 8
             or fighter.potential >= 84
             or (fighter.momentum >= 3 and fighter.popularity >= 20)
         )
@@ -8545,7 +8551,7 @@ class WorldMixin:
         # actually competed here. A fighter must have at least one real,
         # in-engine bout before the pathway can call them ready for the wider
         # market, no matter how their fabricated record reads.
-        if real_bouts <= 0 and (eligible or status == "Nearly Eligible"):
+        if bouts <= 0 and (eligible or status == "Nearly Eligible"):
             eligible = False
             status = "Developing"
             explanation = "Has not yet fought in this circuit; awaiting a debut bout before regional readiness can be confirmed"
