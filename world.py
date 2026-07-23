@@ -8905,14 +8905,21 @@ class WorldMixin:
             self.rules["regional_exceptional_graduation_month"] = self.month
         return graduated
 
-    def promote_regional_emergency_talent(self, slots):
-        """Use experienced feeder talent before inventing an emergency free agent."""
-        # At most one fighter can leave each circuit in a single emergency, so
-        # this remains naturally bounded by the number of regional promotions.
-        slots = max(0, min(24, int(slots)))
+    def promote_regional_emergency_talent(self, slots, max_per_circuit=8):
+        """Use experienced feeder talent before inventing an emergency free agent.
+
+        A real market crash can need far more than one graduate per circuit.
+        A one-per-circuit ceiling meant any shortfall beyond the number of
+        feeders (~15) was always dumped into fabricated free agents, even
+        with a large, healthy regional pool sitting right there. Round-robin
+        up to max_per_circuit pulls per feeder instead, still protecting
+        each division's depth floor, before ever falling back to invention.
+        """
+        slots = max(0, min(200, int(slots)))
         if not slots:
             return 0
-        candidates = []
+        promo_candidates = {}
+        division_counts = {}
         for promo in self.promotions:
             if not getattr(promo, "is_regional_feeder", False):
                 continue
@@ -8921,41 +8928,61 @@ class WorldMixin:
                 if not fighter.retired:
                     key = (fighter.gender, fighter.weight)
                     counts[key] = counts.get(key, 0) + 1
+            division_counts[promo.name] = counts
+            ranked = []
             for fighter in promo.roster:
                 bouts = fighter.record_w + fighter.record_l + fighter.record_d
-                key = (fighter.gender, fighter.weight)
-                if (fighter.retired or fighter.injured or fighter.retirement_pending or fighter.age < 20
-                        or bouts < 5 or fighter.fatigue >= 65 or counts.get(key, 0) <= 3):
+                if (fighter.retired or fighter.injured or fighter.retirement_pending
+                        or fighter.age < 20 or bouts < 5 or fighter.fatigue >= 65):
                     continue
                 value = (
                     bouts * 4 + fighter.record_w * 3 + fighter.overall * 0.7
                     + fighter.potential * 0.25 + fighter.popularity * 0.2
                     + max(0, fighter.momentum) * 3 + random.uniform(-3, 3)
                 )
-                candidates.append((value, promo, fighter))
-        candidates.sort(key=lambda item: item[0], reverse=True)
-        moved, used_promos = 0, set()
-        for _value, promo, fighter in candidates:
-            if moved >= slots:
-                break
-            # Spread emergency promotions across circuits rather than draining
-            # one regional roster because it happens to have the best champion.
-            if promo.name in used_promos or fighter not in promo.roster:
-                continue
-            self.capture_regional_record(fighter)
-            promo.roster.remove(fighter)
-            fighter.feeder_origin = promo.name
-            fighter.last_regional_promotion = promo.name
-            fighter.regional_departure_month = self.month
-            fighter.market_origin = "Regional emergency call-up"
-            fighter.contract_months = 0
-            fighter.exclusive = False
-            fighter.contract_type = "Free Agent"
-            fighter.free_agent_months = 0
-            fighter.popularity = min(45, fighter.popularity + 3)
-            self.free_agents.append(fighter)
-            used_promos.add(promo.name)
-            moved += 1
+                ranked.append((value, fighter))
+            ranked.sort(key=lambda item: item[0], reverse=True)
+            promo_candidates[promo.name] = ranked
+        promo_by_name = {
+            promo.name: promo for promo in self.promotions
+            if getattr(promo, "is_regional_feeder", False)
+        }
+        moved = 0
+        per_circuit_taken = {name: 0 for name in promo_candidates}
+        progress = True
+        while progress and moved < slots:
+            progress = False
+            for name, ranked in promo_candidates.items():
+                if moved >= slots or per_circuit_taken[name] >= max_per_circuit:
+                    continue
+                promo = promo_by_name[name]
+                counts = division_counts[name]
+                while ranked:
+                    _value, fighter = ranked.pop(0)
+                    if fighter not in promo.roster:
+                        continue
+                    key = (fighter.gender, fighter.weight)
+                    # Don't drain a division past its safe depth floor even
+                    # mid-emergency; the fallback fabricator can cover the rest.
+                    if counts.get(key, 0) <= 3:
+                        continue
+                    self.capture_regional_record(fighter)
+                    promo.roster.remove(fighter)
+                    fighter.feeder_origin = name
+                    fighter.last_regional_promotion = name
+                    fighter.regional_departure_month = self.month
+                    fighter.market_origin = "Regional emergency call-up"
+                    fighter.contract_months = 0
+                    fighter.exclusive = False
+                    fighter.contract_type = "Free Agent"
+                    fighter.free_agent_months = 0
+                    fighter.popularity = min(45, fighter.popularity + 3)
+                    self.free_agents.append(fighter)
+                    counts[key] = counts.get(key, 0) - 1
+                    per_circuit_taken[name] += 1
+                    moved += 1
+                    progress = True
+                    break
         if moved:
             self.news.insert(0, f"Regional call-ups: {moved} experienced fighters entered free agency to meet market demand.")
         return moved
