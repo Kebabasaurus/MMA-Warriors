@@ -7631,10 +7631,13 @@ class WorldMixin:
         mandate_drive = 0.035 if mandate == "Event Cadence" and executive.get("mandate_progress", 0) < 100 else (-0.035 if mandate == "Financial Stability" and executive.get("mandate_progress", 0) < 100 else 0)
         pressure = strategy.get("financial_pressure", 0) / 900
         roster_health = (strategy.get("roster_health", 70) - 70) / 900
-        # Deep, healthy rosters can support a more regular schedule. This is
-        # deliberately bounded: availability, finance and recovery checks still
-        # decide whether any particular card can actually take place.
-        depth_drive = min(0.09, max(0, len(getattr(promo, "roster", [])) - 100) / 1200)
+        # Deep, healthy rosters can support a more regular schedule. This used
+        # to cap out at a 208-fighter roster, giving a 373-fighter global
+        # flagship like the UFC no more credit than a mid-sized promotion less
+        # than half its size. Availability, finance and recovery checks still
+        # decide whether any particular card can actually take place; the
+        # overall chance stays bounded by the final clamp below regardless.
+        depth_drive = max(0, len(getattr(promo, "roster", [])) - 100) / 1200
         return max(0.04, min(0.58, chance - (0.08 if mode == "Financial Recovery" else 0) + (0.035 if mode == "Star Chasing" else 0) + executive_drive + mandate_drive - pressure + roster_health + depth_drive))
 
     def ai_should_run_show(self, promo):
