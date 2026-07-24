@@ -7123,10 +7123,24 @@ class WorldMixin:
         retirement_groups = [] if getattr(self, "spectator_mode", False) else [(self.roster, self.belts, self.interim_belts, self.belt_history, self.player_company_name, self.player_region, self.company_pop, True, None)]
         retirement_groups.extend((promo.roster, promo.belts or {}, promo.interim_belts or {}, promo.belt_history or {}, promo.name, promo.region, promo.reputation_score, False, promo) for promo in self.promotions)
         for roster, belts, interim_belts, belt_history, company_name, region, size, player_owned, promo in retirement_groups:
+            in_regional_feeder = promo is not None and getattr(promo, "is_regional_feeder", False)
             for fighter in list(roster):
-                if fighter.age < 39:
+                # A fighter still sitting in a feeder roster around 35 was
+                # never picked up by the wider market. Regional development is
+                # a young talent's pathway, not a decades-long holding
+                # pattern, so this is a hard cutoff rather than the general
+                # population's probabilistic age-39+ review. The exact age is
+                # stable per fighter (33-37) so an entire circuit doesn't
+                # retire in lockstep on the same birthday.
+                if in_regional_feeder:
+                    variable_retirement_age = 33 + (sum(ord(char) for char in fighter.name) % 5)
+                    if fighter.age < variable_retirement_age:
+                        continue
+                    should_retire = True
+                elif fighter.age < 39:
                     continue
-                should_retire = getattr(fighter, "retirement_pending", False)
+                else:
+                    should_retire = getattr(fighter, "retirement_pending", False)
                 if not should_retire:
                     # Most fighters receive one meaningful career review per year, not
                     # a fresh retirement coin-flip every month after turning 40.
@@ -7142,7 +7156,8 @@ class WorldMixin:
                 if should_retire:
                     player_booked = player_owned and fighter.name in self.scheduled_fighter_names(include_booked=True)
                     if not getattr(fighter, "retirement_pending", False):
-                        self.mark_retirement_fight_required(fighter, "Career retirement review")
+                        reason = "Regional career review: never picked up by a major promotion" if in_regional_feeder else "Career retirement review"
+                        self.mark_retirement_fight_required(fighter, reason)
                         if player_owned:
                             body = f"{fighter.name} intends to retire, but must take one final fight first. Book them soon; they will retire immediately after that bout."
                             if player_booked:
