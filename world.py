@@ -9991,12 +9991,16 @@ class WorldMixin:
             base_target = 4
         if gender not in ("Male", "Female"):
             return base_target
-        # The world intentionally generates roughly 80% men and 20% women.
         # The old flat target allocated half the roster to each gender, so a
         # healthy 32-man division at a 320-fighter company was treated as
         # twelve contracts over plan and dumped into free agency. Preserve the
         # same total capacity while giving each gender its actual roster share.
-        share = 1.60 if gender == "Male" else 0.40
+        # This must track the real regional-intake ratio (46 male / 24 female
+        # per circuit, ~66/34) rather than an assumed 80/20 split -- a
+        # mismatched assumption here starved the free-agent market of men and
+        # flooded it with women over long saves, since majors were budgeting
+        # demand against a gender split the world doesn't actually produce.
+        share = 1.31 if gender == "Male" else 0.69
         return max(4, math.ceil(base_target * share))
 
     def ai_roster_target(self, promo):
