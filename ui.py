@@ -2,6 +2,7 @@ import json
 import random
 import sys
 import traceback
+import webbrowser
 from datetime import datetime
 import tkinter as tk
 from dataclasses import asdict, dataclass
@@ -285,6 +286,7 @@ class UIMixin:
         self.logo_canvas.pack(side="left", padx=(12, 4), pady=5)
         self.draw_logo()
         ttk.Label(titlebar, text=GAME_NAME.upper(), style="Title.TLabel").pack(side="left", padx=8, pady=8)
+        ttk.Button(titlebar, text="Tutorial", command=self.open_tutorial_guide).pack(side="right", padx=(2, 10))
         self.theme_name_var = tk.StringVar(value=getattr(self, "theme_name", "Fight Night"))
         ttk.Button(titlebar, text="Apply Theme", command=self.apply_selected_theme).pack(side="right", padx=(2, 10))
         ttk.Combobox(titlebar, values=list(self.themes.keys()), textvariable=self.theme_name_var, state="readonly", width=20, height=22).pack(side="right", padx=(2, 6))
@@ -422,6 +424,13 @@ class UIMixin:
         if spacer:
             spacer.configure(bg=self.colors["paper"])
         self.draw_logo()
+
+    def open_tutorial_guide(self):
+        tutorial_path = ASSET_DIR / "tutorial.html"
+        if not tutorial_path.exists():
+            messagebox.showerror("Tutorial not found", f"Could not find the tutorial guide at:\n{tutorial_path}")
+            return
+        webbrowser.open(tutorial_path.as_uri())
 
     def draw_logo(self):
         if not hasattr(self, "logo_canvas"):
