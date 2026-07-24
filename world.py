@@ -8413,6 +8413,34 @@ class WorldMixin:
         active = sum(1 for fighter in promo.roster if not getattr(fighter, "retired", False))
         return max(0, target - active)
 
+    def regional_eligible_backlog_count(self):
+        """Count regional fighters who already meet Eligible Now, cached once per month.
+
+        Readiness has no ceiling: during a stretch where the majors are fully
+        staffed and the free-agent reserve is comfortable, graduation_slots
+        can sit at 0 for many consecutive months while the round-robin feeder
+        cards keep seasoning the whole population. Real observed saves showed
+        this pile up to over 75% of the entire regional pool simultaneously
+        eligible before anything drained it. This is called from the UI's
+        Regional Prospects refresh as well as the monthly graduation pass, so
+        the full scan is cached per month rather than recomputed on every
+        call.
+        """
+        if self.rules.get("regional_eligible_backlog_month") == self.month:
+            return self.rules.get("regional_eligible_backlog_count", 0)
+        count = 0
+        for promo in self.promotions:
+            if not getattr(promo, "is_regional_feeder", False):
+                continue
+            for fighter in promo.roster:
+                if fighter.retired:
+                    continue
+                if self.regional_candidate_assessment(fighter, promo)["eligible"]:
+                    count += 1
+        self.rules["regional_eligible_backlog_month"] = self.month
+        self.rules["regional_eligible_backlog_count"] = count
+        return count
+
     def regional_market_throughput(self):
         """Scale feeder output to major-roster demand while keeping a usable market reserve."""
         status = self.major_roster_population_status()
@@ -8452,6 +8480,23 @@ class WorldMixin:
         graduation_slots = max(reserve_slots, demand_slots)
         if len(available) >= 420 or (len(free_agents) >= 560 and len(available) >= 330):
             graduation_slots = min(graduation_slots, 1)
+        # A comfortable free-agent market and fully-staffed majors both push
+        # slots toward 0, but regional readiness keeps accumulating regardless.
+        # A large backlog of already-eligible fighters is its own pressure and
+        # overrides the crowding cap above: leaving them stuck isn't healthier
+        # than a slightly busier free-agent market.
+        backlog = self.regional_eligible_backlog_count()
+        if backlog >= 700:
+            backlog_slots = 6
+        elif backlog >= 400:
+            backlog_slots = 4
+        elif backlog >= 200:
+            backlog_slots = 2
+        elif backlog >= 80:
+            backlog_slots = 1
+        else:
+            backlog_slots = 0
+        graduation_slots = max(graduation_slots, backlog_slots)
         return {
             **status,
             "free_agents": len(free_agents),
