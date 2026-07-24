@@ -90,6 +90,7 @@
     <a href="#world">World Hub</a>
     <a href="#regional">Regional Prospects</a>
     <a href="#search">Fighter Search</a>
+    <a href="#combatsports">Combat Sports</a>
     <a href="#companies">Companies</a>
     <a href="#rankings">Rankings</a>
     <a href="#results">Results</a>
@@ -101,6 +102,8 @@
     <a href="#simlab">Sim Lab</a>
     <div class="grp">Advice</div>
     <a href="#tips">Small Promotion Survival</a>
+    <div class="grp">Spoilers</div>
+    <a href="#spoilers">Stat Dynamics Explained</a>
   </nav>
 
   <main>
@@ -175,12 +178,20 @@
       <p>Hover over any column header for a tooltip explaining what it measures — Title Path and Form columns
       mirror what you'd see on the Rankings screen, so you can judge a matchup's stakes without leaving this
       tab.</p>
+      <div class="tip"><strong>Crossover Superfight Night</strong> — a special, player-only event type: pay
+      an extra sanctioning fee to book a champion from your promotion against a champion from a rival
+      promotion. Non-title, so nobody's belt changes hands, and only close-enough weight classes can be
+      matched — but it can headline a whole card of its own, with regular prelims underneath.</div>
     </section>
 
     <section id="contracts">
       <h2>Contracts</h2>
       <p><em>Contracts</em> — expiring deals, renewal talks, and roster wage pressure. Negotiate early:
       a fighter who runs out their deal becomes a free agent the wider market can bid on too.</p>
+      <div class="tip">Two negotiable clauses matter beyond pay: a <strong>title-shot clause</strong>
+      guarantees a fighter a crack at the belt within their deal, and <strong>guaranteed comeback fights</strong>
+      keep a fighter locked to fulfilling those bouts even through a retirement review — they get their
+      remaining scheduled fights before any retirement takes effect.</div>
     </section>
 
     <section id="freeagents">
@@ -201,8 +212,11 @@
     <section id="academy">
       <h2>Fight Academy</h2>
       <p>Build an in-house development academy (an initial investment, roughly $180,000) to grow your own
-      prospects from scratch rather than relying purely on the free-agent market. Paid facility upgrades
-      speed up graduate development further once it's running.</p>
+      prospects from scratch rather than relying purely on the free-agent market. Amateurs train, fight
+      amateur showcases, and eventually graduate into a real professional contract once they're ready — the
+      academy workspace tracks each prospect's readiness so you know who's close. Paid facility upgrades
+      speed up development further once it's running, letting a serious talent pipeline pay for itself over
+      time instead of relying purely on what the free-agent market happens to offer.</p>
     </section>
 
     <section id="staff">
@@ -237,6 +251,15 @@
       <h2>Fighter Search</h2>
       <p><em>Fighter Search</em> — search the full combat-sports world and inspect recent form for anyone,
       signed or unsigned.</p>
+    </section>
+
+    <section id="combatsports">
+      <h2>Combat Sports</h2>
+      <p><em>Combat Sports Universe</em> — MMA isn't the only sport running: boxing, kickboxing, BJJ, and
+      more each have their own AI flagship promotion. Open your own child promotion in any of them (for
+      example a BJJ arm under your main brand), sign that sport's athletes, and book and run its cards
+      separately from your MMA business. Academy prospects who don't fit your MMA roster can graduate
+      straight into an open child promotion instead.</p>
     </section>
 
     <section id="companies">
@@ -298,6 +321,151 @@
       value signing than chasing an established free agent your budget can't really support yet.</div>
       <div class="tip"><strong>Check Contracts before it's urgent.</strong> A lapsed deal doesn't just cost
       you the fighter — it hands them straight to the open market where any rival can make an offer.</div>
+    </section>
+
+    <section id="spoilers">
+      <h2>Spoilers — Stat Dynamics Explained</h2>
+      <p style="color: var(--muted); font-size: 0.9em;">Simplified versions of the actual formulas running
+      under the hood. Numbers can shift in future balance passes, but the shape of each mechanic won't.</p>
+
+      <div id="spoiler-gate" class="card" style="border-color: var(--gold); text-align: center;">
+        <h3 style="margin-top: 4px;">⚠ Spoiler Warning</h3>
+        <p style="margin-bottom: 14px;">This reveals the actual formulas behind popularity, stability,
+        regional graduation, show frequency, and free-agent retirement. Some players prefer to learn these
+        by playing.</p>
+        <button id="spoiler-step1" onclick="document.getElementById('spoiler-confirm').style.display='block'; this.style.display='none';"
+          style="background: var(--panel-dark); color: var(--text); border: 1px solid var(--gold); border-radius: 4px; padding: 8px 18px; cursor: pointer; font-size: 0.95em;">
+          Show the formulas
+        </button>
+        <div id="spoiler-confirm" style="display:none; margin-top: 12px;">
+          <p style="color: var(--gold); margin-bottom: 10px;">Are you sure?</p>
+          <button onclick="document.getElementById('spoiler-content').style.display='block'; document.getElementById('spoiler-gate').style.display='none';"
+            style="background: var(--red); color: #fff; border: none; border-radius: 4px; padding: 8px 18px; margin-right: 8px; cursor: pointer; font-size: 0.95em;">
+            Yes, reveal them
+          </button>
+          <button onclick="document.getElementById('spoiler-confirm').style.display='none'; document.getElementById('spoiler-step1').style.display='inline-block';"
+            style="background: var(--panel-dark); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 8px 18px; cursor: pointer; font-size: 0.95em;">
+            No, keep it a mystery
+          </button>
+        </div>
+      </div>
+
+      <div id="spoiler-content" style="display:none;">
+
+      <div class="card">
+        <h3>Popularity &amp; stability after a show</h3>
+        <p>Both move by a small delta each time you run an event, rounded to the nearest whole point and
+        clamped between 1 and 100:</p>
+        <ul>
+          <li><strong>Popularity delta</strong> ≈ (avg hype − 43) ⁄ 15 + (avg excitement − 44) ⁄ 16 +
+          (regional pull − 1) × 1.6 + attendance ratio × 1.8 + (+0.4 if profitable, −0.7 if not)</li>
+          <li><strong>Stability delta</strong> ≈ profit ⁄ 300,000 + (avg excitement − 40) ⁄ 24 + attendance
+          ratio × 2.2 − 0.3 − mismatch penalty × 0.28</li>
+        </ul>
+        <p><em>Attendance ratio</em> is just attendance ÷ venue capacity — a sold-out small venue helps more
+        than a half-empty big one. If your company popularity is below 40, popularity gets an extra boost
+        that fades out as you approach 40, so a small promotion isn't stuck fighting a baseline built for a
+        global juggernaut.</p>
+      </div>
+
+      <div class="card">
+        <h3>Regional eligibility — the seven pathways</h3>
+        <p>A regional fighter needs real, in-engine bouts (never a fabricated backstory record) to satisfy
+        <strong>any one</strong> of these before they count as Eligible Now:</p>
+        <table>
+          <tr><th>Pathway</th><th>Requirement</th></tr>
+          <tr><td>Early breakthrough</td><td>Age 23+, 11+ bouts, potential 86+, and (7+ wins or momentum +4)</td></tr>
+          <tr><td>Proven regional</td><td>Age 25+, 12+ bouts, 7+ wins, 53%+ win rate</td></tr>
+          <tr><td>Established exit</td><td>Age 27+, 15+ bouts, 51%+ win rate</td></tr>
+          <tr><td>Hot regional run</td><td>Still with their original circuit, 7+ wins, momentum at the +5 cap, 26+ popularity</td></tr>
+          <tr><td>Circuit complete</td><td>(Age 24+ and 22+ bouts) or 30+ bouts regardless of age</td></tr>
+          <tr><td>Veteran exit</td><td>Age 28+, 15+ bouts</td></tr>
+          <tr><td>Aging out</td><td>Age 29+, 7+ bouts, and results not already strong enough to justify staying</td></tr>
+        </table>
+        <p>Younger than 18, injured, mid-retirement, or already retired always blocks eligibility outright,
+        no matter which pathway is met.</p>
+      </div>
+
+      <div class="card">
+        <h3>How many actually graduate each month</h3>
+        <p>Every feeder circuit runs a card every month — up to 15 bouts, spread fairly round-robin across
+        every division with enough fighters, not dumped onto whichever division happens to go first. But
+        graduating out of a circuit into free agency is separately budgeted, 0–6 slots per month across the
+        <em>whole world</em>, driven by whichever pressure is highest:</p>
+        <ul>
+          <li><strong>Reserve pressure</strong> — thin free-agent market (under 170 usable free agents pushes
+          this toward its max)</li>
+          <li><strong>Demand pressure</strong> — how many jobs the major promotions have open</li>
+          <li><strong>Backlog pressure</strong> — how large the Eligible Now pile already is, so a quiet
+          market can't let readiness balloon forever unaddressed</li>
+        </ul>
+        <p>That budget then rotates fairly across all fifteen circuits, so it isn't always the same one or
+        two feeders supplying every graduate.</p>
+      </div>
+
+      <div class="card">
+        <h3>How often the AI runs shows</h3>
+        <p>Each promotion rolls a monthly chance based on its "show personality" (Super Shows, Star Builder,
+        Frequent Small Cards, and so on), adjusted by its financial mode, executive personality, board
+        mandate, financial pressure, roster health, and roster depth — then that whole result is scaled down
+        by 0.65 before being rolled against. A cash-rich, deep-rostered flagship promotion runs noticeably
+        more often than a small one.</p>
+      </div>
+
+      <div class="card">
+        <h3>Emergency free-agent call-ups</h3>
+        <p>If the active free-agent market ever crashes below 160, the game tries to refill it back toward
+        200 almost entirely from the regional circuits before ever inventing a brand-new fighter: it pulls
+        evenly, round-robin, across all fifteen feeder circuits — no per-circuit cap — so a real crash is
+        absorbed by genuine regional talent instead of diluting the world with fabricated fighters. Only
+        whatever the regionals genuinely can't cover falls back to a freshly generated free agent.</p>
+      </div>
+
+      <div class="card">
+        <h3>Company power score &amp; industry tier</h3>
+        <p>Every promotion's overall standing is a single power score built from star power, champions held
+        (capped), cash on hand, and roster depth. That score buckets into a tier: <strong>Global</strong> at
+        280+, <strong>National</strong> from 190–279, <strong>Regional</strong> from 100–189, and
+        <strong>Local</strong> below 100. Climbing a tier is a real, visible milestone — not just a cosmetic
+        label.</p>
+      </div>
+
+      <div class="card">
+        <h3>Settling into a new division</h3>
+        <p>A fighter competing above their natural frame size starts with a real division-fit penalty. It
+        eases every month they keep training and competing there — younger fighters adapt noticeably faster
+        than veterans, and a bigger natural frame or better conditioning speeds it up further — until only a
+        small residual penalty remains for a genuinely undersized fighter. This is why a new signing often
+        looks better a year in than the day you signed them.</p>
+      </div>
+
+      <div class="card">
+        <h3>When a stagnant free agent retires</h3>
+        <p>Twice a year, any unsigned free agent who is age 30+, rated under 55 overall, on a 3+ fight
+        losing streak, with a win rate of 30% or less over their last 5 real fights, and not a genuine
+        blue-chip prospect gets flagged for one final career-review fight before retiring. This exists
+        purely to stop free agency filling up with fighters who are never going anywhere.</p>
+      </div>
+
+      <div class="card">
+        <h3>Matchmaking fit score</h3>
+        <p>The 1–99 score shown in Matchmaking is a compressed, readable version of a much larger internal
+        number that factors in hype, rivalry, and title stakes — the raw number is squeezed down and floored
+        at 1 / capped at 99 so it stays comparable across every possible matchup, not a literal win
+        probability.</p>
+      </div>
+
+      <div class="card">
+        <h3>Monthly growth &amp; decline</h3>
+        <p>Every signed and free-agent fighter gets a development roll each month. If it clears a random
+        threshold and they're still under their potential (and within their prime growth window), they
+        improve — bigger clearances produce bigger jumps, some months are a flat plateau, and young,
+        low-rated prospects with real upside get an easier roll so genuine talent isn't stuck frozen for an
+        entire career. Past their prime, a separate decline roll can chip skills away instead, and it hits
+        harder the further past prime they are — durable archetypes resist it longest.</p>
+      </div>
+
+      </div>
     </section>
 
   </main>
