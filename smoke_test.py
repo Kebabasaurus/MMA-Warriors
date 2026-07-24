@@ -243,17 +243,17 @@ def main():
             feeder_fighter_probe.record_history_baseline_w, feeder_fighter_probe.record_history_baseline_l,
             feeder_fighter_probe.record_history_baseline_d,
         )
-        feeder_fighter_probe.age = 22
-        feeder_fighter_probe.record_w, feeder_fighter_probe.record_l, feeder_fighter_probe.record_d = 8, 2, 0
+        feeder_fighter_probe.age = 25
+        feeder_fighter_probe.record_w, feeder_fighter_probe.record_l, feeder_fighter_probe.record_d = 9, 4, 0
         # Eligibility is measured against real, in-engine bouts only (record
         # minus the pre-universe backstory baseline). Zero the baseline here
         # too so this fixture represents a fighter who genuinely fought these
-        # 8-2 bouts, not one still carrying a randomized fabricated backstory.
+        # 9-4 bouts, not one still carrying a randomized fabricated backstory.
         feeder_fighter_probe.record_history_baseline_w = 0
         feeder_fighter_probe.record_history_baseline_l = 0
         feeder_fighter_probe.record_history_baseline_d = 0
-        feeder_fighter_probe.momentum = 4
-        feeder_fighter_probe.popularity = 24
+        feeder_fighter_probe.momentum = 5
+        feeder_fighter_probe.popularity = 28
         feeder_fighter_probe.injured = 0
         feeder_fighter_probe.retirement_pending = False
         assessment = app.regional_candidate_assessment(feeder_fighter_probe, feeder_probe)
