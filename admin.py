@@ -968,7 +968,6 @@ class AdminMixin:
     def record_belt_history(self, history, key, action, fighter_name="", note=""):
         history = self.normalize_belt_history(history)
         history[key].insert(0, self.belt_history_entry(action, key, fighter_name, note))
-        history[key] = history[key][:80]
         return history
 
     def set_primary_champion(self, roster, belts, belt_history, champion, note, defense=False, appointed=False):
@@ -1192,18 +1191,11 @@ class AdminMixin:
             self.belts, self.interim_belts, self.belt_history = self.ensure_company_champions(self.roster, self.belts, self.player_company_name, self.player_region, self.company_pop, player_owned=True, interim_belts=self.interim_belts, belt_history=self.belt_history)
             self.sync_player_vacant_title_alerts()
         for promo in self.promotions:
-            # Development circuits create records and prospects, not parallel
-            # world-title ecosystems. Keeping their belts empty also prevents
-            # feeder champions leaking into company and world rankings.
-            if getattr(promo, "is_regional_feeder", False):
-                for fighter in promo.roster:
-                    fighter.champion = False
-                    fighter.interim_champion = False
-                promo.belts = self.blank_belts()
-                promo.interim_belts = self.blank_belts()
-                promo.belt_history = self.blank_belt_history()
-                continue
-            promo.belts, promo.interim_belts, promo.belt_history = self.ensure_company_champions(promo.roster, promo.belts or {}, promo.name, promo.region, promo.reputation_score, player_owned=False, interim_belts=promo.interim_belts or {}, belt_history=promo.belt_history or {}, closed_divisions=getattr(promo, "closed_divisions", None))
+            closed = set(getattr(promo, "closed_divisions", None) or ())
+            # A male-only circuit has no women's divisions to staff or crown.
+            if promo.name == EURASIAN_FIGHT_CIRCUIT_NAME:
+                closed.update(self.belt_key("Female", weight) for weight in WEIGHTS)
+            promo.belts, promo.interim_belts, promo.belt_history = self.ensure_company_champions(promo.roster, promo.belts or {}, promo.name, promo.region, promo.reputation_score, player_owned=False, interim_belts=promo.interim_belts or {}, belt_history=promo.belt_history or {}, closed_divisions=closed)
 
     def avoid_name_collision(self, fighter, existing_names):
         parts = fighter.name.rsplit(" ", 1)

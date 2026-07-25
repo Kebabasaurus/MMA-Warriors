@@ -918,6 +918,14 @@ class PersistenceMixin:
         if self.spectator_mode:
             self.rules["scouting_mode"] = False
         self.ensure_rule_defaults()
+        lineage_migration = self.migrate_lineal_belt_histories()
+        if lineage_migration.get("updated"):
+            summary = (
+                f"Lineal belt history migration rebuilt {lineage_migration['updated']} promotion lineage set(s) "
+                f"from archived title results without parallel champion changes."
+            )
+            self.change_journal.append({"date": self.format_game_date(), "type": "Migration", "summary": summary})
+            self.change_journal = self.change_journal[-400:]
         self.broadcasters = data.get("broadcasters", [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}])
         self.ensure_media_system()
         self.weight_classes = data.get("weight_classes", list(WEIGHTS))
@@ -1636,6 +1644,10 @@ class PersistenceMixin:
             return
         if sport != "MMA":
             messagebox.showinfo("Combat-sport circuit", "Direct takeovers currently apply to MMA promotions. Open this circuit's history or manage your own child promotion instead.")
+            return
+        promo = next((item for item in self.promotions if item.name == name), None)
+        if promo is not None and getattr(promo, "is_regional_feeder", False):
+            messagebox.showinfo("Regional feeder", "Regional feeder circuits are development pipelines, not controllable promotions.")
             return
         self.take_control_of_company(name)
 

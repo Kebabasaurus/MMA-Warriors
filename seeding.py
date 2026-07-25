@@ -3246,6 +3246,96 @@ class SeedMixin:
         used_names.add(fighter.name)
         return fighter
 
+    def apply_eurasian_origin(self, fighter, sub_region=None, used_names=None):
+        """Give a fighter a Caucasus/Central Asian identity, name and style lean.
+
+        Style is a weighted roll rather than a rule, so the region's wrestling
+        and sambo reputation shows up in aggregate while still producing the
+        occasional Georgian boxer or Dagestani kickboxer.
+        """
+        if not EURASIAN_NAME_POOLS:
+            return fighter
+        if sub_region not in EURASIAN_NAME_POOLS:
+            options = [item for item in EURASIAN_REGION_WEIGHTS if item in EURASIAN_NAME_POOLS]
+            sub_region = random.choices(options, weights=[EURASIAN_REGION_WEIGHTS[item] for item in options], k=1)[0]
+        pool = EURASIAN_NAME_POOLS[sub_region]
+        taken = used_names if used_names is not None else set()
+        for _ in range(250):
+            candidate = f"{random.choice(pool['male'])} {random.choice(pool['last'])}"
+            if candidate not in taken:
+                fighter.name = candidate
+                break
+        else:
+            fighter.name = f"{random.choice(pool['male'])} {random.choice(pool['last'])}"
+            self.avoid_name_collision(fighter, taken)
+        fighter.nationality = EURASIAN_REGION_NATIONALITY.get(sub_region, "Russian")
+        fighter.hometown = sub_region
+        fighter.market_origin = sub_region
+        styles = EURASIAN_REGION_STYLES.get(sub_region)
+        if styles:
+            fighter.style = random.choices([item[0] for item in styles], weights=[item[1] for item in styles], k=1)[0]
+        # The circuit's identity is grappling-heavy volume: strong takedowns,
+        # clinch control and work rate, with striking polish lagging behind so
+        # the region produces specialists rather than uniformly better fighters.
+        self.ensure_detailed_skills(fighter)
+        for skill, delta in (("takedowns", 7), ("chain_wrestling", 7), ("clinch_control", 6),
+                             ("top_control", 6), ("strength", 5), ("conditioning", 4), ("discipline", 4),
+                             ("creative_kicks", -6), ("high_kick_technique", -5), ("feints", -4)):
+            fighter.detailed_skills[skill] = max(1, min(99, fighter.detailed_skills.get(skill, 50) + delta))
+        self.sync_broad_skills_from_details(fighter)
+        return fighter
+
+    def install_eurasian_headliner(self, roster, used_names, promo_name, region):
+        """Seed the circuit's marquee prospect, replacing a generated lightweight."""
+        if any(fighter.name == "Magomed Zaynukov" for fighter in roster):
+            return None
+        slot = next((fighter for fighter in roster if fighter.weight == "Lightweight" and fighter.gender == "Male"), None)
+        if slot is None:
+            return None
+        self.apply_eurasian_origin(slot, sub_region="Dagestan", used_names=used_names)
+        slot.name = "Magomed Zaynukov"
+        slot.age = 27
+        slot.weight = "Lightweight"
+        slot.gender = "Male"
+        slot.nationality = "Russian"
+        slot.hometown = "Dagestan"
+        slot.style = "Muay Thai"
+        slot.trait = "Late Bloomer"
+        self.ensure_detailed_skills(slot)
+        # Signature Muay Thai profile: elite clinch, knees, elbows and kicks.
+        for skill, value in (("punch_technique", 86), ("punch_power", 84), ("knees", 90), ("elbows", 88),
+                             ("thai_plum", 90), ("clinch_control", 87), ("low_kick_technique", 87),
+                             ("low_kick_power", 86), ("high_kick_technique", 84), ("kick_defence", 84),
+                             ("conditioning", 82), ("composure", 82), ("dedication", 84)):
+            slot.detailed_skills[skill] = value
+        signature = {"punch_technique", "punch_power", "knees", "elbows", "thai_plum", "clinch_control",
+                     "low_kick_technique", "low_kick_power", "high_kick_technique", "kick_defence"}
+        self.calibrate_fighter_overall(slot, 82, preserve=signature)
+        slot.potential = 90
+        used_names.add(slot.name)
+        return slot
+
+    def calibrate_fighter_overall(self, fighter, target, preserve=()):
+        """Shift detailed skills until the derived overall lands on target.
+
+        `Fighter.overall` is computed from the detailed skill groups, so a
+        specific rating has to be reached by moving the underlying numbers
+        rather than assigning the property. Keys in `preserve` define the
+        fighter's signature strengths and are held at their authored values.
+        """
+        self.ensure_detailed_skills(fighter)
+        adjustable = [key for key in fighter.detailed_skills if key not in set(preserve)]
+        for _ in range(60):
+            self.sync_broad_skills_from_details(fighter)
+            gap = target - fighter.overall
+            if gap == 0:
+                return fighter
+            step = 1 if gap > 0 else -1
+            for key in adjustable:
+                fighter.detailed_skills[key] = max(1, min(99, fighter.detailed_skills[key] + step))
+        self.sync_broad_skills_from_details(fighter)
+        return fighter
+
     def regional_feeder_specs(self):
         return [
             ("Japan Fight Circuit", "Japan"),
@@ -3263,6 +3353,7 @@ class SeedMixin:
             ("Korean Fighting Championship", "South Korea"),
             ("South American Vale Tudo Circuit", "Brazil"),
             ("British Fight League", "UK"),
+            (EURASIAN_FIGHT_CIRCUIT_NAME, "Russia"),
         ]
 
     def seed_regional_feeder_promotions(self, global_names, specs=None):
@@ -3270,22 +3361,34 @@ class SeedMixin:
         promotions = []
         for name, region in specs:
             roster = []
+            male_only = name == EURASIAN_FIGHT_CIRCUIT_NAME
             for weight in WEIGHTS:
                 # 70 fighters per feeder: deeper at the most active male
                 # divisions, while every female division remains bookable.
-                male_count = 5 if weight in ("Light Heavyweight", "Heavyweight") else 6
-                for gender, count in (("Male", male_count), ("Female", 3)):
+                # A male-only circuit spends its whole allocation on the men's
+                # divisions instead, so each one is meaningfully deeper.
+                if male_only:
+                    division_counts = (("Male", 8 if weight in ("Light Heavyweight", "Heavyweight") else 9),)
+                else:
+                    male_count = 5 if weight in ("Light Heavyweight", "Heavyweight") else 6
+                    division_counts = (("Male", male_count), ("Female", 3))
+                for gender, count in division_counts:
                     for _ in range(count):
                         fighter = self.create_regional_feeder_fighter(region, global_names, gender, feeder_name=name)
                         fighter.weight = weight
                         fighter.region = region
                         fighter.nationality = self.infer_nationality(fighter.name, region)
                         fighter.camp = name
+                        if male_only:
+                            self.apply_eurasian_origin(fighter, used_names=global_names)
                         roster.append(fighter)
                         global_names.add(fighter.name)
+            if male_only:
+                self.install_eurasian_headliner(roster, global_names, name, region)
             promotions.append(Promotion(
                 name=name, region=region, size=24, cash=0, roster=roster,
-                reputation="Regional Feeder", reputation_score=24, stability=70,
+                reputation=EURASIAN_FIGHT_CIRCUIT_DESCRIPTION if male_only else "Regional Feeder",
+                reputation_score=24, stability=70,
                 show_history=[], belts=self.blank_belts(), interim_belts=self.blank_belts(), belt_history=self.blank_belt_history(),
                 rules={"rounds": 3, "title_rounds": 3, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 4, "allow_mixed_gender": False, "active_fighter_target": 1200},
                 broadcasters=[], weight_classes=list(WEIGHTS), show_personality="Regional Development", is_regional_feeder=True,
@@ -3410,6 +3513,25 @@ class SeedMixin:
                 added = ", ".join(name for name, _region in expansion_specs)
                 self.news.insert(0, f"Regional pathway expanded: {added} opened as new development circuits.")
             self.rules["regional_pipeline_version"] = 2
+            pipeline_version = 2
+
+        # Version 3 adds the male-only Eurasian circuit to saves that predate it.
+        # Presence is checked against the live promotion list rather than the
+        # rules version, because a save's stored rules are restored after this
+        # repair runs and would otherwise let the circuit be seeded twice.
+        existing_eurasian = [promo for promo in self.promotions if promo.name == EURASIAN_FIGHT_CIRCUIT_NAME]
+        if len(existing_eurasian) > 1:
+            for duplicate in existing_eurasian[1:]:
+                self.promotions.remove(duplicate)
+        elif (not existing_eurasian
+                and EURASIAN_FIGHT_CIRCUIT_NAME not in defunct
+                and self.player_company_name != EURASIAN_FIGHT_CIRCUIT_NAME):
+            self.promotions.extend(self.seed_regional_feeder_promotions(
+                self.active_fighter_names(),
+                specs=[(EURASIAN_FIGHT_CIRCUIT_NAME, "Russia")],
+            ))
+            self.news.insert(0, f"{EURASIAN_FIGHT_CIRCUIT_NAME} opened as a new development circuit for Caucasus and Central Asian talent.")
+        self.rules["regional_pipeline_version"] = 3
 
     def promotion_broadcasters(self, name, size):
         if name == "Ultimate Fighting Championship":

@@ -870,7 +870,7 @@ def main():
         assert_true(app.fight_night_log_order(live_order) == live_order, "Already-correct fight-night order was reversed twice")
         assert_true(app.event_fight_order([1, 2, 3]) == [3, 2, 1], "Player event execution order was not flipped")
         feeder_promotions = [promotion for promotion in app.promotions if promotion.is_regional_feeder]
-        assert_true(len(feeder_promotions) == 15, "Regional feeder promotion expansion missing")
+        assert_true(len(feeder_promotions) == 16, "Regional feeder promotion expansion missing")
         assert_true(all(promotion.cash == 0 and all(fighter.age >= 17 for fighter in promotion.roster) for promotion in feeder_promotions), "Regional feeders must be non-financial with a 17-year minimum intake age")
         original_month = app.month
         app.month = 13
@@ -882,7 +882,14 @@ def main():
         assert_true(app.spawn_annual_regional_wonderkid() is None, "Annual regional wonderkid spawned twice in one year")
         app.month = original_month
         app.ensure_all_company_champions()
-        assert_true(all(not any(fighter.champion or fighter.interim_champion for fighter in promotion.roster) for promotion in feeder_promotions), "Regional feeders should not carry championship belts")
+        for promotion in feeder_promotions:
+            champion_counts = {}
+            for fighter in promotion.roster:
+                if fighter.champion:
+                    key = app.belt_key(fighter.gender, fighter.weight)
+                    champion_counts[key] = champion_counts.get(key, 0) + 1
+            assert_true(all(count == 1 for count in champion_counts.values()), "Regional feeder divisions must crown at most one champion each")
+        assert_true(any(fighter.champion for promotion in feeder_promotions for fighter in promotion.roster), "Regional feeders should now carry championship belts")
         feeder_probe = feeder_promotions[0]
         washed_out = app.create_regional_feeder_fighter(feeder_probe.region, app.active_fighter_names(), "Male")
         washed_out.age, washed_out.record_w, washed_out.record_l, washed_out.potential = 22, 0, 14, 60

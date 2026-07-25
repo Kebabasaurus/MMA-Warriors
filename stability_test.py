@@ -891,9 +891,9 @@ def exercise_retirement_card_pipeline():
         renewal_promo = copy.deepcopy(next(promo for promo in app.promotions if promo.name == "Ultimate Fighting Championship"))
         renewal_promo.cash = 100_000_000
         renewal_promo.roster = []
-        require(app.ai_division_target(renewal_promo, "Male") == 40, "UFC male division plan does not match its 80% roster share")
-        require(app.ai_division_target(renewal_promo, "Female") == 10, "UFC female division plan does not match its 20% roster share")
-        for gender, target in (("Male", 40), ("Female", 10)):
+        require(app.ai_division_target(renewal_promo, "Male") == 33, "UFC male division plan does not match its roster share")
+        require(app.ai_division_target(renewal_promo, "Female") == 17, "UFC female division plan does not match its roster share")
+        for gender, target in (("Male", 33), ("Female", 17)):
             for weight in renewal_promo.weight_classes:
                 for index in range(target):
                     member = copy.deepcopy(template)

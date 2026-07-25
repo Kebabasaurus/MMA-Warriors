@@ -6123,7 +6123,7 @@ class ViewMixin:
         self._write_company_profile(text)
         self._render_company_breakdown(row)
         if hasattr(self, "take_control_company_button"):
-            can_take_over = bool(row and row["sport"] == "MMA" and not row["player"])
+            can_take_over = bool(row and row["sport"] == "MMA" and not row["player"] and not (promo is not None and getattr(promo, "is_regional_feeder", False)))
             self.take_control_company_button.configure(state="normal" if can_take_over else "disabled")
 
     def _closest_rivals(self, sport, name, span=2):
@@ -7620,15 +7620,64 @@ class ViewMixin:
     def scout_signing_recommendation(self, fighter, report):
         if not fighter or report.get("status") != "Complete":
             return "PENDING", "The scout has not completed enough work to make a recruitment recommendation."
-        value = lambda key, fallback=50: int((self.scouting_estimate(fighter, key, {}) or {}).get("mid", fallback))
-        overall, potential = value("overall"), value("potential")
-        popularity, star = value("popularity"), value("star_quality")
+
+        def estimate(key, fallback=50):
+            return self.scouting_estimate(fighter, key, {}) or {"low": fallback, "mid": fallback, "high": fallback}
+
+        overall_est, potential_est = estimate("overall"), estimate("potential")
+        popularity_est, star_est = estimate("popularity"), estimate("star_quality")
+        overall, potential = int(overall_est.get("mid", 50)), int(potential_est.get("mid", 50))
+        popularity, star = int(popularity_est.get("mid", 50)), int(star_est.get("mid", 50))
+
+        division_key = self.belt_key(fighter.gender, fighter.weight)
+        division_closed = division_key in set(getattr(self, "closed_divisions", set()))
         division_count = sum(candidate.gender == fighter.gender and candidate.weight == fighter.weight for candidate in self.roster)
-        need = max(0, 10 - division_count)
-        projected_value = overall * 0.48 + potential * 0.22 + popularity * 0.12 + star * 0.08 + need * 1.7
+        need = 0 if division_closed else max(0, 10 - division_count)
+
+        # A flat weight on "potential" treats a 38-year-old at his ceiling the
+        # same as a 22-year-old with real development room. Give the gap real
+        # upside only while there's runway left to close it, and let age past
+        # the prime years erode value instead of just diluting the bonus.
+        runway_gap = max(0, potential - overall)
+        if fighter.age <= 26:
+            runway_bonus = runway_gap * 0.12 + max(0, 26 - fighter.age) * 0.4
+        elif fighter.age <= 33:
+            runway_bonus = runway_gap * 0.05
+        else:
+            runway_bonus = -max(0, fighter.age - 33) * 1.1
+
+        # A wide low/high spread means the scout isn't confident in the read;
+        # a stale or basic report shouldn't carry the same weight as a fresh
+        # full workup when it lands on the same midpoint.
+        spread = (overall_est.get("high", overall) - overall_est.get("low", overall)) + \
+            (potential_est.get("high", potential) - potential_est.get("low", potential))
+        confidence_penalty = max(0, (spread - 10) * 0.25)
+
+        projected_value = overall * 0.48 + potential * 0.10 + popularity * 0.12 + star * 0.08 + need * 1.7 + runway_bonus
         affordability = max(-12, min(8, (self.cash / max(1, fighter.purse * 20) - 1) * 3))
-        score = projected_value + affordability
-        context = f"Projected OVR {overall}, ceiling {potential}, market pull {round((popularity + star) / 2)}, division depth {division_count}, asking ${fighter.purse:,}."
+        score = projected_value + affordability - confidence_penalty
+
+        context = (
+            f"Projected OVR {overall}, ceiling {potential}, market pull {round((popularity + star) / 2)}, "
+            f"division depth {division_count}, asking ${fighter.purse:,}."
+        )
+
+        red_flags = []
+        if getattr(fighter, "injured", 0):
+            red_flags.append("currently injured")
+        if getattr(fighter, "retirement_pending", False):
+            red_flags.append("weighing retirement")
+        if division_closed:
+            red_flags.append("division closed to new signings")
+        streak = self.in_universe_loss_streak(fighter)
+        if streak >= 3:
+            red_flags.append(f"on a {streak}-fight losing streak")
+        if red_flags:
+            return "PASS", context + " Red flag: " + "; ".join(red_flags) + "."
+
+        if confidence_penalty >= 4:
+            context += " Report confidence is low; a fresher scouting pass would sharpen this read."
+
         if score >= 60 or (need >= 5 and score >= 56):
             return "RECOMMEND SIGNING", context + " This report sees a strong sporting or roster-fit case, subject to negotiation."
         if score >= 52:

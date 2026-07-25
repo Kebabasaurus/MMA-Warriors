@@ -557,6 +557,11 @@ class WorldMixin:
                 "a_id": row.get("a_id", ""), "b_id": row.get("b_id", ""), "weight": row.get("weight", ""),
                 "sport": row.get("sport", ""), "result": row.get("result", ""),
                 "scorecards": row.get("scorecards", "") or self.scorecard_summary_from_lines(row.get("lines", [])),
+                "title": bool(row.get("title", False)),
+                "divisional_title": bool(row.get("divisional_title", row.get("title") and not row.get("special_belt"))),
+                "interim": bool(row.get("interim", False)),
+                "special_belt": str(row.get("special_belt", "") or ""),
+                "booking_reason": str(row.get("booking_reason", "") or ""),
             }
             for row in fight_logs if row.get("a") or row.get("b") or row.get("result")
         ]
@@ -627,6 +632,194 @@ class WorldMixin:
                     index.append(row)
                     known.add(row["key"])
         self.result_index = index[:RESULT_INDEX_LIMIT]
+
+    def all_mma_fighters_for_lineage_repair(self):
+        fighters = []
+        fighters.extend(getattr(self, "roster", []) or [])
+        fighters.extend(getattr(self, "free_agents", []) or [])
+        fighters.extend(getattr(self, "retired_fighters", []) or [])
+        for promo in getattr(self, "promotions", []) or []:
+            fighters.extend(getattr(promo, "roster", []) or [])
+        return fighters
+
+    def result_lineage_winner_loser(self, result, a_name, b_name):
+        text = str(result or "")
+        if a_name and text.startswith(f"{a_name} def."):
+            return a_name, b_name
+        if b_name and text.startswith(f"{b_name} def."):
+            return b_name, a_name
+        return "", ""
+
+    def result_lineage_method(self, result):
+        match = re.search(r"\bby\s+(.+?)(?:\s+\(R\d+\))?$", str(result or ""))
+        return match.group(1).strip() if match else "Decision"
+
+    def result_lineage_date_key(self, date_value):
+        match = re.search(r"Month\s+(\d+)(?:\s+Week\s+(\d+))?", str(date_value or ""), re.IGNORECASE)
+        return (int(match.group(1)), int(match.group(2) or 1)) if match else (0, 0)
+
+    def title_history_has_non_lineal_changes(self, entries):
+        current = ""
+        for entry in reversed(list(entries or [])):
+            action = str(entry.get("action", ""))
+            fighter = str(entry.get("fighter", "") or "")
+            note = str(entry.get("note", "") or "")
+            opponent_match = re.search(r"Defeated\s+(.+?)\s+by\s+", note)
+            opponent = opponent_match.group(1).strip() if opponent_match else ""
+            if action in ("Inaugural Champion", "Inaugural Champion Appointed"):
+                current = fighter
+            elif action == "Champion Crowned":
+                if current and current not in {fighter, opponent}:
+                    return True
+                current = fighter
+            elif action == "Title Defense":
+                if current and fighter != current:
+                    return True
+            elif action in ("Vacated", "Division Closed"):
+                current = ""
+        return False
+
+    def rebuild_lineal_belt_histories_from_results(self):
+        """Recover long belt histories without inventing parallel champions.
+
+        Old result indexes label title bouts, but a label alone does not prove
+        the winner took the lineal belt. After the first known champion, only a
+        bout involving the current holder may produce a defense or crown.
+        """
+        fighters_by_id = {}
+        fighters_by_name = {}
+        for fighter in self.all_mma_fighters_for_lineage_repair():
+            fid = str(getattr(fighter, "fighter_id", "") or "")
+            if fid:
+                fighters_by_id[fid] = fighter
+            fighters_by_name.setdefault(str(getattr(fighter, "name", "") or ""), []).append(fighter)
+
+        def gender_for_bout(bout):
+            for key in ("a_id", "b_id"):
+                fighter = fighters_by_id.get(str(bout.get(key, "") or ""))
+                if fighter and getattr(fighter, "gender", "") in ("Male", "Female"):
+                    return fighter.gender
+            for key in ("a", "b"):
+                genders = {
+                    getattr(fighter, "gender", "")
+                    for fighter in fighters_by_name.get(str(bout.get(key, "") or ""), [])
+                    if getattr(fighter, "gender", "") in ("Male", "Female")
+                }
+                if len(genders) == 1:
+                    return next(iter(genders))
+            return ""
+
+        source_events = []
+        seen_source = set()
+        for event_index, event in enumerate(getattr(self, "result_index", []) or []):
+            company = str(event.get("company", "") or "")
+            if not company:
+                continue
+            for bout_index, bout in enumerate(event.get("bout_results", []) or []):
+                label = str(bout.get("label", "") or "").upper()
+                divisional_title = bool(bout.get("divisional_title", bout.get("title") and not bout.get("special_belt")))
+                legacy_title_label = label in ("TITLE FIGHT", "MAIN EVENT - TITLE FIGHT")
+                if str(bout.get("sport", "") or "") or not (divisional_title or legacy_title_label):
+                    continue
+                weight = str(bout.get("weight", "") or "")
+                if weight not in WEIGHTS:
+                    continue
+                gender = gender_for_bout(bout)
+                if gender not in ("Male", "Female"):
+                    continue
+                a_name, b_name = str(bout.get("a", "") or ""), str(bout.get("b", "") or "")
+                winner, loser = self.result_lineage_winner_loser(bout.get("result", ""), a_name, b_name)
+                if not winner:
+                    continue
+                key = (
+                    str(event.get("date", "") or ""), company, gender, weight,
+                    winner, loser, self.result_lineage_method(bout.get("result", "")),
+                )
+                if key in seen_source:
+                    continue
+                seen_source.add(key)
+                source_events.append((
+                    self.result_lineage_date_key(event.get("date")),
+                    event_index, bout_index, str(event.get("date", "") or ""),
+                    company, self.belt_key(gender, weight), winner, loser,
+                    self.result_lineage_method(bout.get("result", "")), a_name, b_name,
+                ))
+        source_events.sort(key=lambda row: (row[0], row[1], row[2]))
+
+        rebuilt_by_company = {}
+        current_by_company = {}
+        for _month, _event_index, _bout_index, date, company, division, winner, loser, method, a_name, b_name in source_events:
+            histories = rebuilt_by_company.setdefault(company, self.blank_belt_history())
+            current = current_by_company.setdefault(company, {}).get(division, "")
+            participants = {a_name, b_name}
+            if not current:
+                action = "Inaugural Champion"
+                current_by_company[company][division] = winner
+            elif winner == current:
+                action = "Title Defense"
+            elif current in participants:
+                action = "Champion Crowned"
+                current_by_company[company][division] = winner
+            else:
+                continue
+            histories[division].insert(0, {
+                "date": date, "action": action, "division": division,
+                "fighter": winner, "note": f"Defeated {loser} by {method}.",
+            })
+
+        return rebuilt_by_company
+
+    def migrate_lineal_belt_histories(self):
+        version = int((getattr(self, "rules", {}) or {}).get("lineal_belt_history_version", 0) or 0)
+        if version >= 1:
+            return {"updated": 0, "rebuilt_entries": 0}
+        rebuilt_by_company = self.rebuild_lineal_belt_histories_from_results()
+        if not rebuilt_by_company:
+            self.rules["lineal_belt_history_version"] = 1
+            return {"updated": 0, "rebuilt_entries": 0}
+
+        def primary_count(history):
+            return sum(
+                1 for entries in (history or {}).values() for entry in (entries or [])
+                if entry.get("action") in ("Champion Crowned", "Inaugural Champion", "Inaugural Champion Appointed", "Title Defense")
+            )
+
+        def merge_history(company, existing):
+            existing = self.normalize_belt_history(existing)
+            rebuilt = self.normalize_belt_history(rebuilt_by_company.get(company, {}))
+            if not any(rebuilt.values()):
+                return existing, False
+            existing_count = primary_count(existing)
+            rebuilt_count = primary_count(rebuilt)
+            capped = any(len(entries or []) == 80 for entries in existing.values())
+            non_lineal = any(self.title_history_has_non_lineal_changes(entries) for entries in existing.values())
+            if not (capped or non_lineal or rebuilt_count >= existing_count):
+                return existing, False
+            seen = {
+                (row.get("date"), row.get("action"), row.get("division"), row.get("fighter"), row.get("note"))
+                for entries in rebuilt.values() for row in entries
+            }
+            for division, entries in existing.items():
+                for entry in entries or []:
+                    if entry.get("action") in ("Champion Crowned", "Inaugural Champion", "Inaugural Champion Appointed", "Title Defense"):
+                        continue
+                    row = dict(entry)
+                    row.setdefault("division", division)
+                    key = (row.get("date"), row.get("action"), row.get("division"), row.get("fighter"), row.get("note"))
+                    if key not in seen:
+                        rebuilt[division].append(row)
+                        seen.add(key)
+                rebuilt[division].sort(key=lambda row: self.result_lineage_date_key(row.get("date")), reverse=True)
+            return rebuilt, True
+
+        updated = 0
+        self.belt_history, changed = merge_history(getattr(self, "player_company_name", PLAYER_PROMOTION_NAME), getattr(self, "belt_history", {}))
+        updated += int(changed)
+        for promo in getattr(self, "promotions", []) or []:
+            promo.belt_history, changed = merge_history(promo.name, promo.belt_history or {})
+            updated += int(changed)
+        self.rules["lineal_belt_history_version"] = 1
+        return {"updated": updated, "rebuilt_entries": sum(primary_count(history) for history in rebuilt_by_company.values())}
 
     def resolve_rivalry_result(self, winner, loser, fight, method):
         """A rivalry can demand a rematch or be conclusively settled by a result."""
@@ -5946,7 +6139,6 @@ class WorldMixin:
                     "month": self.month, "year": self.current_year(), "winner": winner.name,
                     "loser": loser.name, "method": method, "previous_champion": previous_champion,
                 })
-                state["title_history"][title_key] = state["title_history"][title_key][:80]
                 state["champion"] = winner.name
             round_note = f" R{sim.get('round')}" if method not in ("Decision", "Majority Decision", "Points", "Referee Criteria") else ""
             result_line = f"Month {self.month}: {winner.name} def. {loser.name} by {method}{round_note} in {sport} ({sim.get('score', '-')})"
@@ -6689,7 +6881,6 @@ class WorldMixin:
                 "month": self.month, "year": self.current_year(), "winner": "VACANT",
                 "loser": "", "method": "Crossover to MMA", "previous_champion": fighter.name,
             })
-            state["title_history"][key] = state["title_history"][key][:80]
         state["champion"] = next((name for name in state.get("titles", {}).values() if name), "")
 
         records = dict(fighter.multi_sport_records or {})
@@ -6776,7 +6967,6 @@ class WorldMixin:
                 "winner": "VACANT", "loser": "", "method": "Champion released",
                 "previous_champion": fighter.name,
             })
-            state["title_history"][key] = state["title_history"][key][:80]
         state["champion"] = next((name for name in state.get("titles", {}).values() if name), "")
 
         division["roster"] = [name for name in division.get("roster", []) if name != fighter.name]
@@ -8768,6 +8958,20 @@ class WorldMixin:
         for fighters in by_division.values():
             random.shuffle(fighters)
             fighters.sort(key=match_rating, reverse=True)
+        # A champion should only ever fight for the belt, never get quietly
+        # bumped into a throwaway development bout the same month a division
+        # is deep enough to produce a second pairing. Major promotions already
+        # protect a reigning champion this way (see `protected_champions` in
+        # build_ai_card); guarantee the same here by making the belt holder
+        # first in the queue, so they land in that division's very first bout
+        # of the month and are used up before any second pass can reach them.
+        for (gender, weight), fighters in by_division.items():
+            champ_name = (promo.belts or {}).get(self.belt_key(gender, weight))
+            if not champ_name:
+                continue
+            holder_index = next((i for i, fighter in enumerate(fighters) if fighter.name == champ_name), None)
+            if holder_index is not None and holder_index != 0:
+                fighters.insert(0, fighters.pop(holder_index))
 
         # A shared bout budget used to drain itself on whichever divisions
         # happened to appear first in roster order, starving every division
@@ -8796,20 +9000,38 @@ class WorldMixin:
         if not fights:
             self.regional_recruit_fighter(promo, slots=max(1, self.regional_roster_vacancies(promo)))
             return
+
+        # A regional belt only means something if it is occasionally contested
+        # in the cage. Whichever bout in a division comes up first this month
+        # becomes that division's title fight when the champion is in it, or
+        # when the belt sits vacant with an existing lineage to settle.
+        title_flags = [False] * len(fights)
+        title_keys_used = set()
+        for index, (a, b) in enumerate(fights):
+            key = self.belt_key(a.gender, a.weight)
+            if key in title_keys_used:
+                continue
+            champ_name = (promo.belts or {}).get(key)
+            vacant_contested = not champ_name and (promo.belt_history or {}).get(key)
+            if champ_name in (a.name, b.name) or vacant_contested:
+                title_flags[index] = True
+                title_keys_used.add(key)
+
         event_name = f"{promo.name} Development Night {promo.event_counter}"
         promo.event_counter += 1
         results = []
         fight_logs = []
         for fight_number, (a, b) in enumerate(fights, 1):
+            is_title = title_flags[fight_number - 1]
             self.apply_ai_camp(a, promo)
             self.apply_ai_camp(b, promo)
-            self.perform_weigh_in(a, title_fight=False, persist=True)
-            self.perform_weigh_in(b, title_fight=False, persist=True)
+            self.perform_weigh_in(a, title_fight=is_title, persist=True)
+            self.perform_weigh_in(b, title_fight=is_title, persist=True)
             a_rating, b_rating = self.bout_rating_snapshot(a), self.bout_rating_snapshot(b)
-            bout = {"main": False, "title": False, "tier": "Early Prelims", "region": promo.region}
+            bout = {"main": False, "title": is_title, "tier": "Regional Title Bout" if is_title else "Early Prelims", "region": promo.region}
             winner, loser, method, round_no, _lines = self.simulate_fight(a, b, bout)
             bout["_scorecards"] = self.scorecard_summary_from_lines(_lines)
-            label = "MAIN EVENT" if fight_number == 1 else "DEVELOPMENT BOUT"
+            label = "TITLE FIGHT" if is_title else ("MAIN EVENT" if fight_number == 1 else "DEVELOPMENT BOUT")
             if method == "Draw":
                 self.apply_draw_result(a, b, bout)
                 result_line = f"{a.name} vs {b.name} - Draw (R{round_no})"
@@ -8823,6 +9045,10 @@ class WorldMixin:
             self.update_elo(winner, loser, bout, method)
             self.commit_career_stats(winner, method, won=True)
             self.commit_career_stats(loser, method, won=False)
+            if is_title:
+                promo.belts = promo.belts or {}
+                promo.belt_history = promo.belt_history or {}
+                promo.belts, promo.belt_history = self.set_primary_champion(promo.roster, promo.belts, promo.belt_history, winner, f"Defeated {loser.name} by {method}.", defense=True)
             winner.record_w += 1
             loser.record_l += 1
             winner.career_win_streak = getattr(winner, "career_win_streak", 0) + 1
@@ -9282,10 +9508,17 @@ class WorldMixin:
                 if not getattr(member, "retired", False):
                     key = (member.gender, member.weight)
                     counts[key] = counts.get(key, 0) + 1
-            division_targets = {
-                (gender, weight): (3 if gender == "Female" else (5 if weight in ("Light Heavyweight", "Heavyweight") else 6))
-                for gender in ("Male", "Female") for weight in WEIGHTS
-            }
+            male_only = promo.name == EURASIAN_FIGHT_CIRCUIT_NAME
+            if male_only:
+                division_targets = {
+                    ("Male", weight): (8 if weight in ("Light Heavyweight", "Heavyweight") else 9)
+                    for weight in WEIGHTS
+                }
+            else:
+                division_targets = {
+                    (gender, weight): (3 if gender == "Female" else (5 if weight in ("Light Heavyweight", "Heavyweight") else 6))
+                    for gender in ("Male", "Female") for weight in WEIGHTS
+                }
             thinnest = sorted(
                 division_targets,
                 key=lambda key: (counts.get(key, 0) - division_targets[key], counts.get(key, 0), random.random()),
@@ -9300,6 +9533,7 @@ class WorldMixin:
                 # can return. This is long enough to prevent carousel booking.
                 and not (getattr(fighter, "last_regional_promotion", "") == promo.name and self.month - getattr(fighter, "regional_departure_month", 0) < 36)
                 and (fighter.overall < 76 or fighter.potential >= 78)
+                and not (male_only and fighter.gender != "Male")
             ]
             matching_candidates = [
                 fighter for fighter in candidates
@@ -9333,6 +9567,8 @@ class WorldMixin:
             fighter.camp = promo.name
             fighter.feeder_origin = promo.name
             fighter.market_origin = "Regional youth intake"
+            if male_only:
+                self.apply_eurasian_origin(fighter, used_names=self.active_fighter_names())
             fighter.regional_entry_w = fighter.record_w
             fighter.regional_entry_l = fighter.record_l
             fighter.regional_entry_d = fighter.record_d
@@ -10042,7 +10278,7 @@ class WorldMixin:
         # flooded it with women over long saves, since majors were budgeting
         # demand against a gender split the world doesn't actually produce.
         share = 1.31 if gender == "Male" else 0.69
-        return max(4, math.ceil(base_target * share))
+        return max(4, round(base_target * share))
 
     def ai_roster_target(self, promo):
         """Roster capacity is tied to the divisions a company must actually book."""
