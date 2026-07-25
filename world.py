@@ -9270,10 +9270,30 @@ class WorldMixin:
         next monthly feeder pass regardless. So just pull evenly across every
         circuit in turn, with no per-circuit ceiling, instead of letting one
         circuit's best candidates supply the whole emergency.
+
+        Within each circuit's turn the call-up is chosen by what the market is
+        actually short of rather than by raw quality alone. Filling a headcount
+        floor blindly let the biggest, most male-heavy circuits crowd out the
+        divisions in genuine trouble -- a single-gender circuit could drain a
+        whole emergency into divisions that were already comfortable while the
+        women's divisions it cannot serve stayed empty.
         """
         slots = max(0, int(slots))
         if not slots:
             return 0
+        division_stock = {}
+        for fighter in self.free_agents:
+            if (fighter.retired or fighter.retirement_pending or fighter.injured
+                    or getattr(fighter, "ai_offer_company", "")):
+                continue
+            key = (fighter.gender, fighter.weight)
+            division_stock[key] = division_stock.get(key, 0) + 1
+
+        def scarcity_bonus(fighter):
+            """Weight a call-up by how starved their division currently is."""
+            stock = division_stock.get((fighter.gender, fighter.weight), 0)
+            return max(0, 12 - stock) * 9
+
         promo_candidates = {}
         for promo in self.promotions:
             if not getattr(promo, "is_regional_feeder", False):
@@ -9304,9 +9324,14 @@ class WorldMixin:
                 if moved >= slots or not ranked:
                     continue
                 promo = promo_by_name[name]
-                _value, fighter = ranked.pop(0)
+                # Re-score against live stock each turn: every call-up changes
+                # which divisions are still short, so a static quality order
+                # would keep feeding divisions that have already recovered.
+                pick = max(range(len(ranked)), key=lambda index: ranked[index][0] + scarcity_bonus(ranked[index][1]))
+                _value, fighter = ranked.pop(pick)
                 if fighter not in promo.roster:
                     continue
+                division_stock[(fighter.gender, fighter.weight)] = division_stock.get((fighter.gender, fighter.weight), 0) + 1
                 self.capture_regional_record(fighter)
                 promo.roster.remove(fighter)
                 fighter.feeder_origin = name
