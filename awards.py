@@ -743,10 +743,13 @@ class AwardsMixin:
         record_category = tk.StringVar(value="Legacy Score")
         categories = (
             "Legacy Score", "Career Wins", "Career Bouts", "Win Percentage (10+ bouts)", "ELO Rating",
-            "Title Defenses", "Title Wins", "Career Significant Strikes", "Career Takedowns",
-            "Career Knockdowns", "Career Submissions", "Awards Won",
+            "Title Defenses", "Title Wins", "Awards Won",
+            "Career Knockouts", "Career Submissions", "Career Finishes", "Finish Rate (10+ bouts)",
+            "Career Significant Strikes", "Significant Strikes per Round (10+ rounds)",
+            "Career Takedowns", "Takedowns per Round (10+ rounds)", "Career Knockdowns",
+            "Career Submission Attempts", "Career Control Time", "Career Rounds Fought",
         )
-        ttk.Combobox(fighter_controls, textvariable=record_category, values=categories, state="readonly", width=30).pack(side="left", padx=(0, 8))
+        ttk.Combobox(fighter_controls, textvariable=record_category, values=categories, state="readonly", width=38).pack(side="left", padx=(0, 8))
         ttk.Label(fighter_controls, text="Career totals include the stats tracked since the save began.", style="Inset.TLabel").pack(side="left", padx=4)
         fighter_tree = ttk.Treeview(
             fighter_tab,
@@ -765,6 +768,14 @@ class AwardsMixin:
 
         def fighter_value(fighter, category):
             bouts = fighter.record_w + fighter.record_l + getattr(fighter, "record_d", 0)
+            sig = getattr(fighter, "career_sig_strikes", 0)
+            takedowns = getattr(fighter, "career_takedowns", 0)
+            finishes = getattr(fighter, "career_finishes", 0)
+            stat_rounds = getattr(fighter, "career_stat_rounds", 0)
+            control = getattr(fighter, "career_control_secs", 0)
+            # Rate stats need a minimum sample or a single dominant round tops
+            # the board; -1 sorts those fighters out of the leaderboard entirely.
+            rated = stat_rounds >= 10
             values = {
                 "Career Wins": (fighter.record_w, str(fighter.record_w)),
                 "Career Bouts": (bouts, str(bouts)),
@@ -772,11 +783,22 @@ class AwardsMixin:
                 "ELO Rating": (getattr(fighter, "elo_rating", 1500), str(getattr(fighter, "elo_rating", 1500))),
                 "Title Defenses": (getattr(fighter, "title_defenses", 0), str(getattr(fighter, "title_defenses", 0))),
                 "Title Wins": (getattr(fighter, "title_wins", 0), str(getattr(fighter, "title_wins", 0))),
-                "Career Significant Strikes": (getattr(fighter, "career_sig_strikes", 0), f"{getattr(fighter, 'career_sig_strikes', 0):,}"),
-                "Career Takedowns": (getattr(fighter, "career_takedowns", 0), str(getattr(fighter, "career_takedowns", 0))),
-                "Career Knockdowns": (getattr(fighter, "career_knockdowns", 0), str(getattr(fighter, "career_knockdowns", 0))),
-                "Career Submissions": (getattr(fighter, "career_submissions", 0), str(getattr(fighter, "career_submissions", 0))),
                 "Awards Won": (getattr(fighter, "award_count", 0), str(getattr(fighter, "award_count", 0))),
+                "Career Knockouts": (getattr(fighter, "career_knockouts", 0), str(getattr(fighter, "career_knockouts", 0))),
+                "Career Submissions": (getattr(fighter, "career_submissions", 0), str(getattr(fighter, "career_submissions", 0))),
+                "Career Finishes": (finishes, str(finishes)),
+                "Finish Rate (10+ bouts)": ((finishes / fighter.record_w * 100) if bouts >= 10 and fighter.record_w else -1,
+                                            f"{finishes / fighter.record_w * 100:.1f}%" if fighter.record_w else "-"),
+                "Career Significant Strikes": (sig, f"{sig:,}"),
+                "Significant Strikes per Round (10+ rounds)": ((sig / stat_rounds) if rated else -1,
+                                                              f"{sig / stat_rounds:.1f}" if stat_rounds else "-"),
+                "Career Takedowns": (takedowns, str(takedowns)),
+                "Takedowns per Round (10+ rounds)": ((takedowns / stat_rounds) if rated else -1,
+                                                    f"{takedowns / stat_rounds:.2f}" if stat_rounds else "-"),
+                "Career Knockdowns": (getattr(fighter, "career_knockdowns", 0), str(getattr(fighter, "career_knockdowns", 0))),
+                "Career Submission Attempts": (getattr(fighter, "career_sub_attempts", 0), str(getattr(fighter, "career_sub_attempts", 0))),
+                "Career Control Time": (control, f"{control // 3600}h {control % 3600 // 60}m" if control >= 3600 else f"{control // 60}m {control % 60}s"),
+                "Career Rounds Fought": (stat_rounds, str(stat_rounds)),
                 "Legacy Score": (self.compute_legacy_score(fighter), str(self.compute_legacy_score(fighter))),
             }
             return values[category]

@@ -1917,19 +1917,57 @@ class FightEngineMixin:
         state["instant_finish"] = (actor.name, defender.name, "KO", self.finish_sequence(actor, defender, "KO", detail, state))
         return self.fight_phrase("knockdown", actor, defender, technique=technique)
 
-    def strike_volume(self, action, margin, landed=True, attempts=None):
+    def output_multiplier(self, fighter):
+        """How busy this fighter is inside a striking sequence.
+
+        Volume is a real, visible identity in MMA: a high-output pressure
+        fighter throws far more than a patient counter-striker even when both
+        are equally skilled. Stats, style and behaviour all feed this, so
+        career strike totals separate fighters instead of converging on one
+        league-average number."""
+        if fighter is None:
+            return 1.0
+        aggression = self.ds(fighter, "aggression", 50)
+        conditioning = self.ds(fighter, "conditioning", fighter.cardio)
+        hand_speed = self.ds(fighter, "hand_speed", fighter.striking)
+        multiplier = 1.0
+        multiplier += (aggression - 50) / 145
+        multiplier += (conditioning - 50) / 260
+        multiplier += (hand_speed - 50) / 300
+        multiplier *= {
+            "Volume": 1.22, "Pressure": 1.14, "Dynamic Attacker": 1.08,
+            "Counter": 0.84, "Cautious": 0.78, "Control": 0.90,
+            "Submission Hunter": 0.88, "Sprawl And Brawl": 1.0,
+        }.get(getattr(fighter, "behaviour", ""), 1.0)
+        multiplier *= {
+            "Boxer": 1.10, "Kickboxer": 1.10, "Dutch Kickboxer": 1.16, "Muay Thai": 1.06,
+            "Karate": 0.86, "Taekwondo": 0.88, "Sanda": 1.02,
+            "Wrestler": 0.86, "Freestyle Wrestler": 0.86, "Catch Wrestler": 0.88,
+            "BJJ": 0.84, "Luta Livre": 0.86, "Sambo": 0.88, "Judo": 0.86,
+            "Grappler": 0.84, "Submission Grappler": 0.82,
+        }.get(getattr(fighter, "style", ""), 1.0)
+        return max(0.55, min(1.85, multiplier))
+
+    def strike_volume(self, action, margin, landed=True, attempts=None, actor=None):
         """Each commentary beat represents a small, explicit strike sequence, not one invisible strike.
 
         Pass a pre-drawn ``attempts`` when computing landed strikes for the same
         sequence, so the number that land can never exceed the number thrown."""
         if attempts is None:
-            attempts = {
-                "jab": random.randint(2, 5),
-                "power_punch": random.randint(2, 4),
-                "kick": random.randint(1, 3),
-                "dirty_boxing": random.randint(2, 5),
-                "ground_strikes": random.randint(3, 8),
+            # A round is ~18 ticks shared between both fighters, so each fighter
+            # gets ~9 beats and only a fraction of those are striking exchanges.
+            # These sequence sizes are what scale the engine to real UFC output:
+            # roughly 4-5 significant strikes landed per minute (~20-25 a round).
+            # Undersized sequences here previously produced ~5 landed a round,
+            # about a fifth of real-world volume.
+            base = {
+                "jab": random.randint(9, 20),
+                "power_punch": random.randint(7, 15),
+                "kick": random.randint(5, 12),
+                "dirty_boxing": random.randint(7, 16),
+                "ground_strikes": random.randint(10, 26),
             }.get(action, 1)
+            attempts = max(1, round(base * self.output_multiplier(actor))) if actor is not None else base
         if not landed:
             return attempts, 0
         accuracy = 0.46 + min(0.38, max(-0.1, margin) / 52)
@@ -1940,7 +1978,7 @@ class FightEngineMixin:
         return attempts, max(1, min(attempts, round(attempts * accuracy)))
 
     def resolve_strike(self, actor, defender, action, margin, state, round_stats):
-        attempts, _ = self.strike_volume(action, margin, landed=False)
+        attempts, _ = self.strike_volume(action, margin, landed=False, actor=actor)
         state["stats"][actor.name]["sig_att"] += attempts
         if action == "kick":
             roll = random.random()
