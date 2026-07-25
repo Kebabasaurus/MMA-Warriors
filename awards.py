@@ -920,9 +920,14 @@ class AwardsMixin:
         tk.Label(right, textvariable=subtitle_var, bg=colors.get("chrome", "#0b0d10"), fg=muted,
                  font=("Tahoma", 8), anchor="w", justify="left", padx=10).pack(fill="x", padx=4)
 
-        timeline_canvas = tk.Canvas(right, height=94, bg=colors.get("tree", "#11161c"), highlightthickness=1,
+        timeline_frame = ttk.Frame(right, style="Chrome.TFrame")
+        timeline_frame.pack(fill="x", padx=4, pady=(6, 0))
+        timeline_canvas = tk.Canvas(timeline_frame, height=94, bg=colors.get("tree", "#11161c"), highlightthickness=1,
                                     highlightbackground=colors.get("line", "#384553"))
-        timeline_canvas.pack(fill="x", padx=4, pady=6)
+        timeline_hscroll = ttk.Scrollbar(timeline_frame, orient="horizontal", command=timeline_canvas.xview)
+        timeline_canvas.configure(xscrollcommand=timeline_hscroll.set)
+        timeline_canvas.pack(side="top", fill="x")
+        timeline_hscroll.pack(side="top", fill="x", pady=(0, 6))
 
         legend = tk.Frame(right, bg=colors.get("chrome", "#0b0d10"))
         legend.pack(fill="x", padx=8, pady=(0, 2))
@@ -963,14 +968,16 @@ class AwardsMixin:
         def draw_timeline(lineage):
             canvas = timeline_canvas
             canvas.delete("all")
-            width = int(canvas.winfo_width() or 0) or 640
+            visible_width = int(canvas.winfo_width() or 0) or 640
             height = int(canvas.winfo_height() or 0) or 94
             if not lineage:
-                canvas.create_text(width // 2, height // 2, text="No reign data", fill=muted, font=("Tahoma", 9))
+                canvas.create_text(visible_width // 2, height // 2, text="No reign data", fill=muted, font=("Tahoma", 9))
+                canvas.configure(scrollregion=(0, 0, visible_width, height))
                 return
             reigns = lineage["reigns"]
             if not reigns:
-                canvas.create_text(width // 2, height // 2, text="No completed reigns yet", fill=muted, font=("Tahoma", 9))
+                canvas.create_text(visible_width // 2, height // 2, text="No completed reigns yet", fill=muted, font=("Tahoma", 9))
+                canvas.configure(scrollregion=(0, 0, visible_width, height))
                 return
             now = int(getattr(self, "month", 1) or 1)
             spans = []
@@ -979,13 +986,19 @@ class AwardsMixin:
                 end = reign.get("end_month")
                 length = max(1, (end if end is not None else now) - start)
                 spans.append(length)
-            total = sum(spans) or 1
+            # A minimum pixel width per reign, scaled by actual length beyond
+            # that floor, so a long reign of many years is visibly longer than
+            # a one-month cup of coffee without either squeezing short reigns
+            # down to an unlabeled sliver. Content can exceed the visible
+            # frame; the horizontal scrollbar handles the rest.
             pad = 8
-            usable = max(1, width - pad * 2)
+            min_seg = 70
+            pixels_per_month = 4
+            segs = [max(min_seg, min_seg + (length - 1) * pixels_per_month) for length in spans]
+            content_width = pad * 2 + sum(segs)
             bar_top, bar_bottom = 30, height - 26
             x = pad
-            for index, (reign, length) in enumerate(zip(reigns, spans)):
-                seg = max(10, usable * length / total)
+            for index, (reign, length, seg) in enumerate(zip(reigns, spans, segs)):
                 ongoing = reign.get("end_month") is None
                 fill = reign_palette[index % len(reign_palette)]
                 canvas.create_rectangle(x, bar_top, x + seg, bar_bottom, fill=fill, width=0)
@@ -997,15 +1010,15 @@ class AwardsMixin:
                     tick_x = x + seg * (d + 1) / (min(defenses, 12) + 1)
                     canvas.create_line(tick_x, bar_bottom - 6, tick_x, bar_bottom, fill="#ffffff", width=1)
                 surname = (reign.get("fighter", "") or "").split(" ")[-1]
-                if seg > 46:
-                    canvas.create_text(x + seg / 2, (bar_top + bar_bottom) / 2, text=surname[:12],
-                                       fill="#ffffff", font=("Tahoma", 8, "bold"))
-                    canvas.create_text(x + seg / 2, bar_bottom + 10, text=self.format_month_span(length),
-                                       fill=muted, font=("Tahoma", 7))
+                canvas.create_text(x + seg / 2, (bar_top + bar_bottom) / 2, text=surname[:14],
+                                   fill="#ffffff", font=("Tahoma", 8, "bold"))
+                canvas.create_text(x + seg / 2, bar_bottom + 10, text=self.format_month_span(length),
+                                   fill=muted, font=("Tahoma", 7))
                 x += seg
             span_label = f"{self.format_game_date_text(reigns[0].get('start_date', ''))}  —  present"
             canvas.create_text(pad, 12, text=f"{len(reigns)} reign(s)   |   {span_label}", anchor="w",
                                fill=text_color, font=("Tahoma", 8, "bold"))
+            canvas.configure(scrollregion=(0, 0, max(content_width, visible_width), height))
 
         def show_lineage(lineage):
             state["selected"] = lineage
