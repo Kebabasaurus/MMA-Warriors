@@ -1,5 +1,6 @@
 import json
 import random
+import re
 import sys
 import traceback
 from datetime import datetime
@@ -648,6 +649,63 @@ class AwardsMixin:
 
     # ---- Historical records ------------------------------------------------
 
+    @staticmethod
+    def _parse_belt_month(date_value):
+        """Pull the save-stable month index out of a 'Month N Week N' stamp."""
+        match = re.search(r"Month\s+(\d+)", str(date_value or ""))
+        return int(match.group(1)) if match else None
+
+    def format_month_span(self, months):
+        """Render a month count as a compact 'Ny Nmo' reign length."""
+        if months is None:
+            return "-"
+        months = max(0, int(months))
+        if months < 1:
+            return "<1 mo"
+        years, remainder = divmod(months, 12)
+        parts = []
+        if years:
+            parts.append(f"{years}y")
+        if remainder:
+            parts.append(f"{remainder}mo")
+        return " ".join(parts) if parts else "0mo"
+
+    def title_reign_history(self, entries):
+        """Reconstruct ordered undisputed reigns from a division's belt history.
+
+        Returns reigns oldest-first, each with fighter, start/end month, defense
+        count, and how the reign ended. Interim events are ignored here; they
+        are surfaced separately in the detail timeline so the main lineage stays
+        the clean undisputed line of succession.
+        """
+        crown_actions = ("Champion Crowned", "Inaugural Champion", "Inaugural Champion Appointed")
+        end_actions = ("Vacated", "Division Closed")
+        reigns = []
+        current = None
+        for entry in reversed(list(entries or [])):
+            action = str(entry.get("action", ""))
+            month = self._parse_belt_month(entry.get("date"))
+            if action in crown_actions:
+                if current is not None:
+                    current["end_month"] = month
+                    current["end_action"] = "Dethroned"
+                    reigns.append(current)
+                current = {
+                    "fighter": entry.get("fighter", ""), "start_month": month,
+                    "start_date": entry.get("date", ""), "defenses": 0,
+                    "end_month": None, "end_action": "", "note": entry.get("note", ""),
+                }
+            elif action == "Title Defense" and current is not None:
+                current["defenses"] += 1
+            elif action in end_actions and current is not None:
+                current["end_month"] = month
+                current["end_action"] = action
+                reigns.append(current)
+                current = None
+        if current is not None:
+            reigns.append(current)
+        return reigns
+
     def open_records_ledger_window(self):
         """Browsable all-time records, built from the persistent world roster."""
         window = tk.Toplevel(self.root)
@@ -772,38 +830,272 @@ class AwardsMixin:
             champion_count = len([holder for holder in (belts or {}).values() if holder])
             company_tree.insert("", "end", values=(position, name, region, events, f"{reputation}%", legacy, champion_count, f"${cash:,.0f}"))
 
-        title_controls = ttk.Frame(title_tab, style="Inset.TFrame")
-        title_controls.pack(fill="x", padx=6, pady=6)
-        ttk.Label(title_controls, text="Promotion", style="Inset.TLabel").pack(side="left", padx=(6, 3))
-        title_company = tk.StringVar(value="All Promotions")
-        title_companies = ["All Promotions", self.player_company_name] + [promo.name for promo in self.promotions]
-        ttk.Combobox(title_controls, textvariable=title_company, values=title_companies, state="readonly", width=30).pack(side="left", padx=(0, 8))
-        ttk.Label(title_controls, text="Championship crowns, defences, interim reigns, and vacancies.", style="Inset.TLabel").pack(side="left", padx=4)
-        title_tree = ttk.Treeview(title_tab, columns=("promotion", "division", "date", "action", "fighter", "note"), show="headings")
-        for column, heading, width, anchor in (
-            ("promotion", "Promotion", 185, "w"), ("division", "Division", 130, "center"), ("date", "Date", 120, "center"),
-            ("action", "Record", 150, "w"), ("fighter", "Fighter", 190, "w"), ("note", "Context", 360, "w"),
-        ):
-            title_tree.heading(column, text=heading)
-            title_tree.column(column, width=width, anchor=anchor)
-        self.make_tree_sortable(title_tree)
-        title_tree.pack(fill="both", expand=True, padx=6, pady=(0, 6))
-
-        def refresh_title_lineage(*_args):
-            title_tree.delete(*title_tree.get_children())
-            histories = [(self.player_company_name, getattr(self, "belt_history", {}))]
-            histories.extend((promo.name, promo.belt_history or {}) for promo in self.promotions)
-            for company, history in histories:
-                if title_company.get() != "All Promotions" and company != title_company.get():
-                    continue
-                for division, entries in (history or {}).items():
-                    for entry in entries or []:
-                        title_tree.insert("", "end", values=(company, division, entry.get("date", ""), entry.get("action", ""), entry.get("fighter", ""), entry.get("note", "")))
-
-        title_company.trace_add("write", refresh_title_lineage)
-        title_tree.bind("<Double-1>", lambda _event: self.open_fighter_profile_window(fighter) if (selected := title_tree.selection()) and (fighter := self.find_fighter_anywhere(title_tree.item(selected[0], "values")[4])) else None)
-        refresh_title_lineage()
+        self.build_title_lineage_tab(title_tab)
         ttk.Button(window, text="Close", style="Accent.TButton", command=window.destroy).pack(anchor="e", padx=12, pady=(0, 10))
+
+    def build_title_lineage_tab(self, parent):
+        """A filterable, master-detail belt lineage browser with a visual reign timeline."""
+        colors = self.colors
+        gold = colors.get("gold", "#c9a13a")
+        muted = colors.get("muted", "#a8b3bf")
+        text_color = colors.get("text", "#e8edf2")
+        crown_color = gold
+        defense_color = "#7fd694"
+        interim_color = "#5aa9e6"
+        vacate_color = "#e8837a"
+        reign_palette = ["#3f7bd6", "#7a4fb0", "#2f9e6f", "#c77d33", "#b0466a", "#4a8f9e", "#8a6d3b", "#5a6f8a"]
+        crown_actions = ("Champion Crowned", "Inaugural Champion", "Inaugural Champion Appointed")
+
+        # --- assemble every division lineage that has any history ----------
+        histories = [(self.player_company_name, getattr(self, "belt_history", {}), getattr(self, "belts", {}))]
+        histories.extend((promo.name, promo.belt_history or {}, promo.belts or {}) for promo in self.promotions)
+        lineages = []
+        for company, history, belts in histories:
+            for division, entries in (history or {}).items():
+                if not entries:
+                    continue
+                reigns = self.title_reign_history(entries)
+                gender = division.split(" ", 1)[0] if " " in division else "Male"
+                weight = division.split(" ", 1)[1] if " " in division else division
+                holder = (belts or {}).get(division, "")
+                ongoing = reigns[-1] if reigns and reigns[-1].get("end_month") is None else None
+                current_holder = holder or (ongoing.get("fighter") if ongoing else "")
+                current_since = ongoing.get("start_month") if ongoing else None
+                lineages.append({
+                    "company": company, "division": division, "gender": gender, "weight": weight,
+                    "entries": entries, "reigns": reigns, "holder": current_holder,
+                    "current_since": current_since, "changes": len(reigns),
+                    "defenses": sum(r["defenses"] for r in reigns),
+                })
+        lineages.sort(key=lambda item: (item["company"], item["gender"], item["weight"]))
+
+        # --- filter bar ----------------------------------------------------
+        controls = ttk.Frame(parent, style="Inset.TFrame")
+        controls.pack(fill="x", padx=6, pady=6)
+        title_company = tk.StringVar(value="All Promotions")
+        gender_filter = tk.StringVar(value="All")
+        division_filter = tk.StringVar(value="All")
+        current_only = tk.BooleanVar(value=False)
+        search_var = tk.StringVar(value="")
+        company_values = ["All Promotions"] + sorted({item["company"] for item in lineages})
+        weight_values = ["All"] + [w for w in WEIGHTS if any(item["weight"] == w for item in lineages)]
+        ttk.Label(controls, text="Promotion", style="Inset.TLabel").pack(side="left", padx=(6, 3))
+        ttk.Combobox(controls, textvariable=title_company, values=company_values, state="readonly", width=26).pack(side="left", padx=(0, 8))
+        ttk.Label(controls, text="Gender", style="Inset.TLabel").pack(side="left", padx=(4, 3))
+        ttk.Combobox(controls, textvariable=gender_filter, values=["All", "Male", "Female"], state="readonly", width=9).pack(side="left", padx=(0, 8))
+        ttk.Label(controls, text="Division", style="Inset.TLabel").pack(side="left", padx=(4, 3))
+        ttk.Combobox(controls, textvariable=division_filter, values=weight_values, state="readonly", width=16).pack(side="left", padx=(0, 8))
+        ttk.Label(controls, text="Fighter", style="Inset.TLabel").pack(side="left", padx=(4, 3))
+        ttk.Entry(controls, textvariable=search_var, width=18).pack(side="left", padx=(0, 8))
+        ttk.Checkbutton(controls, text="Crowned only", variable=current_only).pack(side="left", padx=(2, 6))
+
+        body = ttk.Panedwindow(parent, orient="horizontal")
+        body.pack(fill="both", expand=True, padx=6, pady=(0, 6))
+
+        left = ttk.Frame(body, style="Chrome.TFrame")
+        right = ttk.Frame(body, style="Chrome.TFrame")
+        body.add(left, weight=2)
+        body.add(right, weight=3)
+
+        lineage_tree = ttk.Treeview(left, columns=("title", "champion", "reigns", "defenses"), show="headings", selectmode="browse")
+        for column, heading, width, anchor in (
+            ("title", "Championship", 240, "w"), ("champion", "Current Champion", 165, "w"),
+            ("reigns", "Reigns", 60, "center"), ("defenses", "Def.", 52, "center"),
+        ):
+            lineage_tree.heading(column, text=heading)
+            lineage_tree.column(column, width=width, anchor=anchor)
+        lineage_tree.tag_configure("vacant", foreground=vacate_color)
+        self.make_tree_sortable(lineage_tree)
+        lineage_scroll = ttk.Scrollbar(left, orient="vertical", command=lineage_tree.yview)
+        lineage_tree.configure(yscrollcommand=lineage_scroll.set)
+        lineage_scroll.pack(side="right", fill="y")
+        lineage_tree.pack(side="left", fill="both", expand=True)
+
+        # --- detail pane: header, timeline canvas, chronological table -----
+        header_var = tk.StringVar(value="Select a championship to view its full lineage.")
+        header_label = tk.Label(right, textvariable=header_var, bg=colors.get("panel_dark", "#2d3540"),
+                                fg=text_color, font=("Tahoma", 11, "bold"), anchor="w", justify="left", padx=10, pady=8)
+        header_label.pack(fill="x", padx=4, pady=(0, 4))
+        subtitle_var = tk.StringVar(value="")
+        tk.Label(right, textvariable=subtitle_var, bg=colors.get("chrome", "#0b0d10"), fg=muted,
+                 font=("Tahoma", 8), anchor="w", justify="left", padx=10).pack(fill="x", padx=4)
+
+        timeline_canvas = tk.Canvas(right, height=94, bg=colors.get("tree", "#11161c"), highlightthickness=1,
+                                    highlightbackground=colors.get("line", "#384553"))
+        timeline_canvas.pack(fill="x", padx=4, pady=6)
+
+        legend = tk.Frame(right, bg=colors.get("chrome", "#0b0d10"))
+        legend.pack(fill="x", padx=8, pady=(0, 2))
+        for swatch, label_text in ((crown_color, "Crown / reign"), (defense_color, "Defence"),
+                                   (interim_color, "Interim"), (vacate_color, "Vacated")):
+            tk.Label(legend, text="■", bg=colors.get("chrome", "#0b0d10"), fg=swatch, font=("Tahoma", 9)).pack(side="left", padx=(6, 1))
+            tk.Label(legend, text=label_text, bg=colors.get("chrome", "#0b0d10"), fg=text_color, font=("Tahoma", 8)).pack(side="left", padx=(0, 4))
+
+        detail_tree = ttk.Treeview(right, columns=("date", "action", "fighter", "reign", "note"), show="headings")
+        for column, heading, width, anchor in (
+            ("date", "Date", 110, "center"), ("action", "Event", 150, "w"), ("fighter", "Fighter", 175, "w"),
+            ("reign", "Reign", 90, "center"), ("note", "Context", 320, "w"),
+        ):
+            detail_tree.heading(column, text=heading)
+            detail_tree.column(column, width=width, anchor=anchor)
+        detail_tree.tag_configure("crown", foreground=crown_color)
+        detail_tree.tag_configure("defense", foreground=defense_color)
+        detail_tree.tag_configure("interim", foreground=interim_color)
+        detail_tree.tag_configure("vacate", foreground=vacate_color)
+        detail_scroll = ttk.Scrollbar(right, orient="vertical", command=detail_tree.yview)
+        detail_tree.configure(yscrollcommand=detail_scroll.set)
+        detail_scroll.pack(side="right", fill="y")
+        detail_tree.pack(side="left", fill="both", expand=True, padx=(4, 0), pady=(2, 4))
+
+        state = {"lineage_by_row": {}, "selected": None}
+
+        def action_tag(action):
+            if action in crown_actions:
+                return "crown"
+            if "Defense" in action or "Defence" in action:
+                return "defense"
+            if "Interim" in action:
+                return "interim"
+            if action in ("Vacated", "Interim Vacated", "Division Closed", "Interim Belt Cleared"):
+                return "vacate"
+            return ""
+
+        def draw_timeline(lineage):
+            canvas = timeline_canvas
+            canvas.delete("all")
+            width = int(canvas.winfo_width() or 0) or 640
+            height = int(canvas.winfo_height() or 0) or 94
+            if not lineage:
+                canvas.create_text(width // 2, height // 2, text="No reign data", fill=muted, font=("Tahoma", 9))
+                return
+            reigns = lineage["reigns"]
+            if not reigns:
+                canvas.create_text(width // 2, height // 2, text="No completed reigns yet", fill=muted, font=("Tahoma", 9))
+                return
+            now = int(getattr(self, "month", 1) or 1)
+            spans = []
+            for reign in reigns:
+                start = reign.get("start_month") or now
+                end = reign.get("end_month")
+                length = max(1, (end if end is not None else now) - start)
+                spans.append(length)
+            total = sum(spans) or 1
+            pad = 8
+            usable = max(1, width - pad * 2)
+            bar_top, bar_bottom = 30, height - 26
+            x = pad
+            for index, (reign, length) in enumerate(zip(reigns, spans)):
+                seg = max(10, usable * length / total)
+                ongoing = reign.get("end_month") is None
+                fill = reign_palette[index % len(reign_palette)]
+                canvas.create_rectangle(x, bar_top, x + seg, bar_bottom, fill=fill, width=0)
+                if ongoing:
+                    canvas.create_rectangle(x + 1, bar_top + 1, x + seg - 1, bar_bottom - 1, outline=gold, width=2)
+                # defence tick marks
+                defenses = reign.get("defenses", 0)
+                for d in range(min(defenses, 12)):
+                    tick_x = x + seg * (d + 1) / (min(defenses, 12) + 1)
+                    canvas.create_line(tick_x, bar_bottom - 6, tick_x, bar_bottom, fill="#ffffff", width=1)
+                surname = (reign.get("fighter", "") or "").split(" ")[-1]
+                if seg > 46:
+                    canvas.create_text(x + seg / 2, (bar_top + bar_bottom) / 2, text=surname[:12],
+                                       fill="#ffffff", font=("Tahoma", 8, "bold"))
+                    canvas.create_text(x + seg / 2, bar_bottom + 10, text=self.format_month_span(length),
+                                       fill=muted, font=("Tahoma", 7))
+                x += seg
+            span_label = f"{self.format_game_date_text(reigns[0].get('start_date', ''))}  —  present"
+            canvas.create_text(pad, 12, text=f"{len(reigns)} reign(s)   |   {span_label}", anchor="w",
+                               fill=text_color, font=("Tahoma", 8, "bold"))
+
+        def show_lineage(lineage):
+            state["selected"] = lineage
+            detail_tree.delete(*detail_tree.get_children())
+            if not lineage:
+                header_var.set("Select a championship to view its full lineage.")
+                subtitle_var.set("")
+                draw_timeline(None)
+                return
+            holder = lineage["holder"]
+            now = int(getattr(self, "month", 1) or 1)
+            if holder and lineage["current_since"]:
+                reign_len = self.format_month_span(now - lineage["current_since"])
+                header_var.set(f"{lineage['company']} — {lineage['division']} Championship   ·   {holder}")
+                subtitle_var.set(f"Current reign: {reign_len}   |   {lineage['changes']} title change(s)   |   {lineage['defenses']} total defence(s)")
+            else:
+                header_var.set(f"{lineage['company']} — {lineage['division']} Championship   ·   VACANT")
+                subtitle_var.set(f"{lineage['changes']} title change(s)   |   {lineage['defenses']} total defence(s)")
+            draw_timeline(lineage)
+            reign_lookup = {}
+            for reign in lineage["reigns"]:
+                reign_lookup[(reign["fighter"], reign["start_date"])] = reign
+            for entry in lineage["entries"]:
+                action = str(entry.get("action", ""))
+                reign_label = ""
+                if action in crown_actions:
+                    reign = reign_lookup.get((entry.get("fighter", ""), entry.get("date", "")))
+                    if reign:
+                        end = reign.get("end_month")
+                        reign_label = self.format_month_span((end if end is not None else now) - (reign.get("start_month") or now))
+                        if end is None:
+                            reign_label += " (current)"
+                detail_tree.insert("", "end", tags=(action_tag(action),), values=(
+                    self.format_game_date_text(entry.get("date", "")), action,
+                    entry.get("fighter", ""), reign_label, entry.get("note", ""),
+                ))
+
+        def refresh_lineage_list(*_args):
+            lineage_tree.delete(*lineage_tree.get_children())
+            state["lineage_by_row"] = {}
+            query = search_var.get().strip().lower()
+            for index, lineage in enumerate(lineages):
+                if title_company.get() != "All Promotions" and lineage["company"] != title_company.get():
+                    continue
+                if gender_filter.get() != "All" and lineage["gender"] != gender_filter.get():
+                    continue
+                if division_filter.get() != "All" and lineage["weight"] != division_filter.get():
+                    continue
+                if current_only.get() and not lineage["holder"]:
+                    continue
+                if query:
+                    haystack = f"{lineage['company']} {lineage['division']} {lineage['holder']}".lower()
+                    if query not in haystack and not any(query in (r.get("fighter", "") or "").lower() for r in lineage["reigns"]):
+                        continue
+                row_id = f"lineage:{index}"
+                state["lineage_by_row"][row_id] = lineage
+                champion = lineage["holder"] or "— vacant —"
+                lineage_tree.insert("", "end", iid=row_id, tags=() if lineage["holder"] else ("vacant",), values=(
+                    f"{lineage['company']} · {lineage['division']}", champion,
+                    lineage["changes"], lineage["defenses"],
+                ))
+            children = lineage_tree.get_children()
+            if children:
+                lineage_tree.selection_set(children[0])
+                lineage_tree.focus(children[0])
+                show_lineage(state["lineage_by_row"].get(children[0]))
+            else:
+                show_lineage(None)
+
+        def on_select(_event=None):
+            selected = lineage_tree.selection()
+            if selected:
+                show_lineage(state["lineage_by_row"].get(selected[0]))
+
+        def open_selected_fighter(_event=None):
+            selected = detail_tree.selection()
+            if not selected:
+                return
+            name = detail_tree.item(selected[0], "values")[2]
+            fighter = self.find_fighter_anywhere(name) if name else None
+            if fighter:
+                self.open_fighter_profile_window(fighter)
+
+        for var in (title_company, gender_filter, division_filter, search_var):
+            var.trace_add("write", refresh_lineage_list)
+        current_only.trace_add("write", refresh_lineage_list)
+        lineage_tree.bind("<<TreeviewSelect>>", on_select)
+        detail_tree.bind("<Double-1>", open_selected_fighter)
+        timeline_canvas.bind("<Configure>", lambda _event: draw_timeline(state["selected"]))
+        refresh_lineage_list()
 
     def ensure_historical_records(self):
         records = getattr(self, "historical_records", None) or {}
