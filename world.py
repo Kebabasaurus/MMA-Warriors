@@ -8904,16 +8904,22 @@ class WorldMixin:
             ("Female", weight) for weight in WEIGHTS
             if market_counts.get(("Female", weight), 0) < 8
         }
+        # Bout count used to fully dominate this ranking below the boolean
+        # tiers -- potential/overall/wins/momentum only ever broke an exact
+        # tie, which real bout counts almost never produce. Blending them into
+        # one score lets a genuinely better prospect edge out a slightly more
+        # active one, without letting quality override activity outright: the
+        # bonus tops out well under a single bout's worth of ranking weight.
         eligible.sort(
             key=lambda fighter: (
                 (fighter.gender, fighter.weight) in thin_female_divisions,
                 (fighter.record_w + fighter.record_l + fighter.record_d >= 24),
                 fighter.age >= 26,
-                fighter.record_w + fighter.record_l + fighter.record_d,
-                fighter.potential,
-                fighter.overall,
-                fighter.record_w,
-                fighter.momentum,
+                (fighter.record_w + fighter.record_l + fighter.record_d)
+                + fighter.potential * 0.15
+                + fighter.overall * 0.10
+                + fighter.record_w * 0.2
+                + fighter.momentum * 0.4,
             ),
             reverse=True,
         )
