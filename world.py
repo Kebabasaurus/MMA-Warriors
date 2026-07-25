@@ -7799,6 +7799,30 @@ class WorldMixin:
         # longer a credible booking. The division waits for a fresh contender.
         return gap <= 14 and (meetings >= 7 or (meetings >= 5 and record_gap >= 0.28))
 
+    def ai_primary_title_holder_name(self, promo, gender, weight):
+        """Return a legitimate current holder, independent of this week's readiness.
+
+        AI matchmaking receives a reduced ``ready`` pool. Looking for a champion
+        only inside that pool made a fatigued or injured holder indistinguishable
+        from a genuinely vacant belt and allowed contenders to steal the title
+        without ever fighting the champion.
+        """
+        key = self.belt_key(gender, weight)
+        holder_name = str((getattr(promo, "belts", {}) or {}).get(key, "") or "")
+        if not holder_name:
+            return ""
+        holder = next((fighter for fighter in promo.roster if fighter.name == holder_name), None)
+        if not holder or holder.retired or holder.gender != gender or holder.weight != weight:
+            return ""
+        return holder_name
+
+    def ai_divisional_title_bout_is_valid(self, promo, a, b):
+        """A non-vacant AI belt can only be contested by its recognised holder."""
+        if a.gender != b.gender or a.weight != b.weight:
+            return False
+        holder_name = self.ai_primary_title_holder_name(promo, a.gender, a.weight)
+        return not holder_name or holder_name in {a.name, b.name}
+
     def build_ai_card(self, promo, ready, target):
         """Matchmake a believable AI card: title fights for champions vs top contenders,
         grudge matches for rivalries, ranking-based pairings for the rest, and a
@@ -7875,11 +7899,13 @@ class WorldMixin:
         for gender, weight in divisions:
             if titles >= max_titles or len(fights) >= target:
                 break
-            champ_name = belts.get(self.belt_key(gender, weight))
+            # The holder is resolved from the full promotion roster, not the
+            # currently-ready pool. An unavailable champion keeps their belt.
+            champ_name = self.ai_primary_title_holder_name(promo, gender, weight)
             pool = pool_for(gender, weight)
             champ = next((f for f in pool if f.name == champ_name), None)
             key = self.belt_key(gender, weight)
-            if not champ and (promo.belt_history or {}).get(key) and len(pool) >= 2:
+            if not champ_name and (promo.belt_history or {}).get(key) and len(pool) >= 2:
                 pair = next(
                     (
                         (a, b)
@@ -8041,7 +8067,7 @@ class WorldMixin:
         # recognized champion's own division is a championship fight.
         for fight in fights:
             a, b = fight["a"], fight["b"]
-            holder = belts.get(self.belt_key(a.gender, a.weight), "")
+            holder = self.ai_primary_title_holder_name(promo, a.gender, a.weight)
             if a.gender == b.gender and a.weight == b.weight and holder in {a.name, b.name}:
                 if not fight.get("title"):
                     fight["title"] = True
@@ -8194,6 +8220,15 @@ class WorldMixin:
         for entry in reversed(fights):
             a, b = entry["a"], entry["b"]
             is_title, is_main, is_grudge = entry["title"], entry["main"], entry["grudge"]
+            # Defensive validation for migrated cards or future matchmaker
+            # changes: a living champion cannot lose their belt from ringside.
+            if is_title and not self.ai_divisional_title_bout_is_valid(promo, a, b):
+                is_title = False
+                entry["title"] = False
+                entry["booking_reason"] = (
+                    f"{entry.get('booking_reason', 'AI matchmaking')}; "
+                    "title status removed because the reigning champion was not booked"
+                )
             self.apply_ai_camp(a, promo)
             self.apply_ai_camp(b, promo)
             self.perform_weigh_in(a, title_fight=is_title, persist=True)

@@ -84,6 +84,28 @@ def main():
         )
         ai_holders = {name for name in (ai_title_probe.belts or {}).values() if name}
         ai_ready = [fighter for fighter in ai_title_probe.roster if not fighter.retired]
+        unavailable_title_holder = next(
+            fighter for fighter in ai_ready
+            if (ai_title_probe.belts or {}).get(app.belt_key(fighter.gender, fighter.weight)) == fighter.name
+            and sum(1 for other in ai_ready if other is not fighter and other.gender == fighter.gender and other.weight == fighter.weight) >= 2
+        )
+        unavailable_division = [
+            fighter for fighter in ai_ready
+            if fighter is not unavailable_title_holder
+            and fighter.gender == unavailable_title_holder.gender
+            and fighter.weight == unavailable_title_holder.weight
+        ]
+        assert_true(
+            not app.ai_divisional_title_bout_is_valid(
+                ai_title_probe, unavailable_division[0], unavailable_division[1]
+            ),
+            "AI title validation accepted a bout that excluded a live reigning champion",
+        )
+        unavailable_card = app.build_ai_card(ai_title_probe, unavailable_division, 4)
+        assert_true(
+            not any(fight.get("title") for fight in unavailable_card),
+            "AI treated an unavailable reigning champion as a vacant belt",
+        )
         random_state = random.getstate()
         champion_appearances = 0
         for seed in range(20):
