@@ -219,8 +219,17 @@ class FightEmpireApp(
 
         self.configure_style()
         self.build_layout()
+        self.root.protocol("WM_DELETE_WINDOW", self.confirm_exit_application)
         self.root.bind_all("<space>", self.handle_spectator_space_stop, add="+")
         self.refresh_all(full=True)
+
+    def confirm_exit_application(self):
+        if messagebox.askyesno(
+            "Exit MMA Warriors?",
+            "Are you sure you want to close MMA Warriors?\n\nRemember to save your game before exiting.",
+            parent=self.root,
+        ):
+            self.root.destroy()
 
     def handle_spectator_space_stop(self, _event=None):
         """Space is an immediate, keyboard-friendly stop control for observer fast-forward."""

@@ -1278,6 +1278,55 @@ class ViewMixin:
         report = self.scouting_report_for(fighter)
         return self.scouting_report_is_current_full(report)
 
+    def fighter_current_championships(self, fighter):
+        titles = []
+        name = getattr(fighter, "name", "")
+
+        def add(company, division, kind="Champion"):
+            label = f"{company} {division} {kind}".strip()
+            if label and label not in titles:
+                titles.append(label)
+
+        for key, holder in self.normalize_belts(getattr(self, "belts", {})).items():
+            if holder == name:
+                add(self.player_company_name, key)
+        for key, holder in self.normalize_belts(getattr(self, "interim_belts", {})).items():
+            if holder == name:
+                add(self.player_company_name, key, "Interim Champion")
+        for title, belt in self.normalize_special_belts(getattr(self, "special_belts", {})).items():
+            if belt.get("holder") == name or title in (getattr(fighter, "special_titles", None) or []):
+                add(self.player_company_name, title)
+        for promo in getattr(self, "promotions", []):
+            for key, holder in self.normalize_belts(getattr(promo, "belts", {})).items():
+                if holder == name:
+                    add(promo.name, key)
+            for key, holder in self.normalize_belts(getattr(promo, "interim_belts", {})).items():
+                if holder == name:
+                    add(promo.name, key, "Interim Champion")
+        for sport, world in getattr(self, "combat_sport_worlds", {}).items():
+            state = self.ensure_combat_sport_circuit_state(sport, world, getattr(fighter, "sport_employer", "") or world.get("promotion", sport), getattr(fighter, "sport_employer", "") == self.player_company_name)
+            for key, holder in state.get("titles", {}).items():
+                if holder == name:
+                    add(state.get("promotion", world.get("promotion", sport)), self.combat_sport_division_label(key))
+        if getattr(fighter, "champion", False) and not titles:
+            add("", self.fighter_display_division(fighter))
+        if getattr(fighter, "interim_champion", False) and not any("Interim" in item for item in titles):
+            add("", self.fighter_display_division(fighter), "Interim Champion")
+        return titles
+
+    def championship_profile_badge(self, parent, titles):
+        panel = tk.Frame(parent, bg="#4b3512", highlightthickness=1, highlightbackground="#d9ad45")
+        panel.pack(fill="x", padx=8, pady=(0, 8))
+        canvas = tk.Canvas(panel, width=44, height=34, bg="#4b3512", highlightthickness=0)
+        canvas.pack(side="left", padx=(7, 4), pady=6)
+        canvas.create_polygon(4, 14, 15, 7, 29, 7, 40, 14, 34, 27, 10, 27, fill="#d9ad45", outline="#fff0a5")
+        canvas.create_oval(16, 10, 28, 24, fill="#2a2211", outline="#fff0a5")
+        canvas.create_text(22, 17, text="C", fill="#fff0a5", font=("Impact", 10))
+        copy = tk.Frame(panel, bg="#4b3512")
+        copy.pack(side="left", fill="x", expand=True, pady=4)
+        tk.Label(copy, text="CURRENT CHAMPION", bg="#4b3512", fg="#ffe08a", font=("Impact", 10), anchor="w").pack(fill="x")
+        tk.Label(copy, text=" | ".join(titles[:3]), bg="#4b3512", fg="#ffffff", font=("Tahoma", 8, "bold"), justify="left", anchor="w", wraplength=118).pack(fill="x", pady=(1, 2))
+
     def open_fighter_profile_window(self, fighter):
         report = self.scouting_report_for(fighter)
         self.ensure_detailed_skills(fighter)
@@ -1323,6 +1372,9 @@ class ViewMixin:
         self.profile_badge(badge_row, "SPORT RTG" if sport else "OVR", overall_badge if stats_visible else "SCOUT")
         self.profile_badge(badge_row, "ELO", fighter.elo_rating if stats_visible else "SCOUT")
         self.profile_badge(badge_row, "P4P", world_rank)
+        current_titles = self.fighter_current_championships(fighter)
+        if current_titles:
+            self.championship_profile_badge(left, current_titles)
 
         identity = tk.Frame(left, bg=self.colors["panel"])
         identity.pack(fill="x", padx=8, pady=(0, 8))
@@ -1511,9 +1563,14 @@ class ViewMixin:
         self.profile_section_label(business, "Contract")
         contract = tk.Frame(business, bg=self.colors["panel"])
         contract.pack(fill="x", padx=4, pady=(0, 8))
-        business_rows = [
-            ("Type", fighter.contract_type), ("Months", fighter.contract_months), ("Purse", f"${fighter.purse:,}/fight"),
-            ("Comeback Commitment", f"{getattr(fighter, 'contract_fights_completed', 0)}/{getattr(fighter, 'guaranteed_fights', 0)} fights" if getattr(fighter, "comeback_contract", False) else "None"),
+        contract_rows = [("Type", fighter.contract_type), ("Purse", f"${fighter.purse:,}/fight")]
+        if getattr(fighter, "comeback_contract", False):
+            contract_rows.append(("Comeback Commitment", f"{getattr(fighter, 'contract_fights_completed', 0)}/{getattr(fighter, 'guaranteed_fights', 0)} fights"))
+        elif getattr(fighter, "retirement_pending", False):
+            contract_rows.append(("Retirement Status", "One final bout due - or renew comeback"))
+        else:
+            contract_rows.append(("Months", fighter.contract_months))
+        business_rows = contract_rows + [
             ("Star Quality", fighter.star_quality), ("Charisma", fighter.charisma), ("Media", fighter.media_presence),
             ("Sponsor", fighter.sponsor_appeal), ("Professionalism", fighter.professionalism), ("Injury Risk", fighter.injury_proneness),
             ("Major Injury", self.serious_injury_status(fighter)),
@@ -1801,6 +1858,13 @@ class ViewMixin:
             ttk.Button(
                 footer, text="Offer Comeback Deal", style="Accent.TButton",
                 command=lambda: self.offer_comeback_deal(fighter, window),
+            ).pack(side="left", padx=4)
+        elif (self.player_owns_fighter(fighter)
+              and getattr(fighter, "retirement_pending", False)
+              and getattr(fighter, "retirement_fight_due_after_month", 0) > 0):
+            ttk.Button(
+                footer, text="Renew Comeback Deal", style="Accent.TButton",
+                command=lambda: self.open_contract_negotiation(fighter, existing=True, comeback=True),
             ).pack(side="left", padx=4)
         elif self.player_owns_fighter(fighter):
             ttk.Button(
@@ -3112,6 +3176,8 @@ class ViewMixin:
         self.regional_prospect_detail_var.set(
             "Select a prospect to see exactly why they qualify or what remains. Green = eligible, gold = nearly eligible, red = medical/administrative hold."
         )
+        if hasattr(self, "regional_prospect_negotiate_button"):
+            self.regional_prospect_negotiate_button.config(state="disabled")
 
     def selected_regional_prospect(self):
         selected = self.regional_prospect_tree.selection() if hasattr(self, "regional_prospect_tree") else ()
@@ -3120,6 +3186,8 @@ class ViewMixin:
     def show_selected_regional_prospect(self, _event=None):
         selected = self.selected_regional_prospect()
         if not selected:
+            if hasattr(self, "regional_prospect_negotiate_button"):
+                self.regional_prospect_negotiate_button.config(state="disabled")
             return
         promo, fighter, assessment = selected
         report = self.scouting_report_for(fighter)
@@ -3135,6 +3203,8 @@ class ViewMixin:
             f"Record {fighter.record}; {assessment['bouts']} bouts; win rate {assessment['win_rate']:.0%}; "
             f"momentum {fighter.momentum:+d}; popularity {fighter.popularity}; scouting intel: {intel}. {rotation}"
         )
+        if hasattr(self, "regional_prospect_negotiate_button"):
+            self.regional_prospect_negotiate_button.config(state="normal" if assessment["eligible"] else "disabled")
 
     def open_selected_regional_prospect(self):
         selected = self.selected_regional_prospect()
@@ -3158,9 +3228,12 @@ class ViewMixin:
         if not selected:
             self.regional_prospect_detail_var.set("Select a regional fighter to approach.")
             return
-        promo, fighter, _assessment = selected
+        promo, fighter, assessment = selected
         if getattr(self, "spectator_mode", False):
             self.regional_prospect_detail_var.set("Take control of a promotion before negotiating with fighters.")
+            return
+        if not assessment["eligible"]:
+            self.regional_prospect_detail_var.set(f"{fighter.name} is not eligible to sign yet: {assessment['explanation']}.")
             return
         if fighter not in promo.roster:
             self.regional_prospect_detail_var.set(f"{fighter.name} has already left {promo.name}. The list has been refreshed.")
@@ -3257,6 +3330,115 @@ class ViewMixin:
         if not fighter:
             return
         self.open_fighter_profile_window(fighter)
+
+    def compare_selected_world_fighters(self):
+        selected = list(self.world_fighter_tree.selection()) if hasattr(self, "world_fighter_tree") else []
+        fighters = []
+        seen = set()
+        for row_id in selected:
+            company, fighter = self._world_fighter_search_rows.get(row_id, ("", None))
+            if not fighter or id(fighter) in seen:
+                continue
+            fighters.append((company, fighter))
+            seen.add(id(fighter))
+            if len(fighters) == 2:
+                break
+        if len(fighters) < 2:
+            messagebox.showinfo("Compare Fighters", "Select two fighters in Fighter Search, then choose Compare Selected.")
+            return
+        self.open_compare_fighters_window(fighters[0], fighters[1])
+
+    def open_compare_fighters_window(self, left_pick, right_pick):
+        left_company, left_fighter = left_pick
+        right_company, right_fighter = right_pick
+        window = tk.Toplevel(self.root)
+        window.title(f"Compare Fighters - {left_fighter.name} vs {right_fighter.name}")
+        width = min(1180, max(980, window.winfo_screenwidth() - 180))
+        height = min(760, max(620, window.winfo_screenheight() - 180))
+        window.geometry(f"{width}x{height}+{max(0, (window.winfo_screenwidth() - width) // 2)}+{max(0, (window.winfo_screenheight() - height) // 3)}")
+        window.configure(bg=self.colors["chrome"])
+        self.screen_header(window, "COMPARE FIGHTERS", f"{left_fighter.name} vs {right_fighter.name}")
+
+        header = ttk.Frame(window, style="Chrome.TFrame")
+        header.pack(fill="x", padx=10, pady=(0, 6))
+        for company, fighter, side in ((left_company, left_fighter, "left"), (right_company, right_fighter, "right")):
+            frame = ttk.Frame(header, style="Panel.TFrame")
+            frame.pack(side=side, fill="both", expand=True, padx=(0, 5) if side == "left" else (5, 0))
+            tk.Label(frame, text=fighter.name.upper(), bg=self.colors["panel"], fg=self.colors["gold"], font=("Impact", 18), anchor="w").pack(fill="x", padx=10, pady=(8, 1))
+            titles = self.fighter_current_championships(fighter)
+            title_line = f" | {titles[0]}" if titles else ""
+            rank_line = f"{company} | {fighter.gender} {self.fighter_display_division(fighter)} | {self.profile_rank_text(fighter, self.rank_label_for_fighter(fighter, company), 'Company')} | {self.profile_rank_text(fighter, self.rank_label_for_fighter(fighter, company, world=True), 'World')}{title_line}"
+            tk.Label(frame, text=rank_line, bg=self.colors["panel"], fg=self.colors["text"], font=("Tahoma", 9, "bold"), anchor="w", wraplength=520).pack(fill="x", padx=10, pady=(0, 8))
+
+        body = ttk.Frame(window, style="Chrome.TFrame")
+        body.pack(fill="both", expand=True, padx=10, pady=(0, 8))
+        columns = ("category", "left", "edge", "right")
+        tree = ttk.Treeview(body, columns=columns, show="headings", selectmode="browse")
+        for column, label, width_col, anchor in (
+            ("category", "Measure", 205, "w"),
+            ("left", left_fighter.name, 250, "center"),
+            ("edge", "Edge", 110, "center"),
+            ("right", right_fighter.name, 250, "center"),
+        ):
+            tree.heading(column, text=label)
+            tree.column(column, width=width_col, anchor=anchor)
+        tree.tag_configure("left_edge", foreground="#a8f0bd")
+        tree.tag_configure("right_edge", foreground="#ffd18a")
+        tree.tag_configure("even", foreground=self.colors["muted"])
+        tree.pack(side="left", fill="both", expand=True)
+        scroll = ttk.Scrollbar(body, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=scroll.set)
+        scroll.pack(side="right", fill="y")
+
+        def visible_rating(fighter, company):
+            return self.world_fighter_search_stat_visible(fighter, company)
+
+        def safe_int(value, default=0):
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                return default
+
+        left_visible = visible_rating(left_fighter, left_company)
+        right_visible = visible_rating(right_fighter, right_company)
+        rows = [
+            ("Record", left_fighter.record, None, right_fighter.record),
+            ("Universe Record", self.world_fighter_universe_record(left_fighter), None, self.world_fighter_universe_record(right_fighter)),
+            ("Last 5", self.world_fighter_last_five(left_fighter), None, self.world_fighter_last_five(right_fighter)),
+            ("Age", left_fighter.age, "lower", right_fighter.age),
+            ("Overall", left_fighter.overall if left_visible else "Hidden", "higher" if left_visible and right_visible else None, right_fighter.overall if right_visible else "Hidden"),
+            ("Potential", left_fighter.potential if left_visible else "Hidden", "higher" if left_visible and right_visible else None, right_fighter.potential if right_visible else "Hidden"),
+            ("ELO", getattr(left_fighter, "elo_rating", 1500) if left_visible else "Hidden", "higher" if left_visible and right_visible else None, getattr(right_fighter, "elo_rating", 1500) if right_visible else "Hidden"),
+            ("Momentum", f"{left_fighter.momentum:+d}", "higher", f"{right_fighter.momentum:+d}"),
+            ("Popularity", left_fighter.popularity, "higher", right_fighter.popularity),
+            ("Star Quality", left_fighter.star_quality, "higher", right_fighter.star_quality),
+            ("Morale", left_fighter.morale, "higher", right_fighter.morale),
+            ("Fatigue", left_fighter.fatigue, "lower", right_fighter.fatigue),
+            ("Title Wins", left_fighter.title_wins, "higher", right_fighter.title_wins),
+            ("Title Defenses", left_fighter.title_defenses, "higher", right_fighter.title_defenses),
+            ("Style", left_fighter.style, None, right_fighter.style),
+            ("Stance", left_fighter.stance, None, right_fighter.stance),
+            ("Trait", left_fighter.trait, None, right_fighter.trait),
+            ("Camp", left_fighter.camp, None, right_fighter.camp),
+            ("Last Fight", left_fighter.last_fight or "No recorded fight", None, right_fighter.last_fight or "No recorded fight"),
+        ]
+        for label, left_value, compare, right_value in rows:
+            edge = "-"
+            tag = "even"
+            if compare:
+                left_score = safe_int(str(left_value).replace("+", ""))
+                right_score = safe_int(str(right_value).replace("+", ""))
+                if left_score != right_score:
+                    left_wins = left_score > right_score if compare == "higher" else left_score < right_score
+                    edge = left_fighter.name if left_wins else right_fighter.name
+                    tag = "left_edge" if left_wins else "right_edge"
+            tree.insert("", "end", values=(label, left_value, edge, right_value), tags=(tag,))
+
+        footer = ttk.Frame(window, style="Chrome.TFrame")
+        footer.pack(fill="x", padx=10, pady=(0, 10))
+        ttk.Button(footer, text="Open Left Profile", command=lambda: self.open_fighter_profile_window(left_fighter)).pack(side="left", padx=4)
+        ttk.Button(footer, text="Open Right Profile", command=lambda: self.open_fighter_profile_window(right_fighter)).pack(side="left", padx=4)
+        ttk.Button(footer, text="Close", style="Accent.TButton", command=window.destroy).pack(side="right", padx=4)
 
     def show_selected_world_story(self, _event=None):
         if not hasattr(self, "world_news_detail"):
@@ -7068,7 +7250,7 @@ class ViewMixin:
             else:
                 lines.append(
                     f"PREVIOUS COMEBACK COMPLETE: {fighter.name} completed {completed}/{guaranteed} guaranteed fights. "
-                    "A new full-comeback contract adds its guaranteed fights to that career total."
+                    "A new full-comeback contract starts a fresh fight-counted commitment."
                 )
             lines.append("")
         lines.append("FULL COMEBACK: negotiate a multi-fight deal with guaranteed fights; they return as an active roster fighter.")
@@ -7089,6 +7271,39 @@ class ViewMixin:
         ttk.Button(buttons, text="Full Comeback", style="Accent.TButton", command=lambda: choose(False)).pack(side="left", padx=4)
         ttk.Button(buttons, text="One Final Retirement Bout", command=lambda: choose(True)).pack(side="left", padx=4)
         ttk.Button(buttons, text="Cancel", command=window.destroy).pack(side="right", padx=4)
+        return True
+
+    def prompt_comeback_completion(self, fighter):
+        """Offer the next decision once a player-managed comeback is fulfilled."""
+        if (fighter not in self.roster or getattr(fighter, "retired", False)
+                or not getattr(fighter, "retirement_pending", False)
+                or getattr(fighter, "comeback_completion_prompted", False)):
+            return False
+        fighter.comeback_completion_prompted = True
+        window = tk.Toplevel(self.root)
+        window.title("Comeback Commitment Complete")
+        window.geometry("560x250")
+        window.minsize(500, 230)
+        window.configure(bg=self.colors["chrome"])
+        window.transient(self.root)
+        ttk.Label(window, text="COMEBACK COMMITMENT COMPLETE", style="ScreenTitle.TLabel").pack(anchor="w", padx=14, pady=(12, 5))
+        ttk.Label(
+            window,
+            text=(f"{fighter.name} has completed their agreed comeback fights.\n\n"
+                  "Negotiate another fight-counted comeback deal, or leave them in final retirement-bout mode. "
+                  "The renewal option remains on their profile if you decide later."),
+            style="Panel.TLabel", justify="left", wraplength=510,
+        ).pack(fill="x", padx=14, pady=(0, 12))
+        buttons = ttk.Frame(window, style="Inset.TFrame")
+        buttons.pack(fill="x", padx=14, pady=(0, 14))
+
+        def renew():
+            window.destroy()
+            self.open_contract_negotiation(fighter, existing=True, comeback=True)
+
+        ttk.Button(buttons, text="Renew Comeback Deal", style="Accent.TButton", command=renew).pack(side="left", padx=4)
+        ttk.Button(buttons, text="Final Retirement Bout", command=window.destroy).pack(side="left", padx=4)
+        ttk.Button(buttons, text="Decide Later", command=window.destroy).pack(side="right", padx=4)
         return True
 
     def unretire_selected_fighter(self):
@@ -7121,10 +7336,45 @@ class ViewMixin:
         self.refresh_company_division_toggle_button()
         self.rules_text.config(state="normal")
         self.rules_text.delete("1.0", "end")
-        broadcasters = "\n".join(f"- {b['name']} ({b['type']}): reach {b['reach']}, production fee ${b['fee']:,}" for b in self.broadcasters)
-        mixed = "Allowed" if self.rules.get("allow_mixed_gender", False) else "Not allowed"
         self.ensure_rule_defaults()
-        self.rules_text.insert("end", f"Rounds: {self.rules['rounds']} regular / {self.rules['title_rounds']} title\nRound Length: {self.rules['round_length']} minutes\nDrug Testing: {self.rules['drug_testing']}\nJudging Randomness: {self.rules['judging_randomness']}\nMixed-Gender Fights: {mixed}\nActive Fighter Target: {self.rules['active_fighter_target']}\n\nEvent production providers (cost per show):\n{broadcasters}")
+        broadcasters = "\n".join(
+            f"- {b['name']} ({b['type']}): reach {b['reach']}, production fee ${b['fee']:,}"
+            for b in sorted(self.broadcasters, key=lambda item: (item.get("fee", 0), item.get("name", "")))
+        ) or "- No production providers configured"
+        mixed = "Allowed" if self.rules.get("allow_mixed_gender", False) else "Not allowed"
+        closed = set(getattr(self, "closed_divisions", set()))
+        open_divisions = (len(WEIGHTS) * 2) - len(closed)
+        vacant_titles = sum(1 for holder in self.normalize_belts(getattr(self, "belts", {})).values() if not holder)
+        interim_titles = sum(1 for holder in self.normalize_belts(getattr(self, "interim_belts", {})).values() if holder)
+        managed = len(set(getattr(self, "player_managed_divisions", set()) or []))
+        policy_lines = [
+            "FIGHT FORMAT",
+            f"- Regular bouts: {self.rules['rounds']} rounds x {self.rules['round_length']} minutes",
+            f"- Title/main-event bouts: {self.rules['title_rounds']} rounds x {self.rules['round_length']} minutes",
+            f"- Judging randomness: {self.rules['judging_randomness']} (lower is cleaner scoring, higher creates more volatility)",
+            "",
+            "REGULATORY POLICY",
+            f"- Drug testing: {self.rules['drug_testing']}",
+            f"- Mixed-gender fights: {mixed}",
+            f"- Scouting mode: {'On' if self.rules.get('scouting_mode', False) else 'Off'}",
+            f"- Autosave: {'On' if self.rules.get('autosave_enabled', True) else 'Off'} every {self.rules.get('autosave_interval_months', 2)} month(s)",
+            "",
+            "TITLE GOVERNANCE",
+            f"- Open divisions: {open_divisions} / {len(WEIGHTS) * 2}",
+            f"- Player-managed closed divisions: {managed}",
+            f"- Vacant primary titles: {vacant_titles}",
+            f"- Active interim champions: {interim_titles}",
+            "- Vacant player championships must be decided by title fights; AI/regional vacancies stay vacant after a lineage exists.",
+            "",
+            "WORLD / MARKET",
+            f"- Active fighter target: {self.rules['active_fighter_target']}",
+            f"- AI offer-market target: {self.rules.get('ai_offer_market_target', 100)} free agents",
+            f"- Result replay retention: {self.rules.get('global_result_replay_limit', GLOBAL_RESULT_REPLAY_LIMIT)} detailed cards",
+            "",
+            "EVENT PRODUCTION PROVIDERS",
+            broadcasters,
+        ]
+        self.rules_text.insert("end", "\n".join(policy_lines))
         self.rules_text.config(state="disabled")
 
     def create_special_belt(self):
@@ -8675,6 +8925,30 @@ class ViewMixin:
             self.normalize_card_order()
             self.refresh_available()
             self.refresh_card()
+
+    def compare_selected_card_matchup(self):
+        selected = self.card_tree.selection() if hasattr(self, "card_tree") else ()
+        if not selected:
+            return
+        try:
+            fight = self.booked[int(selected[0])]
+        except (IndexError, ValueError):
+            return
+        if fight.get("tournament"):
+            messagebox.showinfo("Compare Matchup", "Tournament rows do not have one fixed matchup yet.")
+            return
+        names = [name for name in fight.get("fighters", []) if name != "TBA"]
+        if len(names) != 2:
+            messagebox.showinfo("Compare Matchup", "Fill the TBA opponent before comparing this matchup.")
+            return
+        fighters = [self.get_fighter(name) for name in names]
+        if any(fighter is None for fighter in fighters):
+            messagebox.showinfo("Compare Matchup", "One of the fighters could not be found.")
+            return
+        if hasattr(self, "open_compare_fighters_window"):
+            self.open_compare_fighters_window((self.player_company_name, fighters[0]), (self.player_company_name, fighters[1]))
+        else:
+            self.open_fighter_profile_window(fighters[0])
 
     def clear_card(self):
         self.booked.clear()

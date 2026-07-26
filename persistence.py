@@ -809,6 +809,7 @@ class PersistenceMixin:
             row.setdefault("legacy_score", 0)
             row.setdefault("closed_divisions", [])
             row.setdefault("special_belts", {})
+            row.setdefault("regional_division_activity", {})
             for fighter in row["roster"]:
                 self.ensure_detailed_skills(fighter)
                 self.ensure_fighter_business_stats(fighter)
@@ -948,13 +949,14 @@ class PersistenceMixin:
         self.awards_history = data.get("awards_history", [])
         self.clean_numbered_fighter_names()
         regional_repairs = self.repair_regional_fighter_tracking()
-        if regional_repairs["origin"] or regional_repairs["activity"]:
+        if regional_repairs["origin"] or regional_repairs["activity"] or regional_repairs.get("division_activity", 0):
             self.change_journal.append({
                 "date": self.format_game_date(),
                 "type": "Migration",
                 "summary": (
                     f"Regional tracking repaired {regional_repairs['origin']} feeder origins and "
-                    f"{regional_repairs['activity']} last-fight activity dates."
+                    f"{regional_repairs['activity']} last-fight activity dates; seeded "
+                    f"{regional_repairs.get('division_activity', 0)} division activity markers."
                 ),
             })
             self.change_journal = self.change_journal[-400:]
@@ -1120,6 +1122,8 @@ class PersistenceMixin:
         fighter.retirement_pending = bool(getattr(fighter, "retirement_pending", False))
         fighter.retirement_requested_month = max(0, getattr(fighter, "retirement_requested_month", 0) or 0)
         fighter.retirement_fight_completed = bool(getattr(fighter, "retirement_fight_completed", False))
+        fighter.retirement_fight_due_after_month = max(0, getattr(fighter, "retirement_fight_due_after_month", 0) or 0)
+        fighter.comeback_completion_prompted = bool(getattr(fighter, "comeback_completion_prompted", False))
         fighter.camp_quality = getattr(fighter, "camp_quality", 0) or self.gym_quality(fighter.camp)
         fighter.camp_joined_month = max(0, getattr(fighter, "camp_joined_month", 0) or 0)
         fighter.camp_history = getattr(fighter, "camp_history", None) or []

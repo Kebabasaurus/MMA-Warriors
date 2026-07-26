@@ -2169,6 +2169,7 @@ class UIMixin:
         })
         self.make_tree_sortable(self.card_tree)
         self.card_tree.pack(fill="both", expand=True, pady=5)
+        self.card_tree.bind("<Double-1>", lambda _event: self.compare_selected_card_matchup())
         footer = ttk.Frame(right)
         footer.pack(fill="x")
         ttk.Button(footer, text="Remove Fight", command=self.remove_matchup).pack(side="left")
@@ -2369,7 +2370,7 @@ class UIMixin:
         table = ttk.Frame(inner, style="Inset.TFrame")
         table.pack(fill="both", expand=True)
         columns = ("name", "company", "sport", "gender", "division", "age", "universe", "career", "form", "last", "overall", "elo")
-        self.world_fighter_tree = ttk.Treeview(table, columns=columns, show="headings")
+        self.world_fighter_tree = ttk.Treeview(table, columns=columns, show="headings", selectmode="extended")
         for column, label, width in (
             ("name", "Fighter", 175), ("company", "Company", 175), ("sport", "Sport", 100), ("gender", "G", 38),
             ("division", "Division", 112), ("age", "Age", 46), ("universe", "Universe W-L-D", 95),
@@ -2387,6 +2388,7 @@ class UIMixin:
         self.world_fighter_tree.bind("<Double-1>", lambda _event: self.open_selected_world_fighter_profile())
         actions = ttk.Frame(self.fighter_search_tab, style="Chrome.TFrame")
         actions.pack(fill="x", pady=(5, 0))
+        ttk.Button(actions, text="Compare Selected", command=self.compare_selected_world_fighters).pack(side="right", padx=4)
         ttk.Button(actions, text="View Fighter", style="Accent.TButton", command=self.open_selected_world_fighter_profile).pack(side="right", padx=4)
 
     def build_regional_prospects_tab(self):
@@ -2470,7 +2472,8 @@ class UIMixin:
         ttk.Button(actions, text="View Profile", command=self.open_selected_regional_prospect).pack(side="left", padx=4)
         ttk.Button(actions, text="Basic Scout", command=lambda: self.scout_selected_regional_prospect("basic")).pack(side="left", padx=4)
         ttk.Button(actions, text="Full Scout", command=lambda: self.scout_selected_regional_prospect("full")).pack(side="left", padx=4)
-        ttk.Button(actions, text="Negotiate", style="Accent.TButton", command=self.negotiate_selected_regional_prospect).pack(side="right", padx=4)
+        self.regional_prospect_negotiate_button = ttk.Button(actions, text="Negotiate", style="Accent.TButton", command=self.negotiate_selected_regional_prospect)
+        self.regional_prospect_negotiate_button.pack(side="right", padx=4)
 
     def build_rankings_tab(self):
         self.screen_header(self.rankings_tab, "RANKINGS", "Division rankings and pound-for-pound rankings")

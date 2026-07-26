@@ -954,6 +954,7 @@ class WorldMixin:
             return
         fighter.retirement_pending = True
         fighter.retirement_fight_completed = False
+        fighter.retirement_fight_due_after_month = 0
         fighter.retirement_requested_month = getattr(fighter, "retirement_requested_month", 0) or self.month
         fighter.retirement_reason = f"{reason}; final fight required."
         # A retirement fight should be bookable soon; avoid permanent limbo from
@@ -965,6 +966,11 @@ class WorldMixin:
 
     def retire_after_final_fight_if_due(self, fighter, company_name=""):
         if not getattr(fighter, "retirement_pending", False) or getattr(fighter, "retired", False):
+            return False
+        # Completing a multi-fight comeback opens a new decision: renew or take
+        # one farewell bout.  Do not consume that farewell bout in the same
+        # result resolution that completed the comeback commitment.
+        if getattr(fighter, "retirement_fight_due_after_month", 0) == self.month:
             return False
         if fighter in getattr(self, "roster", []) and fighter.name in self.scheduled_fighter_names(include_booked=False):
             fighter.retirement_reason = "Retirement deferred until all already-scheduled fights are completed."
@@ -1194,22 +1200,23 @@ class WorldMixin:
         return {"a_rating": a_snapshot, "b_rating": b_snapshot}
 
     def extend_comeback_commitment(self, fighter, additional_fights):
-        """Add a fresh comeback promise without erasing earlier completed fights."""
+        """Start a fresh, fight-counted comeback deal for a returning fighter."""
         additional = max(1, int(additional_fights or 1))
         previous_guaranteed = max(0, int(getattr(fighter, "guaranteed_fights", 0) or 0))
         previous_completed = max(0, int(getattr(fighter, "contract_fights_completed", 0) or 0))
-        commitment_base = max(previous_guaranteed, previous_completed)
-        fighter.guaranteed_fights = commitment_base + additional
-        fighter.contract_fights_completed = min(previous_completed, commitment_base)
+        fighter.guaranteed_fights = additional
+        fighter.contract_fights_completed = 0
         fighter.comeback_contract = True
         fighter.retirement_pending = False
         fighter.retirement_fight_completed = False
+        fighter.retirement_fight_due_after_month = 0
+        fighter.comeback_completion_prompted = False
         return {
             "previous_guaranteed": previous_guaranteed,
             "previous_completed": previous_completed,
             "additional": additional,
-            "total": fighter.guaranteed_fights,
-            "remaining": fighter.guaranteed_fights - fighter.contract_fights_completed,
+            "total": additional,
+            "remaining": additional,
         }
 
     def record_contract_fight_completion(self, fighter):
@@ -1228,7 +1235,15 @@ class WorldMixin:
             self.inbox.append({"subject": "Comeback Commitment", "body": f"{fighter.name} has {remaining} guaranteed comeback fight{'s' if remaining != 1 else ''} remaining on their deal.", "type": "Contracts", "resolved": False})
         else:
             fighter.comeback_contract = False
-            self.inbox.append({"subject": "Comeback Commitment Complete", "body": f"{fighter.name} fulfilled all {guaranteed} guaranteed comeback fights. They may continue their career or retire normally later.", "type": "Contracts", "resolved": False})
+            fighter.retirement_pending = True
+            fighter.retirement_fight_completed = False
+            fighter.retirement_fight_due_after_month = self.month
+            fighter.retirement_requested_month = self.month
+            fighter.retirement_reason = "Comeback commitment complete. Renew for another comeback or book one final retirement bout."
+            fighter.comeback_completion_prompted = False
+            self.inbox.append({"subject": "Comeback Commitment Complete", "body": f"{fighter.name} fulfilled all {guaranteed} guaranteed comeback fights. Renew their comeback deal from the fighter profile, or book their one final retirement bout.", "type": "Contracts", "resolved": False})
+            if hasattr(self, "root") and hasattr(self, "prompt_comeback_completion"):
+                self.root.after(0, lambda: self.prompt_comeback_completion(fighter))
 
     def apply_result(self, winner, loser, fight, method="Decision"):
         self.record_bout_rating_history(winner, loser, "W", "L", fight)
@@ -8649,7 +8664,7 @@ class WorldMixin:
             "fill_ratio": active / max(1, target),
         }
 
-    def regional_roster_vacancies(self, promo, target=70):
+    def regional_roster_vacancies(self, promo, target=100):
         active = sum(1 for fighter in promo.roster if not getattr(fighter, "retired", False))
         return max(0, target - active)
 
@@ -8892,9 +8907,11 @@ class WorldMixin:
         """Repair feeder origin and activity fields in older sealed saves."""
         repaired_origin = 0
         repaired_activity = 0
+        seeded_divisions = 0
         for promo in self.promotions:
             if not getattr(promo, "is_regional_feeder", False):
                 continue
+            promo.regional_division_activity = getattr(promo, "regional_division_activity", None) or {}
             for fighter in promo.roster:
                 if getattr(fighter, "feeder_origin", "") != promo.name:
                     fighter.feeder_origin = promo.name
@@ -8909,7 +8926,16 @@ class WorldMixin:
                 if latest_month > int(getattr(fighter, "last_fight_month", 0) or 0):
                     fighter.last_fight_month = latest_month
                     repaired_activity += 1
-        return {"origin": repaired_origin, "activity": repaired_activity}
+                key = f"{fighter.gender}|{fighter.weight}"
+                if key not in promo.regional_division_activity:
+                    promo.regional_division_activity[key] = int(getattr(fighter, "last_fight_month", 0) or 0)
+                    seeded_divisions += 1
+                else:
+                    promo.regional_division_activity[key] = max(
+                        int(promo.regional_division_activity.get(key, 0) or 0),
+                        int(getattr(fighter, "last_fight_month", 0) or 0),
+                    )
+        return {"origin": repaired_origin, "activity": repaired_activity, "division_activity": seeded_divisions}
 
     def simulate_regional_feeder_month(self, promo):
         """Low-cost developmental circuit: young fighters build records, not profits."""
@@ -8975,14 +9001,34 @@ class WorldMixin:
 
         # A shared bout budget used to drain itself on whichever divisions
         # happened to appear first in roster order, starving every division
-        # further down the list for months or years at a time. Rotate a fresh
-        # random division order each month and hand out one bout per division
-        # per pass, so every division with enough ready fighters gets a fair
-        # shot at the card before any division gets a second bout.
+        # further down the list for months or years at a time. The first fix
+        # rotated a fresh random division order each month; this keeps that
+        # one-bout-per-pass fairness but remembers which divisions have been
+        # served least recently, so a division that misses a capped card moves
+        # to the front of the next one instead of rolling unlucky again.
         max_card_bouts = 15
-        division_order = list(by_division.keys())
-        random.shuffle(division_order)
+        promo.regional_division_activity = getattr(promo, "regional_division_activity", None) or {}
+
+        def division_activity_key(division):
+            return f"{division[0]}|{division[1]}"
+
+        for division, fighters in by_division.items():
+            key = division_activity_key(division)
+            if key not in promo.regional_division_activity:
+                promo.regional_division_activity[key] = max(
+                    (int(getattr(fighter, "last_fight_month", 0) or 0) for fighter in fighters),
+                    default=0,
+                )
+        division_order = sorted(
+            by_division,
+            key=lambda division: (
+                int(promo.regional_division_activity.get(division_activity_key(division), 0) or 0),
+                -len(by_division[division]),
+                random.random(),
+            ),
+        )
         fights = []
+        divisions_booked = set()
         progress = True
         while progress and len(fights) < max_card_bouts:
             progress = False
@@ -8996,7 +9042,10 @@ class WorldMixin:
                 opponent_index = pick_opponent_index(a, fighters)
                 b = fighters.pop(opponent_index)
                 fights.append((a, b))
+                divisions_booked.add(division)
                 progress = True
+        for division in divisions_booked:
+            promo.regional_division_activity[division_activity_key(division)] = self.month
         if not fights:
             self.regional_recruit_fighter(promo, slots=max(1, self.regional_roster_vacancies(promo)))
             return
@@ -9120,17 +9169,17 @@ class WorldMixin:
             # useful pairings, not that an 18-29 year old has ended a career.
             # Keep the record and let a different gym or circuit offer a reset.
             if fighter.age < 30:
-                promo.roster.remove(fighter)
-                fighter.exclusive = False
-                fighter.contract_type = "Free Agent"
-                fighter.contract_months = 0
-                fighter.free_agent_months = 0
+                if not self.move_regional_fighter_to_free_agency(
+                    promo,
+                    fighter,
+                    "Released after a regional career review.",
+                    "Regional reset",
+                    popularity_bonus=0,
+                ):
+                    continue
                 fighter.retirement_pending = False
                 fighter.retirement_reason = "Released after a regional career review; available for a fresh start."
-                fighter.last_regional_promotion = promo.name
-                fighter.regional_departure_month = self.month
                 fighter.available_week = max(getattr(fighter, "available_week", 0), self.calendar_week_index() + 4)
-                self.free_agents.append(fighter)
                 self.news.insert(0, f"Regional reset: {fighter.name} leaves {promo.name} for free agency at {fighter.record}.")
                 continue
             if not getattr(fighter, "retirement_pending", False):
@@ -9148,6 +9197,35 @@ class WorldMixin:
         fighter.regional_record_l = max(0, fighter.record_l - getattr(fighter, "regional_entry_l", 0))
         fighter.regional_record_d = max(0, fighter.record_d - getattr(fighter, "regional_entry_d", 0))
         fighter.regional_record_month = self.month
+
+    def move_regional_fighter_to_free_agency(self, promo, fighter, reason, market_origin, popularity_bonus=3):
+        """Centralize feeder exits so champions always vacate before moving up."""
+        if fighter not in promo.roster:
+            return False
+        self.capture_regional_record(fighter)
+        promo.belts, promo.interim_belts, promo.belt_history = self.vacate_fighter_belts(
+            fighter,
+            promo.roster,
+            promo.belts or {},
+            promo.interim_belts or {},
+            promo.belt_history or {},
+            reason,
+        )
+        promo.roster.remove(fighter)
+        fighter.champion = False
+        fighter.interim_champion = False
+        fighter.feeder_origin = promo.name
+        fighter.last_regional_promotion = promo.name
+        fighter.regional_departure_month = self.month
+        fighter.market_origin = market_origin
+        fighter.contract_months = 0
+        fighter.exclusive = False
+        fighter.contract_type = "Free Agent"
+        fighter.free_agent_months = 0
+        fighter.popularity = min(45, fighter.popularity + max(0, int(popularity_bonus)))
+        if fighter not in self.free_agents:
+            self.free_agents.append(fighter)
+        return True
 
     def regional_graduate_fighters(self, promo):
         eligible = []
@@ -9235,20 +9313,16 @@ class WorldMixin:
         for fighter in eligible[:graduation_slots]:
             if fighter not in promo.roster:
                 continue
-            self.capture_regional_record(fighter)
-            promo.roster.remove(fighter)
-            fighter.feeder_origin = promo.name
-            fighter.contract_months = 0
-            fighter.exclusive = False
-            fighter.contract_type = "Free Agent"
-            fighter.free_agent_months = 0
-            fighter.last_regional_promotion = promo.name
-            fighter.regional_departure_month = self.month
-            fighter.market_origin = "Regional graduate" if fighter.age < 28 else "Regional veteran exit"
-            fighter.popularity = min(42, fighter.popularity + 4)
+            if not self.move_regional_fighter_to_free_agency(
+                promo,
+                fighter,
+                "Promoted from the regional circuit into the wider free-agent market.",
+                "Regional graduate" if fighter.age < 28 else "Regional veteran exit",
+                popularity_bonus=4,
+            ):
+                continue
             if fighter.trait == "Overlooked Talent":
                 fighter.momentum = min(5, fighter.momentum + 1)
-            self.free_agents.append(fighter)
             bouts = fighter.record_w + fighter.record_l + fighter.record_d
             story_type = "Regional Breakthrough" if fighter.potential >= 80 or fighter.record_w >= fighter.record_l else "Regional Circuit Move"
             reason = "earning a second look" if story_type == "Regional Breakthrough" else "completing a regional run"
@@ -9332,18 +9406,14 @@ class WorldMixin:
                 if fighter not in promo.roster:
                     continue
                 division_stock[(fighter.gender, fighter.weight)] = division_stock.get((fighter.gender, fighter.weight), 0) + 1
-                self.capture_regional_record(fighter)
-                promo.roster.remove(fighter)
-                fighter.feeder_origin = name
-                fighter.last_regional_promotion = name
-                fighter.regional_departure_month = self.month
-                fighter.market_origin = "Regional emergency call-up"
-                fighter.contract_months = 0
-                fighter.exclusive = False
-                fighter.contract_type = "Free Agent"
-                fighter.free_agent_months = 0
-                fighter.popularity = min(45, fighter.popularity + 3)
-                self.free_agents.append(fighter)
+                if not self.move_regional_fighter_to_free_agency(
+                    promo,
+                    fighter,
+                    "Emergency call-up to the wider free-agent market.",
+                    "Regional emergency call-up",
+                    popularity_bonus=3,
+                ):
+                    continue
                 moved += 1
                 progress = True
         if moved:
@@ -9416,18 +9486,14 @@ class WorldMixin:
             # Spread the annual intake across the feeder system where possible.
             if promo.name in used_promotions or fighter not in promo.roster:
                 continue
-            self.capture_regional_record(fighter)
-            promo.roster.remove(fighter)
-            fighter.feeder_origin = promo.name
-            fighter.last_regional_promotion = promo.name
-            fighter.regional_departure_month = self.month
-            fighter.market_origin = "Year-end regional graduate"
-            fighter.contract_months = 0
-            fighter.exclusive = False
-            fighter.contract_type = "Free Agent"
-            fighter.free_agent_months = 0
-            fighter.popularity = min(45, fighter.popularity + 3)
-            self.free_agents.append(fighter)
+            if not self.move_regional_fighter_to_free_agency(
+                promo,
+                fighter,
+                "Year-end promotion from the regional circuit into the wider free-agent market.",
+                "Year-end regional graduate",
+                popularity_bonus=3,
+            ):
+                continue
             used_promotions.add(promo.name)
             moved += 1
 
@@ -9502,7 +9568,7 @@ class WorldMixin:
 
     def regional_recruit_fighter(self, promo, slots=1):
         """Keep development circuits deep enough to offer varied, fair matchups."""
-        target = 70
+        target = 100
         slots = min(max(0, int(slots)), self.regional_roster_vacancies(promo, target))
         for _ in range(slots):
             throughput = self.regional_market_throughput()
@@ -9536,12 +9602,17 @@ class WorldMixin:
             male_only = promo.name == EURASIAN_FIGHT_CIRCUIT_NAME
             if male_only:
                 division_targets = {
-                    ("Male", weight): (8 if weight in ("Light Heavyweight", "Heavyweight") else 9)
+                    ("Male", weight): (11 if weight in ("Light Heavyweight", "Heavyweight") else 13)
                     for weight in WEIGHTS
                 }
             else:
                 division_targets = {
-                    (gender, weight): (3 if gender == "Female" else (5 if weight in ("Light Heavyweight", "Heavyweight") else 6))
+                    (gender, weight): (
+                        3 if gender == "Female" and weight in ("Light Heavyweight", "Heavyweight")
+                        else 4 if gender == "Female"
+                        else 8 if weight in ("Light Heavyweight", "Heavyweight")
+                        else 9
+                    )
                     for gender in ("Male", "Female") for weight in WEIGHTS
                 }
             thinnest = sorted(

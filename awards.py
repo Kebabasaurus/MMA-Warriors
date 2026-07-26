@@ -869,12 +869,22 @@ class AwardsMixin:
         crown_actions = ("Champion Crowned", "Inaugural Champion", "Inaugural Champion Appointed")
 
         # --- assemble every division lineage that has any history ----------
-        histories = [(self.player_company_name, getattr(self, "belt_history", {}), getattr(self, "belts", {}))]
-        histories.extend((promo.name, promo.belt_history or {}, promo.belts or {}) for promo in self.promotions)
+        histories = [(self.player_company_name, "Player", getattr(self, "belt_history", {}), getattr(self, "belts", {}))]
+        histories.extend(
+            (
+                promo.name,
+                "Regional" if getattr(promo, "is_regional_feeder", False) else "Major",
+                promo.belt_history or {},
+                promo.belts or {},
+            )
+            for promo in self.promotions
+        )
         lineages = []
-        for company, history, belts in histories:
-            for division, entries in (history or {}).items():
-                if not entries:
+        for company, tier, history, belts in histories:
+            divisions = set((history or {}).keys()) | {key for key, holder in (belts or {}).items() if key or holder}
+            for division in divisions:
+                entries = list((history or {}).get(division, []) or [])
+                if not entries and not (belts or {}).get(division):
                     continue
                 reigns = self.title_reign_history(entries)
                 gender = division.split(" ", 1)[0] if " " in division else "Male"
@@ -884,17 +894,19 @@ class AwardsMixin:
                 current_holder = holder or (ongoing.get("fighter") if ongoing else "")
                 current_since = ongoing.get("start_month") if ongoing else None
                 lineages.append({
-                    "company": company, "division": division, "gender": gender, "weight": weight,
+                    "company": company, "tier": tier, "division": division, "gender": gender, "weight": weight,
                     "entries": entries, "reigns": reigns, "holder": current_holder,
                     "current_since": current_since, "changes": len(reigns),
                     "defenses": sum(r["defenses"] for r in reigns),
                 })
-        lineages.sort(key=lambda item: (item["company"], item["gender"], item["weight"]))
+        tier_order = {"Player": 0, "Major": 1, "Regional": 2}
+        lineages.sort(key=lambda item: (tier_order.get(item["tier"], 9), item["company"], item["gender"], item["weight"]))
 
         # --- filter bar ----------------------------------------------------
         controls = ttk.Frame(parent, style="Inset.TFrame")
         controls.pack(fill="x", padx=6, pady=6)
         title_company = tk.StringVar(value="All Promotions")
+        tier_filter = tk.StringVar(value="All Levels")
         gender_filter = tk.StringVar(value="All")
         division_filter = tk.StringVar(value="All")
         current_only = tk.BooleanVar(value=False)
@@ -903,6 +915,8 @@ class AwardsMixin:
         weight_values = ["All"] + [w for w in WEIGHTS if any(item["weight"] == w for item in lineages)]
         ttk.Label(controls, text="Promotion", style="Inset.TLabel").pack(side="left", padx=(6, 3))
         ttk.Combobox(controls, textvariable=title_company, values=company_values, state="readonly", width=26).pack(side="left", padx=(0, 8))
+        ttk.Label(controls, text="Level", style="Inset.TLabel").pack(side="left", padx=(4, 3))
+        ttk.Combobox(controls, textvariable=tier_filter, values=["All Levels", "Player", "Major", "Regional"], state="readonly", width=10).pack(side="left", padx=(0, 8))
         ttk.Label(controls, text="Gender", style="Inset.TLabel").pack(side="left", padx=(4, 3))
         ttk.Combobox(controls, textvariable=gender_filter, values=["All", "Male", "Female"], state="readonly", width=9).pack(side="left", padx=(0, 8))
         ttk.Label(controls, text="Division", style="Inset.TLabel").pack(side="left", padx=(4, 3))
@@ -1055,10 +1069,10 @@ class AwardsMixin:
             if holder and lineage["current_since"]:
                 reign_len = self.format_month_span(now - lineage["current_since"])
                 header_var.set(f"{lineage['company']} — {lineage['division']} Championship   ·   {holder}")
-                subtitle_var.set(f"Current reign: {reign_len}   |   {lineage['changes']} title change(s)   |   {lineage['defenses']} total defence(s)")
+                subtitle_var.set(f"{lineage['tier']} level   |   Current reign: {reign_len}   |   {lineage['changes']} title change(s)   |   {lineage['defenses']} total defence(s)")
             else:
                 header_var.set(f"{lineage['company']} — {lineage['division']} Championship   ·   VACANT")
-                subtitle_var.set(f"{lineage['changes']} title change(s)   |   {lineage['defenses']} total defence(s)")
+                subtitle_var.set(f"{lineage['tier']} level   |   {lineage['changes']} title change(s)   |   {lineage['defenses']} total defence(s)")
             draw_timeline(lineage)
             reign_lookup = {}
             for reign in lineage["reigns"]:
@@ -1085,6 +1099,8 @@ class AwardsMixin:
             for index, lineage in enumerate(lineages):
                 if title_company.get() != "All Promotions" and lineage["company"] != title_company.get():
                     continue
+                if tier_filter.get() != "All Levels" and lineage["tier"] != tier_filter.get():
+                    continue
                 if gender_filter.get() != "All" and lineage["gender"] != gender_filter.get():
                     continue
                 if division_filter.get() != "All" and lineage["weight"] != division_filter.get():
@@ -1099,7 +1115,7 @@ class AwardsMixin:
                 state["lineage_by_row"][row_id] = lineage
                 champion = lineage["holder"] or "— vacant —"
                 lineage_tree.insert("", "end", iid=row_id, tags=() if lineage["holder"] else ("vacant",), values=(
-                    f"{lineage['company']} · {lineage['division']}", champion,
+                    f"{lineage['company']} · {lineage['division']} ({lineage['tier']})", champion,
                     lineage["changes"], lineage["defenses"],
                 ))
             children = lineage_tree.get_children()
@@ -1124,7 +1140,7 @@ class AwardsMixin:
             if fighter:
                 self.open_fighter_profile_window(fighter)
 
-        for var in (title_company, gender_filter, division_filter, search_var):
+        for var in (title_company, tier_filter, gender_filter, division_filter, search_var):
             var.trace_add("write", refresh_lineage_list)
         current_only.trace_add("write", refresh_lineage_list)
         lineage_tree.bind("<<TreeviewSelect>>", on_select)
