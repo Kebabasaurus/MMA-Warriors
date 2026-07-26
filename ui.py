@@ -249,7 +249,11 @@ class UIMixin:
             self._active_scroll_wheel = (canvas, wheel, linux_wheel)
 
         def deactivate_wheel(_event=None):
-            if getattr(self, "_active_scroll_wheel", (None,))[0] is canvas:
+            # This handler clears the attribute to None, so a later leave event
+            # finds it present-but-None. A getattr default only covers a missing
+            # attribute, never a None value, so check the value itself.
+            active = getattr(self, "_active_scroll_wheel", None)
+            if active and active[0] is canvas:
                 self._active_scroll_wheel = None
 
         if not getattr(self, "_scroll_wheel_dispatch_installed", False):
