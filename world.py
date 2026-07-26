@@ -7404,13 +7404,12 @@ class WorldMixin:
                         fighter.fatigue = min(fighter.fatigue, 45)
                         continue
                     continue
-            if promo and getattr(promo, "is_regional_feeder", False):
-                for fighter in roster:
-                    fighter.champion = False
-                    fighter.interim_champion = False
-                belts, interim_belts, belt_history = self.blank_belts(), self.blank_belts(), self.blank_belt_history()
-            else:
-                belts, interim_belts, belt_history = self.ensure_company_champions(roster, belts, company_name, region, size, player_owned=player_owned, interim_belts=interim_belts, belt_history=belt_history)
+            belts, interim_belts, belt_history = self.ensure_company_champions(
+                roster, belts, company_name, region, size, player_owned=player_owned,
+                interim_belts=interim_belts, belt_history=belt_history,
+                closed_divisions=self.company_closed_divisions(promo) if promo else None,
+                allow_appointed=not (promo is not None and getattr(promo, "is_regional_feeder", False)),
+            )
             if promo:
                 promo.belts, promo.interim_belts, promo.belt_history = belts, interim_belts, belt_history
             else:
@@ -8956,9 +8955,22 @@ class WorldMixin:
         repaired_origin = 0
         repaired_activity = 0
         seeded_divisions = 0
+        evicted_wrong_gender = 0
         for promo in self.promotions:
             if not getattr(promo, "is_regional_feeder", False):
                 continue
+            # A single-gender circuit can strand a fighter it has no division
+            # for: they can never be matched, so they can never graduate, and a
+            # pending retirement can never resolve. Release them to free agency
+            # where the normal pathways can pick them up again.
+            if self.promotion_male_only(promo):
+                for fighter in [item for item in promo.roster if item.gender != "Male"]:
+                    if self.move_regional_fighter_to_free_agency(
+                        promo, fighter,
+                        "Released: no division on a male-only circuit.",
+                        "Regional reset", popularity_bonus=0,
+                    ):
+                        evicted_wrong_gender += 1
             promo.regional_division_activity = getattr(promo, "regional_division_activity", None) or {}
             for fighter in promo.roster:
                 if getattr(fighter, "feeder_origin", "") != promo.name:
@@ -9616,6 +9628,11 @@ class WorldMixin:
 
         promo = random.choice(feeders)
         gender = "Female" if random.random() < 0.20 else "Male"
+        # A single-gender circuit has no division to place them in.
+        if not self.promotion_division_open(promo, gender, WEIGHTS[0]):
+            gender = "Male" if gender == "Female" else "Female"
+            if not self.promotion_division_open(promo, gender, WEIGHTS[0]):
+                return None
         target_rating = random.randint(80, 84)
         potential = random.randint(max(87, target_rating + 3), 95)
         fighter = self.create_generated_fighter(

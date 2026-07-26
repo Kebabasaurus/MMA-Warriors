@@ -783,7 +783,7 @@ class AdminMixin:
 
     def promotion_division_open(self, promo, gender, weight):
         weights = list(getattr(promo, "weight_classes", None) or WEIGHTS)
-        closed = set(getattr(promo, "closed_divisions", None) or [])
+        closed = self.company_closed_divisions(promo)
         return weight in weights and self.belt_key(gender, weight) not in closed
 
     def blank_belts(self):
@@ -1092,16 +1092,28 @@ class AdminMixin:
                     interim_belts[key] = ""
         return belts, interim_belts, belt_history
 
+    def promotion_male_only(self, promo):
+        return bool(promo is not None and getattr(promo, "name", "") == EURASIAN_FIGHT_CIRCUIT_NAME)
+
+    def company_closed_divisions(self, promo):
+        """Divisions a promotion must never staff, crown, or book.
+
+        Every caller of ensure_company_champions has to agree on this, or a
+        single-gender circuit quietly gets a women's roster generated into it
+        by whichever call site forgot the rule.
+        """
+        closed = set(getattr(promo, "closed_divisions", None) or ())
+        if self.promotion_male_only(promo):
+            closed.update(self.belt_key("Female", weight) for weight in WEIGHTS)
+        return closed
+
     def ensure_all_company_champions(self):
         if not getattr(self, "spectator_mode", False):
             self.review_player_champion_credibility()
             self.belts, self.interim_belts, self.belt_history = self.ensure_company_champions(self.roster, self.belts, self.player_company_name, self.player_region, self.company_pop, player_owned=True, interim_belts=self.interim_belts, belt_history=self.belt_history)
             self.sync_player_vacant_title_alerts()
         for promo in self.promotions:
-            closed = set(getattr(promo, "closed_divisions", None) or ())
-            # A male-only circuit has no women's divisions to staff or crown.
-            if promo.name == EURASIAN_FIGHT_CIRCUIT_NAME:
-                closed.update(self.belt_key("Female", weight) for weight in WEIGHTS)
+            closed = self.company_closed_divisions(promo)
             promo.belts, promo.interim_belts, promo.belt_history = self.ensure_company_champions(
                 promo.roster, promo.belts or {}, promo.name, promo.region, promo.reputation_score,
                 player_owned=False, interim_belts=promo.interim_belts or {}, belt_history=promo.belt_history or {},
