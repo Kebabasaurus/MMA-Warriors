@@ -530,7 +530,7 @@ class ViewMixin:
             if set(self.event_fight_participants(fight)) & booked_names:
                 future_bouts += 1
                 for name in self.event_fight_participants(fight):
-                    fighter = self.get_fighter_by_name(name)
+                    fighter = self.get_fighter(name)
                     if fighter:
                         booked_purse_exposure += max(0, getattr(fighter, "purse", 0))
         for event in list(getattr(self, "scheduled_events", [])):
@@ -538,7 +538,7 @@ class ViewMixin:
                 if set(self.event_fight_participants(fight)) & booked_names:
                     future_bouts += 1
                     for name in self.event_fight_participants(fight):
-                        fighter = self.get_fighter_by_name(name)
+                        fighter = self.get_fighter(name)
                         if fighter:
                             booked_purse_exposure += max(0, getattr(fighter, "purse", 0))
         warning = (f"Close {gender} {weight}?\n\nThis releases {len(fighters)} contracted fighter(s) to free agency, "
@@ -629,33 +629,49 @@ class ViewMixin:
         payroll = 0
         expiring = 0
         final_month = 0
+        fight_counted = 0
         champs_expiring = []
         show_filter = self.contracts_filter.get() if hasattr(self, "contracts_filter") else "All"
         division_ranks = self.player_division_rank_map()
-        for row_index, fighter in enumerate(sorted(self.roster, key=lambda f: (f.contract_months, -f.popularity, -f.overall))):
+        for row_index, fighter in enumerate(sorted(self.roster, key=lambda f: (not getattr(f, "comeback_contract", False), f.contract_months, -f.popularity, -f.overall))):
             payroll += fighter.purse
             months = fighter.contract_months
-            if months <= 3:
+            is_comeback = bool(getattr(fighter, "comeback_contract", False))
+            final_retirement_bout = bool(getattr(fighter, "retirement_pending", False))
+            if is_comeback:
+                fight_counted += 1
+                remaining_fights = max(0, int(getattr(fighter, "guaranteed_fights", 0) or 0) - int(getattr(fighter, "contract_fights_completed", 0) or 0))
+            elif months <= 3 and not final_retirement_bout:
                 expiring += 1
                 if fighter.champion:
                     champs_expiring.append(fighter.name)
-            if months <= 1:
+            if months <= 1 and not is_comeback and not final_retirement_bout:
                 final_month += 1
             exclusive = getattr(fighter, "exclusive", True)
-            if show_filter == "Expiring (<=3 mo)" and months > 3:
+            if show_filter == "Expiring (<=3 mo)" and (is_comeback or final_retirement_bout or months > 3):
                 continue
-            if show_filter == "Final month" and months > 1:
+            if show_filter == "Final month" and (is_comeback or final_retirement_bout or months > 1):
                 continue
             if show_filter == "Non-Exclusive" and exclusive:
                 continue
-            if months <= 0:
+            if is_comeback:
+                tag, status = "", f"Comeback: {remaining_fights} fight{'s' if remaining_fights != 1 else ''} left"
+                remaining_label, expiry_label = f"{remaining_fights} fight{'s' if remaining_fights != 1 else ''}", "Fight-counted"
+            elif final_retirement_bout:
+                tag, status = "", "Retirement bout due"
+                remaining_label, expiry_label = "Final bout", "Fight-counted"
+            elif months <= 0:
                 tag, status = "expired", "EXPIRED"
+                remaining_label, expiry_label = self.contract_time_remaining_label(months), self.contract_expiry_date_label(months)
             elif months <= 1:
                 tag, status = "final", "Final month"
+                remaining_label, expiry_label = self.contract_time_remaining_label(months), self.contract_expiry_date_label(months)
             elif months <= 3:
                 tag, status = "soon", ("Champion leverage" if fighter.champion else "Expiring soon")
+                remaining_label, expiry_label = self.contract_time_remaining_label(months), self.contract_expiry_date_label(months)
             else:
                 tag, status = "", ("Champion leverage" if fighter.champion else fighter.status)
+                remaining_label, expiry_label = self.contract_time_remaining_label(months), self.contract_expiry_date_label(months)
             contract_type = getattr(fighter, "contract_type", "Exclusive" if exclusive else "Non-Exclusive")
             rank = division_ranks.get(self.fighter_identity_key(fighter))
             rank_label = "C" if fighter.champion else f"#{rank}" if rank else "-"
@@ -664,8 +680,7 @@ class ViewMixin:
             self.contracts_tree.insert("", "end", iid=row_id, tags=(tag,) if tag else (),
                                        values=(fighter.name, fighter.gender[0], fighter.weight, rank_label,
                                                fighter.popularity, fighter.overall,
-                                               self.contract_time_remaining_label(months),
-                                               self.contract_expiry_date_label(months), f"${fighter.purse:,}",
+                                               remaining_label, expiry_label, f"${fighter.purse:,}",
                                                contract_type, fighter.morale, status))
         if hasattr(self, "contracts_alert"):
             if champs_expiring:
@@ -676,7 +691,7 @@ class ViewMixin:
                 self.contracts_alert.config(text=f"{expiring} fighter(s) expiring within 3 months.", fg=self.colors["gold"])
             else:
                 self.contracts_alert.config(text="No contracts expiring soon.", fg=self.colors["text"])
-        self.contracts_summary.config(text=f"{expiring} expiring soon | {final_month} final month | est. show payroll ${payroll:,}")
+        self.contracts_summary.config(text=f"{expiring} expiring soon | {final_month} final month | {fight_counted} fight-counted comeback deal(s) | est. show payroll ${payroll:,}")
         if hasattr(self, "auto_renew_button"):
             enabled = self.rules.get("auto_renew_enabled", False)
             self.auto_renew_button.config(text=f"Auto Renew: {'On' if enabled else 'Off'}")
@@ -1731,7 +1746,7 @@ class ViewMixin:
                 opponent_rating_text = "Hidden"
             stakes = self.fight_stakes_label(context)
             detail = self.format_game_date_text(text)
-            detail += f"\n\nDate: {context['date']}\nEvent: {context['event']}\nStakes: {stakes}\nRecord source: {context.get('source', 'Legacy history entry')}\nOpponent record: {context['opponent_record']}\nYour rating at fight time: {fighter_rating_text}\nOpponent rating at fight time: {opponent_rating_text}\nScorecards: {context['scorecard']}"
+            detail += f"\n\nDate: {self.format_game_date_text(context['date'])}\nEvent: {context['event']}\nStakes: {stakes}\nRecord source: {context.get('source', 'Legacy history entry')}\nOpponent record: {context['opponent_record']}\nYour rating at fight time: {fighter_rating_text}\nOpponent rating at fight time: {opponent_rating_text}\nScorecards: {context['scorecard']}"
             return {
                 "result": result, "level": amateur, "opponent": opponent, "opponent_fighter": opponent_fighter,
                 "date": self.format_game_date_text(context["date"]), "stakes": stakes, "opponent_record": context["opponent_record"], "event": context["event"],
@@ -1828,17 +1843,17 @@ class ViewMixin:
         if fighter.serious_injury_history:
             medical = tk.Text(history_frame, wrap="word", height=4, bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 9), padx=10, pady=8)
             medical.pack(fill="x", padx=8, pady=(0, 8))
-            medical.insert("end", "MEDICAL HISTORY\n" + "\n".join(str(item) for item in fighter.serious_injury_history[-4:]))
+            medical.insert("end", "MEDICAL HISTORY\n" + "\n".join(self.format_game_date_text(item) for item in fighter.serious_injury_history[-4:]))
             medical.config(state="disabled")
         if fighter.rivalry_history:
             rivalry_log = tk.Text(history_frame, wrap="word", height=4, bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 9), padx=10, pady=8)
             rivalry_log.pack(fill="x", padx=8, pady=(0, 8))
-            rivalry_log.insert("end", "RIVALRY TIMELINE\n" + "\n".join(str(item) for item in fighter.rivalry_history[-4:]))
+            rivalry_log.insert("end", "RIVALRY TIMELINE\n" + "\n".join(self.format_game_date_text(item) for item in fighter.rivalry_history[-4:]))
             rivalry_log.config(state="disabled")
         if fighter.weight_class_history:
             division_log = tk.Text(history_frame, wrap="word", height=3, bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 9), padx=10, pady=8)
             division_log.pack(fill="x", padx=8, pady=(0, 8))
-            division_log.insert("end", "DIVISION HISTORY\n" + "\n".join(str(item) for item in fighter.weight_class_history[-3:]))
+            division_log.insert("end", "DIVISION HISTORY\n" + "\n".join(self.format_game_date_text(item) for item in fighter.weight_class_history[-3:]))
             division_log.config(state="disabled")
         if fighter.career_achievements:
             achievement_log = tk.Text(history_frame, wrap="word", height=3, bg=self.colors["panel_dark"], fg=self.colors["gold"], font=("Tahoma", 9), padx=10, pady=8)
@@ -1848,7 +1863,7 @@ class ViewMixin:
         if fighter.career_goal_history:
             goal_log = tk.Text(history_frame, wrap="word", height=3, bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 9), padx=10, pady=8)
             goal_log.pack(fill="x", padx=8, pady=(0, 8))
-            goal_log.insert("end", "CAREER GOALS\nActive: " + (fighter.career_goal or "Undeclared") + f" ({getattr(fighter, 'career_goal_progress', 0)}%)\n" + "\n".join(fighter.career_goal_history[-2:]))
+            goal_log.insert("end", "CAREER GOALS\nActive: " + (fighter.career_goal or "Undeclared") + f" ({getattr(fighter, 'career_goal_progress', 0)}%)\n" + "\n".join(self.format_game_date_text(item) for item in fighter.career_goal_history[-2:]))
             goal_log.config(state="disabled")
 
         footer = ttk.Frame(window, style="Chrome.TFrame")
@@ -1910,7 +1925,7 @@ class ViewMixin:
         tree.pack(fill="both", expand=True, padx=8, pady=(0, 8))
         history = getattr(fighter, "home_event_history", None) or []
         if history:
-            ttk.Label(window, text="Recent market moments: " + " | ".join(f"M{item.get('month', '?')} {item.get('region', '')}: {item.get('note', '')}" for item in history[:3]), style="Inset.TLabel", wraplength=720).pack(fill="x", padx=10, pady=(0, 6))
+            ttk.Label(window, text="Recent market moments: " + " | ".join(f"{self.format_game_date(item.get('month', self.month), 1, include_week=False)} {item.get('region', '')}: {item.get('note', '')}" for item in history[:3]), style="Inset.TLabel", wraplength=720).pack(fill="x", padx=10, pady=(0, 6))
         ttk.Button(window, text="Close", style="Accent.TButton", command=window.destroy).pack(anchor="e", padx=10, pady=(0, 10))
 
     def open_career_goals_window(self):
@@ -3070,12 +3085,12 @@ class ViewMixin:
 
     def refresh_world(self):
         self.promo_tree.delete(*self.promo_tree.get_children())
-        player_row = (self.player_company_name, self.player_region, "Player", self.company_pop, self.company_pop, f"${self.cash:,}", "0", self.event_log[0] if self.event_log else "No shows yet")
+        player_row = (self.player_company_name, self.player_region, "Player", self.company_pop, self.company_pop, f"${self.cash:,}", "0", self.format_game_date_text(self.event_log[0]) if self.event_log else "No shows yet")
         self.promo_tree.insert("", "end", values=player_row)
         for promo in sorted(self.promotions, key=lambda p: -p.reputation_score):
             if promo.show_history is None:
                 promo.show_history = []
-            last = promo.show_history[0] if promo.show_history else "No shows yet"
+            last = self.format_game_date_text(promo.show_history[0]) if promo.show_history else "No shows yet"
             self.promo_tree.insert("", "end", values=(promo.name, promo.region, promo.reputation, promo.reputation_score, promo.size, f"${promo.cash:,}", promo.momentum, last))
         if hasattr(self, "world_news_list"):
             self.world_news_list.delete(0, "end")
@@ -4742,7 +4757,7 @@ class ViewMixin:
             self.website_calendar.insert("end", f"> No {self.player_company_name} events scheduled.\n")
         for promo in sorted(self.promotions, key=lambda p: -p.reputation_score)[:6]:
             if promo.show_history:
-                self.website_calendar.insert("end", f"> {promo.show_history[0]}\n")
+                self.website_calendar.insert("end", f"> {self.format_game_date_text(promo.show_history[0])}\n")
         self.website_calendar.config(state="disabled")
         selected_headline = ""
         if self.website_news.selection():
@@ -4781,7 +4796,7 @@ class ViewMixin:
         if self.media_target_choice.get() not in targets:
             self.media_target_choice.set(targets[0] if targets else "")
 
-    def media_desk_callout(self):
+    def legacy_media_desk_callout(self):
         fighter = self.media_desk_fighter()
         target = self.get_fighter(self.media_target_choice.get()) if hasattr(self, "media_target_choice") and self.media_target_choice.get() else None
         if not fighter or not target or fighter.gender != target.gender or fighter.weight != target.weight:
@@ -4797,7 +4812,7 @@ class ViewMixin:
         self.record_world_story("Media", headline, f"The {fighter.weight} rivalry is now active.", [self.player_company_name], [fighter.name, target.name], 2)
         self.refresh_all()
 
-    def media_desk_interview(self):
+    def legacy_media_desk_interview(self):
         fighter = self.media_desk_fighter()
         if not fighter:
             messagebox.showinfo("Media Desk", "Choose a spokesperson first.")
@@ -4813,7 +4828,7 @@ class ViewMixin:
         self.news.insert(0, text)
         self.refresh_all()
 
-    def media_desk_press_tour(self):
+    def legacy_media_desk_press_tour(self):
         fighter = self.media_desk_fighter()
         if not fighter:
             messagebox.showinfo("Media Desk", "Choose a spokesperson first.")
@@ -5001,7 +5016,7 @@ class ViewMixin:
                 else:
                     delta_text = f"{entry.get('category', 'Change')}: {delta}"
                 change_text = f"{entry.get('subject', '')}: {delta_text}"
-                self.assistant_changes.insert("", "end", values=(entry.get("date", ""), change_text, entry.get("reason", "")))
+                self.assistant_changes.insert("", "end", values=(self.format_game_date_text(entry.get("date", "")), change_text, self.format_game_date_text(entry.get("reason", ""))))
 
     def open_selected_assistant_notice(self):
         selected = self.assistant_messages.selection() if hasattr(self, "assistant_messages") else []
@@ -5186,9 +5201,9 @@ class ViewMixin:
             ]
             for key in ("striking", "wrestling", "grappling", "cardio", "chin", "power", "toughness", "fight_iq"):
                 lines.append(bar(key.title(), item.get(key, 40)))
-            lines += ["", "MILESTONES"] + (item.get("milestones", [])[:12] or ["No milestones yet."])
-            lines += ["", "RECENT TRAINING"] + (item.get("training_log", [])[:12] or ["No recorded training gains yet."])
-            lines += ["", "AMATEUR HISTORY"] + (item.get("amateur_history", [])[:30] or ["No amateur bouts yet."])
+            lines += ["", "MILESTONES"] + ([self.format_game_date_text(entry) for entry in item.get("milestones", [])[:12]] or ["No milestones yet."])
+            lines += ["", "RECENT TRAINING"] + ([self.format_game_date_text(entry) for entry in item.get("training_log", [])[:12]] or ["No recorded training gains yet."])
+            lines += ["", "AMATEUR HISTORY"] + ([self.format_game_date_text(entry) for entry in item.get("amateur_history", [])[:30]] or ["No amateur bouts yet."])
             text.insert("end", "\n".join(lines)); text.config(state="disabled")
         def amateur_bout():
             results = self.run_academy_showcase_card(academy)
@@ -5685,7 +5700,7 @@ class ViewMixin:
                 history.append({"month": self.month, "week": self.week, "rating": item.get("rating", 40)})
             for row in history:
                 rating = row.get("rating", 40)
-                progress_tree.insert("", "end", values=(f"M{row.get('month', '?')} W{row.get('week', '?')}", rating, f"{rating-prior:+}"))
+                progress_tree.insert("", "end", values=(self.format_game_date(row.get("month", self.month), row.get("week", 1)), rating, f"{rating-prior:+}"))
                 prior = rating
             progress_tree.grid(row=0, column=1, sticky="nsew", padx=(0, 8), pady=8)
             def draw_chart(_event=None):
@@ -5717,7 +5732,7 @@ class ViewMixin:
             if bout_records:
                 for index, record in enumerate(bout_records):
                     result = record.get("result", "-")
-                    date = f"M{record.get('month', '?')} W{record.get('week', '?')}"
+                    date = self.format_game_date(record.get("month", self.month), record.get("week", 1))
                     detail = f"{record.get('event', 'Academy Showcase')} | R{record.get('round', '?')} | {record.get('weight', item.get('amateur_weight', 'Youth'))}"
                     amateur_tree.insert("", "end", iid=f"history:{index}", tags=("win" if result == "W" else "loss" if result == "L" else "",), values=(date, result, record.get("opponent", "Unknown"), record.get("method", "-"), detail))
             else:
@@ -5733,7 +5748,7 @@ class ViewMixin:
                         result = "L"
                         opponent = text.split(":", 1)[-1].split(" def. ", 1)[0].strip()
                         method = text.split(" by ", 1)[1].split(" (", 1)[0] if " by " in text else "-"
-                    amateur_tree.insert("", "end", iid=f"history:{index}", tags=("win" if result == "W" else "loss" if result == "L" else "",), values=(date, result, opponent, method, text))
+                    amateur_tree.insert("", "end", iid=f"history:{index}", tags=("win" if result == "W" else "loss" if result == "L" else "",), values=(self.format_game_date_text(date), result, opponent, method, self.format_game_date_text(text)))
             amateur_y = ttk.Scrollbar(history_tab, orient="vertical", command=amateur_tree.yview); amateur_x = ttk.Scrollbar(history_tab, orient="horizontal", command=amateur_tree.xview)
             amateur_tree.configure(yscrollcommand=amateur_y.set, xscrollcommand=amateur_x.set)
             amateur_tree.grid(row=0, column=0, sticky="nsew", padx=(8, 0), pady=(8, 0)); amateur_y.grid(row=0, column=1, sticky="ns", pady=(8, 0)); amateur_x.grid(row=1, column=0, sticky="ew", padx=(8, 0))
@@ -5749,8 +5764,10 @@ class ViewMixin:
             training_text = tk.Text(training_tab, wrap="word", bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 9), padx=12, pady=10)
             training_scroll = ttk.Scrollbar(training_tab, orient="vertical", command=training_text.yview); training_text.configure(yscrollcommand=training_scroll.set)
             training_scroll.pack(side="right", fill="y", padx=(0, 8), pady=8); training_text.pack(side="left", fill="both", expand=True, padx=(8, 0), pady=8)
-            training_text.insert("end", "MILESTONES\n" + "\n".join(item.get("milestones", [])[:30] or ["No milestones yet."]))
-            training_text.insert("end", "\n\nRECENT TRAINING\n" + "\n".join(item.get("training_log", [])[:60] or ["No recorded training gains yet."]))
+            milestones = [self.format_game_date_text(entry) for entry in item.get("milestones", [])[:30]] or ["No milestones yet."]
+            training = [self.format_game_date_text(entry) for entry in item.get("training_log", [])[:60]] or ["No recorded training gains yet."]
+            training_text.insert("end", "MILESTONES\n" + "\n".join(milestones))
+            training_text.insert("end", "\n\nRECENT TRAINING\n" + "\n".join(training))
             training_text.config(state="disabled")
 
         def replay_selected_card():
@@ -6281,7 +6298,7 @@ class ViewMixin:
             text = header + (
                 f"\n{promo.reputation}\n\nEXECUTIVE: {executive.get('name', 'Unknown')} ({executive.get('archetype', 'Operator')})\n"
                 f"Board Security: {executive.get('job_security', 0)}% | Company Legacy: {getattr(promo, 'legacy_score', 0)}\n"
-                f"Board mandate: {executive.get('board_mandate', 'None')} - {executive.get('mandate_progress', 0)}% (target {executive.get('mandate_target', 0):,}, deadline M{executive.get('mandate_deadline', 0)})\n\n"
+                f"Board mandate: {executive.get('board_mandate', 'None')} - {executive.get('mandate_progress', 0)}% (target {executive.get('mandate_target', 0):,}, deadline {self.format_game_date(executive.get('mandate_deadline', self.month), 1, include_week=False)})\n\n"
                 f"AI STRATEGY READ\nIdentity: {strategy.get('identity', 'Balanced Growth')}\nDirection: {strategy.get('current_mode', 'Balanced')}\n"
                 f"Media voice: {strategy.get('media_voice', 'Reliable fights')}\nFinancial pressure: {pressure}\n"
                 f"Roster tilt: {prospect_count} prospects / {star_count} stars\nWhy they book/sign this way: {booking_why}\n"
@@ -8415,7 +8432,7 @@ class ViewMixin:
             transactions = row.get("transactions", [])
             if transactions:
                 for item in transactions:
-                    self.finance_detail.insert("end", f"- {item['label']}: +${item['revenue']:,.0f} / -${item['costs']:,.0f}\n")
+                    self.finance_detail.insert("end", f"- {self.format_game_date_text(item['label'])}: +${item['revenue']:,.0f} / -${item['costs']:,.0f}\n")
             else:
                 self.finance_detail.insert("end", "- No player cash transactions recorded this week.\n")
         else:
@@ -8450,7 +8467,7 @@ class ViewMixin:
         self.finance["ledger"].insert(0, f"Month {self.month}: Ticket price adjusted to ${self.finance['ticket_price']}.")
         self.refresh_all()
 
-    def pitch_sponsors(self):
+    def legacy_pitch_sponsors(self):
         self.ensure_finance_defaults()
         top_appeal = sum(sorted((f.sponsor_appeal for f in self.roster), reverse=True)[:8])
         company_score = self.company_pop * 1.6 + self.company_stability + top_appeal / 8
@@ -8473,7 +8490,7 @@ class ViewMixin:
         self.inbox.append({"subject": "Sponsor Signed", "body": f"{deal['name']} signed for ${deal['fee']:,}/event.", "type": "Business", "resolved": False})
         self.refresh_all()
 
-    def negotiate_media_rights(self):
+    def legacy_negotiate_media_rights(self):
         self.ensure_finance_defaults()
         show_base = min(18, len(self.result_history) * 2)
         champion_value = sum(f.popularity + f.star_quality for f in self.roster if f.champion) / max(1, len([f for f in self.roster if f.champion]))

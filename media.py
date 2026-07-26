@@ -764,7 +764,8 @@ class MediaMixin:
         selected = self.media_offers_tree.selection()
         self.media_offers_tree.delete(*self.media_offers_tree.get_children())
         for offer in finance["media_offers"]:
-            req = f"Rating {offer['minimum_rating']} / card {offer['min_card_quality']} / production {offer['min_production']} | {offer['exclusivity']} | expires M{offer['expires_month']}"
+            expiry = self.format_game_date(offer["expires_month"], 1, include_week=False)
+            req = f"Rating {offer['minimum_rating']} / card {offer['min_card_quality']} / production {offer['min_production']} | {offer['exclusivity']} | expires {expiry}"
             self.media_offers_tree.insert("", "end", iid=offer["id"], values=(offer["name"], offer["type"], offer["reach"], f"${offer['fee']:,}", f"{offer['months']} mo", offer["events_total"], req))
         if selected and selected[0] in self.media_offers_tree.get_children():
             self.media_offers_tree.selection_set(selected[0])
@@ -772,7 +773,7 @@ class MediaMixin:
             self.media_offers_tree.selection_set(self.media_offers_tree.get_children()[0])
         self.media_campaign_history_tree.delete(*self.media_campaign_history_tree.get_children())
         for index, row in enumerate(finance.get("media_campaign_history", [])[:60]):
-            self.media_campaign_history_tree.insert("", "end", iid=f"campaign:{index}", values=(row.get("date", ""), row.get("strategy", ""), row.get("action", ""), row.get("subject", ""), row.get("target", ""), row.get("outcome", ""), f"{row.get('heat', 0):+}", f"${row.get('cost', 0):,}"))
+            self.media_campaign_history_tree.insert("", "end", iid=f"campaign:{index}", values=(self.format_game_date_text(row.get("date", "")), row.get("strategy", ""), row.get("action", ""), row.get("subject", ""), row.get("target", ""), row.get("outcome", ""), f"{row.get('heat', 0):+}", f"${row.get('cost', 0):,}"))
 
     def media_desk_callout(self):
         if hasattr(self, "media_action_choice"):

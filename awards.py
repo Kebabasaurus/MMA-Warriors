@@ -353,7 +353,7 @@ class AwardsMixin:
             if not offer: return
             ok, message = self.accept_super_event_offer(offer)
             if ok:
-                self.show_tab("booking"); window.destroy()
+                self.select_tab("booking"); window.destroy()
             else:
                 messagebox.showwarning("Project cannot be approved", message, parent=window)
         ttk.Button(footer, text="Accept Selected Project", style="Accent.TButton", command=accept).pack(side="left", padx=4, pady=4)
@@ -413,6 +413,12 @@ class AwardsMixin:
         """Log a result for later award scoring, including draws without false W/L credit."""
         try:
             bucket = self.season_bucket()
+            if not isinstance(bucket, dict):
+                bucket = {"fighters": {}, "fights": [], "companies": {}}
+                self.season_stats[self.year_label()] = bucket
+            bucket["fighters"] = bucket.get("fighters") if isinstance(bucket.get("fighters"), dict) else {}
+            bucket["fights"] = bucket.get("fights") if isinstance(bucket.get("fights"), list) else []
+            bucket["companies"] = bucket.get("companies") if isinstance(bucket.get("companies"), dict) else {}
             fighters = bucket["fighters"]
             is_finish = method not in ("Decision", "Draw")
             is_ko = method in ("KO", "TKO")
@@ -452,9 +458,15 @@ class AwardsMixin:
             if len(bucket["fights"]) > 220:
                 bucket["fights"].sort(key=lambda r: r["excitement"], reverse=True)
                 del bucket["fights"][180:]
-        except Exception:
-            # awards tracking must never break a fight from being applied
-            pass
+        except Exception as exc:
+            # Awards must not invalidate an official result, but a visible notice
+            # prevents malformed seasonal state from failing silently.
+            self.inbox.append({
+                "subject": "Awards Tracking Error",
+                "body": f"Seasonal award tracking could not record a result: {type(exc).__name__}: {exc}",
+                "type": "Awards",
+                "resolved": False,
+            })
 
     def blank_season_fighter(self, fighter):
         return {"name": fighter.name, "wins": 0, "losses": 0, "draws": 0, "finishes": 0, "kos": 0, "subs": 0,
@@ -914,9 +926,11 @@ class AwardsMixin:
         company_values = ["All Promotions"] + sorted({item["company"] for item in lineages})
         weight_values = ["All"] + [w for w in WEIGHTS if any(item["weight"] == w for item in lineages)]
         ttk.Label(controls, text="Promotion", style="Inset.TLabel").pack(side="left", padx=(6, 3))
-        ttk.Combobox(controls, textvariable=title_company, values=company_values, state="readonly", width=26).pack(side="left", padx=(0, 8))
+        title_company_combo = ttk.Combobox(controls, textvariable=title_company, values=company_values, state="readonly", width=26)
+        title_company_combo.pack(side="left", padx=(0, 8))
         ttk.Label(controls, text="Level", style="Inset.TLabel").pack(side="left", padx=(4, 3))
-        ttk.Combobox(controls, textvariable=tier_filter, values=["All Levels", "Player", "Major", "Regional"], state="readonly", width=10).pack(side="left", padx=(0, 8))
+        tier_filter_combo = ttk.Combobox(controls, textvariable=tier_filter, values=["All Levels", "Player", "Major", "Regional"], state="readonly", width=10)
+        tier_filter_combo.pack(side="left", padx=(0, 8))
         ttk.Label(controls, text="Gender", style="Inset.TLabel").pack(side="left", padx=(4, 3))
         ttk.Combobox(controls, textvariable=gender_filter, values=["All", "Male", "Female"], state="readonly", width=9).pack(side="left", padx=(0, 8))
         ttk.Label(controls, text="Division", style="Inset.TLabel").pack(side="left", padx=(4, 3))
@@ -1126,6 +1140,16 @@ class AwardsMixin:
             else:
                 show_lineage(None)
 
+        def refresh_company_filter(*_args):
+            selected_tier = tier_filter.get()
+            values = ["All Promotions"] + sorted({
+                lineage["company"] for lineage in lineages
+                if selected_tier == "All Levels" or lineage["tier"] == selected_tier
+            })
+            title_company_combo.configure(values=values)
+            if title_company.get() not in values:
+                title_company.set("All Promotions")
+
         def on_select(_event=None):
             selected = lineage_tree.selection()
             if selected:
@@ -1140,12 +1164,15 @@ class AwardsMixin:
             if fighter:
                 self.open_fighter_profile_window(fighter)
 
-        for var in (title_company, tier_filter, gender_filter, division_filter, search_var):
+        for var in (title_company, gender_filter, division_filter, search_var):
             var.trace_add("write", refresh_lineage_list)
+        tier_filter.trace_add("write", refresh_company_filter)
+        tier_filter.trace_add("write", refresh_lineage_list)
         current_only.trace_add("write", refresh_lineage_list)
         lineage_tree.bind("<<TreeviewSelect>>", on_select)
         detail_tree.bind("<Double-1>", open_selected_fighter)
         timeline_canvas.bind("<Configure>", lambda _event: draw_timeline(state["selected"]))
+        refresh_company_filter()
         refresh_lineage_list()
 
     def ensure_historical_records(self):

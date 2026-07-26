@@ -32,15 +32,20 @@ class WorldMixin:
         return f"{label} W{week_number} {year}" if include_week else f"{label} {year}"
 
     def format_game_date_text(self, value):
-        """Render legacy Month N Week N strings without changing save/archive keys."""
+        """Render save-stable numeric dates in the player-facing calendar format."""
         text = str(value or "")
 
-        def replace(match):
+        def replace_long(match):
             month = int(match.group(1))
             week = int(match.group(2)) if match.group(2) else 1
             return self.format_game_date(month, week, include_week=bool(match.group(2)))
 
-        return re.sub(r"\bMonth\s+(\d+)(?:\s*,?\s*Week\s+(\d+))?", replace, text, flags=re.IGNORECASE)
+        text = re.sub(r"\bMonth\s+(\d+)(?:\s*,?\s*Week\s+(\d+))?", replace_long, text, flags=re.IGNORECASE)
+
+        def replace_short(match):
+            return self.format_game_date(int(match.group(1)), int(match.group(2)))
+
+        return re.sub(r"\bM(\d+)\s+W(\d+)\b", replace_short, text, flags=re.IGNORECASE)
 
     def record_world_story(self, story_type, headline, detail="", companies=None, fighters=None, importance=1):
         entry = {
@@ -1127,6 +1132,15 @@ class WorldMixin:
         winner.popularity = min(100, winner.popularity + winner_gain)
         loser.popularity = max(1, loser.popularity - loser_loss)
 
+    def register_draw_popularity(self, a, b, fight):
+        """Apply the modest shared visibility gain from a competitive draw."""
+        stakes = int(bool(fight.get("main"))) + int(bool(fight.get("title")))
+        rivalry = int(a.rival == b.name or b.rival == a.name)
+        gain = min(2, stakes + rivalry)
+        if gain:
+            a.popularity = min(100, a.popularity + gain)
+            b.popularity = min(100, b.popularity + gain)
+
     def add_fight_history_entry(self, fighter, entry):
         """Record a result once, even if a resumed world task repeats a write."""
         fighter.fight_history = fighter.fight_history or []
@@ -1296,14 +1310,7 @@ class WorldMixin:
             serious_chance += 0.012
         if random.random() < serious_chance:
             self.apply_serious_injury(loser, "fight injury")
-        winner.camp_boost = 0
-        loser.camp_boost = 0
-        winner.camp_weeks = 0
-        loser.camp_weeks = 0
-        winner.weight_cut_penalty = 0
-        loser.weight_cut_penalty = 0
-        winner.missed_weight = False
-        loser.missed_weight = False
+        self.clear_post_fight_preparation(winner, loser)
         championship_won = False
         if fight.get("special_belt"):
             belt_name = fight["special_belt"]
@@ -1323,7 +1330,7 @@ class WorldMixin:
                 self.interim_belts, self.belt_history = self.clear_interim_belt(self.roster, self.interim_belts, self.belt_history, key, "Unified with the primary title.")
             self.news.insert(0, f"{winner.name} is now the {winner.gender} {winner.weight} champion after beating {loser.name}.")
             # Champion's clause: winning/holding the belt auto-extends the deal.
-            if getattr(winner, "champions_clause", False) and winner in self.roster:
+            if getattr(winner, "champions_clause", False) and winner in self.roster and not getattr(winner, "comeback_contract", False):
                 winner.contract_months = max(winner.contract_months, 12)
                 self.news.insert(0, f"{winner.name}'s champion's clause automatically extends their contract while they hold the belt.")
             winner.owed_title_shot = False
@@ -1354,6 +1361,9 @@ class WorldMixin:
 
     def apply_draw_result(self, a, b, fight):
         self.record_bout_rating_history(a, b, "D", "D", fight)
+        self.complete_fight_observation(a)
+        self.complete_fight_observation(b)
+        self.update_draw_elo(a, b, fight)
         self.commit_career_stats(a)
         self.commit_career_stats(b)
         a.record_d = getattr(a, "record_d", 0) + 1
@@ -1368,10 +1378,12 @@ class WorldMixin:
         b.momentum = max(-5, min(5, b.momentum))
         a.morale = min(100, a.morale + random.randint(0, 3))
         b.morale = min(100, b.morale + random.randint(0, 3))
+        self.register_draw_popularity(a, b, fight)
         a.fatigue = min(100, a.fatigue + random.randint(18, 34))
         b.fatigue = min(100, b.fatigue + random.randint(18, 34))
         self.set_post_fight_recovery(a, "Decision", lost=False)
         self.set_post_fight_recovery(b, "Decision", lost=False)
+        self.clear_post_fight_preparation(a, b)
         a.rank_score = self.rank_value(a)
         b.rank_score = self.rank_value(b)
         result_line = f"Month {self.month} Week {self.week}: {a.name} and {b.name} fought to a draw"
@@ -1405,6 +1417,24 @@ class WorldMixin:
         delta = max(6, round(k * (1 - expected)))
         winner.elo_rating = max(900, min(2400, winner_elo + delta))
         loser.elo_rating = max(900, min(2400, loser_elo - delta))
+
+    def update_draw_elo(self, a, b, fight):
+        """Apply the standard 0.5 result to both fighters after an official draw."""
+        a_elo = getattr(a, "elo_rating", 1500)
+        b_elo = getattr(b, "elo_rating", 1500)
+        expected_a = 1 / (1 + 10 ** ((b_elo - a_elo) / 400))
+        stakes = 1.25 if fight.get("title") else 1.1 if fight.get("main") else 1.0
+        delta = round(28 * stakes * (0.5 - expected_a))
+        a.elo_rating = max(900, min(2400, a_elo + delta))
+        b.elo_rating = max(900, min(2400, b_elo - delta))
+
+    def clear_post_fight_preparation(self, *fighters):
+        """Remove single-bout camp and weigh-in state once an official result exists."""
+        for fighter in fighters:
+            fighter.camp_boost = 0
+            fighter.camp_weeks = 0
+            fighter.weight_cut_penalty = 0
+            fighter.missed_weight = False
 
     def calculate_revenue(self, total_hype, venue=None):
         venue_factor = {
@@ -7407,10 +7437,12 @@ class WorldMixin:
         # Unsigned retirees use the dedicated Independent Retirement Card flow
         # below, where several careers conclude together on a proper event.
         free_agent_ids = {id(fighter) for fighter in self.free_agents}
+        scheduled = self.scheduled_fighter_names(include_booked=True)
         pending = [
             fighter for fighter in self.all_fighter_objects()
             if not getattr(fighter, "retired", False) and getattr(fighter, "retirement_pending", False)
             and id(fighter) not in free_agent_ids
+            and fighter.name not in scheduled
         ]
         pending.sort(key=lambda fighter: (self.retirement_fight_wait_months(fighter), fighter.age), reverse=True)
         booked = set()
@@ -7858,7 +7890,17 @@ class WorldMixin:
         # decide whether any particular card can actually take place; the
         # overall chance stays bounded by the final clamp below regardless.
         depth_drive = max(0, len(getattr(promo, "roster", [])) - 100) / 1200
-        return max(0.04, min(0.58, chance - (0.08 if mode == "Financial Recovery" else 0) + (0.035 if mode == "Star Chasing" else 0) + executive_drive + mandate_drive - pressure + roster_health + depth_drive))
+        show_chance = chance - (0.08 if mode == "Financial Recovery" else 0) + (0.035 if mode == "Star Chasing" else 0) + executive_drive + mandate_drive - pressure + roster_health + depth_drive
+        # A 320+ fighter major needs regular full cards to sustain 2-3 annual
+        # appearances per athlete. Personality-only schedules left several
+        # major rosters below two fights and created a permanent backlog.
+        if len(getattr(promo, "roster", [])) >= 280 and mode != "Financial Recovery":
+            show_chance = max(show_chance, 0.72)
+        # The 400-fighter flagship needs roughly 36 full cards per year to
+        # maintain the same activity target at its larger roster scale.
+        if promo.name == "Ultimate Fighting Championship" and mode != "Financial Recovery":
+            show_chance = max(show_chance, 0.76)
+        return max(0.04, min(0.78, show_chance))
 
     def ai_should_run_show(self, promo):
         strategy = self.update_ai_promotion_strategy(promo)
@@ -8252,7 +8294,8 @@ class WorldMixin:
                             # readiness, and the exchange engine still govern
                             # the outcome.
                             rebuild_target = abs((opponent.overall - rebuild_fighter.overall) + 3) * 1.4
-                        pair_options.append(((protection_penalty, rating_gap * 4 + rank_gap * 0.7 + form_gap * 0.8 + record_gap * 26 + variety_penalty + rebuild_target, rating_gap), a_option, b_option))
+                        inactivity_priority = min(28, (inactive.get(a_option.name, 0) + inactive.get(b_option.name, 0)) * 1.8)
+                        pair_options.append(((protection_penalty, rating_gap * 4 + rank_gap * 0.7 + form_gap * 0.8 + record_gap * 26 + variety_penalty + rebuild_target - inactivity_priority, rating_gap), a_option, b_option))
                 if not pair_options:
                     break
                 _, a, b = min(pair_options, key=lambda item: item[0])
@@ -8376,6 +8419,10 @@ class WorldMixin:
             fight_target += 1
         if len(ready) >= 112 and getattr(promo, "show_personality", "Balanced") in ("Super Shows", "Seasonal", "Star Builder"):
             fight_target += 1
+        if len(getattr(promo, "roster", [])) >= 280:
+            fight_target = max(14, fight_target)
+        if promo.name == "Ultimate Fighting Championship":
+            fight_target = max(14, fight_target)
         mode = strategy.get("current_mode")
         if mode == "Financial Recovery":
             fight_target = max(5, fight_target - 2)
@@ -8500,6 +8547,7 @@ class WorldMixin:
                 loser.fatigue = min(100, loser.fatigue + random.randint(20, 38))
                 self.set_post_fight_recovery(winner, method, lost=False)
                 self.set_post_fight_recovery(loser, method, lost=True)
+                self.clear_post_fight_preparation(a, b)
             if is_title and method != "Draw":
                 promo.belts = promo.belts or {}
                 promo.belt_history = promo.belt_history or {}
@@ -8937,6 +8985,46 @@ class WorldMixin:
                     )
         return {"origin": repaired_origin, "activity": repaired_activity, "division_activity": seeded_divisions}
 
+    def repair_regional_title_state(self):
+        """Remove legacy feeder belts that were invented by company-state repair."""
+        repaired_divisions = 0
+        repaired_fighters = 0
+        for promo in self.promotions:
+            if not getattr(promo, "is_regional_feeder", False):
+                continue
+            promo.belts = self.normalize_belts(getattr(promo, "belts", None) or {})
+            promo.interim_belts = self.normalize_belts(getattr(promo, "interim_belts", None) or {})
+            promo.belt_history = self.normalize_belt_history(getattr(promo, "belt_history", None) or {})
+            for key, entries in list(promo.belt_history.items()):
+                entries = list(entries or [])
+                invented = bool(entries) and all(
+                    entry.get("action") == "Inaugural Champion Appointed"
+                    and str(entry.get("note", "")).endswith("title status normalized.")
+                    for entry in entries
+                )
+                if not invented:
+                    continue
+                gender, weight = key.split(" ", 1)
+                for fighter in promo.roster:
+                    if fighter.gender != gender or fighter.weight != weight:
+                        continue
+                    if fighter.champion or fighter.interim_champion:
+                        repaired_fighters += 1
+                    fighter.champion = False
+                    fighter.interim_champion = False
+                    fighter.title_wins = 0
+                    fighter.title_defenses = 0
+                    for bout in getattr(fighter, "bout_rating_history", None) or []:
+                        if isinstance(bout, dict) and (bout.get("title") or bout.get("divisional_title")):
+                            bout["title"] = False
+                            bout["divisional_title"] = False
+                            bout["interim"] = False
+                promo.belts[key] = ""
+                promo.interim_belts[key] = ""
+                promo.belt_history[key] = []
+                repaired_divisions += 1
+        return {"divisions": repaired_divisions, "fighters": repaired_fighters}
+
     def simulate_regional_feeder_month(self, promo):
         """Low-cost developmental circuit: young fighters build records, not profits."""
         ready = [fighter for fighter in promo.roster if self.fighter_available_for_date(fighter) and fighter.fatigue < 58]
@@ -9050,10 +9138,9 @@ class WorldMixin:
             self.regional_recruit_fighter(promo, slots=max(1, self.regional_roster_vacancies(promo)))
             return
 
-        # A regional belt only means something if it is occasionally contested
-        # in the cage. Whichever bout in a division comes up first this month
-        # becomes that division's title fight when the champion is in it, or
-        # when the belt sits vacant with an existing lineage to settle.
+        # A regional title starts only when two fighters have built enough of a
+        # record to contest it. Existing champions defend at a measured cadence;
+        # state repair must never create an appointed feeder champion.
         title_flags = [False] * len(fights)
         title_keys_used = set()
         for index, (a, b) in enumerate(fights):
@@ -9061,8 +9148,16 @@ class WorldMixin:
             if key in title_keys_used:
                 continue
             champ_name = (promo.belts or {}).get(key)
-            vacant_contested = not champ_name and (promo.belt_history or {}).get(key)
-            if champ_name in (a.name, b.name) or vacant_contested:
+            history = (promo.belt_history or {}).get(key) or []
+            last_title_month = max((self.result_lineage_date_key(entry.get("date", ""))[0] for entry in history), default=0)
+            title_due = not last_title_month or self.month - last_title_month >= 4
+            bouts_a = a.record_w + a.record_l + a.record_d
+            bouts_b = b.record_w + b.record_l + b.record_d
+            inaugural_contested = not champ_name and not history and min(bouts_a, bouts_b) >= 4
+            vacant_contested = not champ_name and bool(history)
+            # A vacancy is resolved on the next suitable pairing. The measured
+            # cadence applies to defenses and inaugural crowns, not an empty belt.
+            if vacant_contested or (title_due and (champ_name in (a.name, b.name) or inaugural_contested)):
                 title_flags[index] = True
                 title_keys_used.add(key)
 
@@ -9115,6 +9210,7 @@ class WorldMixin:
             loser.fatigue = min(100, loser.fatigue + random.randint(18, 32))
             self.set_post_fight_recovery(winner, method, lost=False)
             self.set_post_fight_recovery(loser, method, lost=True)
+            self.clear_post_fight_preparation(a, b)
             line = f"Month {self.month} Week {self.week}: {winner.name} def. {loser.name} by {method} at {event_name}"
             self.add_fight_history_entry(winner, line)
             self.add_fight_history_entry(loser, line)
@@ -10848,7 +10944,7 @@ class WorldMixin:
         Fires once as each fighter ticks through the 3-month and final-month marks."""
         for fighter in self.roster:
             months = fighter.contract_months
-            if fighter.retirement_pending or months not in (3, 1):
+            if fighter.retirement_pending or getattr(fighter, "comeback_contract", False) or months not in (3, 1):
                 continue
             crown = " champion" if fighter.champion else ""
             when = "just 1 month" if months == 1 else "3 months"
@@ -10888,7 +10984,12 @@ class WorldMixin:
     def update_contracts(self):
         if getattr(self, "spectator_mode", False):
             return
-        expired = [f for f in self.roster if f.contract_months <= 0]
+        expired = [
+            fighter for fighter in self.roster
+            if fighter.contract_months <= 0
+            and not getattr(fighter, "comeback_contract", False)
+            and not getattr(fighter, "retirement_pending", False)
+        ]
         for fighter in expired:
             if not fighter.retirement_pending and (fighter.champion or fighter.popularity > 55 or fighter.morale > 60):
                 fighter.contract_months = random.randint(8, 20)

@@ -881,6 +881,12 @@ def main():
         assert_true(sum(len(promotion.roster) for promotion in feeder_promotions) == feeder_total + 1, "Annual wonderkid was not placed into a regional promotion")
         assert_true(app.spawn_annual_regional_wonderkid() is None, "Annual regional wonderkid spawned twice in one year")
         app.month = original_month
+        feeder_champions_before = {
+            id(fighter)
+            for promotion in feeder_promotions
+            for fighter in promotion.roster
+            if fighter.champion
+        }
         app.ensure_all_company_champions()
         for promotion in feeder_promotions:
             champion_counts = {}
@@ -889,7 +895,14 @@ def main():
                     key = app.belt_key(fighter.gender, fighter.weight)
                     champion_counts[key] = champion_counts.get(key, 0) + 1
             assert_true(all(count == 1 for count in champion_counts.values()), "Regional feeder divisions must crown at most one champion each")
-        assert_true(any(fighter.champion for promotion in feeder_promotions for fighter in promotion.roster), "Regional feeders should now carry championship belts")
+        feeder_champions_after = {
+            id(fighter)
+            for promotion in feeder_promotions
+            for fighter in promotion.roster
+            if fighter.champion
+        }
+        assert_true(feeder_champions_after == feeder_champions_before,
+                    "Regional feeder maintenance appointed a champion without a title fight")
         feeder_probe = feeder_promotions[0]
         washed_out = app.create_regional_feeder_fighter(feeder_probe.region, app.active_fighter_names(), "Male")
         washed_out.age, washed_out.record_w, washed_out.record_l, washed_out.potential = 22, 0, 14, 60

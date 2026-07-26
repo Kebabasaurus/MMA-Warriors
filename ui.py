@@ -245,20 +245,35 @@ class UIMixin:
             canvas.yview_scroll(delta, "units")
             return "break"
 
-        def bind_wheel(_event=None):
-            canvas.bind_all("<MouseWheel>", wheel)
-            canvas.bind_all("<Button-4>", lambda event: linux_wheel(event, -1))
-            canvas.bind_all("<Button-5>", lambda event: linux_wheel(event, 1))
+        def activate_wheel(_event=None):
+            self._active_scroll_wheel = (canvas, wheel, linux_wheel)
 
-        def unbind_wheel(_event=None):
-            canvas.unbind_all("<MouseWheel>")
-            canvas.unbind_all("<Button-4>")
-            canvas.unbind_all("<Button-5>")
+        def deactivate_wheel(_event=None):
+            if getattr(self, "_active_scroll_wheel", (None,))[0] is canvas:
+                self._active_scroll_wheel = None
+
+        if not getattr(self, "_scroll_wheel_dispatch_installed", False):
+            def dispatch_wheel(event):
+                active = getattr(self, "_active_scroll_wheel", None)
+                if not active:
+                    return None
+                return active[1](event)
+
+            def dispatch_linux_wheel(event, delta):
+                active = getattr(self, "_active_scroll_wheel", None)
+                if not active:
+                    return None
+                return active[2](event, delta)
+
+            self.root.bind_all("<MouseWheel>", dispatch_wheel, add="+")
+            self.root.bind_all("<Button-4>", lambda event: dispatch_linux_wheel(event, -1), add="+")
+            self.root.bind_all("<Button-5>", lambda event: dispatch_linux_wheel(event, 1), add="+")
+            self._scroll_wheel_dispatch_installed = True
 
         inner.bind("<Configure>", schedule_fit)
         canvas.bind("<Configure>", schedule_fit)
-        shell.bind("<Enter>", bind_wheel)
-        shell.bind("<Leave>", unbind_wheel)
+        shell.bind("<Enter>", activate_wheel)
+        shell.bind("<Leave>", deactivate_wheel)
         canvas.configure(yscrollcommand=scroll.set, xscrollcommand=horizontal.set)
         shell.rowconfigure(0, weight=1)
         shell.columnconfigure(0, weight=1)

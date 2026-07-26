@@ -3437,13 +3437,13 @@ class EventMixin:
             if stats:
                 winner.last_fight_stats = dict(stats.get(winner.name, {}) or {}) or None
                 loser.last_fight_stats = dict(stats.get(loser.name, {}) or {}) or None
+            excitement = award_pool[index].get("excitement", 50) if index < len(award_pool) else 50
+            round_no = award_pool[index].get("round", 1) if index < len(award_pool) else 1
+            self.record_season_result(winner, loser, method, round_no, fight, excitement, self.player_company_name)
             if method == "Draw":
                 self.apply_draw_result(winner, loser, fight)
             else:
                 self.apply_result(winner, loser, fight, method)
-                excitement = award_pool[index].get("excitement", 50) if index < len(award_pool) else 50
-                round_no = award_pool[index].get("round", 1) if index < len(award_pool) else 1
-                self.record_season_result(winner, loser, method, round_no, fight, excitement, self.player_company_name)
                 if winner in self.roster and getattr(winner, "win_bonus", 0):
                     clause_payout += winner.win_bonus
             # PPV points are owed to booked fighters win or lose.

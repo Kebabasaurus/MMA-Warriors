@@ -943,7 +943,9 @@ def exercise_retirement_card_pipeline():
         app.free_agents = []
         app.belts, app.interim_belts, app.belt_history = app.blank_belts(), app.blank_belts(), app.blank_belt_history()
         app.update_contracts()
-        require(player_retiree in app.free_agents and player_retiree not in app.roster and player_retiree.contract_months == 0, "Player expiry logic renewed a retirement-pending fighter")
+        require(player_retiree in app.roster and player_retiree not in app.free_agents
+                and player_retiree.contract_months == 0 and player_retiree.retirement_pending,
+                "Player expiry logic changed a retirement-pending fighter's final-fight state")
         require(not callback_errors, f"Retirement-card Tk callback error: {callback_errors[0][1] if callback_errors else ''}")
     finally:
         destroy_root(root)

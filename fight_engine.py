@@ -16,7 +16,7 @@ from models import Fighter, Gym, Promotion
 class FightEngineMixin:
     def simulate_fight(self, a, b, fight):
         self.ensure_rule_defaults()
-        max_rounds = self.rules["title_rounds"] if fight["main"] or fight["title"] else self.rules["rounds"]
+        max_rounds = self.rules["title_rounds"] if fight.get("main", False) or fight.get("title", False) else self.rules["rounds"]
         round_length_factor = self.rules["round_length"] / 5
         ticks_per_round = max(10, round(18 * round_length_factor))
         state = {

@@ -9,6 +9,8 @@ swallowed so it can never interrupt an event.
 """
 
 import math
+import queue
+import re
 import threading
 import time
 
@@ -41,9 +43,11 @@ class FightNightAudioMixin:
 
     def resolve_fight_night_output(self, label=None):
         label = str(label if label is not None else self.rules.get("fight_night_audio_output", self.AUDIO_DEFAULT))
-        for choice, index in self.available_fight_night_outputs():
-            if choice == label:
-                return index
+        if label == self.AUDIO_DEFAULT:
+            return None
+        match = re.search(r"\[(\d+)\]\s*$", label)
+        if match:
+            return int(match.group(1))
         return None
 
     def ensure_audio_defaults(self):
@@ -188,28 +192,34 @@ class FightNightAudioMixin:
         if not self.rules.get("fight_night_audio_enabled", True):
             return False
         now = time.monotonic()
-        # A slightly shorter guard than a jab exchange so rapid strikes still land.
-        if now - getattr(self, "_fight_night_last_sound_at", 0.0) < 0.06:
+        if now - getattr(self, "_fight_night_last_sound_at", 0.0) < 0.10:
             return False
         self._fight_night_last_sound_at = now
         volume = max(0, min(100, int(self.rules.get("fight_night_audio_volume", 55)))) / 100
         if volume <= 0:
             return False
+        if not hasattr(self, "_fight_night_audio_queue"):
+            self._fight_night_audio_queue = queue.Queue(maxsize=6)
 
-        def play():
-            try:
-                if sd is None or np is None:
-                    import winsound
-                    freq, ms = self._fight_night_fallback_tone(cue)
-                    winsound.Beep(max(37, int(freq)), max(40, int(ms)))
-                    return
-                sr = self._SAMPLE_RATE
-                audio = self._render_cue(cue, sr) * volume
-                sd.play(audio, samplerate=sr, device=self.resolve_fight_night_output(), blocking=False)
-            except Exception:
-                # Device changes, unplugged headphones, and unavailable audio
-                # drivers must never interrupt an event or surface a crash dialog.
-                return
+            def worker():
+                while True:
+                    queued_cue, queued_volume, device = self._fight_night_audio_queue.get()
+                    try:
+                        if sd is None or np is None:
+                            import winsound
+                            freq, ms = self._fight_night_fallback_tone(queued_cue)
+                            winsound.Beep(max(37, int(freq)), max(40, int(ms)))
+                        else:
+                            audio = self._render_cue(queued_cue, self._SAMPLE_RATE) * queued_volume
+                            sd.play(audio, samplerate=self._SAMPLE_RATE, device=device, blocking=True)
+                    except Exception:
+                        pass
+                    finally:
+                        self._fight_night_audio_queue.task_done()
 
-        threading.Thread(target=play, name="FightNightAudio", daemon=True).start()
+            threading.Thread(target=worker, name="FightNightAudio", daemon=True).start()
+        try:
+            self._fight_night_audio_queue.put_nowait((cue, volume, self.resolve_fight_night_output()))
+        except queue.Full:
+            return False
         return True

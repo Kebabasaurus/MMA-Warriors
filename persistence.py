@@ -443,8 +443,7 @@ class PersistenceMixin:
         if not self.rules.get("autosave_enabled", True):
             return None
         kind = "monthly" if kind == "monthly" else "weekly"
-        year = 2026 + (getattr(self, "month", 1) - 1) // 12
-        label = f"{kind.title()} Autosave Y{year} M{getattr(self, 'month', 1):02d} W{getattr(self, 'week', 1)}"
+        label = f"{kind.title()} Autosave {self.format_game_date()}"
         path = self.rolling_snapshot_path(self.autosave_dir(kind), f"{kind}_autosave")
         data = dict(snapshot) if snapshot is not None else self.serialize_world()
         data["_save_meta"] = self.save_metadata(label)
@@ -790,8 +789,8 @@ class PersistenceMixin:
         self.cash = data.get("cash", 275_000)
         self.company_pop = data.get("company_pop", 38)
         self.company_stability = data.get("company_stability", max(5, min(99, self.cash // 5000)))
-        self.month = data.get("month", 1)
-        self.week = data.get("week", 1)
+        self.month = max(1, int(data.get("month", 1) or 1))
+        self.week = max(1, min(4, int(data.get("week", 1) or 1)))
         self.roster = [Fighter(**row) for row in data.get("roster", [])]
         self.free_agents = [Fighter(**row) for row in data.get("free_agents", [])]
         for fighter in self.roster + self.free_agents:
@@ -949,6 +948,7 @@ class PersistenceMixin:
         self.awards_history = data.get("awards_history", [])
         self.clean_numbered_fighter_names()
         regional_repairs = self.repair_regional_fighter_tracking()
+        regional_title_repairs = self.repair_regional_title_state()
         if regional_repairs["origin"] or regional_repairs["activity"] or regional_repairs.get("division_activity", 0):
             self.change_journal.append({
                 "date": self.format_game_date(),
@@ -957,6 +957,16 @@ class PersistenceMixin:
                     f"Regional tracking repaired {regional_repairs['origin']} feeder origins and "
                     f"{regional_repairs['activity']} last-fight activity dates; seeded "
                     f"{regional_repairs.get('division_activity', 0)} division activity markers."
+                ),
+            })
+            self.change_journal = self.change_journal[-400:]
+        if regional_title_repairs["divisions"]:
+            self.change_journal.append({
+                "date": self.format_game_date(),
+                "type": "Migration",
+                "summary": (
+                    f"Regional title repair vacated {regional_title_repairs['divisions']} incorrectly appointed feeder titles "
+                    f"and cleared stale title status from {regional_title_repairs['fighters']} fighter(s)."
                 ),
             })
             self.change_journal = self.change_journal[-400:]
@@ -1499,7 +1509,7 @@ class PersistenceMixin:
                     universe = meta.get("active_universe", "")
                     universe_note = f" | {universe}" if universe else ""
                     prefix = group_prefix + (f"{display_name} | {kind} | " if kind else f"{display_name} | ")
-                    label = f"{prefix}{company} | M{month} W{week} | {saved_at}{universe_note}"
+                    label = f"{prefix}{company} | {self.format_game_date(month, week)} | {saved_at}{universe_note}"
             except Exception:
                 pass
             self.save_slot_files.append(file)
