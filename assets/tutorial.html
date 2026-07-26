@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MMA Warriors — Tutorial Guide</title>
+<style>
+  :root {
+    --chrome: #0b0d10; --chrome2: #151b22; --paper: #171a1f; --panel: #20252d;
+    --panel-dark: #2d3540; --line: #384553; --cream: #252b34; --red: #9b1f2b;
+    --gold: #d5a84b; --text: #e8edf2; --muted: #a8b3bf;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--text);
+    font-family: "Segoe UI", Tahoma, Verdana, sans-serif; line-height: 1.55;
+  }
+  header {
+    background: var(--chrome); border-bottom: 3px solid var(--gold);
+    padding: 22px 32px; display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+  }
+  header h1 { margin: 0; font-size: 1.5em; letter-spacing: 0.04em; color: var(--gold); }
+  header span { color: var(--muted); font-size: 0.95em; }
+  .layout { display: flex; max-width: 1180px; margin: 0 auto; }
+  nav.toc {
+    width: 240px; flex-shrink: 0; padding: 22px 14px; position: sticky; top: 0;
+    align-self: flex-start; max-height: 100vh; overflow-y: auto;
+  }
+  nav.toc a {
+    display: block; color: var(--muted); text-decoration: none; padding: 5px 10px;
+    border-radius: 4px; font-size: 0.92em;
+  }
+  nav.toc a:hover { background: var(--panel); color: var(--text); }
+  nav.toc .grp { color: var(--gold); font-weight: 600; font-size: 0.8em; letter-spacing: 0.08em;
+    margin: 14px 0 2px; padding: 0 10px; text-transform: uppercase; }
+  main { flex: 1; padding: 24px 32px 60px; min-width: 0; }
+  section { margin-bottom: 34px; }
+  h2 {
+    color: var(--gold); border-bottom: 1px solid var(--line); padding-bottom: 6px;
+    font-size: 1.15em; letter-spacing: 0.02em;
+  }
+  h3 { color: var(--text); font-size: 1.02em; margin-bottom: 4px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+    padding: 14px 18px; margin: 10px 0;
+  }
+  .tip {
+    background: var(--cream); border-left: 3px solid var(--gold); border-radius: 4px;
+    padding: 10px 16px; margin: 12px 0; font-size: 0.95em;
+  }
+  .swatch { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+  code { background: var(--panel-dark); padding: 1px 6px; border-radius: 3px; font-size: 0.92em; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+  th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; font-size: 0.93em; }
+  th { background: var(--panel-dark); color: var(--gold); }
+  ul { padding-left: 22px; }
+  .top { text-align: right; }
+  .top a { color: var(--muted); font-size: 0.85em; text-decoration: none; }
+  .top a:hover { color: var(--gold); }
+  @media (max-width: 820px) {
+    .layout { flex-direction: column; }
+    nav.toc { width: 100%; position: static; max-height: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>MMA WARRIORS</h1>
+  <span>Tutorial Guide — running a promotion from local shows to global stardom</span>
+</header>
+
+<div class="layout">
+  <nav class="toc">
+    <a href="#start">Getting Started</a>
+    <div class="grp">Today</div>
+    <a href="#assistant">Assistant</a>
+    <a href="#inbox">Inbox</a>
+    <a href="#media">Media Desk</a>
+    <a href="#fightnight">Fight Night</a>
+    <div class="grp">Promotion</div>
+    <a href="#roster">Roster</a>
+    <a href="#matchmaking">Matchmaking</a>
+    <a href="#contracts">Contracts</a>
+    <a href="#freeagents">Free Agents</a>
+    <a href="#scouting">Scouting</a>
+    <a href="#academy">Fight Academy</a>
+    <a href="#staff">Staff</a>
+    <a href="#finance">Finance</a>
+    <div class="grp">World</div>
+    <a href="#world">World Hub</a>
+    <a href="#regional">Regional Prospects</a>
+    <a href="#search">Fighter Search</a>
+    <a href="#combatsports">Combat Sports</a>
+    <a href="#companies">Companies</a>
+    <a href="#rankings">Rankings</a>
+    <a href="#results">Results</a>
+    <a href="#regions">Regions</a>
+    <div class="grp">Tools</div>
+    <a href="#saves">Game &amp; Saves</a>
+    <a href="#rules">Company Rules</a>
+    <a href="#editor">World Editor</a>
+    <a href="#simlab">Sim Lab</a>
+    <div class="grp">Advice</div>
+    <a href="#tips">Small Promotion Survival</a>
+    <div class="grp">Spoilers</div>
+    <a href="#spoilers">Stat Dynamics Explained</a>
+  </nav>
+
+  <main>
+
+    <section id="start">
+      <h2>Getting Started</h2>
+      <p>You run an MMA promotion in a persistent, simulated combat-sports world alongside a full roster of
+      AI-controlled companies, a regional development pipeline that feeds new talent into every major
+      promotion, and a free-agent market that never stops moving — whether you're watching or not.</p>
+      <div class="card">
+        <h3>The left-hand navigation</h3>
+        <p>Screens are grouped into four sections you'll use constantly:</p>
+        <ul>
+          <li><strong>Today</strong> — what needs your attention this week.</li>
+          <li><strong>Promotion</strong> — everything about running your own company.</li>
+          <li><strong>World</strong> — the wider industry: rivals, rankings, and the talent pipeline.</li>
+          <li><strong>Tools</strong> — saves, rules, and testing utilities.</li>
+        </ul>
+      </div>
+      <div class="tip"><strong>Advance Week</strong> (top-right of every screen) moves the game forward one
+      week. This is the core loop: check your Assistant and Inbox, book or adjust your card, then advance.
+      Monthly business (development, retirements, market churn, regional graduations) runs automatically as
+      weeks roll over into a new month.</div>
+    </section>
+
+    <section id="assistant">
+      <h2>Assistant</h2>
+      <p><em>Weekly Command Centre</em> — the next decisions, show readiness, runway, division health, and
+      attributed changes. This is the first screen to check every week: it tells you what actually needs a
+      decision instead of making you hunt across every tab.</p>
+    </section>
+
+    <section id="inbox">
+      <h2>Inbox</h2>
+      <p><em>Mail / Decisions</em> — owner goals, decisions, contract alerts, suspensions, and business mail.
+      Anything requiring a yes/no from you (title-shot clauses, retirement reviews, contract expirations)
+      surfaces here.</p>
+    </section>
+
+    <section id="media">
+      <h2>Media Desk</h2>
+      <p><em>Website</em> — build the company brand, promote events, manage rights, and follow the fight
+      world. Popularity and stability both respond to how well you're promoting your shows here, not just
+      the fights themselves.</p>
+    </section>
+
+    <section id="fightnight">
+      <h2>Fight Night</h2>
+      <p><em>Live Fight Night</em> — the blow-by-blow report and office news for whatever card just ran,
+      yours or the wider world's.</p>
+    </section>
+
+    <section id="roster">
+      <h2>Roster</h2>
+      <p><em>Company Roster</em> — sort fighters, check status, and build your divisions. Every signed
+      fighter's contract, form, and readiness lives here.</p>
+      <div class="tip">A fighter stranded in a division you've closed can be released from their profile
+      via <strong>Cut From Roster</strong> — severance is paid automatically based on their purse and any
+      remaining guaranteed fights.</div>
+    </section>
+
+    <section id="matchmaking">
+      <h2>Matchmaking</h2>
+      <p><em>Add Show / Matchmaking</em> — build the card from opener to main event. The available-fighters
+      table is colour-coded so you can spot a viable card at a glance:</p>
+      <table>
+        <tr><th>Colour</th><th>Meaning</th></tr>
+        <tr><td><span class="swatch" style="background:#7fd694"></span>Green</td><td>Winning record</td></tr>
+        <tr><td><span class="swatch" style="background:#e8837a"></span>Red</td><td>Losing record</td></tr>
+        <tr><td><span class="swatch" style="background:#9298a1"></span>Grey</td><td>Unavailable on this date (injured, fatigued, or already booked)</td></tr>
+      </table>
+      <p>Hover over any column header for a tooltip explaining what it measures — Title Path and Form columns
+      mirror what you'd see on the Rankings screen, so you can judge a matchup's stakes without leaving this
+      tab.</p>
+      <div class="tip"><strong>Crossover Superfight Night</strong> — a special, player-only event type: pay
+      an extra sanctioning fee to book a champion from your promotion against a champion from a rival
+      promotion. Non-title, so nobody's belt changes hands, and only close-enough weight classes can be
+      matched — but it can headline a whole card of its own, with regular prelims underneath.</div>
+    </section>
+
+    <section id="contracts">
+      <h2>Contracts</h2>
+      <p><em>Contracts</em> — expiring deals, renewal talks, and roster wage pressure. Negotiate early:
+      a fighter who runs out their deal becomes a free agent the wider market can bid on too.</p>
+      <div class="tip">Two negotiable clauses matter beyond pay: a <strong>title-shot clause</strong>
+      guarantees a fighter a crack at the belt within their deal, and <strong>guaranteed comeback fights</strong>
+      keep a fighter locked to fulfilling those bouts even through a retirement review — they get their
+      remaining scheduled fights before any retirement takes effect.</div>
+    </section>
+
+    <section id="freeagents">
+      <h2>Free Agents</h2>
+      <p><em>Free Agents</em> — scout talent and negotiate new contracts. This pool includes regional
+      graduates, released fighters, and long-time journeymen alike — check age, recent form, and potential
+      before committing to a deal, not just the headline overall rating.</p>
+    </section>
+
+    <section id="scouting">
+      <h2>Scouting</h2>
+      <p><em>Scouting</em> — evaluate fighters, observe upcoming bouts, search regions, and turn uncertain
+      reports into recruitment decisions. Recommendations here are advisory: they combine projected ability,
+      potential, market pull, your divisional depth, asking price, and available cash, but the final call is
+      always yours.</p>
+    </section>
+
+    <section id="academy">
+      <h2>Fight Academy</h2>
+      <p>Build an in-house development academy (an initial investment, roughly $180,000) to grow your own
+      prospects from scratch rather than relying purely on the free-agent market. Amateurs train, fight
+      amateur showcases, and eventually graduate into a real professional contract once they're ready — the
+      academy workspace tracks each prospect's readiness so you know who's close. Paid facility upgrades
+      speed up development further once it's running, letting a serious talent pipeline pay for itself over
+      time instead of relying purely on what the free-agent market happens to offer.</p>
+    </section>
+
+    <section id="staff">
+      <h2>Staff</h2>
+      <p><em>Staff / Scouting / Drug Testing</em> — hire staff, assign scouting, manage testing, and set
+      post-show bonuses.</p>
+    </section>
+
+    <section id="finance">
+      <h2>Finance</h2>
+      <p><em>Finance</em> — ticketing, broadcast income, sponsorship, payroll, production, medical, tax, and
+      the full ledger. Check this before committing to big signings or venue upgrades.</p>
+    </section>
+
+    <section id="world">
+      <h2>World Hub</h2>
+      <p><em>World</em> — promotions, news, market churn, and the wider MMA economy. This is the pulse of
+      everything happening outside your own company.</p>
+    </section>
+
+    <section id="regional">
+      <h2>Regional Prospects</h2>
+      <p>Every region runs its own development circuit — fifteen feeder promotions worldwide, each running
+      real developmental cards every month. Fighters build genuine in-ring form there before they're ever
+      eligible to enter the wider free-agent market: eligibility is earned through actual bouts fought,
+      wins, momentum, and age, not just a fabricated backstory record. Browse this tab to see who's
+      <strong>Eligible Now</strong>, <strong>Nearly Eligible</strong>, or still <strong>Developing</strong> —
+      and to understand exactly what a prospect still needs before they're ready.</p>
+    </section>
+
+    <section id="search">
+      <h2>Fighter Search</h2>
+      <p><em>Fighter Search</em> — search the full combat-sports world and inspect recent form for anyone,
+      signed or unsigned.</p>
+    </section>
+
+    <section id="combatsports">
+      <h2>Combat Sports</h2>
+      <p><em>Combat Sports Universe</em> — MMA isn't the only sport running: boxing, kickboxing, BJJ, and
+      more each have their own AI flagship promotion. Open your own child promotion in any of them (for
+      example a BJJ arm under your main brand), sign that sport's athletes, and book and run its cards
+      separately from your MMA business. Academy prospects who don't fit your MMA roster can graduate
+      straight into an open child promotion instead.</p>
+    </section>
+
+    <section id="companies">
+      <h2>Companies</h2>
+      <p><em>Industry Standings</em> — every promotion and combat-sport circuit, ranked by power. Filter,
+      sort, and open a profile to see exactly why a rival is rated where it is.</p>
+    </section>
+
+    <section id="rankings">
+      <h2>Rankings</h2>
+      <p><em>Rankings</em> — division rankings and pound-for-pound rankings across the whole sport.</p>
+    </section>
+
+    <section id="results">
+      <h2>Results</h2>
+      <p><em>Results Database</em> — event recaps, critical ratings, commercial ratings, gates, methods, and
+      full show histories.</p>
+    </section>
+
+    <section id="regions">
+      <h2>Regions</h2>
+      <p><em>Game World</em> — regions, states, economies, legal status, drug testing rules, teams, and
+      local show history.</p>
+    </section>
+
+    <section id="saves">
+      <h2>Game &amp; Saves</h2>
+      <p>Save, load, start a new game, and export or load a fighter database. Quick Save and Quick Load are
+      always available at the bottom of the left-hand navigation too.</p>
+    </section>
+
+    <section id="rules">
+      <h2>Company Rules</h2>
+      <p><em>Company Editor</em> — belts, rules, broadcasters, and weight classes for your promotion.</p>
+    </section>
+
+    <section id="editor">
+      <h2>World Editor</h2>
+      <p>Edit the current career directly, or maintain the reusable starting universe used for future new
+      games.</p>
+    </section>
+
+    <section id="simlab">
+      <h2>Sim Lab</h2>
+      <p><em>Simulation Lab</em> — division-aware fight testing, scouting cards, bracket simulations, and
+      engine audits. Useful for testing hypothetical matchups without touching your real save.</p>
+    </section>
+
+    <section id="tips">
+      <h2>Small Promotion Survival</h2>
+      <div class="tip"><strong>Popularity and stability grow from more than just winning.</strong> Hype,
+      excitement, attendance relative to your venue's capacity, and turning a profit all feed into it — a
+      small promotion below 40 popularity even gets a helping hand to keep growth from stalling out
+      entirely. Don't judge your trajectory off one bad night.</div>
+      <div class="tip"><strong>Watch fighter fit, not just rating.</strong> A new signing takes time to
+      settle into a division — the fit penalty fades as they get more bouts under their belt with you.</div>
+      <div class="tip"><strong>Don't sleep on Regional Prospects.</strong> A steady trickle of genuinely
+      proven, affordable fighters comes out of the regional circuits every month — it's usually a better
+      value signing than chasing an established free agent your budget can't really support yet.</div>
+      <div class="tip"><strong>Check Contracts before it's urgent.</strong> A lapsed deal doesn't just cost
+      you the fighter — it hands them straight to the open market where any rival can make an offer.</div>
+    </section>
+
+    <section id="spoilers">
+      <h2>Spoilers — Stat Dynamics Explained</h2>
+      <p style="color: var(--muted); font-size: 0.9em;">Simplified versions of the actual formulas running
+      under the hood. Numbers can shift in future balance passes, but the shape of each mechanic won't.</p>
+
+      <div id="spoiler-gate" class="card" style="border-color: var(--gold); text-align: center;">
+        <h3 style="margin-top: 4px;">⚠ Spoiler Warning</h3>
+        <p style="margin-bottom: 14px;">This reveals the actual formulas behind popularity, stability,
+        regional graduation, show frequency, and free-agent retirement. Some players prefer to learn these
+        by playing.</p>
+        <button id="spoiler-step1" onclick="document.getElementById('spoiler-confirm').style.display='block'; this.style.display='none';"
+          style="background: var(--panel-dark); color: var(--text); border: 1px solid var(--gold); border-radius: 4px; padding: 8px 18px; cursor: pointer; font-size: 0.95em;">
+          Show the formulas
+        </button>
+        <div id="spoiler-confirm" style="display:none; margin-top: 12px;">
+          <p style="color: var(--gold); margin-bottom: 10px;">Are you sure?</p>
+          <button onclick="document.getElementById('spoiler-content').style.display='block'; document.getElementById('spoiler-gate').style.display='none';"
+            style="background: var(--red); color: #fff; border: none; border-radius: 4px; padding: 8px 18px; margin-right: 8px; cursor: pointer; font-size: 0.95em;">
+            Yes, reveal them
+          </button>
+          <button onclick="document.getElementById('spoiler-confirm').style.display='none'; document.getElementById('spoiler-step1').style.display='inline-block';"
+            style="background: var(--panel-dark); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 8px 18px; cursor: pointer; font-size: 0.95em;">
+            No, keep it a mystery
+          </button>
+        </div>
+      </div>
+
+      <div id="spoiler-content" style="display:none;">
+
+      <div class="card">
+        <h3>Popularity &amp; stability after a show</h3>
+        <p>Both move by a small delta each time you run an event, rounded to the nearest whole point and
+        clamped between 1 and 100:</p>
+        <ul>
+          <li><strong>Popularity delta</strong> ≈ (avg hype − 43) ⁄ 15 + (avg excitement − 44) ⁄ 16 +
+          (regional pull − 1) × 1.6 + attendance ratio × 1.8 + (+0.4 if profitable, −0.7 if not)</li>
+          <li><strong>Stability delta</strong> ≈ profit ⁄ 300,000 + (avg excitement − 40) ⁄ 24 + attendance
+          ratio × 2.2 − 0.3 − mismatch penalty × 0.28</li>
+        </ul>
+        <p><em>Attendance ratio</em> is just attendance ÷ venue capacity — a sold-out small venue helps more
+        than a half-empty big one. If your company popularity is below 40, popularity gets an extra boost
+        that fades out as you approach 40, so a small promotion isn't stuck fighting a baseline built for a
+        global juggernaut.</p>
+      </div>
+
+      <div class="card">
+        <h3>Regional eligibility — the seven pathways</h3>
+        <p>A regional fighter needs real, in-engine bouts (never a fabricated backstory record) to satisfy
+        <strong>any one</strong> of these before they count as Eligible Now:</p>
+        <table>
+          <tr><th>Pathway</th><th>Requirement</th></tr>
+          <tr><td>Early breakthrough</td><td>Age 23+, 11+ bouts, potential 86+, and (7+ wins or momentum +4)</td></tr>
+          <tr><td>Proven regional</td><td>Age 25+, 12+ bouts, 7+ wins, 53%+ win rate</td></tr>
+          <tr><td>Established exit</td><td>Age 27+, 15+ bouts, 51%+ win rate</td></tr>
+          <tr><td>Hot regional run</td><td>Still with their original circuit, 7+ wins, momentum at the +5 cap, 26+ popularity</td></tr>
+          <tr><td>Circuit complete</td><td>(Age 24+ and 22+ bouts) or 30+ bouts regardless of age</td></tr>
+          <tr><td>Veteran exit</td><td>Age 28+, 15+ bouts</td></tr>
+          <tr><td>Aging out</td><td>Age 29+, 7+ bouts, and results not already strong enough to justify staying</td></tr>
+        </table>
+        <p>Younger than 18, injured, mid-retirement, or already retired always blocks eligibility outright,
+        no matter which pathway is met.</p>
+      </div>
+
+      <div class="card">
+        <h3>How many actually graduate each month</h3>
+        <p>Every feeder circuit runs a card every month — up to 15 bouts, spread fairly round-robin across
+        every division with enough fighters, not dumped onto whichever division happens to go first. But
+        graduating out of a circuit into free agency is separately budgeted, 0–6 slots per month across the
+        <em>whole world</em>, driven by whichever pressure is highest:</p>
+        <ul>
+          <li><strong>Reserve pressure</strong> — thin free-agent market (under 170 usable free agents pushes
+          this toward its max)</li>
+          <li><strong>Demand pressure</strong> — how many jobs the major promotions have open</li>
+          <li><strong>Backlog pressure</strong> — how large the Eligible Now pile already is, so a quiet
+          market can't let readiness balloon forever unaddressed</li>
+        </ul>
+        <p>That budget then rotates fairly across all fifteen circuits, so it isn't always the same one or
+        two feeders supplying every graduate.</p>
+      </div>
+
+      <div class="card">
+        <h3>How often the AI runs shows</h3>
+        <p>Each promotion rolls a monthly chance based on its "show personality" (Super Shows, Star Builder,
+        Frequent Small Cards, and so on), adjusted by its financial mode, executive personality, board
+        mandate, financial pressure, roster health, and roster depth — then that whole result is scaled down
+        by 0.65 before being rolled against. A cash-rich, deep-rostered flagship promotion runs noticeably
+        more often than a small one.</p>
+      </div>
+
+      <div class="card">
+        <h3>Emergency free-agent call-ups</h3>
+        <p>If the active free-agent market ever crashes below 160, the game tries to refill it back toward
+        200 almost entirely from the regional circuits before ever inventing a brand-new fighter: it pulls
+        evenly, round-robin, across all fifteen feeder circuits — no per-circuit cap — so a real crash is
+        absorbed by genuine regional talent instead of diluting the world with fabricated fighters. Only
+        whatever the regionals genuinely can't cover falls back to a freshly generated free agent.</p>
+      </div>
+
+      <div class="card">
+        <h3>Company power score &amp; industry tier</h3>
+        <p>Every promotion's overall standing is a single power score built from star power, champions held
+        (capped), cash on hand, and roster depth. That score buckets into a tier: <strong>Global</strong> at
+        280+, <strong>National</strong> from 190–279, <strong>Regional</strong> from 100–189, and
+        <strong>Local</strong> below 100. Climbing a tier is a real, visible milestone — not just a cosmetic
+        label.</p>
+      </div>
+
+      <div class="card">
+        <h3>Settling into a new division</h3>
+        <p>A fighter competing above their natural frame size starts with a real division-fit penalty. It
+        eases every month they keep training and competing there — younger fighters adapt noticeably faster
+        than veterans, and a bigger natural frame or better conditioning speeds it up further — until only a
+        small residual penalty remains for a genuinely undersized fighter. This is why a new signing often
+        looks better a year in than the day you signed them.</p>
+      </div>
+
+      <div class="card">
+        <h3>When a stagnant free agent retires</h3>
+        <p>Twice a year, any unsigned free agent who is age 30+, rated under 55 overall, on a 3+ fight
+        losing streak, with a win rate of 30% or less over their last 5 real fights, and not a genuine
+        blue-chip prospect gets flagged for one final career-review fight before retiring. This exists
+        purely to stop free agency filling up with fighters who are never going anywhere.</p>
+      </div>
+
+      <div class="card">
+        <h3>Matchmaking fit score</h3>
+        <p>The 1–99 score shown in Matchmaking is a compressed, readable version of a much larger internal
+        number that factors in hype, rivalry, and title stakes — the raw number is squeezed down and floored
+        at 1 / capped at 99 so it stays comparable across every possible matchup, not a literal win
+        probability.</p>
+      </div>
+
+      <div class="card">
+        <h3>Monthly growth &amp; decline</h3>
+        <p>Every signed and free-agent fighter gets a development roll each month. If it clears a random
+        threshold and they're still under their potential (and within their prime growth window), they
+        improve — bigger clearances produce bigger jumps, some months are a flat plateau, and young,
+        low-rated prospects with real upside get an easier roll so genuine talent isn't stuck frozen for an
+        entire career. Past their prime, a separate decline roll can chip skills away instead, and it hits
+        harder the further past prime they are — durable archetypes resist it longest.</p>
+      </div>
+
+      </div>
+    </section>
+
+  </main>
+</div>
+</body>
+</html>

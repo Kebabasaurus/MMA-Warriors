@@ -891,9 +891,9 @@ def exercise_retirement_card_pipeline():
         renewal_promo = copy.deepcopy(next(promo for promo in app.promotions if promo.name == "Ultimate Fighting Championship"))
         renewal_promo.cash = 100_000_000
         renewal_promo.roster = []
-        require(app.ai_division_target(renewal_promo, "Male") == 40, "UFC male division plan does not match its 80% roster share")
-        require(app.ai_division_target(renewal_promo, "Female") == 10, "UFC female division plan does not match its 20% roster share")
-        for gender, target in (("Male", 40), ("Female", 10)):
+        require(app.ai_division_target(renewal_promo, "Male") == 33, "UFC male division plan does not match its roster share")
+        require(app.ai_division_target(renewal_promo, "Female") == 17, "UFC female division plan does not match its roster share")
+        for gender, target in (("Male", 33), ("Female", 17)):
             for weight in renewal_promo.weight_classes:
                 for index in range(target):
                     member = copy.deepcopy(template)
@@ -943,7 +943,9 @@ def exercise_retirement_card_pipeline():
         app.free_agents = []
         app.belts, app.interim_belts, app.belt_history = app.blank_belts(), app.blank_belts(), app.blank_belt_history()
         app.update_contracts()
-        require(player_retiree in app.free_agents and player_retiree not in app.roster and player_retiree.contract_months == 0, "Player expiry logic renewed a retirement-pending fighter")
+        require(player_retiree in app.roster and player_retiree not in app.free_agents
+                and player_retiree.contract_months == 0 and player_retiree.retirement_pending,
+                "Player expiry logic changed a retirement-pending fighter's final-fight state")
         require(not callback_errors, f"Retirement-card Tk callback error: {callback_errors[0][1] if callback_errors else ''}")
     finally:
         destroy_root(root)

@@ -116,6 +116,10 @@ class Fighter:
     retirement_pending: bool = False
     retirement_requested_month: int = 0
     retirement_fight_completed: bool = False
+    # The month a completed comeback becomes eligible for its separate farewell
+    # bout. This prevents the final comeback fight from also consuming it.
+    retirement_fight_due_after_month: int = 0
+    comeback_completion_prompted: bool = False
     camp_quality: int = 0
     camp_weeks: int = 0
     camp_boost: int = 0
@@ -310,3 +314,4 @@ class Promotion:
     legacy_score: int = 0
     academy: dict = None
     closed_divisions: list = None
+    regional_division_activity: dict = None

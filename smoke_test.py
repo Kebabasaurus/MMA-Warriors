@@ -84,6 +84,28 @@ def main():
         )
         ai_holders = {name for name in (ai_title_probe.belts or {}).values() if name}
         ai_ready = [fighter for fighter in ai_title_probe.roster if not fighter.retired]
+        unavailable_title_holder = next(
+            fighter for fighter in ai_ready
+            if (ai_title_probe.belts or {}).get(app.belt_key(fighter.gender, fighter.weight)) == fighter.name
+            and sum(1 for other in ai_ready if other is not fighter and other.gender == fighter.gender and other.weight == fighter.weight) >= 2
+        )
+        unavailable_division = [
+            fighter for fighter in ai_ready
+            if fighter is not unavailable_title_holder
+            and fighter.gender == unavailable_title_holder.gender
+            and fighter.weight == unavailable_title_holder.weight
+        ]
+        assert_true(
+            not app.ai_divisional_title_bout_is_valid(
+                ai_title_probe, unavailable_division[0], unavailable_division[1]
+            ),
+            "AI title validation accepted a bout that excluded a live reigning champion",
+        )
+        unavailable_card = app.build_ai_card(ai_title_probe, unavailable_division, 4)
+        assert_true(
+            not any(fight.get("title") for fight in unavailable_card),
+            "AI treated an unavailable reigning champion as a vacant belt",
+        )
         random_state = random.getstate()
         champion_appearances = 0
         for seed in range(20):
@@ -240,11 +262,20 @@ def main():
             feeder_fighter_probe.age, feeder_fighter_probe.record_w, feeder_fighter_probe.record_l,
             feeder_fighter_probe.record_d, feeder_fighter_probe.momentum, feeder_fighter_probe.popularity,
             feeder_fighter_probe.injured, feeder_fighter_probe.retirement_pending,
+            feeder_fighter_probe.record_history_baseline_w, feeder_fighter_probe.record_history_baseline_l,
+            feeder_fighter_probe.record_history_baseline_d,
         )
-        feeder_fighter_probe.age = 22
-        feeder_fighter_probe.record_w, feeder_fighter_probe.record_l, feeder_fighter_probe.record_d = 8, 2, 0
-        feeder_fighter_probe.momentum = 4
-        feeder_fighter_probe.popularity = 24
+        feeder_fighter_probe.age = 25
+        feeder_fighter_probe.record_w, feeder_fighter_probe.record_l, feeder_fighter_probe.record_d = 9, 4, 0
+        # Eligibility is measured against real, in-engine bouts only (record
+        # minus the pre-universe backstory baseline). Zero the baseline here
+        # too so this fixture represents a fighter who genuinely fought these
+        # 9-4 bouts, not one still carrying a randomized fabricated backstory.
+        feeder_fighter_probe.record_history_baseline_w = 0
+        feeder_fighter_probe.record_history_baseline_l = 0
+        feeder_fighter_probe.record_history_baseline_d = 0
+        feeder_fighter_probe.momentum = 5
+        feeder_fighter_probe.popularity = 28
         feeder_fighter_probe.injured = 0
         feeder_fighter_probe.retirement_pending = False
         assessment = app.regional_candidate_assessment(feeder_fighter_probe, feeder_probe)
@@ -254,6 +285,8 @@ def main():
             feeder_fighter_probe.age, feeder_fighter_probe.record_w, feeder_fighter_probe.record_l,
             feeder_fighter_probe.record_d, feeder_fighter_probe.momentum, feeder_fighter_probe.popularity,
             feeder_fighter_probe.injured, feeder_fighter_probe.retirement_pending,
+            feeder_fighter_probe.record_history_baseline_w, feeder_fighter_probe.record_history_baseline_l,
+            feeder_fighter_probe.record_history_baseline_d,
         ) = original_feeder_values
         original_feeder_roster = feeder_probe.roster
         feeder_probe.roster = []
@@ -837,7 +870,7 @@ def main():
         assert_true(app.fight_night_log_order(live_order) == live_order, "Already-correct fight-night order was reversed twice")
         assert_true(app.event_fight_order([1, 2, 3]) == [3, 2, 1], "Player event execution order was not flipped")
         feeder_promotions = [promotion for promotion in app.promotions if promotion.is_regional_feeder]
-        assert_true(len(feeder_promotions) == 15, "Regional feeder promotion expansion missing")
+        assert_true(len(feeder_promotions) == 16, "Regional feeder promotion expansion missing")
         assert_true(all(promotion.cash == 0 and all(fighter.age >= 17 for fighter in promotion.roster) for promotion in feeder_promotions), "Regional feeders must be non-financial with a 17-year minimum intake age")
         original_month = app.month
         app.month = 13
@@ -848,8 +881,28 @@ def main():
         assert_true(sum(len(promotion.roster) for promotion in feeder_promotions) == feeder_total + 1, "Annual wonderkid was not placed into a regional promotion")
         assert_true(app.spawn_annual_regional_wonderkid() is None, "Annual regional wonderkid spawned twice in one year")
         app.month = original_month
+        feeder_champions_before = {
+            id(fighter)
+            for promotion in feeder_promotions
+            for fighter in promotion.roster
+            if fighter.champion
+        }
         app.ensure_all_company_champions()
-        assert_true(all(not any(fighter.champion or fighter.interim_champion for fighter in promotion.roster) for promotion in feeder_promotions), "Regional feeders should not carry championship belts")
+        for promotion in feeder_promotions:
+            champion_counts = {}
+            for fighter in promotion.roster:
+                if fighter.champion:
+                    key = app.belt_key(fighter.gender, fighter.weight)
+                    champion_counts[key] = champion_counts.get(key, 0) + 1
+            assert_true(all(count == 1 for count in champion_counts.values()), "Regional feeder divisions must crown at most one champion each")
+        feeder_champions_after = {
+            id(fighter)
+            for promotion in feeder_promotions
+            for fighter in promotion.roster
+            if fighter.champion
+        }
+        assert_true(feeder_champions_after == feeder_champions_before,
+                    "Regional feeder maintenance appointed a champion without a title fight")
         feeder_probe = feeder_promotions[0]
         washed_out = app.create_regional_feeder_fighter(feeder_probe.region, app.active_fighter_names(), "Male")
         washed_out.age, washed_out.record_w, washed_out.record_l, washed_out.potential = 22, 0, 14, 60

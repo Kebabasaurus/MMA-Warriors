@@ -1993,8 +1993,6 @@ class EventMixin:
         ttk.Label(header, text=f"NEGOTIATION: {fighter.name}", style="ScreenTitle.TLabel").pack(side="left", padx=10, pady=5)
         body = ttk.Frame(window, style="Panel.TFrame")
         body.pack(fill="both", expand=True, padx=8, pady=8)
-        info = tk.Text(body, height=6, wrap="word", bg=self.colors["cream"], fg=self.colors["text"], padx=8, pady=8)
-        info.pack(fill="x", padx=8, pady=(8, 4))
         rival_text = ("A comeback requires a convincing financial and career package; the fighter stays retired if talks fail."
                       if comeback else f"Live rival offer: {rival.name} is offering ${active_offer_purse:,}/fight for {fighter.ai_offer_months} months; you can beat it before next month."
                       if active_offer_purse else ("Renewal talks start warmer because they already work here." if existing else f"{rival.name} may bid if talks drag."))
@@ -2008,8 +2006,83 @@ class EventMixin:
                        else "Retired athlete considering a comeback" if comeback
                        else f"Regional prospect under developmental terms with {source_promotion.name}" if source_promotion
                        else "Active contract discussion")
-        info.insert("end", f"{fighter.name} ({fighter.gender}, {fighter.weight})\n{status_line}\nAgent: {fighter.agent_name} | Negotiation style: {persona}\nRecord {fighter.record} | {rating_line}\nCareer goal: {career_goal or 'Undeclared'} ({getattr(fighter, 'career_goal_progress', 0)}%).\nCamp says they value: {', '.join(dict.fromkeys(wants))}.\nOpening ask: about ${ask:,}/fight. {rival_text}{scout_warning}")
-        info.config(state="disabled")
+
+        profile = tk.Frame(body, bg=self.colors["panel_dark"], highlightthickness=1, highlightbackground=self.colors["line"])
+        profile.pack(fill="x", padx=8, pady=(8, 8))
+        portrait = tk.Canvas(profile, width=98, height=98, highlightthickness=1, highlightbackground=self.colors["line"], bg="#222222")
+        portrait.pack(side="left", padx=10, pady=10)
+        bg = fighter.portrait_bg or "#222222"
+        accent = fighter.portrait_accent or self.colors["gold"]
+        portrait.configure(bg=bg)
+        portrait.create_rectangle(8, 8, 90, 90, fill=bg, outline=accent, width=2)
+        portrait.create_oval(33, 16, 65, 48, fill=accent, outline="")
+        portrait.create_polygon(18, 84, 30, 54, 68, 54, 80, 84, fill="#d7d7d7", outline="")
+        portrait.create_rectangle(16, 82, 82, 91, fill=accent, outline="")
+        initials = "".join(part[0] for part in fighter.name.replace("'", "").split()[:2]).upper()
+        portrait.create_text(49, 33, text=initials, fill=bg, font=("Impact", 14))
+        if hasattr(self, "fit_canvas_text"):
+            self.fit_canvas_text(portrait, 49, 87, self.portrait_badge_text(fighter), bg, 58, base_size=6)
+        if hasattr(self, "draw_portrait_status_markers"):
+            self.draw_portrait_status_markers(portrait, fighter, large=False)
+
+        summary = tk.Frame(profile, bg=self.colors["panel_dark"])
+        summary.pack(side="left", fill="both", expand=True, padx=(0, 10), pady=10)
+        name_row = tk.Frame(summary, bg=self.colors["panel_dark"])
+        name_row.pack(fill="x")
+        tk.Label(name_row, text=fighter.name.upper(), bg=self.colors["panel_dark"], fg=self.colors["gold"],
+                 font=("Impact", 18), anchor="w").pack(side="left")
+        tk.Label(name_row, text=f"Age {fighter.age} | {fighter.gender} {fighter.weight}", bg=self.colors["panel_dark"], fg=self.colors["muted"],
+                 font=("Tahoma", 9, "bold"), anchor="e").pack(side="right", padx=(8, 0))
+        tk.Label(summary, text=status_line, bg=self.colors["panel_dark"], fg=self.colors["text"],
+                 font=("Tahoma", 9, "bold"), anchor="w").pack(fill="x", pady=(1, 6))
+
+        def chip(parent, label, value, accent=None):
+            frame = tk.Frame(parent, bg=accent or self.colors["chrome"], highlightthickness=1, highlightbackground=self.colors["line"])
+            frame.pack(side="left", padx=(0, 5), pady=2)
+            tk.Label(frame, text=label.upper(), bg=frame["bg"], fg=self.colors["muted"], font=("Tahoma", 7, "bold")).pack(side="left", padx=(6, 3), pady=3)
+            tk.Label(frame, text=str(value), bg=frame["bg"], fg=self.colors["text"], font=("Tahoma", 8, "bold")).pack(side="left", padx=(0, 6), pady=3)
+
+        chips = tk.Frame(summary, bg=self.colors["panel_dark"])
+        chips.pack(fill="x")
+        chip(chips, "Record", fighter.record)
+        if ratings_known:
+            chip(chips, "OVR", fighter.overall)
+            chip(chips, "Pop", fighter.popularity)
+            chip(chips, "Morale", fighter.morale)
+        else:
+            chip(chips, "Intel", f"{report.get('reveal', 0)}% scout")
+            chip(chips, "Ratings", "Hidden")
+        if hasattr(self, "fighter_current_championships"):
+            titles = self.fighter_current_championships(fighter)
+            if titles:
+                chip(chips, "Champion", titles[0].replace(" Champion", ""), "#4b3512")
+        chip(chips, "Ask", f"${ask:,}/fight", "#25384a")
+
+        meta = tk.Frame(summary, bg=self.colors["panel_dark"])
+        meta.pack(fill="x", pady=(7, 0))
+        goal_text = f"{career_goal or 'Undeclared'} ({getattr(fighter, 'career_goal_progress', 0)}%)"
+        tk.Label(meta, text=f"Agent: {fighter.agent_name}", bg=self.colors["panel_dark"], fg=self.colors["text"],
+                 font=("Tahoma", 8, "bold"), anchor="w").pack(side="left", padx=(0, 12))
+        tk.Label(meta, text=f"Style: {persona}", bg=self.colors["panel_dark"], fg=self.colors["text"],
+                 font=("Tahoma", 8, "bold"), anchor="w").pack(side="left", padx=(0, 12))
+        tk.Label(meta, text=f"Goal: {goal_text}", bg=self.colors["panel_dark"], fg=self.colors["text"],
+                 font=("Tahoma", 8, "bold"), anchor="w").pack(side="left")
+
+        priorities = tk.Frame(body, bg=self.colors["chrome"])
+        priorities.pack(fill="x", padx=8, pady=(0, 8))
+        tk.Label(priorities, text="CAMP PRIORITIES", bg=self.colors["chrome"], fg=self.colors["muted"],
+                 font=("Tahoma", 8, "bold")).grid(row=0, column=0, sticky="nw", padx=(2, 8), pady=2)
+        priority_wrap = tk.Frame(priorities, bg=self.colors["chrome"])
+        priority_wrap.grid(row=0, column=1, sticky="ew")
+        priorities.grid_columnconfigure(1, weight=1)
+        for index, want in enumerate(dict.fromkeys(wants)):
+            tk.Label(priority_wrap, text=want, bg="#2b333d", fg=self.colors["text"], font=("Tahoma", 8, "bold"),
+                     padx=7, pady=3).grid(row=index // 3, column=index % 3, sticky="w", padx=(0, 5), pady=2)
+
+        context = tk.Frame(body, bg="#243140" if ratings_known else "#4a311d", highlightthickness=1, highlightbackground=self.colors["line"])
+        context.pack(fill="x", padx=8, pady=(0, 8))
+        tk.Label(context, text=f"{rival_text}{scout_warning}", bg=context["bg"], fg=self.colors["text"],
+                 font=("Tahoma", 8, "bold"), anchor="w", justify="left", wraplength=610, padx=8, pady=6).pack(fill="x")
 
         def evaluate():
             purse, term, fights = purse_var.get(), term_var.get(), fights_var.get()
@@ -2058,8 +2131,14 @@ class EventMixin:
             pct = max(2, min(98, round(50 + (score - target) / 900)))
             return score, target, pct, unmet
 
-        grid = ttk.Frame(body, style="Panel.TFrame")
+        grid = tk.Frame(body, bg=self.colors["panel"])
         grid.pack(fill="x", padx=8)
+        terms_panel = tk.Frame(grid, bg=self.colors["panel"])
+        terms_panel.pack(side="left", fill="both", expand=True, padx=(0, 8))
+        upside_panel = tk.Frame(grid, bg=self.colors["panel"])
+        upside_panel.pack(side="left", fill="both", expand=True)
+        tk.Label(terms_panel, text="BASE PACKAGE", bg=self.colors["panel"], fg=self.colors["gold"], font=("Impact", 10), anchor="w").pack(fill="x", pady=(0, 3))
+        tk.Label(upside_panel, text="UPSIDE / PROMISES", bg=self.colors["panel"], fg=self.colors["gold"], font=("Impact", 10), anchor="w").pack(fill="x", pady=(0, 3))
 
         def attach_tooltip(widget, tip_text):
             """Small themed hover help for dense negotiation controls."""
@@ -2087,30 +2166,34 @@ class EventMixin:
             widget.bind("<Leave>", hide, add="+")
             widget.bind("<ButtonPress>", hide, add="+")
 
-        for label, var, lo, hi, step in (("Purse / fight", purse_var, 1, 600000, 1000), ("Signing bonus", signing_var, 0, 400000, 1000),
-                                         ("Contract months", term_var, 1, 60, 1), ("Guaranteed fights", fights_var, 1, 12, 1),
-                                         ("Finish bonus %", bonus_var, 0, 60, 1), ("Win bonus $", win_bonus_var, 0, 300000, 1000),
-                                         ("PPV points %", ppv_var, 0, 15, 1)):
-            row = ttk.Frame(grid, style="Panel.TFrame")
+        for label, var, lo, hi, step, parent in (
+                ("Purse / fight", purse_var, 1, 600000, 1000, terms_panel),
+                ("Signing bonus", signing_var, 0, 400000, 1000, terms_panel),
+                *(([]) if comeback else [("Contract months", term_var, 1, 60, 1, terms_panel)]),
+                ("Guaranteed fights", fights_var, 1, 12, 1, terms_panel),
+                ("Finish bonus %", bonus_var, 0, 60, 1, upside_panel),
+                ("Win bonus $", win_bonus_var, 0, 300000, 1000, upside_panel),
+                ("PPV points %", ppv_var, 0, 15, 1, upside_panel)):
+            row = tk.Frame(parent, bg=self.colors["panel"])
             row.pack(fill="x", pady=2)
-            label_widget = ttk.Label(row, text=label, width=18, style="Panel.TLabel")
+            label_widget = tk.Label(row, text=label, width=16, bg=self.colors["panel"], fg=self.colors["text"], font=("Tahoma", 8, "bold"), anchor="w")
             label_widget.pack(side="left")
             input_widget = ttk.Spinbox(row, from_=lo, to=hi, increment=step, textvariable=var, width=11)
-            input_widget.pack(side="left", padx=6)
+            input_widget.pack(side="right", padx=2)
             if label == "Guaranteed fights" and comeback:
-                tip = ("Additional comeback fights: these are added to the fighter's prior commitment history. "
-                       "Normal retirement review resumes only after the new cumulative total is complete."
-                       if prior_comeback_guaranteed or prior_comeback_completed else
-                       "Comeback commitment: this is the number of official fights the retired fighter must complete before normal retirement review can resume.")
+                tip = ("Comeback commitment: this is the number of official fights in this new deal. "
+                       "After the final fight, choose another comeback deal from the profile or book one farewell bout.")
                 attach_tooltip(label_widget, tip)
                 attach_tooltip(input_widget, tip)
-        clause_row = ttk.Frame(grid, style="Panel.TFrame")
-        clause_row.pack(fill="x", pady=2)
-        ttk.Checkbutton(clause_row, text="Exclusive", variable=exclusive_var).pack(side="left", padx=4)
-        ttk.Checkbutton(clause_row, text="Champion's clause", variable=champ_clause_var).pack(side="left", padx=4)
-        ttk.Checkbutton(clause_row, text="Guaranteed title shot", variable=title_shot_var).pack(side="left", padx=4)
-        ttk.Checkbutton(clause_row, text="Main-event promise", variable=main_event_promise_var).pack(side="left", padx=4)
-        ttk.Checkbutton(clause_row, text="Top-opponent promise", variable=top_opponent_promise_var).pack(side="left", padx=4)
+        clause_row = tk.Frame(body, bg=self.colors["panel"])
+        clause_row.pack(fill="x", padx=8, pady=(7, 2))
+        for text, var in (
+                ("Exclusive", exclusive_var),
+                ("Champion's clause", champ_clause_var),
+                ("Guaranteed title shot", title_shot_var),
+                ("Main-event promise", main_event_promise_var),
+                ("Top-opponent promise", top_opponent_promise_var)):
+            ttk.Checkbutton(clause_row, text=text, variable=var).pack(side="left", padx=(0, 8))
 
         meter_row = ttk.Frame(body, style="Panel.TFrame")
         meter_row.pack(fill="x", padx=12, pady=(6, 2))
@@ -2143,6 +2226,14 @@ class EventMixin:
                 if hasattr(self, "refresh_regional_prospects"):
                     self.refresh_regional_prospects()
                 return
+            if source_promotion is not None:
+                assessment = self.regional_candidate_assessment(fighter, source_promotion)
+                if not assessment["eligible"]:
+                    result_label.config(text=f"{fighter.name} is not eligible to sign yet: {assessment['explanation']}.")
+                    submit_button.config(state="disabled")
+                    if hasattr(self, "refresh_regional_prospects"):
+                        self.refresh_regional_prospects()
+                    return
             purse, term, fights = purse_var.get(), term_var.get(), fights_var.get()
             bonus, signing, exclusive = bonus_var.get(), signing_var.get(), exclusive_var.get()
             score, target, _pct, unmet = evaluate()
@@ -2160,7 +2251,17 @@ class EventMixin:
                         submit_button.config(state="disabled")
                         return
                     self.capture_regional_record(fighter)
+                    source_promotion.belts, source_promotion.interim_belts, source_promotion.belt_history = self.vacate_fighter_belts(
+                        fighter,
+                        source_promotion.roster,
+                        source_promotion.belts or {},
+                        source_promotion.interim_belts or {},
+                        source_promotion.belt_history or {},
+                        f"Signed by {self.player_company_name} from the regional circuit.",
+                    )
                     source_promotion.roster.remove(fighter)
+                    fighter.champion = False
+                    fighter.interim_champion = False
                     fighter.last_regional_promotion = source_promotion.name
                     fighter.regional_departure_month = self.month
                     fighter.market_origin = "Player regional signing"
@@ -2184,7 +2285,7 @@ class EventMixin:
                     if fighter not in self.roster:
                         self.roster.append(fighter)
                 fighter.purse = purse
-                fighter.contract_months = term
+                fighter.contract_months = 0 if comeback else term
                 if farewell:
                     # One final retirement bout: no ongoing commitment; the fighter
                     # retires immediately after their next completed fight.
@@ -2193,6 +2294,7 @@ class EventMixin:
                     fighter.comeback_contract = False
                     fighter.retirement_pending = True
                     fighter.retirement_fight_completed = False
+                    fighter.retirement_fight_due_after_month = 0
                     fighter.retirement_requested_month = self.month
                     fighter.retirement_reason = "Signed for one final retirement bout."
                 else:
@@ -2228,11 +2330,11 @@ class EventMixin:
                 contract_note = (" Farewell bout: they retire immediately after their next fight." if farewell
                                  else " Comeback commitment: retirement is deferred until the guaranteed fights are complete." if comeback else "")
                 if comeback and not farewell and comeback_extension:
-                    fights_note = (f"{fights} additional guaranteed fights; cumulative commitment "
-                                   f"{comeback_extension['previous_completed']}/{comeback_extension['total']}")
+                    fights_note = f"{comeback_extension['total']} guaranteed comeback fights"
                 else:
                     fights_note = "1 farewell bout" if farewell else f"{fights} guaranteed fights"
-                fighter.fight_history.insert(0, f"Signed contract: {term} months, {fights_note}, ${purse:,}/fight, ${signing:,} signing bonus, {bonus}% finish bonus.{clause_text}{contract_note}")
+                duration_note = "fight-counted comeback deal" if comeback else f"{term} months"
+                fighter.fight_history.insert(0, f"Signed contract: {duration_note}, {fights_note}, ${purse:,}/fight, ${signing:,} signing bonus, {bonus}% finish bonus.{clause_text}{contract_note}")
                 if source_promotion is not None:
                     fighter.fight_history.insert(1, f"Left {source_promotion.name} after a regional record of {fighter.regional_record_w}-{fighter.regional_record_l}-{fighter.regional_record_d}.")
                     self.regional_recruit_fighter(source_promotion, slots=1)
@@ -3335,13 +3437,13 @@ class EventMixin:
             if stats:
                 winner.last_fight_stats = dict(stats.get(winner.name, {}) or {}) or None
                 loser.last_fight_stats = dict(stats.get(loser.name, {}) or {}) or None
+            excitement = award_pool[index].get("excitement", 50) if index < len(award_pool) else 50
+            round_no = award_pool[index].get("round", 1) if index < len(award_pool) else 1
+            self.record_season_result(winner, loser, method, round_no, fight, excitement, self.player_company_name)
             if method == "Draw":
                 self.apply_draw_result(winner, loser, fight)
             else:
                 self.apply_result(winner, loser, fight, method)
-                excitement = award_pool[index].get("excitement", 50) if index < len(award_pool) else 50
-                round_no = award_pool[index].get("round", 1) if index < len(award_pool) else 1
-                self.record_season_result(winner, loser, method, round_no, fight, excitement, self.player_company_name)
                 if winner in self.roster and getattr(winner, "win_bonus", 0):
                     clause_payout += winner.win_bonus
             # PPV points are owed to booked fighters win or lose.

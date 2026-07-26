@@ -443,8 +443,7 @@ class PersistenceMixin:
         if not self.rules.get("autosave_enabled", True):
             return None
         kind = "monthly" if kind == "monthly" else "weekly"
-        year = 2026 + (getattr(self, "month", 1) - 1) // 12
-        label = f"{kind.title()} Autosave Y{year} M{getattr(self, 'month', 1):02d} W{getattr(self, 'week', 1)}"
+        label = f"{kind.title()} Autosave {self.format_game_date()}"
         path = self.rolling_snapshot_path(self.autosave_dir(kind), f"{kind}_autosave")
         data = dict(snapshot) if snapshot is not None else self.serialize_world()
         data["_save_meta"] = self.save_metadata(label)
@@ -790,8 +789,8 @@ class PersistenceMixin:
         self.cash = data.get("cash", 275_000)
         self.company_pop = data.get("company_pop", 38)
         self.company_stability = data.get("company_stability", max(5, min(99, self.cash // 5000)))
-        self.month = data.get("month", 1)
-        self.week = data.get("week", 1)
+        self.month = max(1, int(data.get("month", 1) or 1))
+        self.week = max(1, min(4, int(data.get("week", 1) or 1)))
         self.roster = [Fighter(**row) for row in data.get("roster", [])]
         self.free_agents = [Fighter(**row) for row in data.get("free_agents", [])]
         for fighter in self.roster + self.free_agents:
@@ -809,6 +808,7 @@ class PersistenceMixin:
             row.setdefault("legacy_score", 0)
             row.setdefault("closed_divisions", [])
             row.setdefault("special_belts", {})
+            row.setdefault("regional_division_activity", {})
             for fighter in row["roster"]:
                 self.ensure_detailed_skills(fighter)
                 self.ensure_fighter_business_stats(fighter)
@@ -918,6 +918,14 @@ class PersistenceMixin:
         if self.spectator_mode:
             self.rules["scouting_mode"] = False
         self.ensure_rule_defaults()
+        lineage_migration = self.migrate_lineal_belt_histories()
+        if lineage_migration.get("updated"):
+            summary = (
+                f"Lineal belt history migration rebuilt {lineage_migration['updated']} promotion lineage set(s) "
+                f"from archived title results without parallel champion changes."
+            )
+            self.change_journal.append({"date": self.format_game_date(), "type": "Migration", "summary": summary})
+            self.change_journal = self.change_journal[-400:]
         self.broadcasters = data.get("broadcasters", [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}])
         self.ensure_media_system()
         self.weight_classes = data.get("weight_classes", list(WEIGHTS))
@@ -940,13 +948,25 @@ class PersistenceMixin:
         self.awards_history = data.get("awards_history", [])
         self.clean_numbered_fighter_names()
         regional_repairs = self.repair_regional_fighter_tracking()
-        if regional_repairs["origin"] or regional_repairs["activity"]:
+        regional_title_repairs = self.repair_regional_title_state()
+        if regional_repairs["origin"] or regional_repairs["activity"] or regional_repairs.get("division_activity", 0):
             self.change_journal.append({
                 "date": self.format_game_date(),
                 "type": "Migration",
                 "summary": (
                     f"Regional tracking repaired {regional_repairs['origin']} feeder origins and "
-                    f"{regional_repairs['activity']} last-fight activity dates."
+                    f"{regional_repairs['activity']} last-fight activity dates; seeded "
+                    f"{regional_repairs.get('division_activity', 0)} division activity markers."
+                ),
+            })
+            self.change_journal = self.change_journal[-400:]
+        if regional_title_repairs["divisions"]:
+            self.change_journal.append({
+                "date": self.format_game_date(),
+                "type": "Migration",
+                "summary": (
+                    f"Regional title repair vacated {regional_title_repairs['divisions']} incorrectly appointed feeder titles "
+                    f"and cleared stale title status from {regional_title_repairs['fighters']} fighter(s)."
                 ),
             })
             self.change_journal = self.change_journal[-400:]
@@ -1112,6 +1132,8 @@ class PersistenceMixin:
         fighter.retirement_pending = bool(getattr(fighter, "retirement_pending", False))
         fighter.retirement_requested_month = max(0, getattr(fighter, "retirement_requested_month", 0) or 0)
         fighter.retirement_fight_completed = bool(getattr(fighter, "retirement_fight_completed", False))
+        fighter.retirement_fight_due_after_month = max(0, getattr(fighter, "retirement_fight_due_after_month", 0) or 0)
+        fighter.comeback_completion_prompted = bool(getattr(fighter, "comeback_completion_prompted", False))
         fighter.camp_quality = getattr(fighter, "camp_quality", 0) or self.gym_quality(fighter.camp)
         fighter.camp_joined_month = max(0, getattr(fighter, "camp_joined_month", 0) or 0)
         fighter.camp_history = getattr(fighter, "camp_history", None) or []
@@ -1487,7 +1509,7 @@ class PersistenceMixin:
                     universe = meta.get("active_universe", "")
                     universe_note = f" | {universe}" if universe else ""
                     prefix = group_prefix + (f"{display_name} | {kind} | " if kind else f"{display_name} | ")
-                    label = f"{prefix}{company} | M{month} W{week} | {saved_at}{universe_note}"
+                    label = f"{prefix}{company} | {self.format_game_date(month, week)} | {saved_at}{universe_note}"
             except Exception:
                 pass
             self.save_slot_files.append(file)
@@ -1636,6 +1658,10 @@ class PersistenceMixin:
             return
         if sport != "MMA":
             messagebox.showinfo("Combat-sport circuit", "Direct takeovers currently apply to MMA promotions. Open this circuit's history or manage your own child promotion instead.")
+            return
+        promo = next((item for item in self.promotions if item.name == name), None)
+        if promo is not None and getattr(promo, "is_regional_feeder", False):
+            messagebox.showinfo("Regional feeder", "Regional feeder circuits are development pipelines, not controllable promotions.")
             return
         self.take_control_of_company(name)
 

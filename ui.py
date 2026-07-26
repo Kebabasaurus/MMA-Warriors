@@ -2,6 +2,7 @@ import json
 import random
 import sys
 import traceback
+import webbrowser
 from datetime import datetime
 import tkinter as tk
 from dataclasses import asdict, dataclass
@@ -244,20 +245,35 @@ class UIMixin:
             canvas.yview_scroll(delta, "units")
             return "break"
 
-        def bind_wheel(_event=None):
-            canvas.bind_all("<MouseWheel>", wheel)
-            canvas.bind_all("<Button-4>", lambda event: linux_wheel(event, -1))
-            canvas.bind_all("<Button-5>", lambda event: linux_wheel(event, 1))
+        def activate_wheel(_event=None):
+            self._active_scroll_wheel = (canvas, wheel, linux_wheel)
 
-        def unbind_wheel(_event=None):
-            canvas.unbind_all("<MouseWheel>")
-            canvas.unbind_all("<Button-4>")
-            canvas.unbind_all("<Button-5>")
+        def deactivate_wheel(_event=None):
+            if getattr(self, "_active_scroll_wheel", (None,))[0] is canvas:
+                self._active_scroll_wheel = None
+
+        if not getattr(self, "_scroll_wheel_dispatch_installed", False):
+            def dispatch_wheel(event):
+                active = getattr(self, "_active_scroll_wheel", None)
+                if not active:
+                    return None
+                return active[1](event)
+
+            def dispatch_linux_wheel(event, delta):
+                active = getattr(self, "_active_scroll_wheel", None)
+                if not active:
+                    return None
+                return active[2](event, delta)
+
+            self.root.bind_all("<MouseWheel>", dispatch_wheel, add="+")
+            self.root.bind_all("<Button-4>", lambda event: dispatch_linux_wheel(event, -1), add="+")
+            self.root.bind_all("<Button-5>", lambda event: dispatch_linux_wheel(event, 1), add="+")
+            self._scroll_wheel_dispatch_installed = True
 
         inner.bind("<Configure>", schedule_fit)
         canvas.bind("<Configure>", schedule_fit)
-        shell.bind("<Enter>", bind_wheel)
-        shell.bind("<Leave>", unbind_wheel)
+        shell.bind("<Enter>", activate_wheel)
+        shell.bind("<Leave>", deactivate_wheel)
         canvas.configure(yscrollcommand=scroll.set, xscrollcommand=horizontal.set)
         shell.rowconfigure(0, weight=1)
         shell.columnconfigure(0, weight=1)
@@ -285,6 +301,7 @@ class UIMixin:
         self.logo_canvas.pack(side="left", padx=(12, 4), pady=5)
         self.draw_logo()
         ttk.Label(titlebar, text=GAME_NAME.upper(), style="Title.TLabel").pack(side="left", padx=8, pady=8)
+        ttk.Button(titlebar, text="Tutorial", command=self.open_tutorial_guide).pack(side="right", padx=(2, 10))
         self.theme_name_var = tk.StringVar(value=getattr(self, "theme_name", "Fight Night"))
         ttk.Button(titlebar, text="Apply Theme", command=self.apply_selected_theme).pack(side="right", padx=(2, 10))
         ttk.Combobox(titlebar, values=list(self.themes.keys()), textvariable=self.theme_name_var, state="readonly", width=20, height=22).pack(side="right", padx=(2, 6))
@@ -422,6 +439,13 @@ class UIMixin:
         if spacer:
             spacer.configure(bg=self.colors["paper"])
         self.draw_logo()
+
+    def open_tutorial_guide(self):
+        tutorial_path = ASSET_DIR / "tutorial.html"
+        if not tutorial_path.exists():
+            messagebox.showerror("Tutorial not found", f"Could not find the tutorial guide at:\n{tutorial_path}")
+            return
+        webbrowser.open(tutorial_path.as_uri())
 
     def draw_logo(self):
         if not hasattr(self, "logo_canvas"):
@@ -2160,6 +2184,7 @@ class UIMixin:
         })
         self.make_tree_sortable(self.card_tree)
         self.card_tree.pack(fill="both", expand=True, pady=5)
+        self.card_tree.bind("<Double-1>", lambda _event: self.compare_selected_card_matchup())
         footer = ttk.Frame(right)
         footer.pack(fill="x")
         ttk.Button(footer, text="Remove Fight", command=self.remove_matchup).pack(side="left")
@@ -2360,7 +2385,7 @@ class UIMixin:
         table = ttk.Frame(inner, style="Inset.TFrame")
         table.pack(fill="both", expand=True)
         columns = ("name", "company", "sport", "gender", "division", "age", "universe", "career", "form", "last", "overall", "elo")
-        self.world_fighter_tree = ttk.Treeview(table, columns=columns, show="headings")
+        self.world_fighter_tree = ttk.Treeview(table, columns=columns, show="headings", selectmode="extended")
         for column, label, width in (
             ("name", "Fighter", 175), ("company", "Company", 175), ("sport", "Sport", 100), ("gender", "G", 38),
             ("division", "Division", 112), ("age", "Age", 46), ("universe", "Universe W-L-D", 95),
@@ -2378,6 +2403,7 @@ class UIMixin:
         self.world_fighter_tree.bind("<Double-1>", lambda _event: self.open_selected_world_fighter_profile())
         actions = ttk.Frame(self.fighter_search_tab, style="Chrome.TFrame")
         actions.pack(fill="x", pady=(5, 0))
+        ttk.Button(actions, text="Compare Selected", command=self.compare_selected_world_fighters).pack(side="right", padx=4)
         ttk.Button(actions, text="View Fighter", style="Accent.TButton", command=self.open_selected_world_fighter_profile).pack(side="right", padx=4)
 
     def build_regional_prospects_tab(self):
@@ -2461,7 +2487,8 @@ class UIMixin:
         ttk.Button(actions, text="View Profile", command=self.open_selected_regional_prospect).pack(side="left", padx=4)
         ttk.Button(actions, text="Basic Scout", command=lambda: self.scout_selected_regional_prospect("basic")).pack(side="left", padx=4)
         ttk.Button(actions, text="Full Scout", command=lambda: self.scout_selected_regional_prospect("full")).pack(side="left", padx=4)
-        ttk.Button(actions, text="Negotiate", style="Accent.TButton", command=self.negotiate_selected_regional_prospect).pack(side="right", padx=4)
+        self.regional_prospect_negotiate_button = ttk.Button(actions, text="Negotiate", style="Accent.TButton", command=self.negotiate_selected_regional_prospect)
+        self.regional_prospect_negotiate_button.pack(side="right", padx=4)
 
     def build_rankings_tab(self):
         self.screen_header(self.rankings_tab, "RANKINGS", "Division rankings and pound-for-pound rankings")

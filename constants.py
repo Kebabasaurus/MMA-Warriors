@@ -838,6 +838,103 @@ for _regional_groups in REGIONAL_NAME_POOLS.values():
         _extend_unique_names(_deduplicated, _regional_bank)
         _regional_bank[:] = _deduplicated
 
+# --- Eurasian Fight Circuit -------------------------------------------------
+# The Caucasus and Central Asia produce a distinctive talent profile: heavy
+# amateur wrestling, judo, sambo and boxing backgrounds feeding into MMA. The
+# circuit is modelled as a male-only feeder, so its sub-regions carry their own
+# name banks, nationality mapping and style probability biases rather than
+# reusing the generic "Russia" pool.
+EURASIAN_FIGHT_CIRCUIT_NAME = "Eurasian Fight Circuit"
+EURASIAN_FIGHT_CIRCUIT_DESCRIPTION = (
+    "Eurasian Fight Circuit is a regional promotion recruiting fighters from the Caucasus and Central Asia. "
+    "Known for producing elite wrestlers, combat sambo specialists, judoka and technically accomplished amateur "
+    "boxers, it has become one of the world's most demanding proving grounds for emerging MMA talent."
+)
+try:
+    _eurasian_name_payload = json.loads((ASSET_DIR / "eurasian_names.json").read_text(encoding="utf-8"))
+except (OSError, ValueError, TypeError):
+    _eurasian_name_payload = {}
+
+EURASIAN_NAME_POOLS = {}
+for _eur_region, _eur_groups in (_eurasian_name_payload.get("regions", {}) or {}).items():
+    if not isinstance(_eur_groups, dict):
+        continue
+    _male, _last = [], []
+    _extend_unique_names(_male, _eur_groups.get("first_names_male", []))
+    _extend_unique_names(_last, _eur_groups.get("surnames_male", []))
+    if _male and _last:
+        EURASIAN_NAME_POOLS[_eur_region] = {"male": _male, "last": _last}
+
+# Sourcing weights: primary republics and states supply most of the roster,
+# secondary regions a steady trickle, rare ones the occasional outlier.
+EURASIAN_REGION_WEIGHTS = {
+    "Dagestan": 17, "Chechnya": 13, "Georgia": 11, "Azerbaijan": 10,
+    "Kazakhstan": 10, "Uzbekistan": 9, "North Ossetia-Alania": 8,
+    "Armenia": 6, "Kyrgyzstan": 5, "Tajikistan": 4, "Ingushetia": 3,
+    "Kabardino-Balkaria": 2, "Karachay-Cherkessia": 1, "Turkmenistan": 1,
+}
+
+# Dagestan, Chechnya, Ingushetia, North Ossetia, Kabardino-Balkaria and
+# Karachay-Cherkessia are constituent republics of Russia, so their fighters
+# carry Russian nationality with the republic recorded as their origin.
+EURASIAN_REGION_NATIONALITY = {
+    "Dagestan": "Russian", "Chechnya": "Russian", "Ingushetia": "Russian",
+    "North Ossetia-Alania": "Russian", "Kabardino-Balkaria": "Russian",
+    "Karachay-Cherkessia": "Russian",
+    "Georgia": "Georgian", "Armenia": "Armenian", "Azerbaijan": "Azerbaijani",
+    "Kazakhstan": "Kazakh", "Uzbekistan": "Uzbek", "Kyrgyzstan": "Kyrgyz",
+    "Tajikistan": "Tajik", "Turkmenistan": "Turkmen",
+}
+
+# Style biases are probabilities, not rules: a Dagestani kickboxer or Uzbek
+# submission specialist should still turn up occasionally. Each entry is a
+# (style, weight) list sampled per fighter.
+_EUR_WRESTLE = [("Freestyle Wrestler", 16), ("Wrestler", 14), ("Catch Wrestler", 6)]
+_EUR_WRESTLE_BOX = [("Well-Rounded", 14), ("MMA Generalist", 6)]
+_EUR_SAMBO = [("Sambo", 13)]
+_EUR_JUDO = [("Judo", 11)]
+_EUR_BOX = [("Boxer", 10)]
+_EUR_SUB = [("Submission Grappler", 2), ("Grappler", 2), ("BJJ", 1)]
+_EUR_KICK = [("Kickboxer", 1), ("Muay Thai", 1), ("Dutch Kickboxer", 1)]
+_EURASIAN_BASE_STYLES = _EUR_WRESTLE + _EUR_WRESTLE_BOX + _EUR_SAMBO + _EUR_JUDO + _EUR_BOX + _EUR_SUB + _EUR_KICK
+
+
+def _eurasian_styles(**overrides):
+    """Base circuit distribution with per-region multipliers applied."""
+    return [(style, max(1, round(weight * overrides.get(style, 1.0)))) for style, weight in _EURASIAN_BASE_STYLES]
+
+
+EURASIAN_REGION_STYLES = {
+    # Freestyle wrestling and combat sambo heartland.
+    "Dagestan": _eurasian_styles(**{"Freestyle Wrestler": 1.7, "Wrestler": 1.4, "Sambo": 1.4, "Judo": 0.5, "Boxer": 0.6}),
+    "Chechnya": _eurasian_styles(**{"Freestyle Wrestler": 1.6, "Wrestler": 1.5, "Sambo": 1.3, "Judo": 0.6, "Boxer": 0.7}),
+    "Ingushetia": _eurasian_styles(**{"Freestyle Wrestler": 1.6, "Wrestler": 1.5, "Sambo": 1.2, "Judo": 0.6, "Boxer": 0.7}),
+    # Explosive wrestlers with powerful entries.
+    "North Ossetia-Alania": _eurasian_styles(**{"Freestyle Wrestler": 1.8, "Wrestler": 1.5, "Judo": 0.6, "Boxer": 0.7}),
+    "Kabardino-Balkaria": _eurasian_styles(**{"Wrestler": 1.4, "Judo": 1.3, "Sambo": 1.2, "Well-Rounded": 1.2}),
+    "Karachay-Cherkessia": _eurasian_styles(**{"Wrestler": 1.4, "Judo": 1.3, "Sambo": 1.2, "Well-Rounded": 1.2}),
+    # Judo, Chidaoba and Greco-Roman: throw and trip specialists.
+    "Georgia": _eurasian_styles(**{"Judo": 3.0, "Wrestler": 1.2, "Freestyle Wrestler": 0.8, "Boxer": 0.6, "Submission Grappler": 1.5}),
+    # Greco-Roman and boxing: clinch fighters with power punching.
+    "Armenia": _eurasian_styles(**{"Wrestler": 1.5, "Boxer": 1.6, "Sambo": 1.2, "Judo": 0.8}),
+    # Athletic wrestle-boxers with explosive takedowns.
+    "Azerbaijan": _eurasian_styles(**{"Freestyle Wrestler": 1.4, "Well-Rounded": 1.5, "Judo": 1.2, "Boxer": 1.1}),
+    # Elite amateur boxing systems.
+    "Kazakhstan": _eurasian_styles(**{"Boxer": 2.6, "Well-Rounded": 1.4, "Sambo": 1.1, "Freestyle Wrestler": 0.7, "Wrestler": 0.8}),
+    "Uzbekistan": _eurasian_styles(**{"Boxer": 2.3, "Judo": 1.4, "Sambo": 1.2, "Well-Rounded": 1.2, "Freestyle Wrestler": 0.7}),
+    # Scramblers, pressure grapplers and submission hunters.
+    "Kyrgyzstan": _eurasian_styles(**{"Freestyle Wrestler": 1.5, "Sambo": 1.3, "Submission Grappler": 2.0, "Grappler": 2.0, "Boxer": 0.7}),
+    "Tajikistan": _eurasian_styles(**{"Wrestler": 1.5, "Sambo": 1.3, "Boxer": 1.1, "Judo": 0.8}),
+    # Raw belt-wrestling clinch specialists.
+    "Turkmenistan": _eurasian_styles(**{"Wrestler": 1.8, "Judo": 1.2, "Boxer": 0.6, "Well-Rounded": 0.6, "Submission Grappler": 0.5}),
+}
+
+# Generic "Russia" generation should still be able to draw on this data.
+for _eur_region, _eur_pool in EURASIAN_NAME_POOLS.items():
+    _extend_unique_names(REGIONAL_NAME_POOLS["Russia"]["male"], _eur_pool["male"])
+    _extend_unique_names(REGIONAL_NAME_POOLS["Russia"]["last"], _eur_pool["last"])
+    _extend_unique_names(LAST_NAMES, _eur_pool["last"])
+
 STANDING_SKILLS = ["footwork", "feints", "head_movement", "punch_power", "punch_technique", "hand_speed", "high_kick_power", "high_kick_technique", "high_kick_speed", "low_kick_power", "low_kick_technique", "low_kick_speed", "creative_punches", "creative_kicks", "guard_defence", "kick_defence"]
 GROUND_SKILLS = ["guard_work", "scrambles", "transitions", "positional_ability", "ground_striking", "submission_attack", "submission_defence_detail", "top_control", "bottom_control", "back_control", "mount_control", "leg_locks"]
 WRESTLING_SKILLS = ["takedowns", "takedown_setup", "takedown_speed", "takedown_defence_detail", "sprawl", "throws", "slams", "chain_wrestling", "cage_wrestling", "ride_control", "get_ups"]

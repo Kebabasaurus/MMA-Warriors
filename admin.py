@@ -598,99 +598,6 @@ class AdminMixin:
         self.audit_text.config(state="disabled")
 
     def run_play_level_audit(self):
-        """Run a fresh observer world for 30 years without touching this save."""
-        years = max(1, min(100, self.play_audit_years.get()))
-        weeks = years * 48
-        if hasattr(self, "play_audit_progress"):
-            self.play_audit_progress.configure(maximum=weeks, value=0)
-            self.play_audit_status.config(text=f"{years}-year play audit: starting fresh observer world...")
-        self.audit_text.config(state="normal")
-        self.audit_text.delete("1.0", "end")
-        self.audit_text.insert("end", "Running fresh 30-year observer audit...\nThis uses the full weekly world loop and may take a short while.")
-        self.audit_text.config(state="disabled")
-        self.root.update_idletasks()
-        audit_root = tk.Tk()
-        audit_root.withdraw()
-        methods, snapshots = {}, []
-        original_state = random.getstate()
-        try:
-            random.seed(260712)
-            audit = self.__class__(audit_root)
-            audit.enter_spectator_mode()
-            audit.suppress_award_popups = True
-            audit.suppress_autosaves = True
-            real_simulate = audit.simulate_fight
-            def count_fight(a, b, fight):
-                winner, loser, method, round_no, lines = real_simulate(a, b, fight)
-                methods[method] = methods.get(method, 0) + 1
-                return winner, loser, method, round_no, lines
-            audit.simulate_fight = count_fight
-            for index in range(weeks):
-                audit.advance_month()
-                if (index + 1) % 4 == 0 or index + 1 == weeks:
-                    if hasattr(self, "play_audit_progress"):
-                        completed = index + 1
-                        audit_year = 2026 + completed // 48
-                        audit_week = completed % 48
-                        self.play_audit_progress.configure(value=completed)
-                        self.play_audit_status.config(text=f"30-year play audit: Year {audit_year} | week {audit_week or 48}/48 ({completed / weeks * 100:.1f}%)")
-                    self.root.update_idletasks()
-                if (index + 1) % 48 == 0:
-                    active = [fighter for fighter in audit.all_fighter_objects() if not fighter.retired]
-                    viable = [promo for promo in audit.promotions if promo.cash > 0 and promo.stability >= 20]
-                    snapshots.append((2026 + (index + 1) // 48, len(audit.promotions), len(viable), len(active), len(audit.free_agents), len(audit.retired_fighters), sum(1 for fighter in active if fighter.overall >= 80)))
-                if (index + 1) % 96 == 0:
-                    self.root.update_idletasks()
-            total = sum(methods.values())
-            finish_count = sum(count for method, count in methods.items() if method not in ("Decision", "Draw"))
-            last = snapshots[-1]
-            report = [
-                f"{years}-YEAR PLAY-LEVEL AUDIT (fresh spectator world)",
-                f"Weeks simulated: {weeks:,} | Fights: {total:,}",
-                f"Finish rate: {finish_count / max(1, total) * 100:.1f}% | Decision rate: {methods.get('Decision', 0) / max(1, total) * 100:.1f}%",
-                "", "METHOD DISTRIBUTION:",
-            ]
-            report.extend(f"- {method}: {count:,} ({count / max(1, total) * 100:.1f}%)" for method, count in sorted(methods.items(), key=lambda item: -item[1]))
-            report.extend(["", "YEARLY WORLD HEALTH (year | promotions | viable | active | FAs | retired | 80+ OVR):"])
-            report.extend("- " + " | ".join(map(str, row)) for row in snapshots)
-            report.extend(["", f"FINAL: {last[1]} promotions ({last[2]} viable), {last[3]} active fighters, {last[4]} free agents, {last[5]} retired, {last[6]} elite fighters."])
-        except Exception as exc:
-            report = ["30-year audit failed:", f"{type(exc).__name__}: {exc}", traceback.format_exc()]
-        finally:
-            random.setstate(original_state)
-            audit_root.destroy()
-        self.audit_text.config(state="normal")
-        self.audit_text.delete("1.0", "end")
-        self.audit_text.insert("end", "\n".join(report))
-        self.audit_text.config(state="disabled")
-        self.play_audit_report = "\n".join(report)
-        if hasattr(self, "play_audit_progress"):
-            if report and report[0].startswith("30-YEAR"):
-                self.play_audit_progress.configure(value=weeks)
-                self.play_audit_status.config(text=f"{years}-year play audit: complete — results shown below")
-                if hasattr(self, "view_play_audit_button"):
-                    self.view_play_audit_button.configure(state="normal")
-            else:
-                self.play_audit_status.config(text=f"{years}-year play audit: failed — see report below")
-
-    def open_play_level_audit_results(self):
-        report = getattr(self, "play_audit_report", "")
-        if not report:
-            messagebox.showinfo("30-Year Play Audit", "Run the 30-year play audit first.")
-            return
-        window = tk.Toplevel(self.root)
-        window.title("30-Year Play Audit Results")
-        window.geometry("940x680")
-        window.minsize(720, 480)
-        window.configure(bg=self.colors["chrome"])
-        ttk.Label(window, text="30-YEAR PLAY AUDIT RESULTS", style="ScreenTitle.TLabel").pack(anchor="w", padx=12, pady=(10, 4))
-        text = tk.Text(window, wrap="none", font=("Courier New", 10), bg=self.colors["cream"], fg=self.colors["text"], padx=12, pady=12)
-        text.pack(fill="both", expand=True, padx=10, pady=(0, 8))
-        text.insert("end", report)
-        text.config(state="disabled")
-        ttk.Button(window, text="Close", style="Accent.TButton", command=window.destroy).pack(anchor="e", padx=10, pady=(0, 10))
-
-    def run_play_level_audit(self):
         """Run a fresh observer world for a long-run balance audit without touching this save."""
         years = max(1, min(100, self.play_audit_years.get()))
         weeks = years * 48
@@ -876,7 +783,7 @@ class AdminMixin:
 
     def promotion_division_open(self, promo, gender, weight):
         weights = list(getattr(promo, "weight_classes", None) or WEIGHTS)
-        closed = set(getattr(promo, "closed_divisions", None) or [])
+        closed = self.company_closed_divisions(promo)
         return weight in weights and self.belt_key(gender, weight) not in closed
 
     def blank_belts(self):
@@ -968,7 +875,6 @@ class AdminMixin:
     def record_belt_history(self, history, key, action, fighter_name="", note=""):
         history = self.normalize_belt_history(history)
         history[key].insert(0, self.belt_history_entry(action, key, fighter_name, note))
-        history[key] = history[key][:80]
         return history
 
     def set_primary_champion(self, roster, belts, belt_history, champion, note, defense=False, appointed=False):
@@ -1142,7 +1048,7 @@ class AdminMixin:
             self.belts, self.interim_belts, self.belt_history = self.vacate_fighter_belts(champion, self.roster, self.belts, self.interim_belts, self.belt_history, reason)
             self.news.insert(0, f"{key} title vacated: {champion.name} failed the championship credibility review.")
 
-    def ensure_company_champions(self, roster, belts, company_name, region, size, player_owned=False, min_per_division=3, interim_belts=None, belt_history=None, closed_divisions=None):
+    def ensure_company_champions(self, roster, belts, company_name, region, size, player_owned=False, min_per_division=3, interim_belts=None, belt_history=None, closed_divisions=None, allow_appointed=True):
         belts = self.normalize_belts(belts)
         interim_belts = self.normalize_belts(interim_belts)
         belt_history = self.normalize_belt_history(belt_history)
@@ -1170,7 +1076,7 @@ class AdminMixin:
                 # may receive inaugural holders during initial world seeding,
                 # but once a lineage exists their later vacancies also stay open
                 # until an AI-booked title fight crowns a champion.
-                if not current and (player_owned or belt_history.get(key)):
+                if not current and (player_owned or belt_history.get(key) or not allow_appointed):
                     belts[key] = ""
                     for fighter in division:
                         fighter.champion = False
@@ -1186,24 +1092,33 @@ class AdminMixin:
                     interim_belts[key] = ""
         return belts, interim_belts, belt_history
 
+    def promotion_male_only(self, promo):
+        return bool(promo is not None and getattr(promo, "name", "") == EURASIAN_FIGHT_CIRCUIT_NAME)
+
+    def company_closed_divisions(self, promo):
+        """Divisions a promotion must never staff, crown, or book.
+
+        Every caller of ensure_company_champions has to agree on this, or a
+        single-gender circuit quietly gets a women's roster generated into it
+        by whichever call site forgot the rule.
+        """
+        closed = set(getattr(promo, "closed_divisions", None) or ())
+        if self.promotion_male_only(promo):
+            closed.update(self.belt_key("Female", weight) for weight in WEIGHTS)
+        return closed
+
     def ensure_all_company_champions(self):
         if not getattr(self, "spectator_mode", False):
             self.review_player_champion_credibility()
             self.belts, self.interim_belts, self.belt_history = self.ensure_company_champions(self.roster, self.belts, self.player_company_name, self.player_region, self.company_pop, player_owned=True, interim_belts=self.interim_belts, belt_history=self.belt_history)
             self.sync_player_vacant_title_alerts()
         for promo in self.promotions:
-            # Development circuits create records and prospects, not parallel
-            # world-title ecosystems. Keeping their belts empty also prevents
-            # feeder champions leaking into company and world rankings.
-            if getattr(promo, "is_regional_feeder", False):
-                for fighter in promo.roster:
-                    fighter.champion = False
-                    fighter.interim_champion = False
-                promo.belts = self.blank_belts()
-                promo.interim_belts = self.blank_belts()
-                promo.belt_history = self.blank_belt_history()
-                continue
-            promo.belts, promo.interim_belts, promo.belt_history = self.ensure_company_champions(promo.roster, promo.belts or {}, promo.name, promo.region, promo.reputation_score, player_owned=False, interim_belts=promo.interim_belts or {}, belt_history=promo.belt_history or {}, closed_divisions=getattr(promo, "closed_divisions", None))
+            closed = self.company_closed_divisions(promo)
+            promo.belts, promo.interim_belts, promo.belt_history = self.ensure_company_champions(
+                promo.roster, promo.belts or {}, promo.name, promo.region, promo.reputation_score,
+                player_owned=False, interim_belts=promo.interim_belts or {}, belt_history=promo.belt_history or {},
+                closed_divisions=closed, allow_appointed=not getattr(promo, "is_regional_feeder", False),
+            )
 
     def avoid_name_collision(self, fighter, existing_names):
         parts = fighter.name.rsplit(" ", 1)
