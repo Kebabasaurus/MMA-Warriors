@@ -650,6 +650,8 @@ class SeedMixin:
         if fighter.name == "Conor McGregor":
             fighter.prime_rating_profile_version = 1
         prime_age = self.historic_prime_age_overrides().get(fighter.name)
+        if prime_age is None:
+            prime_age = self.real_fighter_capped_age(fighter.name, fighter.age)
         if prime_age is not None:
             fighter.age = prime_age
             fighter.prime_start = max(24, prime_age - 3)
@@ -1392,7 +1394,7 @@ class SeedMixin:
     def pfl_current_ranked_fighter_data(self):
         ranked = {
             "Heavyweight": [
-                "Vadim Nemkov", "Oleg Popov", "Sergei Bilostenniy", "Denis Goltsov", "Alexandr Romanov",
+                "Vadim Nemkov", "Oleg Popov", "Sergey Bilostenniy", "Denis Goltsov", "Alexandr Romanov",
                 "Abraham Bably", "Maxwell Djantou Nana", "Jose Augusto", "Renan Ferreira", "Linton Vassell",
                 "Slim Trabelsi", "Karl Williams",
             ],
@@ -1402,7 +1404,7 @@ class SeedMixin:
                 "Emiliano Sordi", "Rafael Xavier",
             ],
             "Middleweight": [
-                "Costello Van Steenis", "Johnny Eblen", "Fabian Edwards", "Impa Kasanganay", "Dalton Rosta",
+                "Costello van Steenis", "Johnny Eblen", "Fabian Edwards", "Impa Kasanganay", "Dalton Rosta",
                 "Boris Atangana", "Aaron Jeffrey", "Josh Silveira", "Bryan Battle", "Josh Fremd",
                 "Jhony Gregory",
             ],
@@ -1877,6 +1879,12 @@ class SeedMixin:
                 if row[0] not in existing:
                     data[company].append(row)
                     existing.add(row[0])
+        for company, rows in self.real_roster_depth_expansion_v5().items():
+            existing = {row[0] for row in data.setdefault(company, [])}
+            for row in rows:
+                if row[0] not in existing:
+                    data[company].append(row)
+                    existing.add(row[0])
         return data
 
     def real_roster_depth_expansion_v3(self):
@@ -2069,7 +2077,6 @@ class SeedMixin:
             ],
             "BRAVE Combat Federation": [
                 ("Eldar Eldarov", "Lightweight", "BRAVE Combat Federation", 50, 81, 29, 13, 1, "Russia", "Sambo"),
-                ("Mohammad Fakhreddine", "Welterweight", "BRAVE Combat Federation", 52, 77, 39, 15, 7, "Middle East", "Well-Rounded"),
                 ("Amin Ayoub", "Lightweight", "BRAVE Combat Federation", 47, 79, 31, 16, 4, "Europe", "Well-Rounded"),
                 ("Cleiton Silva", "Featherweight", "BRAVE Combat Federation", 46, 79, 34, 20, 6, "Brazil", "Well-Rounded"),
                 ("Jose Torres", "Flyweight", "BRAVE Combat Federation", 48, 79, 31, 12, 2, "USA", "Well-Rounded"),
@@ -2092,7 +2099,6 @@ class SeedMixin:
             "Legacy Fighting Alliance": [
                 ("Bo Nickal", "Middleweight", "Legacy Fighting Alliance", 62, 82, 28, 5, 0, "USA", "Freestyle Wrestler"),
                 ("Cody Durden", "Flyweight", "Legacy Fighting Alliance", 42, 77, 32, 15, 5, "USA", "Wrestler"),
-                ("Josh Van", "Flyweight", "Legacy Fighting Alliance", 44, 79, 24, 10, 2, "USA", "Well-Rounded"),
                 ("Austin Bashi", "Bantamweight", "Legacy Fighting Alliance", 43, 79, 25, 11, 0, "USA", "Wrestler"),
                 ("Chris Duncan", "Lightweight", "Legacy Fighting Alliance", 42, 78, 30, 11, 2, "UK", "Boxer"),
                 ("Ricky Turcios", "Bantamweight", "Legacy Fighting Alliance", 43, 78, 31, 13, 3, "USA", "Well-Rounded"),
@@ -2109,7 +2115,6 @@ class SeedMixin:
                 ("Rafael Estevam", "Flyweight", "Legacy Fighting Alliance", 42, 78, 29, 12, 0, "Brazil", "Well-Rounded"),
                 ("Danny Barlow", "Welterweight", "Legacy Fighting Alliance", 41, 78, 28, 9, 1, "USA", "Boxer"),
                 ("Cody Haddon", "Bantamweight", "Legacy Fighting Alliance", 40, 77, 26, 8, 1, "Australia", "Well-Rounded"),
-                ("Jose Delgado", "Featherweight", "Legacy Fighting Alliance", 41, 78, 27, 9, 1, "USA", "Boxer"),
             ],
             "Cage Warriors": [
                 ("Paddy Pimblett", "Lightweight", "Cage Warriors", 72, 81, 30, 22, 3, "UK", "BJJ"),
@@ -2118,7 +2123,6 @@ class SeedMixin:
                 ("Mason Jones", "Lightweight", "Cage Warriors", 50, 80, 30, 15, 2, "UK", "Well-Rounded"),
                 ("Caolan Loughran", "Bantamweight", "Cage Warriors", 44, 78, 28, 10, 1, "UK", "Well-Rounded"),
                 ("Shauna Bannon", "Flyweight", "Cage Warriors", 44, 77, 30, 7, 2, "UK", "Boxer"),
-                ("Ian Garry", "Welterweight", "Cage Warriors", 66, 83, 27, 15, 1, "UK", "Kickboxer"),
                 ("Lee Chadwick", "Light Heavyweight", "Cage Warriors", 42, 76, 38, 27, 15, "UK", "Well-Rounded"),
                 ("Aaron Aby", "Flyweight", "Cage Warriors", 41, 76, 31, 13, 5, "UK", "Well-Rounded"),
                 ("Dominique Wooding", "Bantamweight", "Cage Warriors", 42, 77, 30, 10, 3, "UK", "Well-Rounded"),
@@ -2312,7 +2316,6 @@ class SeedMixin:
                 ("Eiji Mitsuoka", "Lightweight", "RIZIN Fighting Federation", 42, 76, 32, 19, 12, "Japan", "Grappler"),
             ],
             "KSW": [
-                ("Alexandr Shabliy", "Lightweight", "KSW", 50, 82, 31, 24, 4, "Russia", "Sambo"),
                 ("Sidney Outlaw", "Lightweight", "KSW", 44, 79, 34, 18, 5, "USA", "Wrestler"),
                 ("Daniel Weichel", "Featherweight", "KSW", 46, 79, 39, 42, 12, "Europe", "Well-Rounded"),
                 ("Pedro Carvalho", "Featherweight", "KSW", 45, 79, 29, 14, 7, "Europe", "BJJ"),
@@ -2333,7 +2336,6 @@ class SeedMixin:
             ],
             "Strikeforce": [
                 ("Cain Velasquez", "Heavyweight", "Strikeforce", 82, 89, 29, 14, 3, "USA", "Freestyle Wrestler"),
-                ("Junior dos Santos", "Heavyweight", "Strikeforce", 80, 87, 29, 21, 7, "Brazil", "Boxer"),
                 ("Stipe Miocic", "Heavyweight", "Strikeforce", 78, 87, 31, 20, 4, "USA", "Boxer"),
                 ("Francis Ngannou", "Heavyweight", "Strikeforce", 84, 86, 31, 17, 3, "Africa", "Boxer"),
                 ("Andrei Arlovski", "Heavyweight", "Strikeforce", 66, 81, 29, 34, 22, "Europe", "Sambo"),
@@ -2365,7 +2367,6 @@ class SeedMixin:
                 ("Dustin Poirier", "Lightweight", "Cage Warriors", 86, 87, 31, 29, 8, "USA", "Boxer"),
                 ("Jim Miller", "Lightweight", "Cage Warriors", 58, 80, 33, 37, 17, "USA", "Grappler"),
                 ("Rafael dos Anjos", "Lightweight", "Cage Warriors", 68, 84, 31, 32, 14, "Brazil", "BJJ"),
-                ("Dricus du Plessis", "Middleweight", "Cage Warriors", 70, 85, 29, 22, 2, "Africa", "Well-Rounded"),
                 ("Carlston Harris", "Welterweight", "Cage Warriors", 44, 78, 35, 18, 5, "Brazil", "BJJ"),
                 ("Kiefer Crosbie", "Welterweight", "Cage Warriors", 42, 77, 30, 11, 4, "UK", "Boxer"),
             ],
@@ -2434,6 +2435,103 @@ class SeedMixin:
             ],
         }
 
+    def real_roster_depth_expansion_v5(self):
+        """Ranked fighters the earlier tables still missed.
+
+        Checked against Fight Matrix's current and all-time divisional
+        rankings: 304 of the 373 ranked fighters were already seeded, and
+        these are the rest. The gaps were concentrated in the lighter
+        all-time divisions, where the sport's history runs through Shooto,
+        DEEP and Bellator rather than the UFC, so those divisions had far
+        fewer real names than the heavier ones.
+
+        All-time entries are pinned in historic_prime_age_overrides so they
+        arrive at their competitive peak. Every fighter here is male; no
+        infer_gender change is needed.
+        """
+        return {
+            "RIZIN Fighting Federation": [
+                ("Kyoma Akimoto", "Featherweight", "RIZIN Fighting Federation", 44, 79, 27, 12, 3, "Japan", "Well-Rounded"),
+                ("Makoto Takahashi", "Flyweight", "RIZIN Fighting Federation", 44, 79, 28, 14, 4, "Japan", "Well-Rounded"),
+                ("Naoya Uematsu", "Featherweight", "RIZIN Fighting Federation", 46, 78, 29, 24, 12, "Japan", "Well-Rounded"),
+                ("Masakazu Imanari", "Featherweight", "RIZIN Fighting Federation", 54, 80, 29, 34, 17, "Japan", "Submission Grappler"),
+                ("Takeshi Inoue", "Featherweight", "RIZIN Fighting Federation", 44, 78, 28, 20, 9, "Japan", "Well-Rounded"),
+                ("Yoshiro Maeda", "Featherweight", "RIZIN Fighting Federation", 46, 78, 27, 27, 12, "Japan", "Kickboxer"),
+                ("Hiroyuki Takaya", "Featherweight", "RIZIN Fighting Federation", 48, 79, 29, 19, 12, "Japan", "Boxer"),
+                ("Ryota Matsune", "Bantamweight", "RIZIN Fighting Federation", 44, 78, 28, 18, 8, "Japan", "Wrestler"),
+                ("Masahiro Oishi", "Bantamweight", "RIZIN Fighting Federation", 43, 77, 28, 17, 9, "Japan", "Wrestler"),
+                ("Kazuhiro Sakamoto", "Bantamweight", "RIZIN Fighting Federation", 42, 77, 28, 15, 8, "Japan", "Well-Rounded"),
+                ("Akitoshi Hokazono", "Bantamweight", "RIZIN Fighting Federation", 42, 77, 29, 16, 9, "Japan", "Well-Rounded"),
+                ("Kentaro Imaizumi", "Bantamweight", "RIZIN Fighting Federation", 42, 77, 28, 15, 8, "Japan", "Well-Rounded"),
+                ("Mamoru Yamaguchi", "Flyweight", "RIZIN Fighting Federation", 50, 80, 28, 28, 8, "Japan", "Well-Rounded"),
+                ("Yasuhiro Urushitani", "Flyweight", "RIZIN Fighting Federation", 48, 79, 30, 19, 6, "Japan", "Boxer"),
+                ("Yuki Shojo", "Flyweight", "RIZIN Fighting Federation", 44, 78, 28, 16, 7, "Japan", "Well-Rounded"),
+                ("Ryuichi Miki", "Flyweight", "RIZIN Fighting Federation", 42, 77, 28, 17, 9, "Japan", "Well-Rounded"),
+                ("Junji Ikoma", "Flyweight", "RIZIN Fighting Federation", 41, 76, 29, 16, 10, "Japan", "Well-Rounded"),
+                ("Jin Akimoto", "Flyweight", "RIZIN Fighting Federation", 42, 77, 29, 14, 8, "Japan", "Kickboxer"),
+                ("Masatoshi Abe", "Flyweight", "RIZIN Fighting Federation", 40, 76, 29, 15, 10, "Japan", "Well-Rounded"),
+                ("Masaaki Sugawara", "Flyweight", "RIZIN Fighting Federation", 40, 76, 29, 14, 9, "Japan", "Well-Rounded"),
+                ("Setsu Iguchi", "Flyweight", "RIZIN Fighting Federation", 41, 76, 28, 13, 8, "Japan", "Well-Rounded"),
+                ("Kiuma Kunioku", "Middleweight", "RIZIN Fighting Federation", 44, 77, 29, 30, 22, "Japan", "Well-Rounded"),
+            ],
+            "Absolute Championship Akhmat": [
+                ("Daud Shaikhaev", "Lightweight", "Absolute Championship Akhmat", 44, 80, 28, 13, 1, "Russia", "Sambo"),
+                ("Magomedrasul Gasanov", "Middleweight", "Absolute Championship Akhmat", 44, 80, 29, 14, 2, "Russia", "Sambo"),
+                ("Sharabutdin Magomedov", "Middleweight", "Absolute Championship Akhmat", 48, 81, 30, 14, 1, "Russia", "Sanda"),
+                ("Movlid Khaybulaev", "Featherweight", "Absolute Championship Akhmat", 50, 82, 31, 21, 0, "Russia", "Sambo"),
+                ("Anatoliy Kondratyev", "Flyweight", "Absolute Championship Akhmat", 42, 79, 28, 13, 3, "Russia", "Sambo"),
+                ("Askar Askarov", "Flyweight", "Absolute Championship Akhmat", 52, 82, 28, 15, 2, "Russia", "Sambo"),
+                ("Ali Bagautinov", "Flyweight", "Absolute Championship Akhmat", 46, 79, 29, 20, 10, "Russia", "Sambo"),
+            ],
+            "ONE Championship": [
+                ("Myktybek Orolbai", "Welterweight", "ONE Championship", 46, 80, 28, 13, 1, "Asia", "Sambo"),
+                ("Rajabali Shaidullaev", "Featherweight", "ONE Championship", 45, 80, 28, 14, 1, "Asia", "Sambo"),
+                ("Karshyga Dautbek", "Featherweight", "ONE Championship", 43, 79, 29, 13, 2, "Asia", "Well-Rounded"),
+                ("Ramazonbek Temirov", "Flyweight", "ONE Championship", 43, 79, 27, 12, 2, "Asia", "Sambo"),
+                ("Bibiano Fernandes", "Bantamweight", "ONE Championship", 58, 83, 30, 24, 4, "Brazil", "BJJ"),
+                ("Joao Roque", "Featherweight", "ONE Championship", 42, 78, 28, 20, 8, "Brazil", "BJJ"),
+            ],
+            "Strikeforce": [
+                ("Chris Weidman", "Middleweight", "Strikeforce", 62, 84, 29, 15, 6, "USA", "Wrestler"),
+                ("Travis Browne", "Heavyweight", "Strikeforce", 50, 79, 30, 18, 7, "USA", "Kickboxer"),
+                ("Karo Parisyan", "Welterweight", "Strikeforce", 50, 79, 26, 22, 10, "USA", "Judo"),
+                ("Jake Ellenberger", "Welterweight", "Strikeforce", 48, 79, 28, 31, 15, "USA", "Wrestler"),
+                ("Jason Black", "Welterweight", "Strikeforce", 42, 77, 29, 32, 12, "USA", "Wrestler"),
+            ],
+            "World Extreme Cagefighting": [
+                ("T.J. Dillashaw", "Bantamweight", "World Extreme Cagefighting", 64, 85, 29, 18, 5, "USA", "Wrestler"),
+                ("Renan Barao", "Bantamweight", "World Extreme Cagefighting", 60, 84, 27, 34, 9, "Brazil", "Muay Thai"),
+                ("Cody Garbrandt", "Bantamweight", "World Extreme Cagefighting", 56, 82, 25, 13, 5, "USA", "Boxer"),
+                ("Jimmie Rivera", "Bantamweight", "World Extreme Cagefighting", 46, 79, 28, 23, 6, "USA", "Boxer"),
+                ("Raphael Assuncao", "Bantamweight", "World Extreme Cagefighting", 50, 80, 30, 28, 9, "Brazil", "BJJ"),
+                ("Pedro Munhoz", "Bantamweight", "World Extreme Cagefighting", 48, 79, 29, 20, 8, "Brazil", "BJJ"),
+                ("Ricardo Lamas", "Featherweight", "World Extreme Cagefighting", 50, 80, 30, 21, 8, "USA", "Wrestler"),
+                ("Jeff Curran", "Featherweight", "World Extreme Cagefighting", 44, 78, 29, 35, 18, "USA", "BJJ"),
+                ("Ian McCall", "Flyweight", "World Extreme Cagefighting", 46, 79, 28, 13, 6, "USA", "Well-Rounded"),
+                ("Zach Makovsky", "Flyweight", "World Extreme Cagefighting", 44, 78, 28, 19, 7, "USA", "Wrestler"),
+                ("John Moraga", "Flyweight", "World Extreme Cagefighting", 44, 78, 29, 19, 8, "USA", "Wrestler"),
+                ("Josh Sampo", "Flyweight", "World Extreme Cagefighting", 40, 76, 29, 13, 6, "USA", "Wrestler"),
+                ("Alexis Vila", "Flyweight", "World Extreme Cagefighting", 42, 78, 30, 14, 5, "USA", "Freestyle Wrestler"),
+            ],
+            "Legacy Fighting Alliance": [
+                ("Pat Curran", "Featherweight", "Legacy Fighting Alliance", 50, 80, 27, 23, 8, "USA", "Well-Rounded"),
+                ("Eduardo Dantas", "Bantamweight", "Legacy Fighting Alliance", 48, 79, 26, 22, 7, "Brazil", "BJJ"),
+                ("Marcos Galvao", "Bantamweight", "Legacy Fighting Alliance", 44, 78, 29, 18, 8, "Brazil", "BJJ"),
+                ("Jussier Formiga", "Flyweight", "Legacy Fighting Alliance", 48, 80, 28, 23, 7, "Brazil", "BJJ"),
+                ("Josiel Silva", "Bantamweight", "Legacy Fighting Alliance", 41, 77, 28, 12, 3, "Brazil", "Well-Rounded"),
+                ("Marcos Degli", "Flyweight", "Legacy Fighting Alliance", 41, 77, 27, 11, 2, "Brazil", "Well-Rounded"),
+                ("Brunno Ferreira", "Middleweight", "Legacy Fighting Alliance", 44, 79, 30, 12, 2, "Brazil", "Boxer"),
+            ],
+            "Cage Warriors": [
+                ("Joachim Hansen", "Lightweight", "Cage Warriors", 54, 80, 27, 20, 12, "Europe", "Well-Rounded"),
+                ("Louie Sutherland", "Heavyweight", "Cage Warriors", 41, 77, 28, 9, 2, "UK", "Well-Rounded"),
+            ],
+            "BRAVE Combat Federation": [
+                ("Alexandre Franca Nogueira", "Featherweight", "BRAVE Combat Federation", 50, 80, 28, 26, 6, "Brazil", "BJJ"),
+                ("Marlon Sandro", "Featherweight", "BRAVE Combat Federation", 46, 79, 29, 24, 6, "Brazil", "Boxer"),
+            ],
+        }
+
     def roster_depth_expansion(self):
         """Additive real-life depth for the Default Universe's opening rosters."""
         return {
@@ -2454,7 +2552,7 @@ class SeedMixin:
             ],
             "PFL": [
                 ("Taylor Lapilus", "Bantamweight", "PFL", 55, 80, 33, 23, 4, "Europe", "Kickboxer"), ("Marcirley Alves", "Bantamweight", "PFL", 50, 79, 28, 15, 4, "Brazil", "BJJ"),
-                ("Sarvajon Khamidov", "Bantamweight", "PFL", 52, 81, 30, 16, 1, "Asia", "Wrestler"), ("Ciaran Clarke", "Bantamweight", "PFL", 48, 78, 29, 10, 0, "UK", "Wrestler"),
+                ("Sarvarjon Khamidov", "Bantamweight", "PFL", 52, 81, 30, 16, 1, "Asia", "Wrestler"), ("Ciaran Clarke", "Bantamweight", "PFL", 48, 78, 29, 10, 0, "UK", "Wrestler"),
                 ("Timur Khizriev", "Featherweight", "PFL", 67, 85, 30, 18, 0, "Europe", "Wrestler"), ("Jesus Pinedo", "Featherweight", "PFL", 65, 83, 30, 26, 7, "Peru", "Boxer"),
                 ("Adam Borics", "Featherweight", "PFL", 60, 81, 33, 20, 3, "Europe", "Kickboxer"), ("Gabriel Braga", "Featherweight", "PFL", 56, 80, 28, 16, 3, "Brazil", "BJJ"),
                 ("Alfie Davis", "Lightweight", "PFL", 57, 80, 33, 20, 6, "UK", "Kickboxer"), ("Alexander Shabliy", "Lightweight", "PFL", 65, 84, 32, 24, 4, "Europe", "Kickboxer"),
@@ -2617,7 +2715,7 @@ class SeedMixin:
                 ("Mochamed Machaev", "Welterweight", "Wrestler"), ("Mansur Azhiev", "Featherweight", "Wrestler"),
                 ("Abdoul Hussein", "Featherweight", "BJJ"), ("Zia Mashwani", "Featherweight", "Kickboxer"),
                 ("Elias Boudegzdame", "Featherweight", "BJJ"), ("Sami Chaoui", "Lightweight", "Boxer"),
-                ("Mohamed Fakhreddine", "Light Heavyweight", "Kickboxer"), ("Aziz Karagula-Akan", "Heavyweight", "Wrestler"),
+                ("Mohammed Fakhreddine", "Light Heavyweight", "Kickboxer"), ("Aziz Karagula-Akan", "Heavyweight", "Wrestler"),
             ]),
             "Absolute Championship Akhmat": rows("Absolute Championship Akhmat", "Europe", [
                 ("Artem Reznikov", "Lightweight", "Wrestler"), ("Yusuf Raisov", "Featherweight", "Wrestler"),
@@ -2695,6 +2793,27 @@ class SeedMixin:
     def prime_legend_ages(self):
         return {row[0]: row[5] for row in self.legend_fighter_data()}
 
+    REAL_FIGHTER_AGE_CAP = 37
+
+    def real_fighter_capped_age(self, name, age):
+        """Pull a real fighter's seeded age back into a competitive range.
+
+        The curated tables record fighters at roughly their real present-day
+        age, so a new world opened with dozens of active fighters in their
+        forties -- and a few approaching fifty -- who were past the point of
+        being useful to sign or book. An explicit entry in
+        historic_prime_age_overrides always wins; this only catches everyone
+        who never got one, so adding a row to a roster table cannot quietly
+        reintroduce the problem.
+
+        Derived from the name so a given fighter is the same age in every save
+        rather than being re-rolled, and returns None when no change is needed.
+        """
+        if age <= self.REAL_FIGHTER_AGE_CAP:
+            return None
+        spread = sum((index + 1) * ord(char) for index, char in enumerate(name))
+        return 32 + spread % 6
+
     def historic_prime_age_overrides(self):
         """Playable prime ages for historical stars seeded into the modern universe."""
         ages = self.prime_legend_ages()
@@ -2738,11 +2857,29 @@ class SeedMixin:
             "Shinichi Kojima": 29, "Eiji Mitsuoka": 30,
             "Chuck Liddell": 31, "Randy Couture": 34, "Tito Ortiz": 27,
             "Rich Franklin": 30, "Forrest Griffin": 28, "Rashad Evans": 29,
-            "Michael Bisping": 30, "Cain Velasquez": 29, "Junior dos Santos": 28,
+            "Michael Bisping": 30, "Cain Velasquez": 29,
             "Stipe Miocic": 32, "Francis Ngannou": 31, "Andrei Arlovski": 27,
             "Henry Cejudo": 31, "Marlon Moraes": 30, "Kron Gracie": 29,
             "Glover Teixeira": 32, "Thiago Santos": 31, "Dustin Poirier": 30,
             "Rafael dos Anjos": 30, "Jim Miller": 29,
+            # All-time ranked fighters added with real_roster_depth_expansion_v5.
+            "Joachim Hansen": 27, "Alexandre Franca Nogueira": 28, "Pat Curran": 27,
+            "Naoya Uematsu": 29, "Ricardo Lamas": 30, "Masakazu Imanari": 29,
+            "Takeshi Inoue": 28, "Jeff Curran": 29, "Yoshiro Maeda": 27,
+            "Hiroyuki Takaya": 29, "Joao Roque": 28, "Bibiano Fernandes": 30,
+            "Marlon Sandro": 29, "Travis Browne": 30, "Karo Parisyan": 26,
+            "Jake Ellenberger": 28, "Jason Black": 29, "Chris Weidman": 29,
+            "Kiuma Kunioku": 29, "T.J. Dillashaw": 29, "Renan Barao": 27,
+            "Cody Garbrandt": 25, "Ryota Matsune": 28, "Masahiro Oishi": 28,
+            "Eduardo Dantas": 26, "Kazuhiro Sakamoto": 28, "Jimmie Rivera": 28,
+            "Raphael Assuncao": 30, "Akitoshi Hokazono": 29, "Marcos Galvao": 29,
+            "Kentaro Imaizumi": 28, "Pedro Munhoz": 29, "Mamoru Yamaguchi": 28,
+            "Yasuhiro Urushitani": 30, "Jussier Formiga": 28, "Ian McCall": 28,
+            "Askar Askarov": 28, "Yuki Shojo": 28, "Alexis Vila": 30,
+            "Ryuichi Miki": 28, "Zach Makovsky": 28, "John Moraga": 29,
+            "Junji Ikoma": 29, "Jin Akimoto": 29, "Josh Sampo": 29,
+            "Masatoshi Abe": 29, "Masaaki Sugawara": 29, "Setsu Iguchi": 28,
+            "Ali Bagautinov": 29,
         })
         return ages
 

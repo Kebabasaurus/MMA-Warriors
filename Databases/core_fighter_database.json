@@ -929,18 +929,6 @@
       "BJJ"
     ],
     [
-      "Frankie Edgar",
-      "Lightweight",
-      "Legend",
-      89,
-      86,
-      30,
-      17,
-      4,
-      "USA",
-      "Wrestler"
-    ],
-    [
       "Urijah Faber",
       "Bantamweight",
       "Legend",
@@ -1928,54 +1916,6 @@
         "Boxer"
       ],
       [
-        "Tom Aspinall",
-        "Heavyweight",
-        "UFC",
-        92,
-        92,
-        28,
-        27,
-        1,
-        "UK",
-        "Well-Rounded"
-      ],
-      [
-        "Ciryl Gane",
-        "Heavyweight",
-        "UFC",
-        90,
-        91,
-        29,
-        25,
-        2,
-        "Europe",
-        "Boxer"
-      ],
-      [
-        "Alexander Volkov",
-        "Heavyweight",
-        "UFC",
-        88,
-        90,
-        30,
-        26,
-        0,
-        "Europe",
-        "Wrestler"
-      ],
-      [
-        "Sergei Pavlovich",
-        "Heavyweight",
-        "UFC",
-        86,
-        89,
-        31,
-        25,
-        1,
-        "Europe",
-        "Kickboxer"
-      ],
-      [
         "Josh Hokit",
         "Heavyweight",
         "UFC",
@@ -1986,18 +1926,6 @@
         2,
         "USA",
         "BJJ"
-      ],
-      [
-        "Waldo Cortes Acosta",
-        "Heavyweight",
-        "UFC",
-        82,
-        87,
-        35,
-        24,
-        1,
-        "USA",
-        "Muay Thai"
       ],
       [
         "Serghei Spivac",
@@ -2058,18 +1986,6 @@
         3,
         "Europe",
         "Kickboxer"
-      ],
-      [
-        "Derrick Lewis",
-        "Heavyweight",
-        "UFC",
-        70,
-        81,
-        32,
-        22,
-        5,
-        "USA",
-        "BJJ"
       ],
       [
         "Marcin Tybura",
@@ -2156,54 +2072,6 @@
         "BJJ"
       ],
       [
-        "Carlos Ulberg",
-        "Light Heavyweight",
-        "UFC",
-        92,
-        92,
-        28,
-        28,
-        0,
-        "Australia",
-        "Well-Rounded"
-      ],
-      [
-        "Magomed Ankalaev",
-        "Light Heavyweight",
-        "UFC",
-        90,
-        91,
-        29,
-        27,
-        2,
-        "Europe",
-        "Boxer"
-      ],
-      [
-        "Jiri Prochazka",
-        "Light Heavyweight",
-        "UFC",
-        88,
-        90,
-        30,
-        25,
-        1,
-        "Europe",
-        "Wrestler"
-      ],
-      [
-        "Alex Pereira",
-        "Light Heavyweight",
-        "UFC",
-        86,
-        89,
-        31,
-        23,
-        2,
-        "USA",
-        "Kickboxer"
-      ],
-      [
         "Jan Blachowicz",
         "Light Heavyweight",
         "UFC",
@@ -2228,42 +2096,6 @@
         "Muay Thai"
       ],
       [
-        "Jamahal Hill",
-        "Light Heavyweight",
-        "UFC",
-        80,
-        86,
-        36,
-        22,
-        4,
-        "USA",
-        "Grappler"
-      ],
-      [
-        "Azamat Murzakanov",
-        "Light Heavyweight",
-        "UFC",
-        78,
-        85,
-        37,
-        21,
-        3,
-        "USA",
-        "Well-Rounded"
-      ],
-      [
-        "Volkan Oezdemir",
-        "Light Heavyweight",
-        "UFC",
-        76,
-        84,
-        38,
-        22,
-        4,
-        "Europe",
-        "Boxer"
-      ],
-      [
         "Bogdan Guskov",
         "Light Heavyweight",
         "UFC",
@@ -2274,18 +2106,6 @@
         5,
         "USA",
         "Wrestler"
-      ],
-      [
-        "Dominick Reyes",
-        "Light Heavyweight",
-        "UFC",
-        72,
-        82,
-        31,
-        20,
-        4,
-        "USA",
-        "Kickboxer"
       ],
       [
         "Nikita Krylov",
@@ -2360,78 +2180,6 @@
         "Wrestler"
       ],
       [
-        "Sean Strickland",
-        "Middleweight",
-        "UFC",
-        92,
-        92,
-        28,
-        26,
-        2,
-        "USA",
-        "Well-Rounded"
-      ],
-      [
-        "Khamzat Chimaev",
-        "Middleweight",
-        "UFC",
-        90,
-        91,
-        29,
-        24,
-        0,
-        "Europe",
-        "Boxer"
-      ],
-      [
-        "Dricus Du Plessis",
-        "Middleweight",
-        "UFC",
-        88,
-        90,
-        30,
-        23,
-        2,
-        "Europe",
-        "Wrestler"
-      ],
-      [
-        "Nassourdine Imavov",
-        "Middleweight",
-        "UFC",
-        86,
-        89,
-        31,
-        26,
-        2,
-        "Europe",
-        "Kickboxer"
-      ],
-      [
-        "Brendan Allen",
-        "Middleweight",
-        "UFC",
-        84,
-        88,
-        32,
-        26,
-        1,
-        "USA",
-        "BJJ"
-      ],
-      [
-        "Caio Borralho",
-        "Middleweight",
-        "UFC",
-        82,
-        87,
-        35,
-        26,
-        1,
-        "USA",
-        "Muay Thai"
-      ],
-      [
         "Anthony Hernandez",
         "Middleweight",
         "UFC",
@@ -2442,18 +2190,6 @@
         2,
         "USA",
         "Grappler"
-      ],
-      [
-        "Joe Pyfer",
-        "Middleweight",
-        "UFC",
-        78,
-        85,
-        37,
-        25,
-        3,
-        "USA",
-        "Well-Rounded"
       ],
       [
         "Reinier de Ridder",
@@ -2468,30 +2204,6 @@
         "Boxer"
       ],
       [
-        "Israel Adesanya",
-        "Middleweight",
-        "UFC",
-        74,
-        83,
-        30,
-        20,
-        3,
-        "USA",
-        "Wrestler"
-      ],
-      [
-        "Robert Whittaker",
-        "Middleweight",
-        "UFC",
-        72,
-        82,
-        31,
-        21,
-        4,
-        "Australia",
-        "Kickboxer"
-      ],
-      [
         "Jared Cannonier",
         "Middleweight",
         "UFC",
@@ -2502,18 +2214,6 @@
         3,
         "USA",
         "BJJ"
-      ],
-      [
-        "Gregory Rodrigues",
-        "Middleweight",
-        "UFC",
-        68,
-        80,
-        33,
-        20,
-        6,
-        "USA",
-        "Muay Thai"
       ],
       [
         "Christian Leroy Duncan",
@@ -2576,126 +2276,6 @@
         "Kickboxer"
       ],
       [
-        "Islam Makhachev",
-        "Welterweight",
-        "UFC",
-        92,
-        92,
-        28,
-        26,
-        0,
-        "Europe",
-        "Well-Rounded"
-      ],
-      [
-        "Ian Machado Garry",
-        "Welterweight",
-        "UFC",
-        90,
-        91,
-        29,
-        24,
-        0,
-        "Europe",
-        "Boxer"
-      ],
-      [
-        "Carlos Prates",
-        "Welterweight",
-        "UFC",
-        88,
-        90,
-        30,
-        24,
-        0,
-        "Brazil",
-        "Wrestler"
-      ],
-      [
-        "Michael Morales",
-        "Welterweight",
-        "UFC",
-        86,
-        89,
-        31,
-        23,
-        2,
-        "Mexico",
-        "Kickboxer"
-      ],
-      [
-        "Jack Della Maddalena",
-        "Welterweight",
-        "UFC",
-        84,
-        88,
-        32,
-        24,
-        2,
-        "Australia",
-        "BJJ"
-      ],
-      [
-        "Gabriel Bonfim",
-        "Welterweight",
-        "UFC",
-        82,
-        87,
-        35,
-        26,
-        2,
-        "USA",
-        "Muay Thai"
-      ],
-      [
-        "Sean Brady",
-        "Welterweight",
-        "UFC",
-        80,
-        86,
-        36,
-        24,
-        3,
-        "USA",
-        "Grappler"
-      ],
-      [
-        "Belal Muhammad",
-        "Welterweight",
-        "UFC",
-        78,
-        85,
-        37,
-        21,
-        3,
-        "USA",
-        "Well-Rounded"
-      ],
-      [
-        "Leon Edwards",
-        "Welterweight",
-        "UFC",
-        76,
-        84,
-        38,
-        20,
-        4,
-        "UK",
-        "Boxer"
-      ],
-      [
-        "Kamaru Usman",
-        "Welterweight",
-        "UFC",
-        74,
-        83,
-        30,
-        20,
-        5,
-        "USA",
-        "Wrestler"
-      ],
-      [
         "Joaquin Buckley",
         "Welterweight",
         "UFC",
@@ -2720,42 +2300,6 @@
         "BJJ"
       ],
       [
-        "Mike Malott",
-        "Welterweight",
-        "UFC",
-        68,
-        80,
-        33,
-        21,
-        6,
-        "USA",
-        "Muay Thai"
-      ],
-      [
-        "Michael Venom Page",
-        "Welterweight",
-        "UFC",
-        66,
-        79,
-        34,
-        22,
-        5,
-        "USA",
-        "Grappler"
-      ],
-      [
-        "Uros Medic",
-        "Welterweight",
-        "UFC",
-        64,
-        78,
-        35,
-        19,
-        6,
-        "Europe",
-        "Well-Rounded"
-      ],
-      [
         "Daniel Rodriguez",
         "Welterweight",
         "UFC",
@@ -2766,90 +2310,6 @@
         6,
         "Mexico",
         "Boxer"
-      ],
-      [
-        "Justin Gaethje",
-        "Lightweight",
-        "UFC",
-        92,
-        92,
-        28,
-        27,
-        0,
-        "USA",
-        "Well-Rounded"
-      ],
-      [
-        "Ilia Topuria",
-        "Lightweight",
-        "UFC",
-        90,
-        91,
-        29,
-        28,
-        2,
-        "Europe",
-        "Boxer"
-      ],
-      [
-        "Arman Tsarukyan",
-        "Lightweight",
-        "UFC",
-        88,
-        90,
-        30,
-        25,
-        2,
-        "Europe",
-        "Wrestler"
-      ],
-      [
-        "Charles Oliveira",
-        "Lightweight",
-        "UFC",
-        86,
-        89,
-        31,
-        25,
-        2,
-        "Brazil",
-        "Kickboxer"
-      ],
-      [
-        "Max Holloway",
-        "Lightweight",
-        "UFC",
-        84,
-        88,
-        32,
-        24,
-        1,
-        "USA",
-        "BJJ"
-      ],
-      [
-        "Benoit Saint Denis",
-        "Lightweight",
-        "UFC",
-        82,
-        87,
-        35,
-        23,
-        1,
-        "Europe",
-        "Muay Thai"
-      ],
-      [
-        "Paddy Pimblett",
-        "Lightweight",
-        "UFC",
-        80,
-        86,
-        36,
-        21,
-        3,
-        "UK",
-        "Grappler"
       ],
       [
         "Mauricio Ruffy",
@@ -2984,54 +2444,6 @@
         "Kickboxer"
       ],
       [
-        "Alexander Volkanovski",
-        "Featherweight",
-        "UFC",
-        92,
-        92,
-        28,
-        28,
-        0,
-        "Australia",
-        "Well-Rounded"
-      ],
-      [
-        "Movsar Evloev",
-        "Featherweight",
-        "UFC",
-        90,
-        91,
-        29,
-        26,
-        2,
-        "Europe",
-        "Boxer"
-      ],
-      [
-        "Diego Lopes",
-        "Featherweight",
-        "UFC",
-        88,
-        90,
-        30,
-        23,
-        1,
-        "Brazil",
-        "Wrestler"
-      ],
-      [
-        "Lerone Murphy",
-        "Featherweight",
-        "UFC",
-        86,
-        89,
-        31,
-        26,
-        3,
-        "UK",
-        "Kickboxer"
-      ],
-      [
         "Aljamain Sterling",
         "Featherweight",
         "UFC",
@@ -3056,18 +2468,6 @@
         "Muay Thai"
       ],
       [
-        "Jean Silva",
-        "Featherweight",
-        "UFC",
-        80,
-        86,
-        36,
-        25,
-        2,
-        "Brazil",
-        "Grappler"
-      ],
-      [
         "Arnold Allen",
         "Featherweight",
         "UFC",
@@ -3080,42 +2480,6 @@
         "Well-Rounded"
       ],
       [
-        "Youssef Zalal",
-        "Featherweight",
-        "UFC",
-        76,
-        84,
-        38,
-        21,
-        3,
-        "USA",
-        "Boxer"
-      ],
-      [
-        "Kevin Vallejos",
-        "Featherweight",
-        "UFC",
-        74,
-        83,
-        30,
-        22,
-        4,
-        "USA",
-        "Wrestler"
-      ],
-      [
-        "Steve Garcia",
-        "Featherweight",
-        "UFC",
-        72,
-        82,
-        31,
-        20,
-        3,
-        "USA",
-        "Kickboxer"
-      ],
-      [
         "Brian Ortega",
         "Featherweight",
         "UFC",
@@ -3126,30 +2490,6 @@
         3,
         "USA",
         "BJJ"
-      ],
-      [
-        "Aaron Pico",
-        "Featherweight",
-        "UFC",
-        68,
-        80,
-        33,
-        18,
-        4,
-        "USA",
-        "Muay Thai"
-      ],
-      [
-        "Melquizael Costa",
-        "Featherweight",
-        "UFC",
-        66,
-        79,
-        34,
-        20,
-        4,
-        "Brazil",
-        "Grappler"
       ],
       [
         "David Onama",
@@ -3224,78 +2564,6 @@
         "Muay Thai"
       ],
       [
-        "Petr Yan",
-        "Bantamweight",
-        "UFC",
-        92,
-        92,
-        28,
-        28,
-        2,
-        "Europe",
-        "Well-Rounded"
-      ],
-      [
-        "Merab Dvalishvili",
-        "Bantamweight",
-        "UFC",
-        90,
-        91,
-        29,
-        28,
-        2,
-        "Europe",
-        "Boxer"
-      ],
-      [
-        "Sean O'Malley",
-        "Bantamweight",
-        "UFC",
-        88,
-        90,
-        30,
-        24,
-        1,
-        "USA",
-        "Wrestler"
-      ],
-      [
-        "Umar Nurmagomedov",
-        "Bantamweight",
-        "UFC",
-        86,
-        89,
-        31,
-        25,
-        1,
-        "Europe",
-        "Kickboxer"
-      ],
-      [
-        "Cory Sandhagen",
-        "Bantamweight",
-        "UFC",
-        84,
-        88,
-        32,
-        22,
-        3,
-        "USA",
-        "BJJ"
-      ],
-      [
-        "Song Yadong",
-        "Bantamweight",
-        "UFC",
-        82,
-        87,
-        35,
-        24,
-        1,
-        "Asia",
-        "Muay Thai"
-      ],
-      [
         "Aiemann Zahabi",
         "Bantamweight",
         "UFC",
@@ -3306,18 +2574,6 @@
         2,
         "USA",
         "Grappler"
-      ],
-      [
-        "Mario Bautista",
-        "Bantamweight",
-        "UFC",
-        78,
-        85,
-        37,
-        22,
-        3,
-        "USA",
-        "Well-Rounded"
       ],
       [
         "David Martinez",
@@ -3440,18 +2696,6 @@
         "Kickboxer"
       ],
       [
-        "Joshua Van",
-        "Flyweight",
-        "UFC",
-        92,
-        92,
-        28,
-        24,
-        2,
-        "USA",
-        "Well-Rounded"
-      ],
-      [
         "Alexandre Pantoja",
         "Flyweight",
         "UFC",
@@ -3464,42 +2708,6 @@
         "Boxer"
       ],
       [
-        "Manel Kape",
-        "Flyweight",
-        "UFC",
-        88,
-        90,
-        30,
-        27,
-        1,
-        "Europe",
-        "Wrestler"
-      ],
-      [
-        "Tatsuro Taira",
-        "Flyweight",
-        "UFC",
-        86,
-        89,
-        31,
-        27,
-        1,
-        "Japan",
-        "Kickboxer"
-      ],
-      [
-        "Brandon Royval",
-        "Flyweight",
-        "UFC",
-        84,
-        88,
-        32,
-        24,
-        3,
-        "USA",
-        "BJJ"
-      ],
-      [
         "Kyoji Horiguchi",
         "Flyweight",
         "UFC",
@@ -3510,30 +2718,6 @@
         1,
         "Japan",
         "Muay Thai"
-      ],
-      [
-        "Lone'er Kavanagh",
-        "Flyweight",
-        "UFC",
-        80,
-        86,
-        36,
-        23,
-        4,
-        "USA",
-        "Grappler"
-      ],
-      [
-        "Asu Almabayev",
-        "Flyweight",
-        "UFC",
-        78,
-        85,
-        37,
-        22,
-        3,
-        "Europe",
-        "Well-Rounded"
       ],
       [
         "Amir Albazi",
@@ -3680,18 +2864,6 @@
         "Muay Thai"
       ],
       [
-        "Mackenzie Dern",
-        "Flyweight",
-        "UFC",
-        92,
-        92,
-        28,
-        26,
-        1,
-        "USA",
-        "Well-Rounded"
-      ],
-      [
         "Zhang Weili",
         "Flyweight",
         "UFC",
@@ -3738,18 +2910,6 @@
         3,
         "Europe",
         "BJJ"
-      ],
-      [
-        "Gillian Robertson",
-        "Flyweight",
-        "UFC",
-        82,
-        87,
-        35,
-        25,
-        1,
-        "USA",
-        "Muay Thai"
       ],
       [
         "Loopy Godinez",
@@ -4100,18 +3260,6 @@
         "Grappler"
       ],
       [
-        "Kayla Harrison",
-        "Bantamweight",
-        "UFC",
-        92,
-        92,
-        28,
-        26,
-        0,
-        "USA",
-        "Well-Rounded"
-      ],
-      [
         "Julianna Pena",
         "Bantamweight",
         "UFC",
@@ -4328,54 +3476,6 @@
         "Boxer"
       ],
       [
-        "Mateusz Gamrot",
-        "Lightweight",
-        "UFC",
-        72,
-        85,
-        35,
-        25,
-        3,
-        "Europe",
-        "Wrestler"
-      ],
-      [
-        "Rafael Fiziev",
-        "Lightweight",
-        "UFC",
-        74,
-        84,
-        33,
-        12,
-        4,
-        "Europe",
-        "Kickboxer"
-      ],
-      [
-        "Renato Moicano",
-        "Lightweight",
-        "UFC",
-        76,
-        84,
-        37,
-        20,
-        6,
-        "Brazil",
-        "BJJ"
-      ],
-      [
-        "Dan Hooker",
-        "Lightweight",
-        "UFC",
-        78,
-        82,
-        36,
-        24,
-        12,
-        "Australia",
-        "Kickboxer"
-      ],
-      [
         "Michael Chandler",
         "Lightweight",
         "UFC",
@@ -4424,18 +3524,6 @@
         "Boxer"
       ],
       [
-        "Joaquin Buckley",
-        "Welterweight",
-        "UFC",
-        73,
-        82,
-        32,
-        21,
-        6,
-        "USA",
-        "Kickboxer"
-      ],
-      [
         "Shavkat Rakhmonov",
         "Welterweight",
         "UFC",
@@ -4472,90 +3560,6 @@
         "Wrestler"
       ],
       [
-        "Jared Cannonier",
-        "Middleweight",
-        "UFC",
-        77,
-        83,
-        42,
-        18,
-        8,
-        "USA",
-        "Kickboxer"
-      ],
-      [
-        "Anthony Hernandez",
-        "Middleweight",
-        "UFC",
-        69,
-        83,
-        32,
-        14,
-        2,
-        "USA",
-        "Wrestler"
-      ],
-      [
-        "Roman Dolidze",
-        "Middleweight",
-        "UFC",
-        68,
-        82,
-        37,
-        14,
-        4,
-        "Europe",
-        "Sambo"
-      ],
-      [
-        "Khalil Rountree Jr.",
-        "Light Heavyweight",
-        "UFC",
-        76,
-        82,
-        36,
-        14,
-        6,
-        "USA",
-        "Muay Thai"
-      ],
-      [
-        "Jan Blachowicz",
-        "Light Heavyweight",
-        "UFC",
-        78,
-        83,
-        43,
-        29,
-        10,
-        "Europe",
-        "Kickboxer"
-      ],
-      [
-        "Johnny Walker",
-        "Light Heavyweight",
-        "UFC",
-        72,
-        80,
-        34,
-        21,
-        9,
-        "Brazil",
-        "Kickboxer"
-      ],
-      [
-        "Marcin Tybura",
-        "Heavyweight",
-        "UFC",
-        69,
-        80,
-        40,
-        26,
-        9,
-        "Europe",
-        "Wrestler"
-      ],
-      [
         "Jailton Almeida",
         "Heavyweight",
         "UFC",
@@ -4566,306 +3570,6 @@
         4,
         "Brazil",
         "BJJ"
-      ],
-      [
-        "Curtis Blaydes",
-        "Heavyweight",
-        "UFC",
-        76,
-        84,
-        35,
-        18,
-        5,
-        "USA",
-        "Wrestler"
-      ],
-      [
-        "Serghei Spivac",
-        "Heavyweight",
-        "UFC",
-        66,
-        80,
-        31,
-        17,
-        5,
-        "Europe",
-        "Sambo"
-      ],
-      [
-        "Arnold Allen",
-        "Featherweight",
-        "UFC",
-        72,
-        83,
-        32,
-        20,
-        3,
-        "UK",
-        "Boxer"
-      ],
-      [
-        "Yair Rodriguez",
-        "Featherweight",
-        "UFC",
-        80,
-        84,
-        33,
-        19,
-        5,
-        "Mexico",
-        "Karate"
-      ],
-      [
-        "Brian Ortega",
-        "Featherweight",
-        "UFC",
-        79,
-        83,
-        35,
-        16,
-        4,
-        "USA",
-        "BJJ"
-      ],
-      [
-        "Aljamain Sterling",
-        "Featherweight",
-        "UFC",
-        82,
-        86,
-        36,
-        24,
-        5,
-        "USA",
-        "Wrestler"
-      ],
-      [
-        "Marlon Vera",
-        "Bantamweight",
-        "UFC",
-        78,
-        82,
-        33,
-        23,
-        10,
-        "Brazil",
-        "Kickboxer"
-      ],
-      [
-        "Deiveson Figueiredo",
-        "Bantamweight",
-        "UFC",
-        80,
-        84,
-        38,
-        24,
-        4,
-        "Brazil",
-        "Well-Rounded"
-      ],
-      [
-        "Brandon Moreno",
-        "Flyweight",
-        "UFC",
-        83,
-        85,
-        32,
-        22,
-        8,
-        "Mexico",
-        "Boxer"
-      ],
-      [
-        "Alexandre Pantoja",
-        "Flyweight",
-        "UFC",
-        84,
-        87,
-        36,
-        29,
-        5,
-        "Brazil",
-        "BJJ"
-      ],
-      [
-        "Zhang Weili",
-        "Flyweight",
-        "UFC",
-        91,
-        90,
-        37,
-        26,
-        4,
-        "Japan",
-        "Kickboxer"
-      ],
-      [
-        "Valentina Shevchenko",
-        "Flyweight",
-        "UFC",
-        90,
-        89,
-        38,
-        24,
-        4,
-        "Europe",
-        "Muay Thai"
-      ],
-      [
-        "Alexa Grasso",
-        "Flyweight",
-        "UFC",
-        84,
-        86,
-        33,
-        17,
-        4,
-        "Mexico",
-        "Boxer"
-      ],
-      [
-        "Manon Fiorot",
-        "Flyweight",
-        "UFC",
-        78,
-        85,
-        36,
-        12,
-        2,
-        "Europe",
-        "Kickboxer"
-      ],
-      [
-        "Erin Blanchfield",
-        "Flyweight",
-        "UFC",
-        73,
-        84,
-        27,
-        13,
-        2,
-        "USA",
-        "BJJ"
-      ],
-      [
-        "Rose Namajunas",
-        "Flyweight",
-        "UFC",
-        86,
-        84,
-        34,
-        14,
-        7,
-        "USA",
-        "Karate"
-      ],
-      [
-        "Yan Xiaonan",
-        "Flyweight",
-        "UFC",
-        76,
-        83,
-        37,
-        18,
-        4,
-        "Japan",
-        "Boxer"
-      ],
-      [
-        "Virna Jandiroba",
-        "Flyweight",
-        "UFC",
-        68,
-        83,
-        38,
-        21,
-        3,
-        "Brazil",
-        "BJJ"
-      ],
-      [
-        "Tatiana Suarez",
-        "Flyweight",
-        "UFC",
-        70,
-        85,
-        35,
-        11,
-        1,
-        "USA",
-        "Wrestler"
-      ],
-      [
-        "Jessica Andrade",
-        "Flyweight",
-        "UFC",
-        82,
-        83,
-        34,
-        26,
-        13,
-        "Brazil",
-        "Boxer"
-      ],
-      [
-        "Amanda Ribas",
-        "Flyweight",
-        "UFC",
-        72,
-        81,
-        32,
-        13,
-        5,
-        "Brazil",
-        "BJJ"
-      ],
-      [
-        "Maycee Barber",
-        "Flyweight",
-        "UFC",
-        70,
-        82,
-        28,
-        14,
-        2,
-        "USA",
-        "Kickboxer"
-      ],
-      [
-        "Natalia Silva",
-        "Flyweight",
-        "UFC",
-        68,
-        83,
-        29,
-        18,
-        5,
-        "Brazil",
-        "Kickboxer"
-      ],
-      [
-        "Jasmine Jasudavicius",
-        "Flyweight",
-        "UFC",
-        58,
-        78,
-        37,
-        12,
-        3,
-        "Canada",
-        "Wrestler"
-      ],
-      [
-        "Tracy Cortez",
-        "Flyweight",
-        "UFC",
-        62,
-        79,
-        32,
-        11,
-        2,
-        "USA",
-        "Wrestler"
       ],
       [
         "Ketlen Vieira",
@@ -4880,30 +3584,6 @@
         "Judo"
       ],
       [
-        "Raquel Pennington",
-        "Bantamweight",
-        "UFC",
-        76,
-        82,
-        37,
-        16,
-        9,
-        "USA",
-        "Boxer"
-      ],
-      [
-        "Julianna Pena",
-        "Bantamweight",
-        "UFC",
-        78,
-        81,
-        36,
-        12,
-        6,
-        "USA",
-        "BJJ"
-      ],
-      [
         "Holly Holm",
         "Bantamweight",
         "UFC",
@@ -4913,30 +3593,6 @@
         15,
         7,
         "USA",
-        "Boxer"
-      ],
-      [
-        "Macy Chiasson",
-        "Bantamweight",
-        "UFC",
-        61,
-        79,
-        35,
-        11,
-        3,
-        "USA",
-        "Kickboxer"
-      ],
-      [
-        "Norma Dumont",
-        "Bantamweight",
-        "UFC",
-        60,
-        79,
-        35,
-        12,
-        2,
-        "Brazil",
         "Boxer"
       ],
       [
@@ -4974,30 +3630,6 @@
         9,
         "Europe",
         "Kickboxer"
-      ],
-      [
-        "Loopy Godinez",
-        "Flyweight",
-        "UFC",
-        58,
-        78,
-        32,
-        13,
-        5,
-        "Mexico",
-        "Wrestler"
-      ],
-      [
-        "Tabatha Ricci",
-        "Flyweight",
-        "UFC",
-        55,
-        78,
-        31,
-        11,
-        2,
-        "Brazil",
-        "Judo"
       ],
       [
         "Kai Kara-France",
@@ -5578,30 +4210,6 @@
         "Well-Rounded"
       ],
       [
-        "Oleg Popov",
-        "Heavyweight",
-        "PFL",
-        82,
-        87,
-        30,
-        26,
-        1,
-        "Europe",
-        "Wrestler"
-      ],
-      [
-        "Sergei Bilostenniy",
-        "Heavyweight",
-        "PFL",
-        80,
-        86,
-        31,
-        22,
-        1,
-        "Europe",
-        "Kickboxer"
-      ],
-      [
         "Denis Goltsov",
         "Heavyweight",
         "PFL",
@@ -5624,18 +4232,6 @@
         2,
         "Europe",
         "Boxer"
-      ],
-      [
-        "Abraham Bably",
-        "Heavyweight",
-        "PFL",
-        74,
-        83,
-        34,
-        20,
-        1,
-        "USA",
-        "Muay Thai"
       ],
       [
         "Maxwell Djantou Nana",
@@ -5722,18 +4318,6 @@
         "Well-Rounded"
       ],
       [
-        "Antonio Carlos Jr.",
-        "Light Heavyweight",
-        "PFL",
-        82,
-        87,
-        30,
-        23,
-        0,
-        "Brazil",
-        "Wrestler"
-      ],
-      [
         "Dovletdzhan Yagshimuradov",
         "Light Heavyweight",
         "PFL",
@@ -5756,18 +4340,6 @@
         3,
         "UK",
         "BJJ"
-      ],
-      [
-        "Sullivan Cauley",
-        "Light Heavyweight",
-        "PFL",
-        76,
-        84,
-        33,
-        21,
-        3,
-        "USA",
-        "Boxer"
       ],
       [
         "Robert Wilkinson",
@@ -5839,54 +4411,6 @@
         17,
         5,
         "Brazil",
-        "BJJ"
-      ],
-      [
-        "Costello Van Steenis",
-        "Middleweight",
-        "PFL",
-        84,
-        88,
-        29,
-        22,
-        0,
-        "Europe",
-        "Well-Rounded"
-      ],
-      [
-        "Johnny Eblen",
-        "Middleweight",
-        "PFL",
-        82,
-        87,
-        30,
-        26,
-        0,
-        "USA",
-        "Wrestler"
-      ],
-      [
-        "Fabian Edwards",
-        "Middleweight",
-        "PFL",
-        80,
-        86,
-        31,
-        22,
-        0,
-        "UK",
-        "Kickboxer"
-      ],
-      [
-        "Impa Kasanganay",
-        "Middleweight",
-        "PFL",
-        78,
-        85,
-        32,
-        21,
-        2,
-        "USA",
         "BJJ"
       ],
       [
@@ -5974,42 +4498,6 @@
         "BJJ"
       ],
       [
-        "Shamil Musaev",
-        "Welterweight",
-        "PFL",
-        84,
-        88,
-        29,
-        25,
-        1,
-        "Europe",
-        "Well-Rounded"
-      ],
-      [
-        "Magomed Umalatov",
-        "Welterweight",
-        "PFL",
-        82,
-        87,
-        30,
-        24,
-        0,
-        "Europe",
-        "Wrestler"
-      ],
-      [
-        "Thad Jean",
-        "Welterweight",
-        "PFL",
-        80,
-        86,
-        31,
-        24,
-        0,
-        "USA",
-        "Kickboxer"
-      ],
-      [
         "Abdoul Abdouraguimov",
         "Welterweight",
         "PFL",
@@ -6094,18 +4582,6 @@
         "Kickboxer"
       ],
       [
-        "Usman Nurmagomedov",
-        "Lightweight",
-        "PFL",
-        84,
-        88,
-        29,
-        23,
-        0,
-        "Europe",
-        "Well-Rounded"
-      ],
-      [
         "Alexander Shabliy",
         "Lightweight",
         "PFL",
@@ -6116,18 +4592,6 @@
         0,
         "Europe",
         "Wrestler"
-      ],
-      [
-        "Gadzhi Rabadanov",
-        "Lightweight",
-        "PFL",
-        80,
-        86,
-        31,
-        23,
-        2,
-        "Europe",
-        "Kickboxer"
       ],
       [
         "Archie Colgan",
@@ -6142,18 +4606,6 @@
         "BJJ"
       ],
       [
-        "Alfie Davis",
-        "Lightweight",
-        "PFL",
-        76,
-        84,
-        33,
-        23,
-        1,
-        "UK",
-        "Boxer"
-      ],
-      [
         "Jakub Kaszuba",
         "Lightweight",
         "PFL",
@@ -6164,18 +4616,6 @@
         2,
         "Europe",
         "Muay Thai"
-      ],
-      [
-        "Paul Hughes",
-        "Lightweight",
-        "PFL",
-        72,
-        82,
-        35,
-        21,
-        3,
-        "UK",
-        "Grappler"
       ],
       [
         "Jay Jay Wilson",
@@ -6250,66 +4690,6 @@
         "Wrestler"
       ],
       [
-        "Jesus Pinedo",
-        "Featherweight",
-        "PFL",
-        80,
-        86,
-        31,
-        24,
-        2,
-        "Brazil",
-        "Kickboxer"
-      ],
-      [
-        "Salamat Isbulaev",
-        "Featherweight",
-        "PFL",
-        78,
-        85,
-        32,
-        24,
-        1,
-        "Europe",
-        "BJJ"
-      ],
-      [
-        "Gabriel Braga",
-        "Featherweight",
-        "PFL",
-        76,
-        84,
-        33,
-        23,
-        2,
-        "Brazil",
-        "Boxer"
-      ],
-      [
-        "Ibragim Ibragimov",
-        "Featherweight",
-        "PFL",
-        74,
-        83,
-        34,
-        22,
-        1,
-        "Europe",
-        "Muay Thai"
-      ],
-      [
-        "Adam Borics",
-        "Featherweight",
-        "PFL",
-        72,
-        82,
-        35,
-        21,
-        4,
-        "Europe",
-        "Grappler"
-      ],
-      [
         "Asael Adjoudj",
         "Featherweight",
         "PFL",
@@ -6368,18 +4748,6 @@
         2,
         "USA",
         "Wrestler"
-      ],
-      [
-        "Sergio Pettis",
-        "Bantamweight",
-        "PFL",
-        80,
-        86,
-        31,
-        23,
-        0,
-        "USA",
-        "Kickboxer"
       ],
       [
         "Taylor Lapilus",
@@ -6466,54 +4834,6 @@
         "Kickboxer"
       ],
       [
-        "Dakota Ditcheva",
-        "Flyweight",
-        "PFL",
-        84,
-        88,
-        29,
-        25,
-        1,
-        "UK",
-        "Well-Rounded"
-      ],
-      [
-        "Liz Carmouche",
-        "Flyweight",
-        "PFL",
-        82,
-        87,
-        30,
-        26,
-        0,
-        "USA",
-        "Wrestler"
-      ],
-      [
-        "Taila Santos",
-        "Flyweight",
-        "PFL",
-        80,
-        86,
-        31,
-        24,
-        1,
-        "Brazil",
-        "Kickboxer"
-      ],
-      [
-        "Jena Bishop",
-        "Flyweight",
-        "PFL",
-        78,
-        85,
-        32,
-        25,
-        1,
-        "USA",
-        "BJJ"
-      ],
-      [
         "Paulina Wisniewska",
         "Flyweight",
         "PFL",
@@ -6536,18 +4856,6 @@
         1,
         "Europe",
         "Muay Thai"
-      ],
-      [
-        "Viviane Araujo",
-        "Flyweight",
-        "PFL",
-        72,
-        82,
-        35,
-        22,
-        2,
-        "Brazil",
-        "Grappler"
       ],
       [
         "Sabrinna de Sousa",
@@ -6646,42 +4954,6 @@
         "BJJ"
       ],
       [
-        "Magomed Magomedov",
-        "Bantamweight",
-        "PFL",
-        57,
-        79,
-        34,
-        21,
-        4,
-        "Europe",
-        "Sambo"
-      ],
-      [
-        "Raufeon Stots",
-        "Bantamweight",
-        "PFL",
-        58,
-        79,
-        37,
-        20,
-        2,
-        "USA",
-        "Wrestler"
-      ],
-      [
-        "Archie Colgan",
-        "Lightweight",
-        "PFL",
-        48,
-        75,
-        30,
-        10,
-        0,
-        "USA",
-        "Wrestler"
-      ],
-      [
         "Yaroslav Amosov",
         "Welterweight",
         "PFL",
@@ -6706,18 +4978,6 @@
         "Wrestler"
       ],
       [
-        "Dalton Rosta",
-        "Middleweight",
-        "PFL",
-        48,
-        75,
-        30,
-        9,
-        1,
-        "USA",
-        "Wrestler"
-      ],
-      [
         "Tim Johnson",
         "Heavyweight",
         "PFL",
@@ -6727,18 +4987,6 @@
         18,
         10,
         "USA",
-        "Wrestler"
-      ],
-      [
-        "Linton Vassell",
-        "Heavyweight",
-        "PFL",
-        57,
-        77,
-        43,
-        24,
-        9,
-        "UK",
         "Wrestler"
       ],
       [
