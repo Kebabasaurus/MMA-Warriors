@@ -8100,6 +8100,21 @@ class WorldMixin:
             return 2
         return 1 if rank == 1 else 0
 
+    def ai_matchmaking_rank_gap_limit(self, a, b):
+        """Keep routine AI matchmaking on a credible divisional ladder."""
+        ranks = [
+            rank for rank in (getattr(a, "ranking_position", 0), getattr(b, "ranking_position", 0))
+            if rank > 0
+        ]
+        best_rank = min(ranks, default=99)
+        if best_rank <= 5:
+            return 6
+        if best_rank <= 10:
+            return 8
+        if best_rank <= 20:
+            return 12
+        return 16
+
     def build_ai_card(self, promo, ready, target):
         """Matchmake a believable AI card: title fights for champions vs top contenders,
         grudge matches for rivalries, ranking-based pairings for the rest, and a
@@ -8268,11 +8283,13 @@ class WorldMixin:
             opponents = [fighter for fighter in ready if fighter.name not in used and fighter.name not in protected_champions and fighter.name != prospect.name
                           and fighter.gender == prospect.gender and fighter.weight == prospect.weight
                          and abs(fighter.overall - prospect.overall) <= 6
+                         and abs(getattr(fighter, "ranking_position", 999) - getattr(prospect, "ranking_position", 999)) <= self.ai_matchmaking_rank_gap_limit(prospect, fighter)
                          and not self.ai_matchup_is_stale(prospect, fighter)]
             if not opponents:
                 continue
             opponent = min(opponents, key=lambda fighter: (
                 abs(fighter.overall - prospect.overall)
+                + abs(getattr(fighter, "ranking_position", 999) - getattr(prospect, "ranking_position", 999)) * 1.8
                 + abs((fighter.record_w + fighter.record_l) - (prospect.record_w + prospect.record_l)) * 0.25
                 + self.matchup_history_penalty(prospect, fighter)
             ))
@@ -8314,6 +8331,8 @@ class WorldMixin:
                         if rating_gap > (9 if rebuild_a or rebuild_b else 6):
                             continue
                         rank_gap = abs(getattr(b_option, "ranking_position", 999) - getattr(a_option, "ranking_position", 999))
+                        if rank_gap > self.ai_matchmaking_rank_gap_limit(a_option, b_option):
+                            continue
                         form_gap = abs(getattr(b_option, "momentum", 0) - getattr(a_option, "momentum", 0))
                         protect_a = mode == "Prospect Rebuild" and a_option.age <= 26 and a_option.potential - a_option.overall >= 7
                         protect_b = mode == "Prospect Rebuild" and b_option.age <= 26 and b_option.potential - b_option.overall >= 7
@@ -8334,7 +8353,7 @@ class WorldMixin:
                             # the outcome.
                             rebuild_target = abs((opponent.overall - rebuild_fighter.overall) + 3) * 1.4
                         inactivity_priority = min(28, (inactive.get(a_option.name, 0) + inactive.get(b_option.name, 0)) * 1.8)
-                        pair_options.append(((protection_penalty, rating_gap * 4 + rank_gap * 0.7 + form_gap * 0.8 + record_gap * 26 + variety_penalty + rebuild_target - inactivity_priority, rating_gap), a_option, b_option))
+                        pair_options.append(((protection_penalty, rating_gap * 2.2 + rank_gap * 2.8 + form_gap * 0.8 + record_gap * 26 + variety_penalty + rebuild_target - inactivity_priority, rating_gap), a_option, b_option))
                 if not pair_options:
                     break
                 _, a, b = min(pair_options, key=lambda item: item[0])

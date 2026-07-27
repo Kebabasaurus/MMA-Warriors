@@ -119,11 +119,23 @@ class ViewMixin:
         ttk.Button(window, text="Open Inbox", command=lambda: (window.destroy(), self.select_tab("inbox"))).pack(pady=(0, 10))
 
     def rank_value(self, fighter):
-        champ = 60 if fighter.champion else 0
-        activity = max(0, 20 - fighter.fatigue // 4)
-        elo = (getattr(fighter, "elo_rating", 1500) - 1500) / 5
-        form = max(-45, min(45, fighter.momentum * 10))
-        return round(champ + elo + fighter.record_w * 1.5 - fighter.record_l * 2.6 + fighter.overall * 1.25 + fighter.popularity * 0.38 + form + activity)
+        """Rank fighters by competitive achievement first, with ability as a tiebreaker."""
+        champ = 75 if fighter.champion else 0
+        bouts = fighter.record_w + fighter.record_l + fighter.record_d
+        win_rate = (fighter.record_w + fighter.record_d * 0.5) / max(1, bouts)
+        record_merit = (
+            (fighter.record_w - fighter.record_l) * 1.15
+            + (win_rate - 0.5) * 32
+            + min(18, bouts * 0.18)
+        )
+        elo = (getattr(fighter, "elo_rating", 1500) - 1500) / 6
+        form = max(-36, min(36, fighter.momentum * 6))
+        streak = min(20, max(0, getattr(fighter, "career_win_streak", 0)) * 3)
+        activity = max(0, 14 - fighter.fatigue // 5)
+        return round(
+            champ + elo + record_merit + fighter.overall * 0.55
+            + fighter.popularity * 0.18 + form + streak + activity
+        )
 
     def fighter_activity_rating(self, fighter):
         """Recent competitive activity, not availability or current fight form."""
@@ -9393,7 +9405,12 @@ class ViewMixin:
         all_rows = self.unfiltered_ranked_fighter_rows()
         rank_scores = {id(fighter): self.rank_value(fighter) for _company, fighter in all_rows}
         company_division_ranks, world_division_ranks = self.division_rank_maps(all_rows, rank_scores)
-        division = sorted(rows, key=lambda row: rank_scores[id(row[1])], reverse=True)
+        # A champion is the division's standing #1 and appears above every
+        # numbered contender; `C` remains clearer than assigning them `#1`.
+        division = sorted(
+            rows,
+            key=lambda row: (not row[1].champion, -rank_scores[id(row[1])]),
+        )
         for company, fighter in division[:75]:
             label = self.fighter_display_name(fighter)
             fighter_key = self.fighter_identity_key(fighter)

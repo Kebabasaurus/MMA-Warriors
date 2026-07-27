@@ -55,6 +55,11 @@ def main():
         bamma_as_ai.roster.append(title_queue_probe)
         assert_true(app.ai_title_contender_pressure(bamma_as_ai, "Male", "Lightweight") >= 3,
                     "An elite #1 contender was not prioritised for an AI title shot")
+        rank_probe_a = app.create_generated_fighter(weight="Lightweight", gender="Male")
+        rank_probe_b = app.create_generated_fighter(weight="Lightweight", gender="Male")
+        rank_probe_a.ranking_position, rank_probe_b.ranking_position = 3, 12
+        assert_true(app.ai_matchmaking_rank_gap_limit(rank_probe_a, rank_probe_b) == 6,
+                    "Top-five contenders were not protected from wide routine rank gaps")
         app.start_company_choice.set(game.PLAYER_PROMOTION_NAME)
         app.new_game()
         addin_names = {row[0] for row, _gender in app.bamma_initial_addin_data()}
