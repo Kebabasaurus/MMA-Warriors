@@ -1282,6 +1282,8 @@ class ViewMixin:
             "northern ireland": "united_kingdom", "northern irish": "united_kingdom",
             "czech republic": "czechia", "czech": "czechia",
             "south korean": "south_korea", "korean": "south_korea",
+            "people's republic of china": "china", "the bahamas": "bahamas",
+            "republic of ireland": "ireland", "turkey": "turkiye", "turkish": "turkiye",
             "new zealander": "new_zealand", "emirati": "united_arab_emirates",
         }
         candidates = [
