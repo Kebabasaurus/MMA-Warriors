@@ -4488,9 +4488,7 @@ class SeedMixin:
         else:
             fighter.name = f"{random.choice(pool['male'])} {random.choice(pool['last'])}"
             self.avoid_name_collision(fighter, taken)
-        fighter.nationality = EURASIAN_REGION_NATIONALITY.get(sub_region, "Russian")
-        fighter.hometown = sub_region
-        fighter.market_origin = sub_region
+        self.apply_eurasian_identity(fighter, sub_region)
         styles = EURASIAN_REGION_STYLES.get(sub_region)
         if styles:
             fighter.style = random.choices([item[0] for item in styles], weights=[item[1] for item in styles], k=1)[0]
@@ -4505,6 +4503,33 @@ class SeedMixin:
         self.sync_broad_skills_from_details(fighter)
         return fighter
 
+    def apply_eurasian_identity(self, fighter, sub_region):
+        """Keep Caucasus/Central Asian origin fields aligned after a regional name roll."""
+        russian_regions = {
+            "Dagestan": "Makhachkala", "Chechnya": "Grozny", "Ingushetia": "Magas",
+            "North Ossetia-Alania": "Vladikavkaz", "Kabardino-Balkaria": "Nalchik",
+            "Karachay-Cherkessia": "Cherkessk",
+        }
+        origin_cities = {
+            "Georgia": "Tbilisi", "Azerbaijan": "Baku", "Kazakhstan": "Almaty",
+            "Uzbekistan": "Tashkent", "Armenia": "Yerevan", "Kyrgyzstan": "Bishkek",
+            "Tajikistan": "Dushanbe", "Turkmenistan": "Ashgabat",
+        }
+        country = "Russia" if sub_region in russian_regions else sub_region
+        hometown = russian_regions.get(sub_region, origin_cities.get(sub_region, sub_region))
+        birth_region = COUNTRY_TO_REGION.get(country, "Russia")
+        fighter.nationality = EURASIAN_REGION_NATIONALITY.get(sub_region, "Russian")
+        fighter.birth_country = country
+        fighter.birth_region = birth_region
+        fighter.hometown = hometown
+        fighter.market_origin = sub_region
+        connections = list(getattr(fighter, "cultural_connections", []) or [])
+        fighter.cultural_connections = list(dict.fromkeys([birth_region] + connections))
+        popularity = dict(getattr(fighter, "regional_popularity", {}) or {})
+        popularity[birth_region] = max(popularity.get(birth_region, 0), min(72, 18 + fighter.popularity // 3))
+        fighter.regional_popularity = popularity
+        return fighter
+
     def install_eurasian_headliner(self, roster, used_names, promo_name, region):
         """Seed the circuit's marquee prospect, replacing a generated lightweight."""
         if any(fighter.name == "Magomed Zaynukov" for fighter in roster):
@@ -4517,8 +4542,7 @@ class SeedMixin:
         slot.age = 27
         slot.weight = "Lightweight"
         slot.gender = "Male"
-        slot.nationality = "Russian"
-        slot.hometown = "Dagestan"
+        self.apply_eurasian_identity(slot, "Dagestan")
         slot.style = "Muay Thai"
         slot.trait = "Late Bloomer"
         self.ensure_detailed_skills(slot)

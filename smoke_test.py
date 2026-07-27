@@ -38,6 +38,10 @@ def main():
         assert_true(app.spectator_mode, "Spectator Mode failed before lazy Log screen construction")
         app.start_company_choice.set("Ultimate Fighting Championship")
         app.new_game()
+        eurasian_circuit = next(promo for promo in app.promotions if promo.name == game.EURASIAN_FIGHT_CIRCUIT_NAME)
+        magomed = next(fighter for fighter in eurasian_circuit.roster if fighter.name == "Magomed Zaynukov")
+        assert_true((magomed.birth_country, magomed.birth_region, magomed.hometown, magomed.nationality) == ("Russia", "Russia", "Makhachkala", "Russian"),
+                    "Eurasian headliner retained an unrelated birthplace after receiving a Dagestani identity")
         bamma_as_ai = next(promo for promo in app.promotions if promo.name == game.PLAYER_PROMOTION_NAME)
         assert_true(app.bamma_initial_closed_divisions().issubset(set(bamma_as_ai.closed_divisions or [])),
                     "BAMMA lost its closed-division policy when another promotion was selected")
