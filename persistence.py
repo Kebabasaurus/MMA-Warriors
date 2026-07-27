@@ -1103,6 +1103,16 @@ class PersistenceMixin:
         self.ensure_all_company_champions()
         self.rebalance_ai_finance_model()
         self.maintain_inbox()
+        self.set_player_event_location_default()
+
+    def set_player_event_location_default(self):
+        """Start the next player card in the active promotion's home market."""
+        region = self.player_region if self.player_region in REGIONS else "USA"
+        cities = REGION_CITIES.get(region, REGION_CITIES["USA"])
+        self.event_region.set(region)
+        self.event_city.set(cities[0])
+        if hasattr(self, "update_city_options"):
+            self.update_city_options()
 
     def reconcile_closed_player_division_roster(self):
         """Keep closed player divisions empty when loading a legacy save."""
@@ -1951,6 +1961,7 @@ class PersistenceMixin:
         self.post_show_bonuses = promo.post_show_bonuses or {"fight": 5000, "ko": 5000, "sub": 5000}
         self.result_history = promo.show_history or []
         self.booked = []
+        self.set_player_event_location_default()
         self.event_name.set(self.default_event_name())
         self.news.insert(0, f"You are now controlling {self.player_company_name}.")
         self.refresh_all()
@@ -2969,6 +2980,7 @@ class PersistenceMixin:
         self.normalize_gym_assignments()
         self.sync_gym_membership()
         self.ensure_all_company_champions()
+        self.set_player_event_location_default()
         if hasattr(self, "event_name"):
             self.event_name.set(self.default_event_name())
         self.news.insert(0, f"{self.player_company_name} was founded in {self.player_region} as a {self.player_reputation.lower()} promotion.")
@@ -3078,5 +3090,6 @@ class PersistenceMixin:
             self.take_control_of_company(choice, keep_current=True)
             self.news.insert(0, f"New game started as {self.player_company_name}.")
             return
+        self.set_player_event_location_default()
         self.refresh_all()
         self.write_log()

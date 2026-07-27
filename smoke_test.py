@@ -61,6 +61,9 @@ def main():
                     "AI BAMMA retained a fighter in a closed division after player takeover")
         assert_true(app.ai_show_chance(bamma_as_ai) >= 0.44,
                     "AI BAMMA cadence cannot sustain three annual appearances per fighter")
+        app.take_control_of_company("Cage Warriors")
+        assert_true((app.player_region, app.event_region.get(), app.event_city.get()) == ("UK", "UK", "London"),
+                    "A UK promotion did not default its booking location to the UK home market")
         for fighter in bamma_as_ai.roster:
             if fighter.gender == "Male" and fighter.weight == "Lightweight" and not fighter.champion:
                 fighter.ranking_position = 999
