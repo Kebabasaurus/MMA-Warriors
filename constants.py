@@ -838,6 +838,12 @@ for _regional_groups in REGIONAL_NAME_POOLS.values():
         _extend_unique_names(_deduplicated, _regional_bank)
         _regional_bank[:] = _deduplicated
 
+# Name banks deliberately keep their shipped spellings, including accents and
+# the packaged regional directories' exact casing. Two banks can therefore hold
+# the same name in different forms ("Garcia" and "García"), which is fine here:
+# fighter uniqueness is enforced on an accent- and case-folded identity when a
+# fighter is actually named, in AdminMixin.fighter_name_key.
+
 # --- Eurasian Fight Circuit -------------------------------------------------
 # The Caucasus and Central Asia produce a distinctive talent profile: heavy
 # amateur wrestling, judo, sambo and boxing backgrounds feeding into MMA. The

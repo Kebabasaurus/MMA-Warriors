@@ -1,6 +1,7 @@
 import json
 import random
 import sys
+import unicodedata
 import traceback
 from datetime import datetime
 import tkinter as tk
@@ -1120,13 +1121,27 @@ class AdminMixin:
                 closed_divisions=closed, allow_appointed=not getattr(promo, "is_regional_feeder", False),
             )
 
+    @staticmethod
+    def fighter_name_key(name):
+        """Identity of a fighter name, ignoring case and accents.
+
+        Curated rosters spell names without diacritics while the generated
+        name banks keep them, so "Diego Sanchez" and "Diego Sánchez" are not
+        equal as strings and both could appear in one world. The key is always
+        lower case, so it can never collide with a real Title Case name held in
+        the same set.
+        """
+        folded = unicodedata.normalize("NFKD", str(name))
+        return "".join(char for char in folded if not unicodedata.combining(char)).casefold()
+
     def avoid_name_collision(self, fighter, existing_names):
         parts = fighter.name.rsplit(" ", 1)
         if len(parts) == 2 and parts[1].isdigit():
             fighter.name = parts[0]
-        if fighter.name in existing_names:
+        if fighter.name in existing_names or self.fighter_name_key(fighter.name) in existing_names:
             fighter.name = self.generate_clean_unique_name(fighter.gender, existing_names)
         existing_names.add(fighter.name)
+        existing_names.add(self.fighter_name_key(fighter.name))
         return fighter
 
     def generate_clean_unique_name(self, gender="Male", existing_names=None):
@@ -1134,15 +1149,19 @@ class AdminMixin:
         first_names = FEMALE_FIRST_NAMES if gender == "Female" else FIRST_NAMES
         for _ in range(200):
             name = f"{random.choice(first_names)} {random.choice(LAST_NAMES)}"
-            if name not in existing_names and name not in self.name_counts:
+            if (name not in existing_names and self.fighter_name_key(name) not in existing_names
+                    and name not in self.name_counts and self.fighter_name_key(name) not in self.name_counts):
                 self.name_counts[name] = 1
+                self.name_counts[self.fighter_name_key(name)] = 1
                 return name
         middle_names = ["Kai", "Lee", "Ray", "Jae", "Noel", "Rio", "Taj", "Vale", "Sage", "Dean"]
         for middle in middle_names:
             for _ in range(40):
                 name = f"{random.choice(first_names)} {middle} {random.choice(LAST_NAMES)}"
-                if name not in existing_names and name not in self.name_counts:
+                if (name not in existing_names and self.fighter_name_key(name) not in existing_names
+                        and name not in self.name_counts and self.fighter_name_key(name) not in self.name_counts):
                     self.name_counts[name] = 1
+                    self.name_counts[self.fighter_name_key(name)] = 1
                     return name
         name = f"{random.choice(first_names)} {random.choice(middle_names)} {random.choice(LAST_NAMES)}"
         self.name_counts[name] = self.name_counts.get(name, 0) + 1
@@ -1154,6 +1173,9 @@ class AdminMixin:
         for promo in getattr(self, "promotions", []):
             names.update(fighter.name for fighter in promo.roster)
         names.update(fighter.name for fighter in getattr(self, "retired_fighters", []))
+        # Carry each name's accent- and case-folded identity alongside it so a
+        # generated "Alex Pérez" cannot slip past a rostered "Alex Perez".
+        names.update({self.fighter_name_key(name) for name in list(names)})
         return names
 
     def all_fighter_objects(self):
