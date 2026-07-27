@@ -1061,6 +1061,17 @@ class PersistenceMixin:
                 "body": f"Authored engine profiles were applied to {names}. Existing career-earned rating movement was preserved.",
                 "type": "Rules", "resolved": False,
             })
+        identity_repair = self.migrate_real_fighter_identity_and_records(loaded_fighters)
+        if identity_repair["identity"] or identity_repair["records"]:
+            self.change_journal.append({
+                "date": self.format_game_date(),
+                "type": "Migration",
+                "summary": (
+                    f"Verified real-fighter identity data repaired {identity_repair['identity']} profile(s) "
+                    f"and restored pre-universe record baselines for {identity_repair['records']} profile(s)."
+                ),
+            })
+            self.change_journal = self.change_journal[-400:]
         self.ensure_all_company_champions()
         self.rebalance_ai_finance_model()
         self.maintain_inbox()
@@ -1120,6 +1131,48 @@ class PersistenceMixin:
             self.apply_real_fighter_profile(fighter, baseline)
             recalibrated += 1
         return recalibrated
+
+    def real_fighter_universe_results(self, fighter):
+        """Count only simulated professional results recorded in the ledger."""
+        wins = losses = draws = 0
+        name = str(fighter.name)
+        for entry in getattr(fighter, "fight_history", []) or []:
+            line = str(entry)
+            if "amateur" in line.lower():
+                continue
+            if f"{name} def. " in line or "W over" in line:
+                wins += 1
+            elif "fought to a draw" in line:
+                draws += 1
+            elif (" def. " in line and name in line) or "L to" in line:
+                losses += 1
+        return wins, losses, draws
+
+    def migrate_real_fighter_identity_and_records(self, fighters):
+        """Repair verified identities and baseline records without rewinding careers."""
+        seen = set()
+        identity_updates = record_updates = 0
+        for fighter in fighters:
+            if id(fighter) in seen or getattr(fighter, "generated", False):
+                continue
+            seen.add(id(fighter))
+            identity = self.real_fighter_identity_data(fighter.name)
+            if not identity:
+                continue
+            if getattr(fighter, "real_identity_version", 0) < 2:
+                self.apply_real_fighter_birthplace(fighter, fighter.region)
+                fighter.real_identity_version = 2
+                identity_updates += 1
+            if getattr(fighter, "real_record_baseline_version", 0) < 2:
+                wins, losses, draws = self.real_fighter_universe_results(fighter)
+                fighter.record_history_baseline_w = max(0, fighter.record_w - wins)
+                fighter.record_history_baseline_l = max(0, fighter.record_l - losses)
+                fighter.record_history_baseline_d = max(0, fighter.record_d - draws)
+                fighter.multi_sport_records = dict(getattr(fighter, "multi_sport_records", None) or {})
+                fighter.multi_sport_records["MMA"] = f"{fighter.record_w}-{fighter.record_l}-{fighter.record_d}"
+                fighter.real_record_baseline_version = 2
+                record_updates += 1
+        return {"identity": identity_updates, "records": record_updates}
 
     def migrate_legend_prime_ages(self, fighters):
         prime_ages = self.prime_legend_ages()

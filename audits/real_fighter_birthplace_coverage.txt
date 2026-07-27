@@ -1,14 +1,16 @@
 MMA WARRIORS - REAL FIGHTER BIRTHPLACE COVERAGE
-Seeded named fighters: 863
-Verified birthplace matches: 480 (55.6%)
-Unmatched or ambiguous: 383
+Seeded named fighters: 1352
+Verified birthplace matches: 732 (54.1%)
+Unmatched or ambiguous: 620
 
 UNMATCHED / AMBIGUOUS
 AJ McKee
+Aaron Aby
 Aaron Jeffrey
 Abdisalam Uulu Kubanychbek
 Abdoul Hussein
 Abdul-Aziz Abdulvakhabov
+Abdul-Rakhman Yakhyaev
 Abraham Bably
 Abubakar Vagaev
 Adam Borics
@@ -17,108 +19,184 @@ Adrian Zielinski
 Adrianna Kreft
 Aidan Mercer
 Aiden Lee
+Aieza Ramos Bertolso
+Akbar Abdullaev
 Akhmed Aliev
+Albert Odzimkowski
+Alden Coria
 Aleksandar Rakic
+Aleksander Emelianenko
+Alena Agisheva
+Alessandro Costa
+Alex Lohore
 Alex Perez
+Alexander Podlesniy
 Alexander Shabliy
 Alexandr Romanov
 Alexei Pergande
 Alexia Thainara
 Alfie Davis
 Alfie Rowan
+Alibi Idiris
+Alice Ardelean
+Alikhan Suleimanov
+Alikhan Vakhaev
+Alimardan Abdykarov
+Allan Nascimento
+Allycia Hellen Rodrigues
+Amin Ayoub
 Amru Magomedov
 Anas Nfaou
+Anastasia Nikolakakos
+Anatoliy Kondratyev
 Anatoly Malykhin
 Anderson Silva
 Andre Muniz
+Andre Petroski
+Andreeas Binder
+Andrej Kalasnik
 Andy Clamp
+Ange Loosa
+Anna Safeeva
 Anthony Ivy
+Anton Vyazigin
 Antonio Carlos Jr.
 Antonio Rodrigo Nogueira
 Antonio Rogerio Nogueira
+Arash Sadeghi
 Arbi Agujev
 Ariane da Silva
+Arkadiusz Wrzosek
+Artem Damkovsky
 Artem Reznikov
 Artur Sowinski
 Asael Adjoudj
+Asaf Chopurov
+Asylzhan Bakhytzhanuly
+Avazbek Kholmirzaev
 Azamat Murzakanov
+Azamat Pshukov
 Aziz Karagula-Akan
 BJ Penn
+Baktygul Kurmanbekova
 Bartosz Lesko
 Bassil Hafez
 Bec Rawlings
 Benoit Saint Denis
+Beslan Isaev
 Bia Mesquita
 Biaggio Ali Walsh
+Bianca Sattelmayer
+Bibert Tumenov
 Bibir Tuvshinjargal
 Billy Goff
-Bogdan Guskov
+Bo Hyun Park
 Boris Atangana
 Borislav Nikolic
+Borys Mankowski
 Brando Pericic
 Brendan Loughnane
+Brett Akey
+Bruna Brasil
+Brunno Ferreira
 Bruno Augusto
+Bruno Cappelozza
 Bruno Silva Flyweight
 Bruno Souza
 Bryan Battle
 Caio Borralho
 Callum Renshaw
+Cameron Rowston
+Cameron Saaiman
 Cameron Smotherman
 Cameron Wren
 Caolan Loughran
+Carlos Leal
+Carol Foro
 Cesar Almeida
+Cezary Oleksiejczuk
+Chan Sung Jung
 Charles Johnson
 Charles Oliveira
+Charles Radtke
 Chihiro Sawada
 Chris Brown LFA
 Chris Mixan
 Christian Leroy Duncan
 Ciaran Clarke
 Cody Brundage
-Costello Van Steenis
+Cody Durden
+Cody Haddon
 Cristiane Justino
 Cyborg Santos
 Da'Mon Blackshear
 Dae Hwan Kim
 Damiano Scogna
 Daniel Argueta
+Daniel James
 Daniel Konrad
+Daniel Marcos
 Daniel Skvor
 Danni Neilan
+Danny Barlow
+Danny Kingad
 Daria Zhelezniakova
 Darian Weeks
 Dario Bellandi
 Darko Stosic
 Darragh Kelly
+Daud Shaikhaev
 David Onama
 Dec Dean
+Delphine Benouaich
 Demetrious Johnson ONE
 Denice Zamboanga
+Denis Smoldarev
 Denise Gomes
 Denislav Erslan
+Diana Belbita
+Diana Pogosyan
+Diego Brandao
+Diego Ferreira
+Dilano Taylor
+Dione Barbosa
+Djati Melan
+Dominik Humburger
 Dominique Wooding
 Don Madge
+Doo Ho Choi
 Dricus Du Plessis
 Dumar Roa
 Dumitru Girlean
+Eabha Cruise
 Edgar Chairez
+Edil Esengulov
+Eduard Folayang
 Eduard Vartanyan
 Eduarda Moura
 Eimear Darcy
 Elias Boudegzdame
+Elisandra Ferreira de Oliveira
 Elliot Vance
 Elora Dana
+Elves Brener
 Erin Blanchfield
 Erin Calvert
 Ernesto Rodriguez
+Eva Dourthe
+Evgeny Goncharov
 Ewelina Wozniak
 Fabian Edwards
 Fabricio Andrade
 Fabricio Werdum
 Fabrizio Fossati
 Farid Basharat
+Farida Abdueva
+Faridun Odilov
 Fatima Kline
 Felipe Bunes
+Felipe Efrain
+Felipe Froes
 Finley Shaw
 Flavio Queiroz
 Florim Zendeli
@@ -129,11 +207,16 @@ Gabriele Galluccio
 Gabriella Fernandes
 Gadzhi Rabadanov
 Giannis Bachar
+Grachik Bozinyan
+Halil Amir
 Hamza Kooheji
 Hannah Wren
 Harry Hardwick
 Harvey Park
 Harvey Quinn
+Hatef Moeil
+Herdeson Batista
+Hiromasa Ougikubo
 Hyder Amil
 Ian Machado Garry
 Ian Machado Garry CW
@@ -141,19 +224,32 @@ Iasmin Lucindo
 Ibo Aslan
 Ieuan Davies
 Ignacio Bahamondes
+Imanol Rodriguez
+Ion Cutelaba
+Isaque Braz
+Iskandar Mamadaliev
 Itsuki Hirata
+Ivan Erslan
 Jacare Souza
+Jacinta Austin
+Jacob Malkoun
+Jacobe Smith
 Jacqueline Cavalcanti
+Jae Woong Kim
+Jaeleen Robledo
 Jake Hadley
 Jakub Wiklacz
 James Hendin
+James Nakashima
 James Sheehan
 James Webb
 Jaqueline Amorim
+Jaroslav Pokorny
 Jasmine Jasudavicius
 Jason Jackson
 Jawany Scott
 Jay Jay Wilson
+Jean Matsumoto
 Jean Silva
 Jena Bishop
 Jeremiah Wells
@@ -163,46 +259,76 @@ Jihin Radzuan
 Jiri Prochazka
 Joanderson Brito
 Joanna Jedrzejczyk
+Joao Roque
+Joel Alvarez
 Johnny Eblen
 Jonas Magard
 Jordan Newman
 Jordan Vucenic
 Jose Aldo
 Jose Johnson
+Jose Mariscal
 Jose Miguel Delgado
+Jose Ochoa
 Josh Fremd
 Josh Silveira
 Joshua Onwordi
 Joshua Weems
+Josiel Silva
+Juan Diaz
+Julia Polastri
 Julianna Pena
 Junior Dos Santos
 Justin Burlinson
 Justin Gonzales
+KJ Noons
 Kai Kara-France
+Kai Tang
 Kaik Brito
 Kamal Magomedov
 Karl Williams
 Karlos Vemola
+Karshyga Dautbek
+Kasim Aras
 Katharina Lehner
+Katlyn Cerminara
+Kaue Fernandes
 Kazuma Kuramoto
+Keito Yamakita
 Kennedy Freeman
+Kentaro Imaizumi
 Kevin Borjas
 Kevin Natividad
+Khalil Rountree
 Khasan Magomedsharipov
+Kiefer Crosbie
 Kieran Holt
 King Green
+Klaudia Sygula
 Kota Miura
 Kouya Kanda
+Krystian Kaszubowski
+Kulabdam Sor Jor Piek Uthai
+Kurban Taygibov
+Kyle Aguon
 Kyohei Hagiwara
+Kyoma Akimoto
 Kyung Ho Kang
+Laura Vasconcelos
+Layze Cerqueira
 Lazaro Dayron
 Leah McCourt
+Lee Chadwick
+Leo Brichta
 Lewis Calder
+Lewis McGrillen
 Liam Gittins
 Lito Adiwang
 Lone'er Kavanagh
 Lone'er Kavanagh CW
 Loopy Godinez
+Louie Sutherland
+Luan Santiago
 Luana Santos
 Luca Borando
 Lucas Clay
@@ -212,45 +338,82 @@ Lucie Pudilova
 Ludovit Klein
 Luiz Gustavo
 Luiz Ishihara
+Lukasz Brzeski
 Luke Trainer
+Machi Fukuda
+Machmud Muradov
+Magdalena Sormova
 Magomed Magomedov
+Magomedrasul Gasanov
+Mairon Santos
 Makoto Shinryu
+Makoto Takahashi
+Mansur Malachiev
 Manuel Del Valle
 Manuel Torres
+Marat Gafurov
+Marc-Andre Barriault
+Marciano Ferreira
+Marcin Wojcik
 Marcirley Alves da Silva
+Marcos Degli
+Marcos Galvao
 Marcos Rogerio de Lima
 Marcus Almeida
+Marcus Aurelio
 Marcus McGhee
 Marek Bartl
 Marian Ziolkowski
+Marin Vetrila
+Markell Holmes
+Masaaki Sugawara
+Masahiro Oishi
 Mason Jones
 Mason Kellett
+Matej Penaz
 Mateusz Legierski
 Matous Kohout
 Matthew Bonner
+Matthew Green
 Mauricio Rua
+Max Holzer
 Maxwell Djantou Nana
 Mayra Cantuaria
+Mehdi Baydulaev
+Melissa Amaya
 Melissa Croden
 Melquizael Costa
 Melvin Mane
 Mia Kellett
 Michael Venom Page
+Michal Michalski
+Michal Oleksiejczuk
 Mick Parkin
 Mick Stanton
 Mikio Ueda
+Mileide Simplicio
 Milos Petrasek
+Ming Shi
+Mingyang Zhang
+Miroslav Strbak
 Mitch McKee
 Mitch Raposo
 Miyuu Yamamoto
 Mochamed Machaev
-Mohamed Fakhreddine
 Mohammed Fakhreddine
 Montana De La Rosa
 Morgan Charriere
+Movlid Khaybulaev
 Muhammad Idrisov
+Muhammad Saidov
+Muhammad Vakhaev
+Muhidin Abubakar
+Mukhamed Berkhamov
 Mukhamed Kokov
+Murad Ramazanov
 Murilo Ninja Rua
+Muslim Magomedov
+Natalia Alves
 Natalia Baczynska
 Natan Schulte
 Nate Jennerman
@@ -259,7 +422,10 @@ Nell Ariano
 Nick Maximov
 Nicolas Leblond
 Nicolas Savio
+Nicolle Caliari
 Nikita Bagley
+Nkosi Ndebele
+Nong-O Hama
 Nora Cornolle
 Norbert Pietrzak
 Ok Rae Yoon
@@ -268,36 +434,56 @@ Oleg Popov
 Olli Santalahti
 Ollie Sarwa
 Omar Al Dafrawy
+Omar Tugarev
 Omiel Brown
 Oscar Ownsworth
 Oumar Sy
+Ovince Saint Preux
 Owen Kershaw
 Paddy McCorry
 Pat Sabatini
 Patricio Pitbull
+Patrick Cote
 Paul Hughes
 Paul Hughes CW
 Paulina Wisniewska
+Pavel Gordeev
+Pavol Langer
 Pawel Pawlak
 Payton Talbott
+Pedro Carvalho
+Perry Goodwin
+Petchmorakot Petchyindee
 Piera Rodriguez
+Piotr Kuberski
+Prajanchai PK Saenchai
 Przemyslaw Mysiala
 Radek Paczuski
 Rafa Garcia
 Rafael Assuncao
+Rafael Estevam
+Rafael Pereira
 Rafael Xavier
 Rafal Haratyk
 Ramazan Kuramagomedov
 Rami Hamed
 Randy Mboyo
+Raphael Assuncao
+Rashid Vagabov
+Rasul Albaskhanov
 Raul Rosas Jr.
 Razhabali Shaidulloev
 Reece Maddison
 Reece McLaren
+Rei Tsuruya
+Renan Barao
 Renat Khavalov
+Renata Mascena
 Renato Moicano
 Rhys Maddox
+Ricky Turcios
 Rinat Fakhretdinov
+Rizvan Abuev
 Rizvan Kuniev
 Robert Ruchala
 Robert Wilkinson
@@ -305,29 +491,41 @@ Roberto Satoshi Souza
 Roberto Soldic
 Roberto Soldic KSW
 Rogério Minotouro Nogueira
+Rolando Dy
 Roman Kopylov
 Ronald Paradeiser
 Ronny Henrique
 Rory Evans
 Rory MacDonald
+Rose Berry
+Ruslan Shamilov
 Rustam Kerimov
+Ryota Matsune
+Ryuichi Miki
 Sabrinna de Sousa
+Sadibou Sy
 Salamat Isbulaev
 Salambek Badaev
+Salamu Abdurakhmanov
+Salimgerey Rasulov
 Sam Creasey
 Sami Chaoui
 Samuel Bark
 Samuel Kristofic
+Samuel Krystofic
 Sara Collins
-Sarvajon Khamidov
+Sara Luzar-Smajic
 Satoshi Yamasu
 Sean Clancy Jr.
 Seika Izawa
 Sena Kubota
-Sergei Bilostenniy
+Sergei Kharitonov
 Sergey Bilostenniy
 Serghei Spivac
+Setsu Iguchi
+Seung Chul Lee
 Shajidul Haque
+Shamil Abdulaev
 Shamil Gaziev
 Shamil Musaev
 Shanelle Dyer
@@ -335,55 +533,94 @@ Shawn Da Silva
 Shem Rock
 Shinju Nozawa-Auclair
 Shinobu Ota
+Sidney Outlaw
 Simeon Powell
+Sinead Kavanagh
 Slim Trabelsi
 Solomon Renfro
+Song Kenan
+Soo Chul Kim
 Sophie Renshaw
+Stefan Vojcak
+Stephanie Luciano
 Stevie Lee
+Sulim Batalov
 Sumiko Inaba
+Summer Onley
 Sumudaerji
+Sung Hoon Woo
+Superbon Singha Mawynn
+Superlek Kiatmoo9
 Tabatha Ricci
+Tahar Hadbi
+Takahiro Komakine
 Talita Alencar
 Tang Kai
+Tatiana Postarnakova
+Tawanchai PK Saenchai
 Tecia Pennington
 Teddy Stringer
 Tereza Bleda
 Terrance McKinney
 Thad Jean
+Thalita Soares
 Thanh Le
+Themba Gorimbo
 Thiago Moises
 Tim Johnson
 Timur Khizriev
 Tobias Harila
+Tom Mullen
 Tom Nolan
+Tomas Deak
+Tony Laramie
+Trevor Peek
 Tunez Nurgozhay
 Tye Ruotolo
 Tyrell Fortune
 Uros Medic
+Ustarmagomed Gadzhidaudov
+Valesca Machado
 Vanderlei Silva
 Vanessa Demopoulos
 Vanessa Demopoulos LFA
 Velimurad Alkhasov
+Veronika Smolkova
+Victor Henry
+Victor Valenzuela
 Vinicius Cruz
 Viviane Araujo
 Vladimir Lengal
 Vladimir Stanca
+Vlasto Cepo
 Volkan Oezdemir
+Wagner Reis
 Waldo Cortes Acosta
 Wang Cong
 Weslley Maia
 Wiktoria Czyzewska
 Will Currie
 Will Fleury
+William Gomis
 Yachi Yu
 Yair Rodriguez
 Yan Xiaonan
 Yana Santos
+Yasmin Guimaraes
 Yoshinori Horie
 Yuki Motoya
+Yuki Shojo
 Yuki Tokoro
 Yusuf Raisov
+Yusuke Yachi
+Yusup-Khadzhi Zubariev
 Yutaka Saito
+Zachary Reese
 Zanyar Kamaran
+Zayundin Suleymanov
 Zebaztian Kadestam
+Zhakshylyk Myrzabekov
+Zhifa Shang
+Zhora Ayvazyan
 Zia Mashwani
+Zumso Zuraev

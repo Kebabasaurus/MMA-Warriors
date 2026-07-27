@@ -38,6 +38,13 @@ def main():
         assert_true(app.spectator_mode, "Spectator Mode failed before lazy Log screen construction")
         app.start_company_choice.set(game.PLAYER_PROMOTION_NAME)
         app.new_game()
+        addin_names = {row[0] for row, _gender in app.bamma_initial_addin_data()}
+        opening_roster_names = [fighter.name for fighter in app.roster]
+        all_opening_names = [fighter.name for fighter in app.all_database_fighters()]
+        assert_true(len(app.roster) >= 160, "BAMMA's opening roster was capped below its intended depth")
+        assert_true(addin_names.issubset(opening_roster_names), "A requested BAMMA add-in fighter was omitted from the opening roster")
+        assert_true(all(all_opening_names.count(name) == 1 for name in addin_names),
+                    "A BAMMA add-in fighter was duplicated elsewhere in the initial database")
         for screen_name in app.screen_builders:
             app.ensure_screen_built(screen_name)
         assert_true(set(app.screen_builders) == app.built_screens, "One or more lazy management screens failed to build")
@@ -224,8 +231,16 @@ def main():
         fighter_probe.camp = original_camp
         for region, pools in game.REGIONAL_NAME_POOLS.items():
             for group in ("male", "female", "last"):
-                assert_true(len(set(pools.get(group, []))) >= 50,
-                            f"{region} generated {group} name pool fell below 50 unique entries")
+                assert_true(len(set(pools.get(group, []))) >= 30,
+                            f"{region} generated {group} name pool fell below 30 unique entries")
+            male_names = {name.casefold() for name in pools["male"]}
+            female_names = {name.casefold() for name in pools["female"]}
+            assert_true(not male_names.intersection(female_names),
+                        f"{region} generated name pools still mix male and female first names")
+        global_male_names = {name.casefold() for name in game.FIRST_NAMES}
+        global_female_names = {name.casefold() for name in game.FEMALE_FIRST_NAMES}
+        assert_true(not global_male_names.intersection(global_female_names),
+                    "Fallback generated name pools still mix male and female first names")
         uk_name_asset = json.loads((ROOT / "assets" / "uk_first_names.json").read_text(encoding="utf-8"))
         assert_true(
             (len(uk_name_asset.get("female", [])), len(uk_name_asset.get("male", [])),
@@ -233,10 +248,15 @@ def main():
             "Packaged UK first-name directory is incomplete",
         )
         uk_pools = game.REGIONAL_NAME_POOLS["UK"]
-        assert_true(set(uk_name_asset["female"] + uk_name_asset["neutral"]).issubset(uk_pools["female"]),
-                    "UK female generation pool did not load the complete name directory")
-        assert_true(set(uk_name_asset["male"] + uk_name_asset["neutral"]).issubset(uk_pools["male"]),
-                    "UK male generation pool did not load the complete name directory")
+        shared_uk_names = {name.casefold() for name in uk_name_asset["female"]}.intersection(
+            name.casefold() for name in uk_name_asset["male"]
+        )
+        expected_uk_female = {name for name in uk_name_asset["female"] if name.casefold() not in shared_uk_names}
+        expected_uk_male = {name for name in uk_name_asset["male"] if name.casefold() not in shared_uk_names}
+        assert_true(expected_uk_female.issubset(uk_pools["female"]),
+                    "UK female generation pool did not load the complete gendered directory")
+        assert_true(expected_uk_male.issubset(uk_pools["male"]),
+                    "UK male generation pool did not load the complete gendered directory")
         identity_sample = [app.create_generated_fighter(region="Europe") for _ in range(80)]
         assert_true(all(fighter.nationality != "European" for fighter in identity_sample),
                     "Generated European fighters still use a generic continental nationality")
@@ -251,11 +271,21 @@ def main():
             ("Islam Makhachev", "Makhachkala", "Russian"),
             ("Jon Jones", "Rochester", "American"),
             ("Tom Aspinall CW", "Salford", "British"),
+            ("Matthew Green", "Birmingham", "British"),
+            ("Brett Akey", "Ontario", "Canadian"),
+            ("Markell Holmes", "Arkansas", "American"),
         ):
             assert_true(name in real_identities and real_identities[name].hometown == city,
                         f"Verified real-fighter birthplace was not applied for {name}")
             assert_true(real_identities[name].nationality == nationality,
                         f"Verified real-fighter nationality was not applied for {name}")
+        for name in ("Matthew Green", "Brett Akey", "Markell Holmes", "Max Holzer", "Leon Edwards"):
+            fighter = real_identities[name]
+            assert_true(
+                (fighter.record_history_baseline_w, fighter.record_history_baseline_l, fighter.record_history_baseline_d)
+                == (fighter.record_w, fighter.record_l, fighter.record_d),
+                f"Real fighter {name} did not retain their seeded pre-universe record",
+            )
         for age, minimum_room in ((20, 12), (23, 9), (28, 7)):
             potential_probe = app.create_generated_fighter(min_skill=50, max_skill=50, age_override=age)
             assert_true(potential_probe.potential - potential_probe.overall >= minimum_room,
@@ -523,7 +553,10 @@ def main():
         curated_names = {"Lewis McGrillen", "Omar Tugarev", "Brett Akey", "Markell Holmes", "Max Holzer"}
         assert_true(sum(fighter.name in curated_names for fighter in app.all_database_fighters()) == len(curated_names), "Curated real-fighter replacement introduced a duplicate")
         feeder_rosters = [promo for promo in app.promotions if getattr(promo, "is_regional_feeder", False)]
-        assert_true(feeder_rosters and all(len(promo.roster) == 70 for promo in feeder_rosters), "Regional feeder promotions should open with 70 fighters each")
+        normal_feeder_size = sum((5 if weight in ("Light Heavyweight", "Heavyweight") else 6) + 3 for weight in game.WEIGHTS)
+        male_only_feeder_size = sum(8 if weight in ("Light Heavyweight", "Heavyweight") else 9 for weight in game.WEIGHTS)
+        assert_true(feeder_rosters and all(len(promo.roster) == (male_only_feeder_size if promo.name == game.EURASIAN_FIGHT_CIRCUIT_NAME else normal_feeder_size) for promo in feeder_rosters),
+                    "Regional feeder roster sizing did not expand with the active division list")
         app.start_company_choice.set("Spectator Mode")
         app.new_game()
         assert_true(app.spectator_mode and not app.rules.get("scouting_mode", True), "Fresh spectator games must start with scouting mode disabled")
@@ -566,10 +599,11 @@ def main():
         islam_after = next(fighter for fighter in ufc.roster if fighter.name == "Islam Makhachev")
         assert_true((islam_after.age, islam_after.record, islam_after.overall, islam_after.camp) == islam_snapshot, "Save loading changed serialized real-fighter state")
         assert_true(any(entry.get("reason") == "Smoke-test attributed change" for entry in app.change_journal), "Attributed change journal did not survive save/load")
-        assert_true(app.ai_roster_target(ufc) == 400, "UFC should target a 400-fighter roster")
-        assert_true(app.ai_roster_cap(ufc) > 370, "UFC roster cap should permit a deep world-class roster")
+        expected_ufc_target = max(400, len(ufc.weight_classes) * 2 * app.ai_division_target(ufc))
+        assert_true(app.ai_roster_target(ufc) == expected_ufc_target, "UFC roster target did not scale with its active divisions")
+        assert_true(app.ai_roster_cap(ufc) > expected_ufc_target, "UFC roster cap should permit a deep world-class roster")
         assert_true(app.ai_division_target(ufc) == 25, "UFC division depth target is too low for its roster plan")
-        assert_true(app.ai_financial_runway(ufc) >= 6_500_000, "UFC finance runway is too small for its roster plan")
+        assert_true(app.ai_financial_runway(ufc) >= expected_ufc_target * 24_000, "UFC finance runway is too small for its roster plan")
         assert_true(app.ai_contract_reserve(ufc) >= app.ai_financial_runway(ufc) * 0.69, "AI signing reserve does not protect operating runway")
         legacy_finance_probe = game.Promotion(
             "Finance Migration Probe", "USA", 60, -500_000, [], stability=4,

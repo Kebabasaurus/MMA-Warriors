@@ -485,10 +485,21 @@ class SeedMixin:
         featured = seed_db.get("player_roster") or self.cage_empire_fighter_data()
         featured = self.unique_fighter_rows(featured)
         roster = [self.create_real_fighter(*row, player_owned=True) for row in featured]
+        existing_featured = {self.fighter_name_key(fighter.name) for fighter in roster}
+        for row, gender in self.bamma_initial_addin_data():
+            if self.fighter_name_key(row[0]) in existing_featured:
+                continue
+            fighter = self.create_real_fighter(*row, player_owned=True)
+            fighter.gender = gender
+            roster.append(fighter)
+            existing_featured.add(self.fighter_name_key(fighter.name))
         promotion_data = seed_db.get("promotions") or self.expanded_real_fighter_data()
         company_names = {row[0] for rows in promotion_data.values() for row in rows}
         existing_names = {fighter.name for fighter in roster} | company_names
-        while len(roster) < 96:
+        # BAMMA's curated add-in is intentionally additional depth. Keep the
+        # normal generated-divisional safety net, but open with a promotion-
+        # sized 160-fighter roster instead of crowding real names out.
+        while len(roster) < 160:
             prospect = self.create_generated_fighter(8, 48, 43, 82)
             self.avoid_name_collision(prospect, existing_names)
             prospect.contract_months = random.randint(6, 22)
@@ -499,6 +510,92 @@ class SeedMixin:
         self.seed_relationships(roster)
         self.belts, self.interim_belts, self.belt_history = self.ensure_company_champions(roster, self.belts, self.player_company_name, self.player_region, self.company_pop, player_owned=True, interim_belts=self.interim_belts, belt_history=self.belt_history)
         return roster
+
+    def bamma_initial_addin_data(self):
+        """User-supplied real-fighter expansion for BAMMA's opening roster.
+
+        Each entry is seeded once at its current primary MMA weight. The player
+        roster seeds before rival promotions, so any existing database instance
+        is naturally skipped later and cannot create a duplicate.
+        """
+        rows = []
+        def add(name, weight, popularity, skill, age, wins, losses, region, style, gender):
+            rows.append(((name, weight, PLAYER_PROMOTION_NAME, popularity, skill, age, wins, losses, region, style), gender))
+
+        # Women
+        add("Zemfira Alieva", "Flyweight", 36, 69, 35, 4, 1, "Russia", "BJJ", "Female")
+        add("Sadaf Kayumova", "Strawweight", 28, 65, 27, 4, 2, "Russia", "Wrestler", "Female")
+        add("Geovanna Eduarda", "Strawweight", 28, 65, 29, 5, 3, "Brazil", "Kickboxer", "Female")
+        add("Valeria Karygina", "Bantamweight", 32, 66, 29, 6, 9, "Russia", "Well-Rounded", "Female")
+        add("Ilona Daurova", "Flyweight", 34, 68, 29, 8, 5, "Russia", "Wrestler", "Female")
+        add("Liz Carmouche", "Flyweight", 74, 82, 34, 25, 8, "USA", "Wrestler", "Female")
+        add("Jena Bishop", "Flyweight", 55, 79, 34, 10, 3, "USA", "BJJ", "Female")
+        add("Natasha Kuziutina", "Strawweight", 35, 72, 29, 7, 2, "Russia", "Wrestler", "Female")
+        add("Shannon Clark", "Flyweight", 39, 74, 27, 6, 1, "Canada", "Boxer", "Female")
+        add("Danni Neilan", "Strawweight", 35, 70, 30, 8, 2, "UK", "Kickboxer", "Female")
+        add("Denise Kielholtz", "Flyweight", 61, 79, 34, 9, 5, "Europe", "Kickboxer", "Female")
+        add("Anastasia Nikolakakos", "Atomweight", 38, 71, 30, 5, 0, "Canada", "Kickboxer", "Female")
+        add("Silvana Gomez Juarez", "Strawweight", 41, 72, 28, 14, 5, "Argentina", "Boxer", "Female")
+        add("Hillary Rose", "Strawweight", 31, 68, 28, 7, 3, "UK", "BJJ", "Female")
+        add("Joy Pendell", "Flyweight", 28, 67, 27, 6, 2, "UK", "Kickboxer", "Female")
+        add("Kristina Williams", "Flyweight", 42, 72, 32, 8, 4, "USA", "Boxer", "Female")
+        add("Ana Clara Santos", "Strawweight", 27, 65, 24, 4, 1, "Brazil", "BJJ", "Female")
+        add("Angelina Calpito", "Atomweight", 21, 61, 23, 2, 0, "Asia", "Kickboxer", "Female")
+        add("Veronika Smolkova", "Bantamweight", 31, 68, 27, 7, 3, "Europe", "Kickboxer", "Female")
+
+        # Men
+        add("Stuart Austin", "Heavyweight", 49, 75, 35, 17, 8, "UK", "Wrestler", "Male")
+        add("Matthew Byfield", "Light Heavyweight", 38, 72, 31, 12, 4, "UK", "Kickboxer", "Male")
+        add("Danny Hartwell", "Lightweight", 28, 67, 28, 6, 2, "UK", "Boxer", "Male")
+        add("Paul Elliott", "Lightweight", 31, 68, 31, 9, 4, "UK", "BJJ", "Male")
+        add("Luke Newland", "Bantamweight", 29, 68, 27, 7, 2, "UK", "Wrestler", "Male")
+        add("Mohammed Hijab", "Middleweight", 15, 56, 25, 0, 0, "UK", "Wrestler", "Male")
+        add("Giovanni Olakunori", "Lightweight", 25, 65, 26, 4, 1, "UK", "Kickboxer", "Male")
+        add("Billy Lovell", "Bantamweight", 25, 66, 27, 6, 2, "UK", "BJJ", "Male")
+        add("Konstantinos Delis", "Bantamweight", 27, 68, 29, 8, 3, "Europe", "Wrestler", "Male")
+        add("Tariq Pell", "Featherweight", 27, 68, 28, 8, 3, "UK", "Boxer", "Male")
+        add("Marc Diakiese", "Lightweight", 61, 76, 33, 18, 8, "UK", "Kickboxer", "Male")
+        add("Liam McCracken", "Bantamweight", 34, 72, 25, 8, 1, "UK", "Wrestler", "Male")
+        add("Conor McCarthy", "Featherweight", 29, 68, 27, 7, 2, "UK", "BJJ", "Male")
+        add("Naglis Kaniauskas", "Light Heavyweight", 31, 70, 29, 10, 3, "Europe", "Kickboxer", "Male")
+        add("Mike Shipman", "Middleweight", 47, 74, 34, 15, 7, "UK", "Kickboxer", "Male")
+        add("Haider Khan", "Lightweight", 30, 68, 28, 7, 3, "UK", "Wrestler", "Male")
+        add("Eoin Sheridan", "Welterweight", 29, 68, 29, 7, 3, "UK", "BJJ", "Male")
+        add("Jack McLeod", "Featherweight", 25, 66, 25, 5, 1, "UK", "Kickboxer", "Male")
+        add("Shaun Lomas", "Featherweight", 40, 73, 35, 15, 8, "UK", "Wrestler", "Male")
+        add("Karl Moore", "Light Heavyweight", 54, 77, 33, 14, 3, "UK", "Wrestler", "Male")
+        add("Branden Guest", "Welterweight", 25, 66, 28, 6, 2, "UK", "Boxer", "Male")
+        add("Leon Hill", "Welterweight", 24, 65, 27, 5, 2, "UK", "Kickboxer", "Male")
+        add("Steven Hill", "Middleweight", 24, 65, 28, 5, 2, "UK", "Wrestler", "Male")
+        add("Dorian Steele", "Lightweight", 23, 64, 25, 4, 1, "UK", "Boxer", "Male")
+        add("Connor Walsh", "Featherweight", 26, 67, 26, 6, 2, "UK", "BJJ", "Male")
+        add("Sam Creasey", "Flyweight", 44, 74, 35, 18, 5, "UK", "Wrestler", "Male")
+        add("Dylan Hazan", "Lightweight", 25, 66, 26, 5, 2, "UK", "Kickboxer", "Male")
+        add("Eddie Burns", "Welterweight", 24, 65, 27, 5, 2, "UK", "Boxer", "Male")
+        add("Farshad Nazarnia", "Bantamweight", 25, 67, 27, 6, 2, "Europe", "Wrestler", "Male")
+        add("David Er-Ramy", "Bantamweight", 25, 67, 27, 6, 2, "Europe", "Boxer", "Male")
+        add("Klim Gusiev", "Bantamweight", 24, 66, 26, 5, 2, "Europe", "Wrestler", "Male")
+        add("Delffy Humer", "Bantamweight", 23, 65, 26, 4, 1, "Europe", "Kickboxer", "Male")
+        add("Faeez Jacobs", "Lightweight", 25, 66, 27, 5, 2, "UK", "Boxer", "Male")
+        add("Patrick Ocheme", "Heavyweight", 27, 68, 28, 7, 2, "Africa", "Wrestler", "Male")
+        add("Aleksey Fedonov", "Bantamweight", 25, 67, 27, 6, 2, "Russia", "Wrestler", "Male")
+        add("Omar Arteaga", "Lightweight", 28, 68, 29, 8, 3, "Mexico", "Boxer", "Male")
+        add("Felipe Douglas", "Bantamweight", 25, 67, 28, 6, 2, "Brazil", "BJJ", "Male")
+        add("Michael Oliveira", "Welterweight", 35, 71, 31, 11, 4, "Brazil", "Boxer", "Male")
+        add("Ramil Kamilov", "Featherweight", 26, 68, 27, 7, 2, "Russia", "Wrestler", "Male")
+        add("Alex Morgan", "Bantamweight", 28, 68, 29, 8, 3, "UK", "Kickboxer", "Male")
+        add("Sarvadzhon Khamidov", "Bantamweight", 39, 74, 28, 12, 2, "Asia", "Wrestler", "Male")
+        add("Alan Mbarga", "Middleweight", 26, 67, 28, 6, 2, "Africa", "Boxer", "Male")
+        add("Alvi Dasuyev", "Featherweight", 27, 69, 27, 8, 2, "Russia", "Wrestler", "Male")
+        add("Karomatullo Sufiev", "Welterweight", 25, 67, 27, 6, 2, "Asia", "Wrestler", "Male")
+        add("Aleksandar Ilic", "Light Heavyweight", 45, 74, 35, 15, 7, "Europe", "Kickboxer", "Male")
+        add("Henri Lintula", "Featherweight", 27, 68, 28, 7, 2, "Europe", "Wrestler", "Male")
+        add("Gasan Magomedsharipov", "Featherweight", 34, 73, 24, 9, 0, "Russia", "Wrestler", "Male")
+        add("Ruslan Mammadov", "Heavyweight", 29, 69, 30, 9, 3, "Europe", "Wrestler", "Male")
+        add("Ibragim Chuzhigaev", "Light Heavyweight", 49, 76, 34, 19, 5, "Russia", "Kickboxer", "Male")
+        add("Mansur Abdurzakov", "Bantamweight", 27, 68, 28, 7, 2, "Russia", "Wrestler", "Male")
+        add("Ollie Sarwa", "Lightweight", 26, 67, 27, 6, 2, "UK", "BJJ", "Male")
+        return rows
 
     def seed_free_agents(self):
         seed_db = self.load_seed_fighter_database()
@@ -746,6 +843,18 @@ class SeedMixin:
             fighter.potential = 95
         profile_rating = self.real_fighter_profiles().get(fighter.name, {}).get("rating", skill)
         fighter.potential = max(fighter.overall, min(98, profile_rating + 6))
+        # Authored records are history that predates this save. Store that
+        # baseline explicitly instead of waiting for a later profile refresh to
+        # infer it from the current record.
+        fighter.record_d = self.real_fighter_draws().get(fighter.name, fighter.record_d)
+        fighter.record_history_baseline_w = fighter.record_w
+        fighter.record_history_baseline_l = fighter.record_l
+        fighter.record_history_baseline_d = fighter.record_d
+        fighter.universe_entry_month = 0
+        fighter.universe_entry_year = 2026
+        fighter.multi_sport_records = {"MMA": f"{fighter.record_w}-{fighter.record_l}-{fighter.record_d}"}
+        fighter.real_record_baseline_version = 1
+        fighter.real_identity_version = 1
         if fighter.name in self.prime_legend_ages():
             fighter.legend_prime_age_version = 1
         fighter.contract_months = random.randint(10, 30) if player_owned else 0
@@ -969,8 +1078,33 @@ class SeedMixin:
             self._real_fighter_birthplace_cache = {}
         return self._real_fighter_birthplace_cache
 
+    def real_fighter_identity_data(self, name):
+        """Return verified identity data, including curated source-only seeds."""
+        data = self.real_fighter_birthplace_data()
+        aliases = {
+            "Donald Cerrone WEC": "Donald Cerrone",
+            "Ben Henderson WEC": "Ben Henderson",
+            "Ian Machado Garry CW": "Ian Machado Garry",
+            "Lone'er Kavanagh CW": "Lone'er Kavanagh",
+        }
+        identity = data.get(name) or data.get(aliases.get(name, ""))
+        if identity:
+            return identity
+        # These names were added from the supplied fighter list after the
+        # Wikidata birthplace pack was generated. Keep them explicit rather
+        # than falling back to a promotion's broad market region.
+        overrides = {
+            "Matthew Green": {"city": "Birmingham", "birth_country": "United Kingdom", "citizenship": "United Kingdom"},
+            "Ramazan Kuramagomedov": {"city": "Makhachkala", "birth_country": "Russia", "citizenship": "Russia"},
+            "Max Holzer": {"city": "Hannover", "birth_country": "Germany", "citizenship": "Germany"},
+            "Lewis McGrillen": {"city": "Manchester", "birth_country": "United Kingdom", "citizenship": "United Kingdom"},
+            "Brett Akey": {"city": "Ontario", "birth_country": "Canada", "citizenship": "Canada"},
+            "Markell Holmes": {"city": "Arkansas", "birth_country": "United States", "citizenship": "United States"},
+        }
+        return overrides.get(name)
+
     def apply_real_fighter_birthplace(self, fighter, fallback_region):
-        identity = self.real_fighter_birthplace_data().get(fighter.name)
+        identity = self.real_fighter_identity_data(fighter.name)
         if not identity:
             # Missing is preferable to assigning a real person a random city.
             fighter.hometown = ""
@@ -4398,8 +4532,9 @@ class SeedMixin:
             roster = []
             male_only = name == EURASIAN_FIGHT_CIRCUIT_NAME
             for weight in WEIGHTS:
-                # 70 fighters per feeder: deeper at the most active male
-                # divisions, while every female division remains bookable.
+                # Give every active division a bookable base. The roster size
+                # follows the division list, so adding a legitimate class does
+                # not silently squeeze out another class.
                 # A male-only circuit spends its whole allocation on the men's
                 # divisions instead, so each one is meaningfully deeper.
                 if male_only:

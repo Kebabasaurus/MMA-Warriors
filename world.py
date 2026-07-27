@@ -10444,13 +10444,13 @@ class WorldMixin:
     def ai_division_target(self, promo, gender=None):
         """Sustainable contracted depth per gender/weight bucket for an AI company."""
         # Regional circuits are deliberately smaller, but still need enough
-        # bodies across all sixteen buckets to rotate opponents and run varied
+        # bodies across every active bucket to rotate opponents and run varied
         # development cards.
         if getattr(promo, "is_regional_feeder", False):
             return 5
         named_targets = {
             # These values are per gender/weight bucket. They must support the
-            # stated company roster targets across all sixteen MMA divisions.
+            # stated company roster targets across all active MMA divisions.
             "Ultimate Fighting Championship": 25,
             "Professional Fighters League": 20,
             "ONE Championship": 20,
@@ -10482,7 +10482,7 @@ class WorldMixin:
         # healthy 32-man division at a 320-fighter company was treated as
         # twelve contracts over plan and dumped into free agency. Preserve the
         # same total capacity while giving each gender its actual roster share.
-        # This must track the real regional-intake ratio (46 male / 24 female
+        # This must track the real regional-intake ratio (58 male / 30 female
         # per circuit, ~66/34) rather than an assumed 80/20 split -- a
         # mismatched assumption here starved the free-agent market of men and
         # flooded it with women over long saves, since majors were budgeting
@@ -10493,7 +10493,7 @@ class WorldMixin:
     def ai_roster_target(self, promo):
         """Roster capacity is tied to the divisions a company must actually book."""
         if getattr(promo, "is_regional_feeder", False):
-            return 70
+            return max(70, len(getattr(promo, "weight_classes", None) or WEIGHTS) * 10)
         weights = list(getattr(promo, "weight_classes", None) or WEIGHTS)
         open_divisions = sum(1 for gender in ("Male", "Female") for weight in weights if self.promotion_division_open(promo, gender, weight))
         named_targets = {
