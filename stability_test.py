@@ -683,19 +683,26 @@ def exercise_talent_ecosystem_balance(app):
     saved_date = (app.month, app.week)
     saved_free_agents = app.free_agents
     try:
-        random.seed(77241)
-        used_names = app.active_fighter_names()
-        sample = [
-            app.create_regional_feeder_fighter(
-                "USA", used_names, "Female" if index % 4 == 0 else "Male"
+        # Pooled across several streams rather than one. Name generation runs
+        # before the potential roll and consumes a variable amount of the
+        # random stream, so a single fixed seed silently re-rolls this whole
+        # distribution whenever the seeded name pool changes size -- which made
+        # the rarest bucket drift below its floor on an unrelated data change.
+        sample = []
+        for seed in (77241, 4415, 90233):
+            random.seed(seed)
+            used_names = app.active_fighter_names()
+            sample.extend(
+                app.create_regional_feeder_fighter(
+                    "USA", used_names, "Female" if index % 4 == 0 else "Male"
+                )
+                for index in range(400)
             )
-            for index in range(400)
-        ]
         potentials = [fighter.potential for fighter in sample]
         mean_potential = sum(potentials) / len(potentials)
         require(76 <= mean_potential <= 82, "Regional intake potential distribution is too weak or inflated")
-        require(8 <= sum(value >= 90 for value in potentials) <= 40, "Elite regional ceilings are missing or too common")
-        require(2 <= sum(value >= 95 for value in potentials) <= 16, "Generational regional ceilings are missing or too common")
+        require(24 <= sum(value >= 90 for value in potentials) <= 120, "Elite regional ceilings are missing or too common")
+        require(6 <= sum(value >= 95 for value in potentials) <= 48, "Generational regional ceilings are missing or too common")
         require(all(17 <= fighter.age <= 21 and fighter.overall < fighter.potential for fighter in sample), "Regional intake age or development runway is invalid")
 
         cohort = sample[:160]

@@ -1,0 +1,1596 @@
+{
+  "set": "extended",
+  "canvas": {
+    "width": 300,
+    "height": 200
+  },
+  "fit": "contain",
+  "generated": 198,
+  "failed": 0,
+  "flags": [
+    {
+      "code": "AF",
+      "name": "Afghanistan",
+      "filename": "afghanistan.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/af.png",
+      "error": null
+    },
+    {
+      "code": "AL",
+      "name": "Albania",
+      "filename": "albania.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/al.png",
+      "error": null
+    },
+    {
+      "code": "DZ",
+      "name": "Algeria",
+      "filename": "algeria.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/dz.png",
+      "error": null
+    },
+    {
+      "code": "AD",
+      "name": "Andorra",
+      "filename": "andorra.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ad.png",
+      "error": null
+    },
+    {
+      "code": "AO",
+      "name": "Angola",
+      "filename": "angola.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ao.png",
+      "error": null
+    },
+    {
+      "code": "AG",
+      "name": "Antigua and Barbuda",
+      "filename": "antigua_and_barbuda.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ag.png",
+      "error": null
+    },
+    {
+      "code": "AR",
+      "name": "Argentina",
+      "filename": "argentina.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ar.png",
+      "error": null
+    },
+    {
+      "code": "AM",
+      "name": "Armenia",
+      "filename": "armenia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/am.png",
+      "error": null
+    },
+    {
+      "code": "AU",
+      "name": "Australia",
+      "filename": "australia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/au.png",
+      "error": null
+    },
+    {
+      "code": "AT",
+      "name": "Austria",
+      "filename": "austria.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/at.png",
+      "error": null
+    },
+    {
+      "code": "AZ",
+      "name": "Azerbaijan",
+      "filename": "azerbaijan.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/az.png",
+      "error": null
+    },
+    {
+      "code": "BS",
+      "name": "Bahamas",
+      "filename": "bahamas.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/bs.png",
+      "error": null
+    },
+    {
+      "code": "BH",
+      "name": "Bahrain",
+      "filename": "bahrain.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/bh.png",
+      "error": null
+    },
+    {
+      "code": "BD",
+      "name": "Bangladesh",
+      "filename": "bangladesh.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/bd.png",
+      "error": null
+    },
+    {
+      "code": "BB",
+      "name": "Barbados",
+      "filename": "barbados.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/bb.png",
+      "error": null
+    },
+    {
+      "code": "BY",
+      "name": "Belarus",
+      "filename": "belarus.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/by.png",
+      "error": null
+    },
+    {
+      "code": "BE",
+      "name": "Belgium",
+      "filename": "belgium.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/be.png",
+      "error": null
+    },
+    {
+      "code": "BZ",
+      "name": "Belize",
+      "filename": "belize.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/bz.png",
+      "error": null
+    },
+    {
+      "code": "BJ",
+      "name": "Benin",
+      "filename": "benin.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/bj.png",
+      "error": null
+    },
+    {
+      "code": "BT",
+      "name": "Bhutan",
+      "filename": "bhutan.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/bt.png",
+      "error": null
+    },
+    {
+      "code": "BO",
+      "name": "Bolivia",
+      "filename": "bolivia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/bo.png",
+      "error": null
+    },
+    {
+      "code": "BA",
+      "name": "Bosnia and Herzegovina",
+      "filename": "bosnia_and_herzegovina.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ba.png",
+      "error": null
+    },
+    {
+      "code": "BW",
+      "name": "Botswana",
+      "filename": "botswana.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/bw.png",
+      "error": null
+    },
+    {
+      "code": "BR",
+      "name": "Brazil",
+      "filename": "brazil.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/br.png",
+      "error": null
+    },
+    {
+      "code": "BN",
+      "name": "Brunei",
+      "filename": "brunei.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/bn.png",
+      "error": null
+    },
+    {
+      "code": "BG",
+      "name": "Bulgaria",
+      "filename": "bulgaria.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/bg.png",
+      "error": null
+    },
+    {
+      "code": "BF",
+      "name": "Burkina Faso",
+      "filename": "burkina_faso.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/bf.png",
+      "error": null
+    },
+    {
+      "code": "BI",
+      "name": "Burundi",
+      "filename": "burundi.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/bi.png",
+      "error": null
+    },
+    {
+      "code": "CV",
+      "name": "Cabo Verde",
+      "filename": "cabo_verde.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/cv.png",
+      "error": null
+    },
+    {
+      "code": "KH",
+      "name": "Cambodia",
+      "filename": "cambodia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/kh.png",
+      "error": null
+    },
+    {
+      "code": "CM",
+      "name": "Cameroon",
+      "filename": "cameroon.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/cm.png",
+      "error": null
+    },
+    {
+      "code": "CA",
+      "name": "Canada",
+      "filename": "canada.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ca.png",
+      "error": null
+    },
+    {
+      "code": "CF",
+      "name": "Central African Republic",
+      "filename": "central_african_republic.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/cf.png",
+      "error": null
+    },
+    {
+      "code": "TD",
+      "name": "Chad",
+      "filename": "chad.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/td.png",
+      "error": null
+    },
+    {
+      "code": "CL",
+      "name": "Chile",
+      "filename": "chile.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/cl.png",
+      "error": null
+    },
+    {
+      "code": "CN",
+      "name": "China",
+      "filename": "china.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/cn.png",
+      "error": null
+    },
+    {
+      "code": "CO",
+      "name": "Colombia",
+      "filename": "colombia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/co.png",
+      "error": null
+    },
+    {
+      "code": "KM",
+      "name": "Comoros",
+      "filename": "comoros.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/km.png",
+      "error": null
+    },
+    {
+      "code": "CR",
+      "name": "Costa Rica",
+      "filename": "costa_rica.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/cr.png",
+      "error": null
+    },
+    {
+      "code": "CI",
+      "name": "Cote d'Ivoire",
+      "filename": "cote_d_ivoire.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ci.png",
+      "error": null
+    },
+    {
+      "code": "HR",
+      "name": "Croatia",
+      "filename": "croatia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/hr.png",
+      "error": null
+    },
+    {
+      "code": "CU",
+      "name": "Cuba",
+      "filename": "cuba.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/cu.png",
+      "error": null
+    },
+    {
+      "code": "CY",
+      "name": "Cyprus",
+      "filename": "cyprus.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/cy.png",
+      "error": null
+    },
+    {
+      "code": "CZ",
+      "name": "Czechia",
+      "filename": "czechia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/cz.png",
+      "error": null
+    },
+    {
+      "code": "CD",
+      "name": "Democratic Republic of the Congo",
+      "filename": "democratic_republic_of_the_congo.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/cd.png",
+      "error": null
+    },
+    {
+      "code": "DK",
+      "name": "Denmark",
+      "filename": "denmark.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/dk.png",
+      "error": null
+    },
+    {
+      "code": "DJ",
+      "name": "Djibouti",
+      "filename": "djibouti.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/dj.png",
+      "error": null
+    },
+    {
+      "code": "DM",
+      "name": "Dominica",
+      "filename": "dominica.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/dm.png",
+      "error": null
+    },
+    {
+      "code": "DO",
+      "name": "Dominican Republic",
+      "filename": "dominican_republic.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/do.png",
+      "error": null
+    },
+    {
+      "code": "EC",
+      "name": "Ecuador",
+      "filename": "ecuador.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ec.png",
+      "error": null
+    },
+    {
+      "code": "EG",
+      "name": "Egypt",
+      "filename": "egypt.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/eg.png",
+      "error": null
+    },
+    {
+      "code": "SV",
+      "name": "El Salvador",
+      "filename": "el_salvador.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/sv.png",
+      "error": null
+    },
+    {
+      "code": "GQ",
+      "name": "Equatorial Guinea",
+      "filename": "equatorial_guinea.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/gq.png",
+      "error": null
+    },
+    {
+      "code": "ER",
+      "name": "Eritrea",
+      "filename": "eritrea.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/er.png",
+      "error": null
+    },
+    {
+      "code": "EE",
+      "name": "Estonia",
+      "filename": "estonia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ee.png",
+      "error": null
+    },
+    {
+      "code": "SZ",
+      "name": "Eswatini",
+      "filename": "eswatini.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/sz.png",
+      "error": null
+    },
+    {
+      "code": "ET",
+      "name": "Ethiopia",
+      "filename": "ethiopia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/et.png",
+      "error": null
+    },
+    {
+      "code": "FJ",
+      "name": "Fiji",
+      "filename": "fiji.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/fj.png",
+      "error": null
+    },
+    {
+      "code": "FI",
+      "name": "Finland",
+      "filename": "finland.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/fi.png",
+      "error": null
+    },
+    {
+      "code": "FR",
+      "name": "France",
+      "filename": "france.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/fr.png",
+      "error": null
+    },
+    {
+      "code": "GA",
+      "name": "Gabon",
+      "filename": "gabon.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ga.png",
+      "error": null
+    },
+    {
+      "code": "GM",
+      "name": "Gambia",
+      "filename": "gambia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/gm.png",
+      "error": null
+    },
+    {
+      "code": "GE",
+      "name": "Georgia",
+      "filename": "georgia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ge.png",
+      "error": null
+    },
+    {
+      "code": "DE",
+      "name": "Germany",
+      "filename": "germany.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/de.png",
+      "error": null
+    },
+    {
+      "code": "GH",
+      "name": "Ghana",
+      "filename": "ghana.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/gh.png",
+      "error": null
+    },
+    {
+      "code": "GR",
+      "name": "Greece",
+      "filename": "greece.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/gr.png",
+      "error": null
+    },
+    {
+      "code": "GD",
+      "name": "Grenada",
+      "filename": "grenada.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/gd.png",
+      "error": null
+    },
+    {
+      "code": "GT",
+      "name": "Guatemala",
+      "filename": "guatemala.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/gt.png",
+      "error": null
+    },
+    {
+      "code": "GN",
+      "name": "Guinea",
+      "filename": "guinea.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/gn.png",
+      "error": null
+    },
+    {
+      "code": "GW",
+      "name": "Guinea-Bissau",
+      "filename": "guinea_bissau.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/gw.png",
+      "error": null
+    },
+    {
+      "code": "GY",
+      "name": "Guyana",
+      "filename": "guyana.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/gy.png",
+      "error": null
+    },
+    {
+      "code": "HT",
+      "name": "Haiti",
+      "filename": "haiti.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ht.png",
+      "error": null
+    },
+    {
+      "code": "HN",
+      "name": "Honduras",
+      "filename": "honduras.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/hn.png",
+      "error": null
+    },
+    {
+      "code": "HU",
+      "name": "Hungary",
+      "filename": "hungary.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/hu.png",
+      "error": null
+    },
+    {
+      "code": "IS",
+      "name": "Iceland",
+      "filename": "iceland.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/is.png",
+      "error": null
+    },
+    {
+      "code": "IN",
+      "name": "India",
+      "filename": "india.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/in.png",
+      "error": null
+    },
+    {
+      "code": "ID",
+      "name": "Indonesia",
+      "filename": "indonesia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/id.png",
+      "error": null
+    },
+    {
+      "code": "IR",
+      "name": "Iran",
+      "filename": "iran.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ir.png",
+      "error": null
+    },
+    {
+      "code": "IQ",
+      "name": "Iraq",
+      "filename": "iraq.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/iq.png",
+      "error": null
+    },
+    {
+      "code": "IE",
+      "name": "Ireland",
+      "filename": "ireland.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ie.png",
+      "error": null
+    },
+    {
+      "code": "IL",
+      "name": "Israel",
+      "filename": "israel.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/il.png",
+      "error": null
+    },
+    {
+      "code": "IT",
+      "name": "Italy",
+      "filename": "italy.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/it.png",
+      "error": null
+    },
+    {
+      "code": "JM",
+      "name": "Jamaica",
+      "filename": "jamaica.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/jm.png",
+      "error": null
+    },
+    {
+      "code": "JP",
+      "name": "Japan",
+      "filename": "japan.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/jp.png",
+      "error": null
+    },
+    {
+      "code": "JO",
+      "name": "Jordan",
+      "filename": "jordan.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/jo.png",
+      "error": null
+    },
+    {
+      "code": "KZ",
+      "name": "Kazakhstan",
+      "filename": "kazakhstan.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/kz.png",
+      "error": null
+    },
+    {
+      "code": "KE",
+      "name": "Kenya",
+      "filename": "kenya.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ke.png",
+      "error": null
+    },
+    {
+      "code": "KI",
+      "name": "Kiribati",
+      "filename": "kiribati.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ki.png",
+      "error": null
+    },
+    {
+      "code": "XK",
+      "name": "Kosovo",
+      "filename": "kosovo.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/xk.png",
+      "error": null
+    },
+    {
+      "code": "KW",
+      "name": "Kuwait",
+      "filename": "kuwait.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/kw.png",
+      "error": null
+    },
+    {
+      "code": "KG",
+      "name": "Kyrgyzstan",
+      "filename": "kyrgyzstan.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/kg.png",
+      "error": null
+    },
+    {
+      "code": "LA",
+      "name": "Laos",
+      "filename": "laos.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/la.png",
+      "error": null
+    },
+    {
+      "code": "LV",
+      "name": "Latvia",
+      "filename": "latvia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/lv.png",
+      "error": null
+    },
+    {
+      "code": "LB",
+      "name": "Lebanon",
+      "filename": "lebanon.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/lb.png",
+      "error": null
+    },
+    {
+      "code": "LS",
+      "name": "Lesotho",
+      "filename": "lesotho.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ls.png",
+      "error": null
+    },
+    {
+      "code": "LR",
+      "name": "Liberia",
+      "filename": "liberia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/lr.png",
+      "error": null
+    },
+    {
+      "code": "LY",
+      "name": "Libya",
+      "filename": "libya.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ly.png",
+      "error": null
+    },
+    {
+      "code": "LI",
+      "name": "Liechtenstein",
+      "filename": "liechtenstein.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/li.png",
+      "error": null
+    },
+    {
+      "code": "LT",
+      "name": "Lithuania",
+      "filename": "lithuania.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/lt.png",
+      "error": null
+    },
+    {
+      "code": "LU",
+      "name": "Luxembourg",
+      "filename": "luxembourg.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/lu.png",
+      "error": null
+    },
+    {
+      "code": "MG",
+      "name": "Madagascar",
+      "filename": "madagascar.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/mg.png",
+      "error": null
+    },
+    {
+      "code": "MW",
+      "name": "Malawi",
+      "filename": "malawi.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/mw.png",
+      "error": null
+    },
+    {
+      "code": "MY",
+      "name": "Malaysia",
+      "filename": "malaysia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/my.png",
+      "error": null
+    },
+    {
+      "code": "MV",
+      "name": "Maldives",
+      "filename": "maldives.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/mv.png",
+      "error": null
+    },
+    {
+      "code": "ML",
+      "name": "Mali",
+      "filename": "mali.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ml.png",
+      "error": null
+    },
+    {
+      "code": "MT",
+      "name": "Malta",
+      "filename": "malta.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/mt.png",
+      "error": null
+    },
+    {
+      "code": "MH",
+      "name": "Marshall Islands",
+      "filename": "marshall_islands.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/mh.png",
+      "error": null
+    },
+    {
+      "code": "MR",
+      "name": "Mauritania",
+      "filename": "mauritania.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/mr.png",
+      "error": null
+    },
+    {
+      "code": "MU",
+      "name": "Mauritius",
+      "filename": "mauritius.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/mu.png",
+      "error": null
+    },
+    {
+      "code": "MX",
+      "name": "Mexico",
+      "filename": "mexico.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/mx.png",
+      "error": null
+    },
+    {
+      "code": "FM",
+      "name": "Micronesia",
+      "filename": "micronesia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/fm.png",
+      "error": null
+    },
+    {
+      "code": "MD",
+      "name": "Moldova",
+      "filename": "moldova.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/md.png",
+      "error": null
+    },
+    {
+      "code": "MC",
+      "name": "Monaco",
+      "filename": "monaco.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/mc.png",
+      "error": null
+    },
+    {
+      "code": "MN",
+      "name": "Mongolia",
+      "filename": "mongolia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/mn.png",
+      "error": null
+    },
+    {
+      "code": "ME",
+      "name": "Montenegro",
+      "filename": "montenegro.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/me.png",
+      "error": null
+    },
+    {
+      "code": "MA",
+      "name": "Morocco",
+      "filename": "morocco.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ma.png",
+      "error": null
+    },
+    {
+      "code": "MZ",
+      "name": "Mozambique",
+      "filename": "mozambique.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/mz.png",
+      "error": null
+    },
+    {
+      "code": "MM",
+      "name": "Myanmar",
+      "filename": "myanmar.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/mm.png",
+      "error": null
+    },
+    {
+      "code": "NA",
+      "name": "Namibia",
+      "filename": "namibia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/na.png",
+      "error": null
+    },
+    {
+      "code": "NR",
+      "name": "Nauru",
+      "filename": "nauru.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/nr.png",
+      "error": null
+    },
+    {
+      "code": "NP",
+      "name": "Nepal",
+      "filename": "nepal.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/np.png",
+      "error": null
+    },
+    {
+      "code": "NL",
+      "name": "Netherlands",
+      "filename": "netherlands.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/nl.png",
+      "error": null
+    },
+    {
+      "code": "NZ",
+      "name": "New Zealand",
+      "filename": "new_zealand.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/nz.png",
+      "error": null
+    },
+    {
+      "code": "NI",
+      "name": "Nicaragua",
+      "filename": "nicaragua.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ni.png",
+      "error": null
+    },
+    {
+      "code": "NE",
+      "name": "Niger",
+      "filename": "niger.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ne.png",
+      "error": null
+    },
+    {
+      "code": "NG",
+      "name": "Nigeria",
+      "filename": "nigeria.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ng.png",
+      "error": null
+    },
+    {
+      "code": "KP",
+      "name": "North Korea",
+      "filename": "north_korea.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/kp.png",
+      "error": null
+    },
+    {
+      "code": "MK",
+      "name": "North Macedonia",
+      "filename": "north_macedonia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/mk.png",
+      "error": null
+    },
+    {
+      "code": "NO",
+      "name": "Norway",
+      "filename": "norway.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/no.png",
+      "error": null
+    },
+    {
+      "code": "OM",
+      "name": "Oman",
+      "filename": "oman.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/om.png",
+      "error": null
+    },
+    {
+      "code": "PK",
+      "name": "Pakistan",
+      "filename": "pakistan.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/pk.png",
+      "error": null
+    },
+    {
+      "code": "PW",
+      "name": "Palau",
+      "filename": "palau.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/pw.png",
+      "error": null
+    },
+    {
+      "code": "PS",
+      "name": "Palestine",
+      "filename": "palestine.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ps.png",
+      "error": null
+    },
+    {
+      "code": "PA",
+      "name": "Panama",
+      "filename": "panama.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/pa.png",
+      "error": null
+    },
+    {
+      "code": "PG",
+      "name": "Papua New Guinea",
+      "filename": "papua_new_guinea.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/pg.png",
+      "error": null
+    },
+    {
+      "code": "PY",
+      "name": "Paraguay",
+      "filename": "paraguay.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/py.png",
+      "error": null
+    },
+    {
+      "code": "PE",
+      "name": "Peru",
+      "filename": "peru.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/pe.png",
+      "error": null
+    },
+    {
+      "code": "PH",
+      "name": "Philippines",
+      "filename": "philippines.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ph.png",
+      "error": null
+    },
+    {
+      "code": "PL",
+      "name": "Poland",
+      "filename": "poland.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/pl.png",
+      "error": null
+    },
+    {
+      "code": "PT",
+      "name": "Portugal",
+      "filename": "portugal.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/pt.png",
+      "error": null
+    },
+    {
+      "code": "QA",
+      "name": "Qatar",
+      "filename": "qatar.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/qa.png",
+      "error": null
+    },
+    {
+      "code": "CG",
+      "name": "Republic of the Congo",
+      "filename": "republic_of_the_congo.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/cg.png",
+      "error": null
+    },
+    {
+      "code": "RO",
+      "name": "Romania",
+      "filename": "romania.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ro.png",
+      "error": null
+    },
+    {
+      "code": "RU",
+      "name": "Russia",
+      "filename": "russia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ru.png",
+      "error": null
+    },
+    {
+      "code": "RW",
+      "name": "Rwanda",
+      "filename": "rwanda.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/rw.png",
+      "error": null
+    },
+    {
+      "code": "KN",
+      "name": "Saint Kitts and Nevis",
+      "filename": "saint_kitts_and_nevis.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/kn.png",
+      "error": null
+    },
+    {
+      "code": "LC",
+      "name": "Saint Lucia",
+      "filename": "saint_lucia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/lc.png",
+      "error": null
+    },
+    {
+      "code": "VC",
+      "name": "Saint Vincent and the Grenadines",
+      "filename": "saint_vincent_and_the_grenadines.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/vc.png",
+      "error": null
+    },
+    {
+      "code": "WS",
+      "name": "Samoa",
+      "filename": "samoa.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ws.png",
+      "error": null
+    },
+    {
+      "code": "SM",
+      "name": "San Marino",
+      "filename": "san_marino.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/sm.png",
+      "error": null
+    },
+    {
+      "code": "ST",
+      "name": "Sao Tome and Principe",
+      "filename": "sao_tome_and_principe.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/st.png",
+      "error": null
+    },
+    {
+      "code": "SA",
+      "name": "Saudi Arabia",
+      "filename": "saudi_arabia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/sa.png",
+      "error": null
+    },
+    {
+      "code": "SN",
+      "name": "Senegal",
+      "filename": "senegal.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/sn.png",
+      "error": null
+    },
+    {
+      "code": "RS",
+      "name": "Serbia",
+      "filename": "serbia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/rs.png",
+      "error": null
+    },
+    {
+      "code": "SC",
+      "name": "Seychelles",
+      "filename": "seychelles.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/sc.png",
+      "error": null
+    },
+    {
+      "code": "SL",
+      "name": "Sierra Leone",
+      "filename": "sierra_leone.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/sl.png",
+      "error": null
+    },
+    {
+      "code": "SG",
+      "name": "Singapore",
+      "filename": "singapore.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/sg.png",
+      "error": null
+    },
+    {
+      "code": "SK",
+      "name": "Slovakia",
+      "filename": "slovakia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/sk.png",
+      "error": null
+    },
+    {
+      "code": "SI",
+      "name": "Slovenia",
+      "filename": "slovenia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/si.png",
+      "error": null
+    },
+    {
+      "code": "SB",
+      "name": "Solomon Islands",
+      "filename": "solomon_islands.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/sb.png",
+      "error": null
+    },
+    {
+      "code": "SO",
+      "name": "Somalia",
+      "filename": "somalia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/so.png",
+      "error": null
+    },
+    {
+      "code": "ZA",
+      "name": "South Africa",
+      "filename": "south_africa.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/za.png",
+      "error": null
+    },
+    {
+      "code": "KR",
+      "name": "South Korea",
+      "filename": "south_korea.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/kr.png",
+      "error": null
+    },
+    {
+      "code": "SS",
+      "name": "South Sudan",
+      "filename": "south_sudan.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ss.png",
+      "error": null
+    },
+    {
+      "code": "ES",
+      "name": "Spain",
+      "filename": "spain.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/es.png",
+      "error": null
+    },
+    {
+      "code": "LK",
+      "name": "Sri Lanka",
+      "filename": "sri_lanka.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/lk.png",
+      "error": null
+    },
+    {
+      "code": "SD",
+      "name": "Sudan",
+      "filename": "sudan.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/sd.png",
+      "error": null
+    },
+    {
+      "code": "SR",
+      "name": "Suriname",
+      "filename": "suriname.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/sr.png",
+      "error": null
+    },
+    {
+      "code": "SE",
+      "name": "Sweden",
+      "filename": "sweden.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/se.png",
+      "error": null
+    },
+    {
+      "code": "CH",
+      "name": "Switzerland",
+      "filename": "switzerland.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ch.png",
+      "error": null
+    },
+    {
+      "code": "SY",
+      "name": "Syria",
+      "filename": "syria.png",
+      "success": true,
+      "source_url": "generated-current-syria",
+      "error": null
+    },
+    {
+      "code": "TW",
+      "name": "Taiwan",
+      "filename": "taiwan.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/tw.png",
+      "error": null
+    },
+    {
+      "code": "TJ",
+      "name": "Tajikistan",
+      "filename": "tajikistan.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/tj.png",
+      "error": null
+    },
+    {
+      "code": "TZ",
+      "name": "Tanzania",
+      "filename": "tanzania.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/tz.png",
+      "error": null
+    },
+    {
+      "code": "TH",
+      "name": "Thailand",
+      "filename": "thailand.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/th.png",
+      "error": null
+    },
+    {
+      "code": "TL",
+      "name": "Timor-Leste",
+      "filename": "timor_leste.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/tl.png",
+      "error": null
+    },
+    {
+      "code": "TG",
+      "name": "Togo",
+      "filename": "togo.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/tg.png",
+      "error": null
+    },
+    {
+      "code": "TO",
+      "name": "Tonga",
+      "filename": "tonga.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/to.png",
+      "error": null
+    },
+    {
+      "code": "TT",
+      "name": "Trinidad and Tobago",
+      "filename": "trinidad_and_tobago.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/tt.png",
+      "error": null
+    },
+    {
+      "code": "TN",
+      "name": "Tunisia",
+      "filename": "tunisia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/tn.png",
+      "error": null
+    },
+    {
+      "code": "TR",
+      "name": "Turkiye",
+      "filename": "turkiye.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/tr.png",
+      "error": null
+    },
+    {
+      "code": "TM",
+      "name": "Turkmenistan",
+      "filename": "turkmenistan.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/tm.png",
+      "error": null
+    },
+    {
+      "code": "TV",
+      "name": "Tuvalu",
+      "filename": "tuvalu.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/tv.png",
+      "error": null
+    },
+    {
+      "code": "UG",
+      "name": "Uganda",
+      "filename": "uganda.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ug.png",
+      "error": null
+    },
+    {
+      "code": "UA",
+      "name": "Ukraine",
+      "filename": "ukraine.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ua.png",
+      "error": null
+    },
+    {
+      "code": "AE",
+      "name": "United Arab Emirates",
+      "filename": "united_arab_emirates.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ae.png",
+      "error": null
+    },
+    {
+      "code": "GB",
+      "name": "United Kingdom",
+      "filename": "united_kingdom.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/gb.png",
+      "error": null
+    },
+    {
+      "code": "US",
+      "name": "United States",
+      "filename": "united_states.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/us.png",
+      "error": null
+    },
+    {
+      "code": "UY",
+      "name": "Uruguay",
+      "filename": "uruguay.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/uy.png",
+      "error": null
+    },
+    {
+      "code": "UZ",
+      "name": "Uzbekistan",
+      "filename": "uzbekistan.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/uz.png",
+      "error": null
+    },
+    {
+      "code": "VU",
+      "name": "Vanuatu",
+      "filename": "vanuatu.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/vu.png",
+      "error": null
+    },
+    {
+      "code": "VA",
+      "name": "Vatican City",
+      "filename": "vatican_city.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/va.png",
+      "error": null
+    },
+    {
+      "code": "VE",
+      "name": "Venezuela",
+      "filename": "venezuela.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ve.png",
+      "error": null
+    },
+    {
+      "code": "VN",
+      "name": "Vietnam",
+      "filename": "vietnam.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/vn.png",
+      "error": null
+    },
+    {
+      "code": "EH",
+      "name": "Western Sahara",
+      "filename": "western_sahara.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/eh.png",
+      "error": null
+    },
+    {
+      "code": "YE",
+      "name": "Yemen",
+      "filename": "yemen.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/ye.png",
+      "error": null
+    },
+    {
+      "code": "ZM",
+      "name": "Zambia",
+      "filename": "zambia.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/zm.png",
+      "error": null
+    },
+    {
+      "code": "ZW",
+      "name": "Zimbabwe",
+      "filename": "zimbabwe.png",
+      "success": true,
+      "source_url": "https://flagcdn.com/w320/zw.png",
+      "error": null
+    }
+  ]
+}

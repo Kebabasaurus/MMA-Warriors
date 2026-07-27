@@ -1906,6 +1906,8 @@ class EventMixin:
         self.record_finance_transaction(f"Signing bonus: {fighter.name}", costs=signing_bonus)
         self.free_agents.remove(fighter)
         self.clear_ai_contract_offer(fighter)
+        # AI roster caps prevent market hoarding; player-controlled promotions
+        # are deliberately uncapped, including after a company takeover.
         fighter.contract_months = random.randint(10, 24)
         fighter.morale = min(100, fighter.morale + 8)
         self.roster.append(fighter)
@@ -1914,7 +1916,7 @@ class EventMixin:
         self.refresh_all()
         self.write_log()
 
-    def open_contract_negotiation(self, fighter, existing=False, comeback=False, farewell=False, source_promotion=None):
+    def open_contract_negotiation(self, fighter, existing=False, comeback=False, farewell=False, source_promotion=None, transfer_deal=None):
         # A farewell deal is a comeback that resolves in a single retirement bout
         # rather than a multi-fight commitment.
         if farewell:
@@ -2004,6 +2006,7 @@ class EventMixin:
         scout_warning = "" if ratings_known else "\nYou may negotiate now, but you are pricing risk without a full scouting report."
         status_line = ("Retired athlete signing for one final farewell bout" if farewell
                        else "Retired athlete considering a comeback" if comeback
+                       else f"Transfer agreement in place with {transfer_deal['source'].name}" if transfer_deal
                        else f"Regional prospect under developmental terms with {source_promotion.name}" if source_promotion
                        else "Active contract discussion")
 
@@ -2240,9 +2243,16 @@ class EventMixin:
             score += random.randint(-4500, 4500)
             if score >= target:
                 signing_cost = purse * (2 if exclusive else 1) + signing
-                if self.cash < signing_cost:
-                    result_label.config(text=f"Not enough cash for ${signing_cost:,} up-front cost.")
+                transfer_cash = int((transfer_deal or {}).get("cash", 0) or 0)
+                if self.cash < signing_cost + transfer_cash:
+                    result_label.config(text=f"Not enough cash for ${signing_cost + transfer_cash:,} up-front cost.")
                     return
+                if transfer_deal is not None:
+                    committed, detail = self.commit_player_transfer_deal(transfer_deal, fighter)
+                    if not committed:
+                        result_label.config(text=detail)
+                        submit_button.config(state="disabled")
+                        return
                 if source_promotion is not None:
                     # The transfer and payment are one decision. If the feeder
                     # no longer owns the fighter, stop before touching cash.

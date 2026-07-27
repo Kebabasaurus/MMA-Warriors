@@ -188,6 +188,61 @@ def install_global_exception_handlers():
 
 
 class PersistenceMixin:
+    def save_metadata_sidecar_path(self, path):
+        path = Path(path)
+        return path.with_name(path.name + ".metadata")
+
+    def write_save_metadata_sidecar(self, path, metadata):
+        """Persist tiny save-list metadata without opening the full world file."""
+        if not isinstance(metadata, dict) or not metadata:
+            return
+        try:
+            atomic_write_json_compact(self.save_metadata_sidecar_path(path), metadata)
+        except Exception:
+            LOGGER.exception("Could not write save metadata sidecar for %s", path)
+
+    def save_metadata_file_signature(self, path):
+        path = Path(path)
+        stat = path.stat()
+        sidecar = self.save_metadata_sidecar_path(path)
+        if sidecar.exists():
+            sidecar_stat = sidecar.stat()
+            return (stat.st_mtime_ns, stat.st_size, sidecar_stat.st_mtime_ns, sidecar_stat.st_size)
+        return (stat.st_mtime_ns, stat.st_size, 0, 0)
+
+    def read_save_metadata_fast(self, path):
+        """Read sidecar metadata, or recover it from a bounded legacy JSON tail."""
+        path = Path(path)
+        sidecar = self.save_metadata_sidecar_path(path)
+        if sidecar.exists():
+            try:
+                data = json.loads(sidecar.read_text(encoding="utf-8"))
+                return data if isinstance(data, dict) else {}
+            except Exception:
+                LOGGER.exception("Could not read save metadata sidecar: %s", sidecar)
+        if path.suffix.lower() == ".gz":
+            return {}
+        try:
+            with path.open("rb") as handle:
+                handle.seek(0, 2)
+                size = handle.tell()
+                handle.seek(max(0, size - 262_144))
+                tail = handle.read().decode("utf-8", errors="ignore")
+            marker = '"_save_meta"'
+            marker_at = tail.rfind(marker)
+            if marker_at < 0:
+                return {}
+            value_at = tail.find(":", marker_at + len(marker))
+            if value_at < 0:
+                return {}
+            metadata, _end = json.JSONDecoder().raw_decode(tail[value_at + 1:].lstrip())
+            if isinstance(metadata, dict):
+                self.write_save_metadata_sidecar(path, metadata)
+                return metadata
+        except Exception:
+            LOGGER.exception("Could not recover bounded save metadata from %s", path)
+        return {}
+
     def handle_uncaught_exception(self, exc_type, exc_value, exc_tb):
         """Global guard so a stray error never silently kills a windowed build.
 
@@ -201,7 +256,9 @@ class PersistenceMixin:
             crash_folder = self.save_slot_dir() / "Crash Recovery"
             crash_folder.mkdir(parents=True, exist_ok=True)
             autosave_path = crash_folder / f"crash_autosave_{_crash_stamp()}.json"
+            data["_save_meta"] = self.save_metadata("Crash Recovery")
             atomic_write_json_compact(autosave_path, data)
+            self.write_save_metadata_sidecar(autosave_path, data["_save_meta"])
             crash_note += f"\nAn emergency autosave was written to {autosave_path}."
         except Exception as autosave_error:
             LOGGER.exception("Emergency crash autosave failed: %s", autosave_error)
@@ -223,6 +280,7 @@ class PersistenceMixin:
             if path.exists():
                 self.backup_save_file(path, "before_quick_save")
             atomic_write_json_compact(path, data)
+            self.write_save_metadata_sidecar(path, data["_save_meta"])
             self.prune_save_backups()
         except Exception as exc:
             LOGGER.exception("Quick save failed: %s", exc)
@@ -294,8 +352,6 @@ class PersistenceMixin:
 
     def set_active_save_name(self, name):
         self.active_save_name = self.normalized_save_name(name)
-        if hasattr(self, "save_slot_name"):
-            self.save_slot_name.set(self.active_save_name)
 
     def set_active_save_location(self, name, group="Main"):
         self.active_save_group = self.normalized_save_group(group)
@@ -342,6 +398,7 @@ class PersistenceMixin:
         data["_save_meta"].update({"snapshot_type": "spectator_decade", "years_elapsed": years})
         try:
             atomic_write_json_gzip(path, data, compresslevel=3)
+            self.write_save_metadata_sidecar(path, data["_save_meta"])
             self.last_spectator_snapshot_year = years
             self.event_log.insert(0, f"Save system: created spectator decade snapshot {path.name}.")
             return path
@@ -392,6 +449,9 @@ class PersistenceMixin:
                 continue
             try:
                 item.unlink()
+                sidecar = self.save_metadata_sidecar_path(item)
+                if sidecar.exists():
+                    sidecar.unlink()
             except FileNotFoundError:
                 pass
             except Exception:
@@ -424,6 +484,7 @@ class PersistenceMixin:
         })
         data["_save_meta"] = metadata
         atomic_write_json_gzip(target, data)
+        self.write_save_metadata_sidecar(target, metadata)
         self.prune_rolling_snapshot_files(backup_dir, "backup")
         return target
 
@@ -452,6 +513,7 @@ class PersistenceMixin:
             # Level 3 materially shortens the UI pause on long saves while
             # retaining ordinary gzip compatibility and bounded retention.
             atomic_write_json_gzip(path, data, compresslevel=3)
+            self.write_save_metadata_sidecar(path, data["_save_meta"])
             self.prune_rolling_autosaves(kind)
             return path
         except Exception as exc:
@@ -794,12 +856,17 @@ class PersistenceMixin:
         self.roster = [Fighter(**row) for row in data.get("roster", [])]
         self.free_agents = [Fighter(**row) for row in data.get("free_agents", [])]
         for fighter in self.roster + self.free_agents:
+            fighter.weight = self.game_weight_class(fighter.weight)
             self.ensure_detailed_skills(fighter)
             self.ensure_fighter_business_stats(fighter)
         self.promotions = []
         self.defunct_promotions = list(data.get("defunct_promotions", []))
         for row in data.get("promotions", []):
             row["roster"] = [Fighter(**fighter) for fighter in row.get("roster", [])]
+            row["weight_classes"] = list(dict.fromkeys(
+                self.game_weight_class(weight) for weight in row.get("weight_classes", [])
+                if self.game_weight_class(weight) in WEIGHTS
+            )) or list(WEIGHTS)
             row.setdefault("stability", max(5, min(99, row.get("cash", 0) // 20000)))
             row.setdefault("strategy", self.seed_promotion_strategy(row.get("name", ""), row.get("show_personality", "Balanced")))
             row.setdefault("strategic_rival", "")
@@ -807,9 +874,11 @@ class PersistenceMixin:
             row.setdefault("era_history", [])
             row.setdefault("legacy_score", 0)
             row.setdefault("closed_divisions", [])
+            row.setdefault("closed_division_policy_set", False)
             row.setdefault("special_belts", {})
             row.setdefault("regional_division_activity", {})
             for fighter in row["roster"]:
+                fighter.weight = self.game_weight_class(fighter.weight)
                 self.ensure_detailed_skills(fighter)
                 self.ensure_fighter_business_stats(fighter)
             self.promotions.append(Promotion(**row))
@@ -857,6 +926,7 @@ class PersistenceMixin:
         self.independent_showcase_counter = max(1, data.get("independent_showcase_counter", 1))
         self.retired_fighters = [Fighter(**row) for row in data.get("retired_fighters", [])]
         for fighter in self.retired_fighters:
+            fighter.weight = self.game_weight_class(fighter.weight)
             self.ensure_detailed_skills(fighter)
             self.ensure_fighter_business_stats(fighter)
         self.repair_premature_retirements()
@@ -928,7 +998,10 @@ class PersistenceMixin:
             self.change_journal = self.change_journal[-400:]
         self.broadcasters = data.get("broadcasters", [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}])
         self.ensure_media_system()
-        self.weight_classes = data.get("weight_classes", list(WEIGHTS))
+        self.weight_classes = list(dict.fromkeys(
+            self.game_weight_class(weight) for weight in data.get("weight_classes", list(WEIGHTS))
+            if self.game_weight_class(weight) in WEIGHTS
+        )) or list(WEIGHTS)
         self.post_show_bonuses = data.get("post_show_bonuses", {"fight": 5000, "ko": 5000, "sub": 5000})
         self.scheduled_events = data.get("scheduled_events", [])
         # Older builds silently moved cancelled bouts to other cards or created a
@@ -947,6 +1020,25 @@ class PersistenceMixin:
         self.season_stats = data.get("season_stats", {})
         self.awards_history = data.get("awards_history", [])
         self.clean_numbered_fighter_names()
+        closed_division_repair = self.reconcile_closed_player_division_roster()
+        if closed_division_repair:
+            self.change_journal.append({
+                "date": self.format_game_date(),
+                "type": "Roster Repair",
+                "summary": (
+                    f"Released {closed_division_repair} fighter(s) retained in closed player divisions. "
+                    "Reopen a division through Manage Divisions before signing fighters into it."
+                ),
+            })
+            self.change_journal = self.change_journal[-400:]
+        ai_closed_division_repair = self.reconcile_closed_ai_division_rosters()
+        if ai_closed_division_repair:
+            self.change_journal.append({
+                "date": self.format_game_date(),
+                "type": "Roster Repair",
+                "summary": f"Released {ai_closed_division_repair} fighter(s) retained in closed AI divisions.",
+            })
+            self.change_journal = self.change_journal[-400:]
         regional_repairs = self.repair_regional_fighter_tracking()
         regional_title_repairs = self.repair_regional_title_state()
         if regional_repairs["origin"] or regional_repairs["activity"] or regional_repairs.get("division_activity", 0):
@@ -997,9 +1089,121 @@ class PersistenceMixin:
                 "body": f"Authored engine profiles were applied to {names}. Existing career-earned rating movement was preserved.",
                 "type": "Rules", "resolved": False,
             })
+        identity_repair = self.migrate_real_fighter_identity_and_records(loaded_fighters)
+        if identity_repair["identity"] or identity_repair["records"]:
+            self.change_journal.append({
+                "date": self.format_game_date(),
+                "type": "Migration",
+                "summary": (
+                    f"Verified real-fighter identity data repaired {identity_repair['identity']} profile(s) "
+                    f"and restored pre-universe record baselines for {identity_repair['records']} profile(s)."
+                ),
+            })
+            self.change_journal = self.change_journal[-400:]
         self.ensure_all_company_champions()
         self.rebalance_ai_finance_model()
         self.maintain_inbox()
+        self.set_player_event_location_default()
+
+    def set_player_event_location_default(self):
+        """Start the next player card in the active promotion's home market."""
+        region = self.player_region if self.player_region in REGIONS else "USA"
+        cities = REGION_CITIES.get(region, REGION_CITIES["USA"])
+        self.event_region.set(region)
+        self.event_city.set(cities[0])
+        if hasattr(self, "update_city_options"):
+            self.update_city_options()
+
+    def reconcile_closed_player_division_roster(self):
+        """Keep closed player divisions empty when loading a legacy save."""
+        closed = set(getattr(self, "closed_divisions", set()) or ())
+        if not closed:
+            return 0
+        released = [
+            fighter for fighter in self.roster
+            if self.belt_key(fighter.gender, fighter.weight) in closed
+        ]
+        if not released:
+            return 0
+        released_names = {fighter.name for fighter in released}
+        self.booked = [
+            fight for fight in getattr(self, "booked", [])
+            if not (set(self.event_fight_participants(fight)) & released_names)
+        ]
+        for event in getattr(self, "scheduled_events", []):
+            event["fights"] = [
+                fight for fight in event.get("fights", [])
+                if not (set(self.event_fight_participants(fight)) & released_names)
+            ]
+        self.scheduled_events = [
+            event for event in getattr(self, "scheduled_events", []) if event.get("fights")
+        ]
+        self.belts = self.normalize_belts(self.belts)
+        self.interim_belts = self.normalize_belts(self.interim_belts)
+        for key in closed:
+            self.belts[key] = ""
+            self.interim_belts[key] = ""
+        existing_ids = {fighter.fighter_id for fighter in self.free_agents}
+        for fighter in released:
+            fighter.champion = False
+            fighter.interim_champion = False
+            fighter.contract_months = 0
+            fighter.exclusive = False
+            fighter.contract_type = "Free Agent"
+            fighter.ai_offer_company = ""
+            fighter.ai_offer_purse = 0
+            fighter.ai_offer_months = 0
+            fighter.ai_offer_signing_bonus = 0
+            if fighter.fighter_id not in existing_ids:
+                self.free_agents.append(fighter)
+                existing_ids.add(fighter.fighter_id)
+        self.roster = [fighter for fighter in self.roster if fighter not in released]
+        return len(released)
+
+    def reconcile_closed_ai_division_rosters(self):
+        """Release legacy AI roster entries in divisions their promotion has closed."""
+        released_total = 0
+        existing_ids = {fighter.fighter_id for fighter in self.free_agents}
+        for promo in self.promotions:
+            closed = self.company_closed_divisions(promo)
+            if not closed:
+                continue
+            released = [
+                fighter for fighter in promo.roster
+                if self.belt_key(fighter.gender, fighter.weight) in closed
+            ]
+            if not released:
+                continue
+            released_names = {fighter.name for fighter in released}
+            for event in list(getattr(promo, "scheduled_events", []) or []):
+                event["fights"] = [
+                    fight for fight in event.get("fights", [])
+                    if not (set(self.event_fight_participants(fight)) & released_names)
+                ]
+            promo.scheduled_events = [
+                event for event in (getattr(promo, "scheduled_events", []) or []) if event.get("fights")
+            ]
+            promo.belts = self.normalize_belts(promo.belts or {})
+            promo.interim_belts = self.normalize_belts(promo.interim_belts or {})
+            for key in closed:
+                promo.belts[key] = ""
+                promo.interim_belts[key] = ""
+            for fighter in released:
+                fighter.champion = False
+                fighter.interim_champion = False
+                fighter.contract_months = 0
+                fighter.exclusive = False
+                fighter.contract_type = "Free Agent"
+                fighter.ai_offer_company = ""
+                fighter.ai_offer_purse = 0
+                fighter.ai_offer_months = 0
+                fighter.ai_offer_signing_bonus = 0
+                if fighter.fighter_id not in existing_ids:
+                    self.free_agents.append(fighter)
+                    existing_ids.add(fighter.fighter_id)
+            promo.roster = [fighter for fighter in promo.roster if fighter not in released]
+            released_total += len(released)
+        return released_total
 
     def migrate_detailed_skill_balance(self, fighters):
         """One-time repair for saves created by group-wide detailed growth."""
@@ -1056,6 +1260,48 @@ class PersistenceMixin:
             self.apply_real_fighter_profile(fighter, baseline)
             recalibrated += 1
         return recalibrated
+
+    def real_fighter_universe_results(self, fighter):
+        """Count only simulated professional results recorded in the ledger."""
+        wins = losses = draws = 0
+        name = str(fighter.name)
+        for entry in getattr(fighter, "fight_history", []) or []:
+            line = str(entry)
+            if "amateur" in line.lower():
+                continue
+            if f"{name} def. " in line or "W over" in line:
+                wins += 1
+            elif "fought to a draw" in line:
+                draws += 1
+            elif (" def. " in line and name in line) or "L to" in line:
+                losses += 1
+        return wins, losses, draws
+
+    def migrate_real_fighter_identity_and_records(self, fighters):
+        """Repair verified identities and baseline records without rewinding careers."""
+        seen = set()
+        identity_updates = record_updates = 0
+        for fighter in fighters:
+            if id(fighter) in seen or getattr(fighter, "generated", False):
+                continue
+            seen.add(id(fighter))
+            identity = self.real_fighter_identity_data(fighter.name)
+            if not identity:
+                continue
+            if getattr(fighter, "real_identity_version", 0) < 2:
+                self.apply_real_fighter_birthplace(fighter, fighter.region)
+                fighter.real_identity_version = 2
+                identity_updates += 1
+            if getattr(fighter, "real_record_baseline_version", 0) < 2:
+                wins, losses, draws = self.real_fighter_universe_results(fighter)
+                fighter.record_history_baseline_w = max(0, fighter.record_w - wins)
+                fighter.record_history_baseline_l = max(0, fighter.record_l - losses)
+                fighter.record_history_baseline_d = max(0, fighter.record_d - draws)
+                fighter.multi_sport_records = dict(getattr(fighter, "multi_sport_records", None) or {})
+                fighter.multi_sport_records["MMA"] = f"{fighter.record_w}-{fighter.record_l}-{fighter.record_d}"
+                fighter.real_record_baseline_version = 2
+                record_updates += 1
+        return {"identity": identity_updates, "records": record_updates}
 
     def migrate_legend_prime_ages(self, fighters):
         prime_ages = self.prime_legend_ages()
@@ -1428,6 +1674,7 @@ class PersistenceMixin:
             metadata.update({"slot_name": requested, "folder": target_group, "saved_at": datetime.now().isoformat(timespec="seconds")})
             copied_data["_save_meta"] = metadata
             atomic_write_json_compact(copied_primary, copied_data)
+            self.write_save_metadata_sidecar(copied_primary, metadata)
         except Exception as exc:
             LOGGER.exception("Could not duplicate save slot %s to %s: %s", source_root, target_root, exc)
             if target_root.exists():
@@ -1490,16 +1737,15 @@ class PersistenceMixin:
             group_prefix = f"[{group}] " if visible_group == "All Saves" else ""
             label = group_prefix + (f"{display_name} | {kind}" if kind else display_name)
             try:
-                stat = file.stat()
                 cache_key = str(file.resolve())
-                signature = (stat.st_mtime_ns, stat.st_size)
+                signature = self.save_metadata_file_signature(file)
                 live_cache_keys.add(cache_key)
                 cached = metadata_cache.get(cache_key)
                 if cached and cached[0] == signature:
                     meta = cached[1]
                 else:
-                    data = json.loads(read_json_text(file))
-                    meta = data.get("_save_meta", {}) if isinstance(data, dict) else {}
+                    meta = self.read_save_metadata_fast(file)
+                    signature = self.save_metadata_file_signature(file)
                     metadata_cache[cache_key] = (signature, meta)
                 if meta:
                     company = meta.get("company", "Unknown")
@@ -1586,6 +1832,7 @@ class PersistenceMixin:
             era_history=[],
             academy=json.loads(json.dumps(self.repair_academy(getattr(self, "academy", {})))) if hasattr(self, "repair_academy") else {},
             closed_divisions=sorted(getattr(self, "closed_divisions", set())),
+            closed_division_policy_set=True,
         )
 
     def enter_spectator_mode(self):
@@ -1714,6 +1961,7 @@ class PersistenceMixin:
         self.post_show_bonuses = promo.post_show_bonuses or {"fight": 5000, "ko": 5000, "sub": 5000}
         self.result_history = promo.show_history or []
         self.booked = []
+        self.set_player_event_location_default()
         self.event_name.set(self.default_event_name())
         self.news.insert(0, f"You are now controlling {self.player_company_name}.")
         self.refresh_all()
@@ -1987,11 +2235,21 @@ class PersistenceMixin:
 
     def save_selected_slot(self):
         SAVE_DIR.mkdir(parents=True, exist_ok=True)
-        name = self.safe_filename(self.save_slot_name.get())
+        requested_name = self.save_slot_name.get().strip() if hasattr(self, "save_slot_name") else ""
+        if not requested_name:
+            messagebox.showinfo("Save name required", "Enter a new save-slot name before saving.")
+            return
+        name = self.safe_filename(requested_name)
         group = self.normalized_save_group(self.save_folder_target.get() if hasattr(self, "save_folder_target") else getattr(self, "active_save_group", "Main"))
         path = self.save_slot_dir(name, group=group) / "savegame.json"
         previous_name = getattr(self, "active_save_name", "Game 1")
         previous_group = getattr(self, "active_save_group", "Main")
+        if path.exists() and not messagebox.askyesno(
+            "Overwrite Save Slot",
+            f"'{name}' already exists in {group}.\n\nOverwrite this save? A recovery backup will be created first.",
+        ):
+            self.set_save_manager_status(f"Save cancelled. '{name}' was not overwritten.")
+            return
         try:
             if path.exists():
                 self.backup_save_file(path, "before_slot_save")
@@ -1999,6 +2257,7 @@ class PersistenceMixin:
             data = self.serialize_world()
             data["_save_meta"] = self.save_metadata(name)
             atomic_write_json_compact(path, data)
+            self.write_save_metadata_sidecar(path, data["_save_meta"])
             self.prune_save_backups()
         except Exception as exc:
             self.set_active_save_location(previous_name, previous_group)
@@ -2721,6 +2980,7 @@ class PersistenceMixin:
         self.normalize_gym_assignments()
         self.sync_gym_membership()
         self.ensure_all_company_champions()
+        self.set_player_event_location_default()
         if hasattr(self, "event_name"):
             self.event_name.set(self.default_event_name())
         self.news.insert(0, f"{self.player_company_name} was founded in {self.player_region} as a {self.player_reputation.lower()} promotion.")
@@ -2796,7 +3056,7 @@ class PersistenceMixin:
         self.interim_belts = self.blank_belts()
         self.special_belts = {}
         self.belt_history = self.blank_belt_history()
-        self.closed_divisions = set()
+        self.closed_divisions = self.bamma_initial_closed_divisions()
         self.player_managed_divisions = set()
         self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "allow_mixed_gender": False, "active_fighter_target": 1200, "ai_offer_market_target": 100, "global_result_replay_limit": 2000, "auto_renew_enabled": False, "scouting_mode": True, "fight_night_audio_enabled": True, "fight_night_audio_output": "System default", "fight_night_audio_volume": 55, "autosave_enabled": True, "autosave_interval_months": 2, "autosave_weekly_keep": 2, "autosave_monthly_keep": 2, "save_backup_keep": 2, "save_retention_version": 4, "detailed_skill_balance_version": 1}
         media_section = self.universe_section("media", {}) if hasattr(self, "universe_section") else {}
@@ -2827,8 +3087,9 @@ class PersistenceMixin:
             self.enter_spectator_mode()
             return
         if choice != self.player_company_name:
-            self.take_control_of_company(choice, keep_current=False)
+            self.take_control_of_company(choice, keep_current=True)
             self.news.insert(0, f"New game started as {self.player_company_name}.")
             return
+        self.set_player_event_location_default()
         self.refresh_all()
         self.write_log()

@@ -6376,7 +6376,7 @@ class WorldMixin:
             used.update([fighter.name, opponent.name])
         return bouts
 
-    def run_combat_sport_card(self, sport, world, employer, player_owned=False, target_bouts=6, bouts=None):
+    def run_combat_sport_card(self, sport, world, employer, player_owned=False, target_bouts=6, bouts=None, event_name=""):
         division = getattr(self, "player_combat_divisions", {}).get(sport) if player_owned else None
         if player_owned and division and bouts is None:
             target_bouts = {"Prospect Builder": 6, "Star Showcase": 4, "Title Focus": 5}.get(division.get("strategy", "Balanced"), target_bouts)
@@ -6393,7 +6393,8 @@ class WorldMixin:
         ) for bout in bouts]
         title_result = next((item for item in results if item.get("title")), None)
         finishes = sum(1 for item in results if item.get("method") not in ("Decision", "Points", "Draw"))
-        headline = f"Month {self.month}: {promotion} ran a {sport} card headlined by {results[0]['result']}."
+        event_label = event_name.strip() or f"{promotion} {sport} Card {event_no}"
+        headline = f"Month {self.month}: {event_label} was headlined by {results[0]['result']}."
         strategy = self.combat_sport_card_strategy(sport, world, employer, player_owned)
         recap = f"{len(results)} bouts | {finishes} finish(es) | Strategy: {strategy}"
         if title_result:
@@ -6425,7 +6426,7 @@ class WorldMixin:
             "result": item.get("result", ""),
             "lines": item.get("log", []),
         } for item in results]
-        card = {"month": self.month, "week": self.week, "sport": sport, "promotion": promotion, "event": event_no, "event_name": f"{promotion} {sport} Card {event_no}", "results": results, "fight_logs": fight_logs, "headline": headline, "recap": recap, "strategy": strategy, "bouts": [{"a": bout["a"].name, "b": bout["b"].name, "title": bout.get("title", False), "title_key": bout.get("title_key", ""), "reason": bout.get("booking_reason", "Sport matchmaking")} for bout in bouts]}
+        card = {"month": self.month, "week": self.week, "sport": sport, "promotion": promotion, "event": event_no, "event_name": event_label, "results": results, "fight_logs": fight_logs, "headline": headline, "recap": recap, "strategy": strategy, "bouts": [{"a": bout["a"].name, "b": bout["b"].name, "title": bout.get("title", False), "title_key": bout.get("title_key", ""), "reason": bout.get("booking_reason", "Sport matchmaking")} for bout in bouts]}
         world["event_history"] = ([headline] + world.get("event_history", []))[:80]
         world["media"] = ([headline] + world.get("media", []))[:24]
         self.refresh_combat_sport_rankings(sport, world, employer=employer)
@@ -6475,7 +6476,7 @@ class WorldMixin:
         self.archive_result_record({
             "date": f"Month {self.month} Week {self.week}",
             "company": promotion,
-            "event": f"{sport} Card {event_no}",
+            "event": event_label,
             "summary": recap,
             "fights": len(results),
             "gate": f"${card.get('finance', {}).get('revenue', 0):,}",
@@ -7899,6 +7900,10 @@ class WorldMixin:
         # maintain the same activity target at its larger roster scale.
         if promo.name == "Ultimate Fighting Championship" and mode != "Financial Recovery":
             show_chance = max(show_chance, 0.76)
+        # BAMMA opens with roughly 190 athletes. At 12-13 bouts per card it
+        # needs about 23 shows to sustain three appearances per active fighter.
+        if promo.name == PLAYER_PROMOTION_NAME and mode != "Financial Recovery":
+            show_chance = max(show_chance, 0.44)
         return max(0.04, min(0.78, show_chance))
 
     def ai_should_run_show(self, promo):
@@ -8069,6 +8074,47 @@ class WorldMixin:
         holder_name = self.ai_primary_title_holder_name(promo, a.gender, a.weight)
         return not holder_name or holder_name in {a.name, b.name}
 
+    def ai_title_contender_pressure(self, promo, gender, weight):
+        """Return urgency for an AI division's leading contender getting a shot."""
+        contenders = sorted(
+            (
+                fighter for fighter in promo.roster
+                if not fighter.retired and fighter.gender == gender and fighter.weight == weight
+                and not fighter.champion
+            ),
+            key=lambda fighter: (
+                getattr(fighter, "ranking_position", 999),
+                -getattr(fighter, "rank_score", 0),
+            ),
+        )
+        if not contenders:
+            return 0
+        leader = contenders[0]
+        rank = getattr(leader, "ranking_position", 999)
+        streak = max(0, int(getattr(leader, "career_win_streak", 0) or 0))
+        if getattr(leader, "owed_title_shot", False):
+            return 4
+        if rank == 1 and streak >= 8:
+            return 3
+        if rank == 1 and streak >= 5:
+            return 2
+        return 1 if rank == 1 else 0
+
+    def ai_matchmaking_rank_gap_limit(self, a, b):
+        """Keep routine AI matchmaking on a credible divisional ladder."""
+        ranks = [
+            rank for rank in (getattr(a, "ranking_position", 0), getattr(b, "ranking_position", 0))
+            if rank > 0
+        ]
+        best_rank = min(ranks, default=99)
+        if best_rank <= 5:
+            return 6
+        if best_rank <= 10:
+            return 8
+        if best_rank <= 20:
+            return 12
+        return 16
+
     def build_ai_card(self, promo, ready, target):
         """Matchmake a believable AI card: title fights for champions vs top contenders,
         grudge matches for rivalries, ranking-based pairings for the rest, and a
@@ -8090,7 +8136,10 @@ class WorldMixin:
         random.shuffle(divisions)
         # Vacant championships need a sporting resolution before routine
         # defenses consume the card's limited title-fight slots.
-        divisions.sort(key=lambda division: bool(belts.get(self.belt_key(*division))))
+        divisions.sort(key=lambda division: (
+            bool(belts.get(self.belt_key(*division))),
+            -self.ai_title_contender_pressure(promo, *division),
+        ))
 
         def pool_for(gender, weight):
             pool = [f for f in ready if f.gender == gender and f.weight == weight and f.name not in used]
@@ -8169,7 +8218,13 @@ class WorldMixin:
                                    "booking_reason": "Vacant championship between the two leading available contenders"})
                     titles += 1
                     continue
-            if champ and len(pool) >= 2 and random.random() < (0.52 if mode in ("Title Push", "Contender Cycle") else 0.4):
+            contender_pressure = self.ai_title_contender_pressure(promo, gender, weight)
+            defense_chance = 0.52 if mode in ("Title Push", "Contender Cycle") else 0.4
+            if contender_pressure >= 3:
+                defense_chance = max(defense_chance, 0.9)
+            elif contender_pressure >= 2:
+                defense_chance = max(defense_chance, 0.7)
+            if champ and len(pool) >= 2 and random.random() < defense_chance:
                 contenders = [fighter for fighter in pool if fighter.name != champ.name
                               and not self.ai_matchup_is_stale(champ, fighter, title=True)]
                 contender = min(
@@ -8228,11 +8283,13 @@ class WorldMixin:
             opponents = [fighter for fighter in ready if fighter.name not in used and fighter.name not in protected_champions and fighter.name != prospect.name
                           and fighter.gender == prospect.gender and fighter.weight == prospect.weight
                          and abs(fighter.overall - prospect.overall) <= 6
+                         and abs(getattr(fighter, "ranking_position", 999) - getattr(prospect, "ranking_position", 999)) <= self.ai_matchmaking_rank_gap_limit(prospect, fighter)
                          and not self.ai_matchup_is_stale(prospect, fighter)]
             if not opponents:
                 continue
             opponent = min(opponents, key=lambda fighter: (
                 abs(fighter.overall - prospect.overall)
+                + abs(getattr(fighter, "ranking_position", 999) - getattr(prospect, "ranking_position", 999)) * 1.8
                 + abs((fighter.record_w + fighter.record_l) - (prospect.record_w + prospect.record_l)) * 0.25
                 + self.matchup_history_penalty(prospect, fighter)
             ))
@@ -8274,6 +8331,8 @@ class WorldMixin:
                         if rating_gap > (9 if rebuild_a or rebuild_b else 6):
                             continue
                         rank_gap = abs(getattr(b_option, "ranking_position", 999) - getattr(a_option, "ranking_position", 999))
+                        if rank_gap > self.ai_matchmaking_rank_gap_limit(a_option, b_option):
+                            continue
                         form_gap = abs(getattr(b_option, "momentum", 0) - getattr(a_option, "momentum", 0))
                         protect_a = mode == "Prospect Rebuild" and a_option.age <= 26 and a_option.potential - a_option.overall >= 7
                         protect_b = mode == "Prospect Rebuild" and b_option.age <= 26 and b_option.potential - b_option.overall >= 7
@@ -8294,7 +8353,7 @@ class WorldMixin:
                             # the outcome.
                             rebuild_target = abs((opponent.overall - rebuild_fighter.overall) + 3) * 1.4
                         inactivity_priority = min(28, (inactive.get(a_option.name, 0) + inactive.get(b_option.name, 0)) * 1.8)
-                        pair_options.append(((protection_penalty, rating_gap * 4 + rank_gap * 0.7 + form_gap * 0.8 + record_gap * 26 + variety_penalty + rebuild_target - inactivity_priority, rating_gap), a_option, b_option))
+                        pair_options.append(((protection_penalty, rating_gap * 2.2 + rank_gap * 2.8 + form_gap * 0.8 + record_gap * 26 + variety_penalty + rebuild_target - inactivity_priority, rating_gap), a_option, b_option))
                 if not pair_options:
                     break
                 _, a, b = min(pair_options, key=lambda item: item[0])
@@ -11104,6 +11163,11 @@ class WorldMixin:
         return report
 
     def write_log(self):
+        # The Log screen is lazy-built. Startup, spectator mode and world
+        # simulation can all create an event log before its text widget exists.
+        # Keep the data in self.event_log and render it when the screen opens.
+        if not hasattr(self, "log_text"):
+            return
         self.log_text.config(state="normal")
         self.log_text.delete("1.0", "end")
         self.log_text.insert("end", "\n".join(self.event_log) if self.event_log else "No news yet.")

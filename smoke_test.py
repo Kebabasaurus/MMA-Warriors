@@ -29,7 +29,97 @@ def main():
     root = tk.Tk()
     root.withdraw()
     try:
-        app = game.FightEmpireApp(root)
+        startup_updates = []
+        app = game.FightEmpireApp(root, startup_progress=lambda value, text: startup_updates.append((value, text)))
+        assert_true(startup_updates and startup_updates[-1][0] == 100, "Startup progress did not reach its ready state")
+        assert_true(all(a[0] <= b[0] for a, b in zip(startup_updates, startup_updates[1:])), "Startup progress moved backwards")
+        app.start_company_choice.set("Spectator Mode")
+        app.new_game()
+        assert_true(app.spectator_mode, "Spectator Mode failed before lazy Log screen construction")
+        app.start_company_choice.set("Ultimate Fighting Championship")
+        app.new_game()
+        eurasian_circuit = next(promo for promo in app.promotions if promo.name == game.EURASIAN_FIGHT_CIRCUIT_NAME)
+        magomed = next(fighter for fighter in eurasian_circuit.roster if fighter.name == "Magomed Zaynukov")
+        assert_true((magomed.birth_country, magomed.birth_region, magomed.hometown, magomed.nationality) == ("Russia", "Russia", "Makhachkala", "Russian"),
+                    "Eurasian headliner retained an unrelated birthplace after receiving a Dagestani identity")
+        ian_garry = next(fighter for fighter in app.roster + [fighter for promo in app.promotions for fighter in promo.roster] if fighter.name == "Ian Machado Garry")
+        assert_true((ian_garry.birth_country, ian_garry.birth_region, ian_garry.hometown, ian_garry.nationality) == ("Ireland", "Europe", "Dublin", "Irish"),
+                    "Ian Machado Garry retained a generic European identity instead of his Irish origin")
+        li_jingliang = next(fighter for fighter in app.roster + [fighter for promo in app.promotions for fighter in promo.roster] if fighter.name == "Li Jingliang")
+        assert_true((li_jingliang.birth_country, li_jingliang.birth_region, li_jingliang.nationality) == ("People's Republic of China", "Asia", "Chinese"),
+                    "Verified country labels did not resolve to a specific nationality and region")
+        all_seeded_fighters = app.roster + [fighter for promo in app.promotions for fighter in promo.roster]
+        for fighter_name, expected_flag in (("Benoit Saint Denis", "europe.png"), ("Eduard Folayang", "asia.png"), ("Cameron Saaiman", "africa.png")):
+            fallback_fighter = next(fighter for fighter in all_seeded_fighters if fighter.name == fighter_name)
+            flag_path = app.country_flag_path_for_fighter(fallback_fighter)
+            assert_true(flag_path and flag_path.name == expected_flag,
+                        f"{fighter_name} did not receive the expected regional fallback flag")
+        bamma_as_ai = next(promo for promo in app.promotions if promo.name == game.PLAYER_PROMOTION_NAME)
+        assert_true(app.bamma_initial_closed_divisions().issubset(set(bamma_as_ai.closed_divisions or [])),
+                    "BAMMA lost its closed-division policy when another promotion was selected")
+        assert_true(not any(app.belt_key(fighter.gender, fighter.weight) in set(bamma_as_ai.closed_divisions or []) for fighter in bamma_as_ai.roster),
+                    "AI BAMMA retained a fighter in a closed division after player takeover")
+        assert_true(app.ai_show_chance(bamma_as_ai) >= 0.44,
+                    "AI BAMMA cadence cannot sustain three annual appearances per fighter")
+        app.take_control_of_company("Cage Warriors")
+        assert_true((app.player_region, app.event_region.get(), app.event_city.get()) == ("UK", "UK", "London"),
+                    "A UK promotion did not default its booking location to the UK home market")
+        for fighter in bamma_as_ai.roster:
+            if fighter.gender == "Male" and fighter.weight == "Lightweight" and not fighter.champion:
+                fighter.ranking_position = 999
+        title_queue_probe = app.create_generated_fighter(weight="Lightweight", gender="Male")
+        title_queue_probe.ranking_position = 1
+        title_queue_probe.rank_score = 100_000
+        title_queue_probe.career_win_streak = 11
+        bamma_as_ai.roster.append(title_queue_probe)
+        assert_true(app.ai_title_contender_pressure(bamma_as_ai, "Male", "Lightweight") >= 3,
+                    "An elite #1 contender was not prioritised for an AI title shot")
+        rank_probe_a = app.create_generated_fighter(weight="Lightweight", gender="Male")
+        rank_probe_b = app.create_generated_fighter(weight="Lightweight", gender="Male")
+        rank_probe_a.ranking_position, rank_probe_b.ranking_position = 3, 12
+        assert_true(app.ai_matchmaking_rank_gap_limit(rank_probe_a, rank_probe_b) == 6,
+                    "Top-five contenders were not protected from wide routine rank gaps")
+        app.start_company_choice.set(game.PLAYER_PROMOTION_NAME)
+        app.new_game()
+        addin_names = {row[0] for row, _gender in app.bamma_initial_addin_data()}
+        opening_roster_names = [fighter.name for fighter in app.roster]
+        all_opening_names = [fighter.name for fighter in app.all_database_fighters()]
+        assert_true(len(app.roster) >= 160, "BAMMA's opening roster was capped below its intended depth")
+        assert_true(addin_names.issubset(opening_roster_names), "A requested BAMMA add-in fighter was omitted from the opening roster")
+        assert_true(all(all_opening_names.count(name) == 1 for name in addin_names),
+                    "A BAMMA add-in fighter was duplicated elsewhere in the initial database")
+        latest_bamma_additions = {
+            "Lani Daniels", "Danielle Perkins", "Nyrene Crowley", "Forrest Molinari",
+            "Sara Collins", "Noor Oosterhoff", "Victoria Friday Uduak",
+        }
+        assert_true(len(app.roster) >= 190, "BAMMA's expanded opening roster target was not retained")
+        assert_true(latest_bamma_additions.issubset(opening_roster_names), "A supplied second-wave BAMMA fighter was omitted")
+        assert_true(all(all_opening_names.count(name) == 1 for name in latest_bamma_additions),
+                    "A supplied second-wave BAMMA fighter was duplicated in the initial database")
+        lani_daniels = next(fighter for fighter in app.roster if fighter.name == "Lani Daniels")
+        assert_true(lani_daniels.record == "12-4-2", "Lani Daniels did not retain her authored pre-universe record")
+        bamma_closed = app.bamma_initial_closed_divisions()
+        assert_true(bamma_closed.issubset(app.closed_divisions), "BAMMA's requested female divisions did not start closed")
+        assert_true(not any(app.belt_key(fighter.gender, fighter.weight) in bamma_closed for fighter in app.roster),
+                    "A BAMMA fighter remained in a requested closed division")
+        female_featherweights = [fighter for fighter in app.roster if fighter.gender == "Female" and fighter.weight == "Featherweight"]
+        assert_true(len(female_featherweights) >= 6, "BAMMA did not open with six women's featherweights")
+        female_bantamweights = [fighter for fighter in app.roster if fighter.gender == "Female" and fighter.weight == "Bantamweight"]
+        assert_true(len(female_bantamweights) >= 6, "BAMMA did not open with six women's bantamweights")
+        bamma_as_ai = app.player_company_as_promotion()
+        assert_true(all(not app.promotion_division_open(bamma_as_ai, "Female", weight) for weight in ("Middleweight", "Light Heavyweight", "Heavyweight")),
+                    "BAMMA's closed female divisions remain eligible for AI recruitment")
+        leaked_closed_fighter = app.create_generated_fighter(weight="Light Heavyweight", gender="Female")
+        app.roster.append(leaked_closed_fighter)
+        assert_true(app.reconcile_closed_player_division_roster() == 1,
+                    "Closed-player division repair did not identify a leaked roster fighter")
+        assert_true(leaked_closed_fighter not in app.roster and leaked_closed_fighter in app.free_agents,
+                    "A leaked fighter remained contracted in a closed player division")
+        assert_true(all(fighter.weight in game.WEIGHTS for fighter in app.all_database_fighters()),
+                    "Initial database contains a fighter outside the normal game divisions")
+        for screen_name in app.screen_builders:
+            app.ensure_screen_built(screen_name)
+        assert_true(set(app.screen_builders) == app.built_screens, "One or more lazy management screens failed to build")
         champion_probe = next((fighter for fighter in app.roster if fighter.champion or fighter.interim_champion), None)
         if champion_probe is None:
             champion_probe = max(app.roster, key=app.champion_sort_value)
@@ -213,8 +303,16 @@ def main():
         fighter_probe.camp = original_camp
         for region, pools in game.REGIONAL_NAME_POOLS.items():
             for group in ("male", "female", "last"):
-                assert_true(len(set(pools.get(group, []))) >= 50,
-                            f"{region} generated {group} name pool fell below 50 unique entries")
+                assert_true(len(set(pools.get(group, []))) >= 30,
+                            f"{region} generated {group} name pool fell below 30 unique entries")
+            male_names = {name.casefold() for name in pools["male"]}
+            female_names = {name.casefold() for name in pools["female"]}
+            assert_true(not male_names.intersection(female_names),
+                        f"{region} generated name pools still mix male and female first names")
+        global_male_names = {name.casefold() for name in game.FIRST_NAMES}
+        global_female_names = {name.casefold() for name in game.FEMALE_FIRST_NAMES}
+        assert_true(not global_male_names.intersection(global_female_names),
+                    "Fallback generated name pools still mix male and female first names")
         uk_name_asset = json.loads((ROOT / "assets" / "uk_first_names.json").read_text(encoding="utf-8"))
         assert_true(
             (len(uk_name_asset.get("female", [])), len(uk_name_asset.get("male", [])),
@@ -222,10 +320,15 @@ def main():
             "Packaged UK first-name directory is incomplete",
         )
         uk_pools = game.REGIONAL_NAME_POOLS["UK"]
-        assert_true(set(uk_name_asset["female"] + uk_name_asset["neutral"]).issubset(uk_pools["female"]),
-                    "UK female generation pool did not load the complete name directory")
-        assert_true(set(uk_name_asset["male"] + uk_name_asset["neutral"]).issubset(uk_pools["male"]),
-                    "UK male generation pool did not load the complete name directory")
+        shared_uk_names = {name.casefold() for name in uk_name_asset["female"]}.intersection(
+            name.casefold() for name in uk_name_asset["male"]
+        )
+        expected_uk_female = {name for name in uk_name_asset["female"] if name.casefold() not in shared_uk_names}
+        expected_uk_male = {name for name in uk_name_asset["male"] if name.casefold() not in shared_uk_names}
+        assert_true(expected_uk_female.issubset(uk_pools["female"]),
+                    "UK female generation pool did not load the complete gendered directory")
+        assert_true(expected_uk_male.issubset(uk_pools["male"]),
+                    "UK male generation pool did not load the complete gendered directory")
         identity_sample = [app.create_generated_fighter(region="Europe") for _ in range(80)]
         assert_true(all(fighter.nationality != "European" for fighter in identity_sample),
                     "Generated European fighters still use a generic continental nationality")
@@ -240,11 +343,21 @@ def main():
             ("Islam Makhachev", "Makhachkala", "Russian"),
             ("Jon Jones", "Rochester", "American"),
             ("Tom Aspinall CW", "Salford", "British"),
+            ("Matthew Green", "Birmingham", "British"),
+            ("Brett Akey", "Ontario", "Canadian"),
+            ("Markell Holmes", "Arkansas", "American"),
         ):
             assert_true(name in real_identities and real_identities[name].hometown == city,
                         f"Verified real-fighter birthplace was not applied for {name}")
             assert_true(real_identities[name].nationality == nationality,
                         f"Verified real-fighter nationality was not applied for {name}")
+        for name in ("Matthew Green", "Brett Akey", "Markell Holmes", "Max Holzer", "Leon Edwards"):
+            fighter = real_identities[name]
+            assert_true(
+                (fighter.record_history_baseline_w, fighter.record_history_baseline_l, fighter.record_history_baseline_d)
+                == (fighter.record_w, fighter.record_l, fighter.record_d),
+                f"Real fighter {name} did not retain their seeded pre-universe record",
+            )
         for age, minimum_room in ((20, 12), (23, 9), (28, 7)):
             potential_probe = app.create_generated_fighter(min_skill=50, max_skill=50, age_override=age)
             assert_true(potential_probe.potential - potential_probe.overall >= minimum_room,
@@ -501,6 +614,16 @@ def main():
         ufc = next(promo for promo in app.promotions if promo.name == "Ultimate Fighting Championship")
         assert_true(any(fighter.name == "Islam Makhachev" for fighter in ufc.roster), "New-game reset replaced authored UFC fighters with generated filler")
         assert_true(any(fighter.name == "AJ McKee" for promo in app.promotions if promo.name == "Professional Fighters League" for fighter in promo.roster), "New-game reset replaced authored PFL fighters with generated filler")
+        pfl = next(promo for promo in app.promotions if promo.name == "Professional Fighters League")
+        cage_warriors = next(promo for promo in app.promotions if promo.name == "Cage Warriors")
+        lewis = next(fighter for fighter in pfl.roster if fighter.name == "Lewis McGrillen")
+        omar = next(fighter for fighter in cage_warriors.roster if fighter.name == "Omar Tugarev")
+        brett = next(fighter for fighter in app.free_agents if fighter.name == "Brett Akey")
+        assert_true(not lewis.generated and lewis.weight == "Bantamweight" and lewis.source_url, "PFL real-fighter replacement was not seeded in-place")
+        assert_true(not omar.generated and omar.weight == "Lightweight" and omar.source_url, "Cage Warriors real-fighter replacement was not seeded in-place")
+        assert_true(not brett.generated and brett.weight == "Lightweight" and brett.potential >= 87, "Custom real-fighter replacement did not retain its requested ceiling")
+        curated_names = {"Lewis McGrillen", "Omar Tugarev", "Brett Akey", "Markell Holmes", "Max Holzer"}
+        assert_true(sum(fighter.name in curated_names for fighter in app.all_database_fighters()) == len(curated_names), "Curated real-fighter replacement introduced a duplicate")
         feeder_rosters = [promo for promo in app.promotions if getattr(promo, "is_regional_feeder", False)]
         assert_true(feeder_rosters and all(len(promo.roster) == 70 for promo in feeder_rosters), "Regional feeder promotions should open with 70 fighters each")
         app.start_company_choice.set("Spectator Mode")
@@ -803,8 +926,30 @@ def main():
         for fighter in candidates:
             fighter.sport_employer = app.player_company_name
         division["roster"] = [signed_youth.name] + [fighter.name for fighter in candidates]
-        player_card = app.run_combat_sport_card("Boxing", app.combat_sport_worlds["Boxing"], app.player_company_name, player_owned=True, target_bouts=5)
+        existing_windows = set(root.winfo_children())
+        app.open_player_combat_division_window("Boxing")
+        root.update_idletasks()
+        sport_windows = [child for child in root.winfo_children() if child not in existing_windows and child.winfo_class() == "Toplevel"]
+        assert_true(sport_windows, "Player combat-sport management window did not open")
+        sport_window = sport_windows[-1]
+        descendants = []
+        pending = list(sport_window.winfo_children())
+        while pending:
+            widget = pending.pop()
+            descendants.append(widget)
+            pending.extend(widget.winfo_children())
+        notebooks = [widget for widget in descendants if widget.winfo_class() == "TNotebook"]
+        assert_true(notebooks and len(notebooks[0].tabs()) == 4, "Player combat-sport manager did not render its four workspaces")
+        auto_fill_buttons = [widget for widget in descendants if widget.winfo_class() == "TButton" and widget.cget("text") == "Auto-Fill Card"]
+        assert_true(auto_fill_buttons, "Player combat-sport manager did not render the editable smart-card action")
+        auto_fill_buttons[0].invoke()
+        root.update_idletasks()
+        assert_true(division.get("booked_bouts"), "Player combat-sport auto-fill did not create an editable card")
+        division["booked_bouts"] = []
+        sport_window.destroy()
+        player_card = app.run_combat_sport_card("Boxing", app.combat_sport_worlds["Boxing"], app.player_company_name, player_owned=True, target_bouts=5, event_name="Smoke Boxing Night")
         assert_true(player_card and len(player_card["results"]) >= 4 and division.get("events"), "Player combat-sport card builder failed")
+        assert_true(player_card.get("event_name") == "Smoke Boxing Night", "Player combat-sport custom event name was not preserved")
         sport_result = player_card["results"][0]
         assert_true(any(line.startswith("Camp:") for line in sport_result.get("log", [])), "Combat-sport camps are not reaching the fight log")
         assert_true(any(line.startswith("Weigh-in:") for line in sport_result.get("log", [])), "Combat-sport weigh-ins are not reaching the fight log")
@@ -1150,7 +1295,7 @@ def main():
         showcase_fighters = []
         # A valid five-fight card can be made across divisions; each bout
         # remains gender and weight-class matched.
-        for weight in ("Atomweight", "Strawweight", "Flyweight", "Bantamweight", "Featherweight"):
+        for weight in ("Flyweight", "Bantamweight", "Featherweight", "Lightweight", "Welterweight"):
             for _ in range(2):
                 candidate = app.create_generated_fighter(8, 18, 58, 72, gender="Female", weight=weight)
                 candidate.free_agent_months = 2
@@ -1335,6 +1480,10 @@ def main():
         import persistence
         original_active_path = app.active_save_path
         original_showinfo = persistence.messagebox.showinfo
+        original_askyesno = persistence.messagebox.askyesno
+        original_save_slot_dir = app.save_slot_dir
+        original_save_name = app.save_slot_name.get()
+        original_active_name = app.active_save_name
         with tempfile.TemporaryDirectory(prefix="mma_warriors_quick_save_") as temp_dir:
             quick_path = Path(temp_dir) / "savegame.json"
             app.active_save_path = lambda: quick_path
@@ -1347,6 +1496,25 @@ def main():
             quick_data = json.loads(quick_path.read_text(encoding="utf-8"))
             assert_true(quick_data.get("_save_meta", {}).get("slot_name") == app.active_save_name,
                         "Quick save did not write a valid save payload")
+            app.save_slot_name.set("")
+            app.set_active_save_name("Do Not Autofill")
+            assert_true(app.save_slot_name.get() == "", "Active save name leaked into the save-slot destination field")
+            slot_root = Path(temp_dir) / "Existing Slot"
+            slot_root.mkdir()
+            existing_slot = slot_root / "savegame.json"
+            existing_slot.write_text('{"preserve": true}', encoding="utf-8")
+            app.save_slot_dir = lambda _name=None, create=True, group=None: slot_root
+            app.save_slot_name.set("Existing Slot")
+            persistence.messagebox.askyesno = lambda *_args, **_kwargs: False
+            app.save_selected_slot()
+            assert_true(existing_slot.read_text(encoding="utf-8") == '{"preserve": true}',
+                        "Declining a save-slot overwrite still changed the existing save")
+        app.active_save_path = original_active_path
+        app.save_slot_dir = original_save_slot_dir
+        app.save_slot_name.set(original_save_name)
+        app.set_active_save_name(original_active_name)
+        persistence.messagebox.showinfo = original_showinfo
+        persistence.messagebox.askyesno = original_askyesno
 
         print("SMOKE TEST PASSED")
         print(f"Roster: {len(app.roster)} | Free agents: {len(app.free_agents)} | Promotions: {promotion_names} | Gyms: {len(app.gyms)}")

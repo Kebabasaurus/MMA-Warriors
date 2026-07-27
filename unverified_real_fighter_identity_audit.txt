@@ -1,0 +1,687 @@
+MMA Warriors - Real Fighter Identity Coverage Audit
+
+These real seed entries do not yet have a verified birthplace/citizenship record.
+They currently use the listed broad seed-region as a fallback.
+Seed entries: 653
+Regional groups: 14
+
+Africa (9)
+Ange Loosa
+Boris Atangana
+Cameron Saaiman
+Maxwell Djantou Nana
+Muhidin Abubakar
+Nkosi Ndebele
+Omar Al Dafrawy
+Tahar Hadbi
+Themba Gorimbo
+
+Asia (56)
+Abdisalam Uulu Kubanychbek
+Abdoul Hussein
+Akbar Abdullaev
+Alibi Idiris
+Alimardan Abdykarov
+Asylzhan Bakhytzhanuly
+Avazbek Kholmirzaev
+Aziz Karagula-Akan
+Baktygul Kurmanbekova
+Chihiro Sawada
+Dae Hwan Kim
+Danny Kingad
+Denice Zamboanga
+Dumar Roa
+Edil Esengulov
+Eduard Folayang
+Elias Boudegzdame
+Farida Abdueva
+Faridun Odilov
+Flavio Queiroz
+Hamza Kooheji
+Iskandar Mamadaliev
+Jeremy Miado
+Jihin Radzuan
+Kai Tang
+Kamal Magomedov
+Karshyga Dautbek
+Kulabdam Sor Jor Piek Uthai
+Lito Adiwang
+Marcus Almeida
+Ming Shi
+Mingyang Zhang
+Mochamed Machaev
+Mohammed Fakhreddine
+Muhammad Saidov
+Nong-O Hama
+Ok Rae Yoon
+Petchmorakot Petchyindee
+Prajanchai PK Saenchai
+Rami Hamed
+Razhabali Shaidulloev
+Reece McLaren
+Rolando Dy
+Sami Chaoui
+Song Kenan
+Superbon Singha Mawynn
+Superlek Kiatmoo9
+Tang Kai
+Tawanchai PK Saenchai
+Tye Ruotolo
+Velimurad Alkhasov
+Wang Cong
+Zebaztian Kadestam
+Zhakshylyk Myrzabekov
+Zhifa Shang
+Zia Mashwani
+
+Australia (7)
+Cameron Rowston
+Cody Haddon
+Jacinta Austin
+Jacob Malkoun
+Kai Kara-France
+Robert Wilkinson
+Sara Collins
+
+Brazil (88)
+Alessandro Costa
+Alex Perez
+Allan Nascimento
+Allycia Hellen Rodrigues
+Antonio Carlos Jr.
+Antonio Carlos Jr.
+Bia Mesquita
+Bianca Sattelmayer
+Bruna Brasil
+Brunno Ferreira
+Bruno Cappelozza
+Bruno Souza
+Caio Borralho
+Carlos Leal
+Carol Foro
+Charles Oliveira
+Charles Oliveira
+Cristiane Justino
+Diego Brandao
+Diego Ferreira
+Dione Barbosa
+Eduarda Moura
+Elisandra Ferreira de Oliveira
+Elora Dana
+Elves Brener
+Fabricio Andrade
+Fabricio Werdum
+Felipe Efrain
+Felipe Froes
+Gabriel Braga
+Gabriel Braga
+Gabriella Fernandes
+Herdeson Batista
+Iasmin Lucindo
+Isaque Braz
+Jacqueline Cavalcanti
+Jean Matsumoto
+Jean Silva
+Jean Silva
+Joao Roque
+Jose Aldo
+Josiel Silva
+Julia Polastri
+Kaik Brito
+Kaue Fernandes
+Laura Vasconcelos
+Layze Cerqueira
+Lazaro Dayron
+Luan Santiago
+Luana Santos
+Luiz Gustavo
+Mairon Santos
+Marciano Ferreira
+Marcirley Alves da Silva
+Marcos Degli
+Marcos Galvao
+Marcus Aurelio
+Mayra Cantuaria
+Melquizael Costa
+Melquizael Costa
+Mileide Simplicio
+Natalia Alves
+Natan Schulte
+Nicolas Savio
+Nicolle Caliari
+Patricio Pitbull
+Rafael Estevam
+Rafael Pereira
+Rafael Xavier
+Raphael Assuncao
+Renan Barao
+Renata Mascena
+Renato Moicano
+Renato Moicano
+Roberto Satoshi Souza
+Ronny Henrique
+Sabrinna de Sousa
+Stephanie Luciano
+Tabatha Ricci
+Tabatha Ricci
+Thalita Soares
+Valesca Machado
+Vinicius Cruz
+Viviane Araujo
+Viviane Araujo
+Wagner Reis
+Weslley Maia
+Yasmin Guimaraes
+
+Canada (7)
+Aaron Jeffrey
+Anastasia Nikolakakos
+Jasmine Jasudavicius
+Jasmine Jasudavicius
+Marc-Andre Barriault
+Melissa Croden
+Patrick Cote
+
+Europe (167)
+Abdul-Aziz Abdulvakhabov
+Abubakar Vagaev
+Adam Borics
+Adam Borics
+Adrian Bartosinski
+Adrian Zielinski
+Adrianna Kreft
+Akhmed Aliev
+Albert Odzimkowski
+Aleksandar Rakic
+Alexander Podlesniy
+Alexander Shabliy
+Alexandr Romanov
+Alice Ardelean
+Amin Ayoub
+Amru Magomedov
+Anas Nfaou
+Anatoly Malykhin
+Andrej Kalasnik
+Arbi Agujev
+Arkadiusz Wrzosek
+Artem Damkovsky
+Artem Reznikov
+Artur Sowinski
+Asael Adjoudj
+Azamat Murzakanov
+Bartosz Lesko
+Benoit Saint Denis
+Benoit Saint Denis
+Bibir Tuvshinjargal
+Borislav Nikolic
+Borys Mankowski
+Brando Pericic
+Bruno Augusto
+Caolan Loughran
+Cezary Oleksiejczuk
+Damiano Scogna
+Daniel Konrad
+Daniel Skvor
+Danni Neilan
+Dario Bellandi
+Darko Stosic
+Darragh Kelly
+Delphine Benouaich
+Denis Smoldarev
+Denislav Erslan
+Diana Belbita
+Djati Melan
+Dominik Humburger
+Don Madge
+Dricus Du Plessis
+Dricus Du Plessis
+Dumitru Girlean
+Eduard Vartanyan
+Eimear Darcy
+Eva Dourthe
+Ewelina Wozniak
+Fabrizio Fossati
+Florim Zendeli
+Gabriele Galluccio
+Gadzhi Rabadanov
+Gadzhi Rabadanov
+Giannis Bachar
+Halil Amir
+Ian Machado Garry CW
+Ion Cutelaba
+Ivan Erslan
+Jakub Wiklacz
+James Sheehan
+Jaroslav Pokorny
+Jiri Prochazka
+Jiri Prochazka
+Joel Alvarez
+Jonas Magard
+Karlos Vemola
+Kasim Aras
+Khasan Magomedsharipov
+Klaudia Sygula
+Krystian Kaszubowski
+Leah McCourt
+Leo Brichta
+Luca Borando
+Lucia Szabova
+Lucie Pudilova
+Lukasz Brzeski
+Machmud Muradov
+Magdalena Sormova
+Magomed Magomedov
+Magomed Magomedov
+Manuel Del Valle
+Marcin Wojcik
+Marek Bartl
+Marian Ziolkowski
+Matej Penaz
+Mateusz Legierski
+Matous Kohout
+Mehdi Baydulaev
+Melvin Mane
+Michal Michalski
+Michal Oleksiejczuk
+Milos Petrasek
+Miroslav Strbak
+Mochamed Machaev
+Morgan Charriere
+Muhammad Idrisov
+Mukhamed Kokov
+Natalia Baczynska
+Nicolas Leblond
+Nora Cornolle
+Norbert Pietrzak
+Oleg Olenichev
+Oleg Popov
+Oleg Popov
+Olli Santalahti
+Paul Hughes CW
+Paulina Wisniewska
+Pavol Langer
+Pawel Pawlak
+Pedro Carvalho
+Piotr Kuberski
+Przemyslaw Mysiala
+Radek Paczuski
+Rafal Haratyk
+Randy Mboyo
+Rinat Fakhretdinov
+Rizvan Kuniev
+Robert Ruchala
+Roberto Soldic
+Roberto Soldic KSW
+Ronald Paradeiser
+Rustam Kerimov
+Sadibou Sy
+Salamat Isbulaev
+Salamat Isbulaev
+Salambek Badaev
+Samuel Bark
+Samuel Kristofic
+Samuel Krystofic
+Sara Luzar-Smajic
+Sergey Bilostenniy
+Sergey Bilostenniy
+Serghei Spivac
+Shamil Musaev
+Shamil Musaev
+Shawn Da Silva
+Slim Trabelsi
+Stefan Vojcak
+Tereza Bleda
+Timur Khizriev
+Tobias Harila
+Tomas Deak
+Tunez Nurgozhay
+Uros Medic
+Uros Medic
+Veronika Smolkova
+Vladimir Lengal
+Vladimir Stanca
+Vlasto Cepo
+Volkan Oezdemir
+Volkan Oezdemir
+Wiktoria Czyzewska
+Will Fleury
+William Gomis
+Yan Xiaonan
+Yana Santos
+Yusuf Raisov
+Zhora Ayvazyan
+
+Japan (41)
+Antonio Rodrigo Nogueira
+Antonio Rogerio Nogueira
+Hiromasa Ougikubo
+Itsuki Hirata
+Kazuma Kuramoto
+Keito Yamakita
+Kentaro Imaizumi
+Kota Miura
+Kouya Kanda
+Kyohei Hagiwara
+Kyoma Akimoto
+Luiz Ishihara
+Machi Fukuda
+Makoto Shinryu
+Makoto Takahashi
+Masaaki Sugawara
+Masahiro Oishi
+Mauricio Rua
+Mikio Ueda
+Miyuu Yamamoto
+Murilo Ninja Rua
+Rei Tsuruya
+Rogério Minotouro Nogueira
+Ryota Matsune
+Ryuichi Miki
+Satoshi Yamasu
+Seika Izawa
+Sena Kubota
+Setsu Iguchi
+Shinju Nozawa-Auclair
+Shinobu Ota
+Takahiro Komakine
+Vanderlei Silva
+Yachi Yu
+Yan Xiaonan
+Yoshinori Horie
+Yuki Motoya
+Yuki Shojo
+Yuki Tokoro
+Yusuke Yachi
+Yutaka Saito
+
+Mexico (14)
+Alden Coria
+Daniel Marcos
+Edgar Chairez
+Ernesto Rodriguez
+Imanol Rodriguez
+Jose Mariscal
+Juan Diaz
+Loopy Godinez
+Loopy Godinez
+Piera Rodriguez
+Raul Rosas Jr.
+Victor Valenzuela
+Yair Rodriguez
+Yair Rodriguez
+
+Middle East (3)
+Aieza Ramos Bertolso
+Arash Sadeghi
+Hatef Moeil
+
+New Zealand (1)
+Jay Jay Wilson
+
+Russia (37)
+Abdul-Rakhman Yakhyaev
+Aleksander Emelianenko
+Alikhan Suleimanov
+Alikhan Vakhaev
+Anatoliy Kondratyev
+Anton Vyazigin
+Asaf Chopurov
+Azamat Pshukov
+Beslan Isaev
+Bibert Tumenov
+Daud Shaikhaev
+Evgeny Goncharov
+Gadzhi Rabadanov
+Grachik Bozinyan
+Kurban Taygibov
+Magomedrasul Gasanov
+Mansur Malachiev
+Marat Gafurov
+Movlid Khaybulaev
+Muhammad Vakhaev
+Mukhamed Berkhamov
+Murad Ramazanov
+Muslim Magomedov
+Pavel Gordeev
+Rashid Vagabov
+Rasul Albaskhanov
+Rizvan Abuev
+Ruslan Shamilov
+Salamu Abdurakhmanov
+Salimgerey Rasulov
+Sergei Kharitonov
+Shamil Abdulaev
+Sulim Batalov
+Ustarmagomed Gadzhidaudov
+Yusup-Khadzhi Zubariev
+Zayundin Suleymanov
+Zumso Zuraev
+
+South Korea (7)
+Bo Hyun Park
+Chan Sung Jung
+Doo Ho Choi
+Jae Woong Kim
+Seung Chul Lee
+Soo Chul Kim
+Sung Hoon Woo
+
+UK (74)
+Aaron Aby
+Aidan Mercer
+Aiden Lee
+Alex Lohore
+Alfie Davis
+Alfie Davis
+Alfie Rowan
+Andy Clamp
+Brendan Loughnane
+Callum Renshaw
+Cameron Wren
+Christian Leroy Duncan
+Ciaran Clarke
+Dec Dean
+Dominique Wooding
+Elliot Vance
+Erin Calvert
+Fabian Edwards
+Fabian Edwards
+Finley Shaw
+Fraser Paterson
+Hannah Wren
+Harry Hardwick
+Harvey Quinn
+Ieuan Davies
+Jake Hadley
+James Hendin
+James Webb
+Jordan Vucenic
+Joshua Onwordi
+Justin Burlinson
+Kennedy Freeman
+Kiefer Crosbie
+Kieran Holt
+KSI
+Lee Chadwick
+Lewis Calder
+Liam Gittins
+Lone'er Kavanagh
+Lone'er Kavanagh CW
+Louie Sutherland
+Luke Trainer
+Mason Jones
+Mason Kellett
+Matthew Bonner
+Mia Kellett
+Michael Venom Page
+Mick Parkin
+Mick Stanton
+Nell Ariano
+Nikita Bagley
+Ollie Sarwa
+Omiel Brown
+Oscar Ownsworth
+Owen Kershaw
+Paddy McCorry
+Paul Hughes
+Paul Hughes
+Perry Goodwin
+Reece Maddison
+Rhys Maddox
+Rory Evans
+Sam Creasey
+Sean Clancy Jr.
+Shajidul Haque
+Shanelle Dyer
+Shem Rock
+Simeon Powell
+Sinead Kavanagh
+Sophie Renshaw
+Stevie Lee
+Teddy Stringer
+Will Currie
+Zanyar Kamaran
+
+USA (142)
+Abraham Bably
+Abraham Bably
+AJ McKee
+Alexei Pergande
+Alexia Thainara
+Andre Muniz
+Andre Petroski
+Anthony Ivy
+Ariane da Silva
+Azamat Murzakanov
+Bassil Hafez
+Biaggio Ali Walsh
+Billy Goff
+Bobby Lashley
+Brock Lesnar
+Bruno Silva Flyweight
+Bryan Battle
+Caio Borralho
+Cameron Smotherman
+Cesar Almeida
+Charles Johnson
+Charles Radtke
+Chris Brown LFA
+Chris Mixan
+Christian Leroy Duncan
+CM Punk
+Cody Brundage
+Cody Durden
+Cyborg Santos
+Da'Mon Blackshear
+Da'Mon Blackshear
+Daniel Argueta
+Daniel James
+Danny Barlow
+Daria Zhelezniakova
+Darian Weeks
+David Onama
+Demetrious Johnson ONE
+Denise Gomes
+Dilano Taylor
+Erin Blanchfield
+Erin Blanchfield
+Evan Tanner
+Fabricio Werdum
+Farid Basharat
+Fatima Kline
+Felipe Bunes
+Gabriel Santos
+Harvey Park
+Hyder Amil
+Ibo Aslan
+Ignacio Bahamondes
+Jacobe Smith
+Jaeleen Robledo
+Jake Hadley
+Jake Paul
+James Nakashima
+Jaqueline Amorim
+Jason Jackson
+Jawany Scott
+Jena Bishop
+Jena Bishop
+Jeremiah Wells
+Jhony Gregory
+Joanderson Brito
+Johnny Eblen
+Johnny Eblen
+Jordan Newman
+Jose Johnson
+Jose Miguel Delgado
+Jose Ochoa
+Josh Fremd
+Josh Fremd
+Josh Silveira
+Joshua Weems
+Julianna Pena
+Julianna Pena
+Justin Gonzales
+Karl Williams
+Katharina Lehner
+Katlyn Cerminara
+Kevin Borjas
+Kevin Natividad
+Khalil Rountree
+King Green
+KJ Noons
+Kyle Aguon
+Kyung Ho Kang
+Logan Paul
+Lone'er Kavanagh
+Lucas Clay
+Lucas Martino
+Ludovit Klein
+Manuel Torres
+Marcos Rogerio de Lima
+Marcus McGhee
+Matt Riddle
+Melissa Amaya
+Melissa Croden
+Michael Venom Page
+Mitch McKee
+Mitch Raposo
+Montana De La Rosa
+Montana De La Rosa
+Nate Jennerman
+Navajo Stirling
+Nick Maximov
+Oumar Sy
+Ovince Saint Preux
+Pat Sabatini
+Payton Talbott
+Rafa Garcia
+Rafael Assuncao
+Renat Khavalov
+Ricky Turcios
+Roman Kopylov
+Ryan Garcia
+Serghei Spivac
+Shamil Gaziev
+Shayna Baszler
+Sidney Outlaw
+Solomon Renfro
+Sumiko Inaba
+Summer Onley
+Sumudaerji
+Talita Alencar
+Tecia Pennington
+Terrance McKinney
+Thad Jean
+Thad Jean
+Thanh Le
+Thiago Moises
+Tim Johnson
+Tom Nolan
+Tony Laramie
+Trevor Peek
+Tyrell Fortune
+Vanessa Demopoulos LFA
+Victor Henry
+Waldo Cortes Acosta
+Waldo Cortes Acosta
+Zachary Reese

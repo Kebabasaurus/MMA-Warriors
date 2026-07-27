@@ -401,11 +401,37 @@ COUNTRY_TO_REGION = {
 COUNTRY_NATIONALITIES.update({
     "United Kingdom": "British", "United States of America": "American",
     "Republic of Ireland": "Irish", "Czech Republic": "Czech",
+    "People's Republic of China": "Chinese", "The Bahamas": "Bahamian",
+    "Kingdom of Denmark": "Danish", "Kingdom of the Netherlands": "Dutch",
+    "Angola": "Angolan", "Argentina": "Argentine", "Armenia": "Armenian", "Austria": "Austrian",
+    "Azerbaijan": "Azerbaijani", "Belarus": "Belarusian", "Belgium": "Belgian",
+    "Bulgaria": "Bulgarian", "Colombia": "Colombian", "Cuba": "Cuban",
+    "Denmark": "Danish", "Ecuador": "Ecuadorian", "Guinea": "Guinean",
+    "Guyana": "Guyanese", "Iran": "Iranian", "Kazakhstan": "Kazakh",
+    "Lithuania": "Lithuanian", "Maldives": "Maldivian", "Moldova": "Moldovan", "Myanmar": "Burmese",
+    "Netherlands": "Dutch", "New Zealand": "New Zealander", "Nigeria": "Nigerian",
+    "Panama": "Panamanian", "Peru": "Peruvian", "Portugal": "Portuguese",
+    "Slovakia": "Slovak", "Suriname": "Surinamese", "Tajikistan": "Tajik",
+    "Turkmenistan": "Turkmen", "Ukraine": "Ukrainian", "Jamaica": "Jamaican",
+    "Trinidad and Tobago": "Trinidadian",
 })
 COUNTRY_TO_REGION.update({
     "United Kingdom": "UK", "United States of America": "USA",
     "Republic of Ireland": "Europe", "Czech Republic": "Europe",
     "New Zealand": "Australia",
+    "People's Republic of China": "Asia", "The Bahamas": "USA",
+    "Kingdom of Denmark": "Europe", "Kingdom of the Netherlands": "Europe",
+    "Angola": "Africa", "Argentina": "Brazil", "Armenia": "Europe", "Austria": "Europe",
+    "Azerbaijan": "Europe", "Belarus": "Europe", "Belgium": "Europe",
+    "Bulgaria": "Europe", "Chile": "Brazil", "Colombia": "Mexico",
+    "Cuba": "USA", "Denmark": "Europe", "Ecuador": "Mexico",
+    "Guinea": "Africa", "Guyana": "USA", "Iran": "Middle East",
+    "Kazakhstan": "Asia", "Lithuania": "Europe", "Maldives": "Asia", "Moldova": "Europe",
+    "Myanmar": "Asia", "Netherlands": "Europe", "Nigeria": "Africa",
+    "Panama": "Mexico", "Peru": "Mexico", "Portugal": "Europe",
+    "Slovakia": "Europe", "Suriname": "Brazil", "Tajikistan": "Asia",
+    "Soviet Union": "Russia", "Trinidad and Tobago": "USA", "Turkmenistan": "Asia", "Ukraine": "Europe",
+    "Jamaica": "USA",
 })
 REGION_PROMO_BENEFITS = {
     "USA": {"media": 1.12, "gate": 1.10, "morale": 2},
@@ -784,16 +810,15 @@ try:
     _uk_name_payload = json.loads((ASSET_DIR / "uk_first_names.json").read_text(encoding="utf-8"))
 except (OSError, ValueError, TypeError):
     _uk_name_payload = {}
-_uk_neutral_names = _uk_name_payload.get("neutral", []) if isinstance(_uk_name_payload, dict) else []
 for _group, _asset_group in (("male", "male"), ("female", "female")):
     _existing = REGIONAL_NAME_POOLS["UK"][_group]
-    _incoming = (_uk_name_payload.get(_asset_group, []) if isinstance(_uk_name_payload, dict) else []) + _uk_neutral_names
+    _incoming = _uk_name_payload.get(_asset_group, []) if isinstance(_uk_name_payload, dict) else []
     _existing.extend(name for name in _incoming if isinstance(name, str) and name and name not in _existing)
 
 # Human-name data imported from the public corpora dataset. Norwegian data is
-# gendered at source, while the shared North American entries are explicitly
-# neutral. Surnames are safe to share across regional pools. Keeping the data
-# in an asset makes future name-bank refreshes a data update rather than code.
+# gendered at source. Neutral first names are deliberately excluded: generated
+# fighters must never receive a first name from the opposite gender's pool.
+# Surnames are safe to share across regional pools.
 try:
     _corpora_name_payload = json.loads((ASSET_DIR / "corpora_human_names.json").read_text(encoding="utf-8"))
 except (OSError, ValueError, TypeError):
@@ -817,8 +842,6 @@ _extend_unique_names(REGIONAL_NAME_POOLS["Europe"]["male"], _corpora_name_payloa
 _extend_unique_names(REGIONAL_NAME_POOLS["Europe"]["female"], _corpora_name_payload.get("norwegian_female", []))
 _extend_unique_names(REGIONAL_NAME_POOLS["Europe"]["last"], _corpora_name_payload.get("norwegian_last", []))
 for _north_american_region in ("USA", "Canada", "Australia"):
-    _extend_unique_names(REGIONAL_NAME_POOLS[_north_american_region]["male"], _corpora_name_payload.get("unisex_first_names", []))
-    _extend_unique_names(REGIONAL_NAME_POOLS[_north_american_region]["female"], _corpora_name_payload.get("unisex_first_names", []))
     _extend_unique_names(REGIONAL_NAME_POOLS[_north_american_region]["last"], _corpora_name_payload.get("north_american_last", []))
 for _hispanic_region in ("Brazil", "Mexico"):
     _extend_unique_names(REGIONAL_NAME_POOLS[_hispanic_region]["last"], _corpora_name_payload.get("hispanic_last", []))
@@ -837,6 +860,12 @@ for _regional_groups in REGIONAL_NAME_POOLS.values():
         _deduplicated = []
         _extend_unique_names(_deduplicated, _regional_bank)
         _regional_bank[:] = _deduplicated
+
+# Name banks deliberately keep their shipped spellings, including accents and
+# the packaged regional directories' exact casing. Two banks can therefore hold
+# the same name in different forms ("Garcia" and "García"), which is fine here:
+# fighter uniqueness is enforced on an accent- and case-folded identity when a
+# fighter is actually named, in AdminMixin.fighter_name_key.
 
 # --- Eurasian Fight Circuit -------------------------------------------------
 # The Caucasus and Central Asia produce a distinctive talent profile: heavy
@@ -934,6 +963,25 @@ for _eur_region, _eur_pool in EURASIAN_NAME_POOLS.items():
     _extend_unique_names(REGIONAL_NAME_POOLS["Russia"]["male"], _eur_pool["male"])
     _extend_unique_names(REGIONAL_NAME_POOLS["Russia"]["last"], _eur_pool["last"])
     _extend_unique_names(LAST_NAMES, _eur_pool["last"])
+
+
+def _remove_shared_first_names(pools):
+    """Keep generated male and female names visually unambiguous."""
+    male_keys = {str(name).strip().casefold() for name in pools.get("male", []) if str(name).strip()}
+    female_keys = {str(name).strip().casefold() for name in pools.get("female", []) if str(name).strip()}
+    shared = male_keys & female_keys
+    if not shared:
+        return
+    for group in ("male", "female"):
+        pools[group][:] = [
+            name for name in pools[group]
+            if str(name).strip().casefold() not in shared
+        ]
+
+
+for _regional_pools in REGIONAL_NAME_POOLS.values():
+    _remove_shared_first_names(_regional_pools)
+_remove_shared_first_names({"male": FIRST_NAMES, "female": FEMALE_FIRST_NAMES})
 
 STANDING_SKILLS = ["footwork", "feints", "head_movement", "punch_power", "punch_technique", "hand_speed", "high_kick_power", "high_kick_technique", "high_kick_speed", "low_kick_power", "low_kick_technique", "low_kick_speed", "creative_punches", "creative_kicks", "guard_defence", "kick_defence"]
 GROUND_SKILLS = ["guard_work", "scrambles", "transitions", "positional_ability", "ground_striking", "submission_attack", "submission_defence_detail", "top_control", "bottom_control", "back_control", "mount_control", "leg_locks"]
