@@ -219,6 +219,9 @@ class Fighter:
     # Fighters created after play begins are true in-universe entrants and begin
     # at 0-0-0 with their first rating snapshot in their entry year.
     generated: bool = False
+    # Curated real-world seed data can retain the public profile used to verify
+    # it. Generated fighters intentionally have no source URL.
+    source_url: str = ""
     universe_entry_month: int = 0
     universe_entry_year: int = 0
     camp_joined_month: int = 0

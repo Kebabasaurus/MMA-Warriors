@@ -1,73 +1,174 @@
 MMA WARRIORS - FIGHT / MATCHMAKING BALANCE AUDIT
 ========================================================================================================
-Controlled seeds 20260718, 20260719. World seed 20260714. Cloned/in-memory fighters only; no save changed.
-Controlled pooled sample: 400 each low/mid/high plus 800 realistic mixed-card bouts.
+Controlled seeds 20260714. World seed 20260714. Cloned/in-memory fighters only; no save changed.
+Controlled pooled sample: 400 each low/mid/high plus 1,000 realistic mixed-card bouts.
 Controlled matchmaking: same gender/division and pre-fight OVR gap <=6; mixed cards are 25% low, 55% mid, 20% high with one five-round main event per 10 bouts.
 Upset = lower pre-fight OVR fighter wins; draws and equal-OVR bouts are excluded from the upset denominator.
 
 CONTROLLED ENGINE CALIBRATION
 ========================================================================================================
-PER-SEED FINISH RATES
---------------------------------------------------------------------------------------------------------
-20260718: Low 64.50% | Mid 51.00% | High 63.00% | Realistic 56.25%
-20260719: Low 58.00% | Mid 51.00% | High 54.50% | Realistic 57.25%
-
 Low (<68)
 --------------------------------------------------------------------------------------------------------
-Fights 400 | Finishes 245 (61.25%) | Decisions 155 (38.75%) | Draws 0 (0.00%)
-Average pre-fight OVR gap 2.95 | Average ending round 2.15
-Methods: Decision 155 (38.75%) | TKO 111 (27.75%) | Submission 89 (22.25%) | KO 40 (10.00%) | Technical Submission 4 (1.00%) | Corner Stoppage 1 (0.25%)
-Ending rounds: R1 134 (33.50%) | R2 74 (18.50%) | R3 192 (48.00%)
+Fights 400 | Finishes 257 (64.25%) | Decisions 143 (35.75%) | Draws 0 (0.00%)
+Average pre-fight OVR gap 3.19 | Average ending round 2.09
+Methods: Decision 143 (35.75%) | TKO 125 (31.25%) | Submission 80 (20.00%) | KO 46 (11.50%) | Technical Submission 4 (1.00%) | Corner Stoppage 2 (0.50%)
+Ending rounds: R1 140 (35.00%) | R2 83 (20.75%) | R3 177 (44.25%)
 Gap band       Fights  Share    Finish rate   Rated results  Upsets   Upset rate
-0 (even)          43   10.75%       65.12%               0       0       0.00%
-1-2              135   33.75%       66.67%             135      58      42.96%
-3-4              118   29.50%       55.08%             118      44      37.29%
-5-6              104   26.00%       59.62%             104      27      25.96%
+0 (even)          32    8.00%       75.00%               0       0       0.00%
+1-2              121   30.25%       62.81%             121      47      38.84%
+3-4              132   33.00%       62.88%             132      45      34.09%
+5-6              115   28.75%       64.35%             115      38      33.04%
 Consistency checks: none detected
 
 Mid (68-79)
 --------------------------------------------------------------------------------------------------------
-Fights 400 | Finishes 204 (51.00%) | Decisions 196 (49.00%) | Draws 0 (0.00%)
-Average pre-fight OVR gap 2.71 | Average ending round 2.44
-Methods: Decision 196 (49.00%) | TKO 119 (29.75%) | Submission 60 (15.00%) | KO 22 (5.50%) | Technical Submission 3 (0.75%)
-Ending rounds: R1 72 (18.00%) | R2 81 (20.25%) | R3 247 (61.75%)
+Fights 400 | Finishes 223 (55.75%) | Decisions 177 (44.25%) | Draws 0 (0.00%)
+Average pre-fight OVR gap 2.94 | Average ending round 2.42
+Methods: Decision 177 (44.25%) | TKO 130 (32.50%) | Submission 58 (14.50%) | KO 32 (8.00%) | Corner Stoppage 2 (0.50%) | Doctor Stoppage 1 (0.25%)
+Ending rounds: R1 70 (17.50%) | R2 93 (23.25%) | R3 237 (59.25%)
 Gap band       Fights  Share    Finish rate   Rated results  Upsets   Upset rate
-0 (even)          52   13.00%       48.08%               0       0       0.00%
-1-2              155   38.75%       52.90%             155      64      41.29%
-3-4               98   24.50%       53.06%              98      41      41.84%
-5-6               95   23.75%       47.37%              95      25      26.32%
+0 (even)          46   11.50%       65.22%               0       0       0.00%
+1-2              130   32.50%       55.38%             130      60      46.15%
+3-4              124   31.00%       56.45%             124      46      37.10%
+5-6              100   25.00%       51.00%             100      29      29.00%
 Consistency checks: none detected
 
 High (80+)
 --------------------------------------------------------------------------------------------------------
-Fights 400 | Finishes 235 (58.75%) | Decisions 165 (41.25%) | Draws 0 (0.00%)
-Average pre-fight OVR gap 2.71 | Average ending round 2.41
-Methods: Decision 165 (41.25%) | TKO 116 (29.00%) | Submission 74 (18.50%) | KO 41 (10.25%) | Technical Submission 4 (1.00%)
-Ending rounds: R1 67 (16.75%) | R2 103 (25.75%) | R3 230 (57.50%)
+Fights 400 | Finishes 229 (57.25%) | Decisions 171 (42.75%) | Draws 0 (0.00%)
+Average pre-fight OVR gap 2.56 | Average ending round 2.39
+Methods: Decision 171 (42.75%) | TKO 118 (29.50%) | Submission 69 (17.25%) | KO 31 (7.75%) | Technical Submission 10 (2.50%) | Corner Stoppage 1 (0.25%)
+Ending rounds: R1 83 (20.75%) | R2 78 (19.50%) | R3 239 (59.75%)
 Gap band       Fights  Share    Finish rate   Rated results  Upsets   Upset rate
-0 (even)          46   11.50%       73.91%               0       0       0.00%
-1-2              165   41.25%       55.15%             165      80      48.48%
-3-4              109   27.25%       58.72%             109      35      32.11%
-5-6               80   20.00%       57.50%              80      27      33.75%
+0 (even)          64   16.00%       67.19%               0       0       0.00%
+1-2              148   37.00%       52.70%             148      60      40.54%
+3-4              109   27.25%       61.47%             109      30      27.52%
+5-6               79   19.75%       51.90%              79      24      30.38%
 Consistency checks: none detected
 
 Realistic mixed cards
 --------------------------------------------------------------------------------------------------------
-Fights 800 | Finishes 454 (56.75%) | Decisions 345 (43.12%) | Draws 1 (0.12%)
-Average pre-fight OVR gap 2.90 | Average ending round 2.45
-Methods: Decision 345 (43.12%) | TKO 251 (31.37%) | Submission 132 (16.50%) | KO 65 (8.12%) | Technical Submission 5 (0.62%) | Corner Stoppage 1 (0.12%) | Draw 1 (0.12%)
-Ending rounds: R1 159 (19.88%) | R2 183 (22.88%) | R3 425 (53.12%) | R4 3 (0.38%) | R5 30 (3.75%)
+Fights 1,000 | Finishes 603 (60.30%) | Decisions 396 (39.60%) | Draws 1 (0.10%)
+Average pre-fight OVR gap 2.87 | Average ending round 2.40
+Methods: Decision 396 (39.60%) | TKO 340 (34.00%) | Submission 161 (16.10%) | KO 94 (9.40%) | Corner Stoppage 4 (0.40%) | Technical Submission 3 (0.30%) | Draw 1 (0.10%) | Doctor Stoppage 1 (0.10%)
+Ending rounds: R1 222 (22.20%) | R2 228 (22.80%) | R3 514 (51.40%) | R4 3 (0.30%) | R5 33 (3.30%)
 Gap band       Fights  Share    Finish rate   Rated results  Upsets   Upset rate
-0 (even)          72    9.00%       59.72%               0       0       0.00%
-1-2              295   36.88%       55.93%             295     148      50.17%
-3-4              234   29.25%       53.42%             234      87      37.18%
-5-6              199   24.88%       60.80%             199      67      33.67%
+0 (even)         115   11.50%       66.09%               0       0       0.00%
+1-2              338   33.80%       59.17%             338     158      46.75%
+3-4              311   31.10%       55.63%             310     109      35.16%
+5-6              236   23.60%       65.25%             236      78      33.05%
 Consistency checks: none detected
+
+FRESH WORLD MATCHMAKING REPLAY
+========================================================================================================
+All recorded MMA fights (5 years)
+--------------------------------------------------------------------------------------------------------
+Fights 21,315 | Finishes 13,265 (62.23%) | Decisions 8,029 (37.67%) | Draws 21 (0.10%)
+Average pre-fight OVR gap 3.92 | Average ending round 2.36
+Methods: Decision 8029 (37.67%) | TKO 6102 (28.63%) | Submission 4209 (19.75%) | KO 2634 (12.36%) | Technical Submission 182 (0.85%) | Corner Stoppage 110 (0.52%) | Injury Stoppage 24 (0.11%) | Draw 21 (0.10%) | Doctor Stoppage 4 (0.02%)
+Ending rounds: R1 5547 (26.02%) | R2 4648 (21.81%) | R3 9985 (46.84%) | R4 137 (0.64%) | R5 998 (4.68%)
+Gap band       Fights  Share    Finish rate   Rated results  Upsets   Upset rate
+0 (even)        4050   19.00%       59.33%               0       0       0.00%
+1-2             7711   36.18%       59.24%            7706    3604      46.77%
+3-4             3559   16.70%       57.57%            3554    1355      38.13%
+5-6             3064   14.37%       59.79%            3060     995      32.52%
+7-9              888    4.17%       69.37%             885     230      25.99%
+10-14            889    4.17%       80.09%             887     149      16.80%
+15+             1154    5.41%       94.02%            1154      42       3.64%
+Consistency checks: none detected
+
+WORLD RESULTS BY SOURCE
+--------------------------------------------------------------------------------------------------------
+Major promotions
+--------------------------------------------------------------------------------------------------------
+Fights 19,839 | Finishes 12,294 (61.97%) | Decisions 7,525 (37.93%) | Draws 20 (0.10%)
+Average pre-fight OVR gap 3.93 | Average ending round 2.38
+Methods: Decision 7525 (37.93%) | TKO 5659 (28.52%) | Submission 3940 (19.86%) | KO 2389 (12.04%) | Technical Submission 173 (0.87%) | Corner Stoppage 106 (0.53%) | Injury Stoppage 24 (0.12%) | Draw 20 (0.10%) | Doctor Stoppage 3 (0.02%)
+Ending rounds: R1 5016 (25.28%) | R2 4375 (22.05%) | R3 9313 (46.94%) | R4 137 (0.69%) | R5 998 (5.03%)
+Gap band       Fights  Share    Finish rate   Rated results  Upsets   Upset rate
+0 (even)        3896   19.64%       59.27%               0       0       0.00%
+1-2             7184   36.21%       58.76%            7180    3360      46.80%
+3-4             3237   16.32%       56.75%            3232    1231      38.09%
+5-6             2842   14.33%       59.04%            2838     921      32.45%
+7-9              732    3.69%       71.45%             729     174      23.87%
+10-14            819    4.13%       80.95%             817     131      16.03%
+15+             1129    5.69%       94.15%            1129      40       3.54%
+
+Independent Circuit
+--------------------------------------------------------------------------------------------------------
+Fights 1,476 | Finishes 971 (65.79%) | Decisions 504 (34.15%) | Draws 1 (0.07%)
+Average pre-fight OVR gap 3.77 | Average ending round 2.10
+Methods: Decision 504 (34.15%) | TKO 443 (30.01%) | Submission 269 (18.22%) | KO 245 (16.60%) | Technical Submission 9 (0.61%) | Corner Stoppage 4 (0.27%) | Doctor Stoppage 1 (0.07%) | Draw 1 (0.07%)
+Ending rounds: R1 531 (35.98%) | R2 273 (18.50%) | R3 672 (45.53%)
+Gap band       Fights  Share    Finish rate   Rated results  Upsets   Upset rate
+0 (even)         154   10.43%       61.04%               0       0       0.00%
+1-2              527   35.70%       65.84%             526     244      46.39%
+3-4              322   21.82%       65.84%             322     124      38.51%
+5-6              222   15.04%       69.37%             222      74      33.33%
+7-9              156   10.57%       59.62%             156      56      35.90%
+10-14             70    4.74%       70.00%              70      18      25.71%
+15+               25    1.69%       88.00%              25       2       8.00%
+
+WORLD RESULTS BY AVERAGE BOUT TIER
+--------------------------------------------------------------------------------------------------------
+Low (<68)
+--------------------------------------------------------------------------------------------------------
+Fights 5,324 | Finishes 3,567 (67.00%) | Decisions 1,755 (32.96%) | Draws 2 (0.04%)
+Average pre-fight OVR gap 3.50 | Average ending round 2.08
+Methods: Decision 1755 (32.96%) | TKO 1562 (29.34%) | Submission 1113 (20.91%) | KO 825 (15.50%) | Technical Submission 46 (0.86%) | Corner Stoppage 20 (0.38%) | Draw 2 (0.04%) | Doctor Stoppage 1 (0.02%)
+Ending rounds: R1 1947 (36.57%) | R2 1091 (20.49%) | R3 2252 (42.30%) | R4 6 (0.11%) | R5 28 (0.53%)
+Gap band       Fights  Share    Finish rate   Rated results  Upsets   Upset rate
+0 (even)         845   15.87%       65.09%               0       0       0.00%
+1-2             2004   37.64%       65.77%            2002     927      46.30%
+3-4             1116   20.96%       66.22%            1116     414      37.10%
+5-6              825   15.50%       68.48%             825     281      34.06%
+7-9              262    4.92%       62.21%             262      85      32.44%
+10-14            112    2.10%       74.11%             112      21      18.75%
+15+              160    3.01%       93.12%             160       6       3.75%
+
+Mid (68-79)
+--------------------------------------------------------------------------------------------------------
+Fights 8,250 | Finishes 5,057 (61.30%) | Decisions 3,183 (38.58%) | Draws 10 (0.12%)
+Average pre-fight OVR gap 3.94 | Average ending round 2.38
+Methods: Decision 3183 (38.58%) | TKO 2592 (31.42%) | Submission 1458 (17.67%) | KO 869 (10.53%) | Technical Submission 64 (0.78%) | Corner Stoppage 60 (0.73%) | Injury Stoppage 12 (0.15%) | Draw 10 (0.12%) | Doctor Stoppage 2 (0.02%)
+Ending rounds: R1 1953 (23.67%) | R2 1899 (23.02%) | R3 4041 (48.98%) | R4 49 (0.59%) | R5 308 (3.73%)
+Gap band       Fights  Share    Finish rate   Rated results  Upsets   Upset rate
+0 (even)        1975   23.94%       58.18%               0       0       0.00%
+1-2             3338   40.46%       57.19%            3336    1584      47.48%
+3-4             1066   12.92%       55.44%            1065     411      38.59%
+5-6              736    8.92%       58.83%             733     251      34.24%
+7-9              247    2.99%       72.47%             246      57      23.17%
+10-14            297    3.60%       77.44%             295      47      15.93%
+15+              591    7.16%       95.77%             591      12       2.03%
+
+High (80+)
+--------------------------------------------------------------------------------------------------------
+Fights 7,741 | Finishes 4,641 (59.95%) | Decisions 3,091 (39.93%) | Draws 9 (0.12%)
+Average pre-fight OVR gap 4.19 | Average ending round 2.54
+Methods: Decision 3091 (39.93%) | TKO 1948 (25.16%) | Submission 1638 (21.16%) | KO 940 (12.14%) | Technical Submission 72 (0.93%) | Corner Stoppage 30 (0.39%) | Injury Stoppage 12 (0.16%) | Draw 9 (0.12%) | Doctor Stoppage 1 (0.01%)
+Ending rounds: R1 1647 (21.28%) | R2 1658 (21.42%) | R3 3692 (47.69%) | R4 82 (1.06%) | R5 662 (8.55%)
+Gap band       Fights  Share    Finish rate   Rated results  Upsets   Upset rate
+0 (even)        1230   15.89%       57.24%               0       0       0.00%
+1-2             2369   30.60%       56.61%            2368    1093      46.16%
+3-4             1377   17.79%       52.21%            1373     530      38.60%
+5-6             1503   19.42%       55.49%            1502     463      30.83%
+7-9              379    4.90%       72.30%             377      88      23.34%
+10-14            480    6.20%       83.12%             480      81      16.88%
+15+              403    5.21%       91.81%             403      24       5.96%
+
+MAJOR-PROMOTION ORDINARY MATCHMAKING
+--------------------------------------------------------------------------------------------------------
+Ordinary bouts 12,827 | OVR gap <=6: 12,739 (99.31%) | Forced division-depth mismatches: 88
+Average ordinary OVR gap: 1.75 | Preserved title/grudge/retirement/prospect exceptions: 7,012
 
 INTERPRETATION
 ========================================================================================================
 Historical five-year report: 2,906/4,751 finishes (61.17%).
-Controlled realistic mixed cards (all gaps <=6): 454/800 finishes (56.75%).
-Controlled same-tier finish rates: low 61.25%, mid 51.00%, high 58.75%.
+Controlled realistic mixed cards (all gaps <=6): 603/1,000 finishes (60.30%).
+Controlled same-tier finish rates: low 64.25%, mid 55.75%, high 57.25%.
+Fresh five-year world replay: 13,265/21,315 finishes (62.23%).
+World bouts at gap <=6: 18,384 (86.25%), finish rate 59.03%.
+World bouts at gap >=7: 2,931 (13.75%), finish rate 82.33%.
+Independent circuit finish rate: 65.79% across 1,476 bouts.
 Controlled tier calibration is outside the documented band for low, mid, high; only a targeted mechanics review for those tiers is supported, not an aggregate finish-rate nerf.
 The world aggregate should not be used as a direct engine calibration target.

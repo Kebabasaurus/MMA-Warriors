@@ -188,6 +188,61 @@ def install_global_exception_handlers():
 
 
 class PersistenceMixin:
+    def save_metadata_sidecar_path(self, path):
+        path = Path(path)
+        return path.with_name(path.name + ".metadata")
+
+    def write_save_metadata_sidecar(self, path, metadata):
+        """Persist tiny save-list metadata without opening the full world file."""
+        if not isinstance(metadata, dict) or not metadata:
+            return
+        try:
+            atomic_write_json_compact(self.save_metadata_sidecar_path(path), metadata)
+        except Exception:
+            LOGGER.exception("Could not write save metadata sidecar for %s", path)
+
+    def save_metadata_file_signature(self, path):
+        path = Path(path)
+        stat = path.stat()
+        sidecar = self.save_metadata_sidecar_path(path)
+        if sidecar.exists():
+            sidecar_stat = sidecar.stat()
+            return (stat.st_mtime_ns, stat.st_size, sidecar_stat.st_mtime_ns, sidecar_stat.st_size)
+        return (stat.st_mtime_ns, stat.st_size, 0, 0)
+
+    def read_save_metadata_fast(self, path):
+        """Read sidecar metadata, or recover it from a bounded legacy JSON tail."""
+        path = Path(path)
+        sidecar = self.save_metadata_sidecar_path(path)
+        if sidecar.exists():
+            try:
+                data = json.loads(sidecar.read_text(encoding="utf-8"))
+                return data if isinstance(data, dict) else {}
+            except Exception:
+                LOGGER.exception("Could not read save metadata sidecar: %s", sidecar)
+        if path.suffix.lower() == ".gz":
+            return {}
+        try:
+            with path.open("rb") as handle:
+                handle.seek(0, 2)
+                size = handle.tell()
+                handle.seek(max(0, size - 262_144))
+                tail = handle.read().decode("utf-8", errors="ignore")
+            marker = '"_save_meta"'
+            marker_at = tail.rfind(marker)
+            if marker_at < 0:
+                return {}
+            value_at = tail.find(":", marker_at + len(marker))
+            if value_at < 0:
+                return {}
+            metadata, _end = json.JSONDecoder().raw_decode(tail[value_at + 1:].lstrip())
+            if isinstance(metadata, dict):
+                self.write_save_metadata_sidecar(path, metadata)
+                return metadata
+        except Exception:
+            LOGGER.exception("Could not recover bounded save metadata from %s", path)
+        return {}
+
     def handle_uncaught_exception(self, exc_type, exc_value, exc_tb):
         """Global guard so a stray error never silently kills a windowed build.
 
@@ -201,7 +256,9 @@ class PersistenceMixin:
             crash_folder = self.save_slot_dir() / "Crash Recovery"
             crash_folder.mkdir(parents=True, exist_ok=True)
             autosave_path = crash_folder / f"crash_autosave_{_crash_stamp()}.json"
+            data["_save_meta"] = self.save_metadata("Crash Recovery")
             atomic_write_json_compact(autosave_path, data)
+            self.write_save_metadata_sidecar(autosave_path, data["_save_meta"])
             crash_note += f"\nAn emergency autosave was written to {autosave_path}."
         except Exception as autosave_error:
             LOGGER.exception("Emergency crash autosave failed: %s", autosave_error)
@@ -223,6 +280,7 @@ class PersistenceMixin:
             if path.exists():
                 self.backup_save_file(path, "before_quick_save")
             atomic_write_json_compact(path, data)
+            self.write_save_metadata_sidecar(path, data["_save_meta"])
             self.prune_save_backups()
         except Exception as exc:
             LOGGER.exception("Quick save failed: %s", exc)
@@ -342,6 +400,7 @@ class PersistenceMixin:
         data["_save_meta"].update({"snapshot_type": "spectator_decade", "years_elapsed": years})
         try:
             atomic_write_json_gzip(path, data, compresslevel=3)
+            self.write_save_metadata_sidecar(path, data["_save_meta"])
             self.last_spectator_snapshot_year = years
             self.event_log.insert(0, f"Save system: created spectator decade snapshot {path.name}.")
             return path
@@ -392,6 +451,9 @@ class PersistenceMixin:
                 continue
             try:
                 item.unlink()
+                sidecar = self.save_metadata_sidecar_path(item)
+                if sidecar.exists():
+                    sidecar.unlink()
             except FileNotFoundError:
                 pass
             except Exception:
@@ -424,6 +486,7 @@ class PersistenceMixin:
         })
         data["_save_meta"] = metadata
         atomic_write_json_gzip(target, data)
+        self.write_save_metadata_sidecar(target, metadata)
         self.prune_rolling_snapshot_files(backup_dir, "backup")
         return target
 
@@ -452,6 +515,7 @@ class PersistenceMixin:
             # Level 3 materially shortens the UI pause on long saves while
             # retaining ordinary gzip compatibility and bounded retention.
             atomic_write_json_gzip(path, data, compresslevel=3)
+            self.write_save_metadata_sidecar(path, data["_save_meta"])
             self.prune_rolling_autosaves(kind)
             return path
         except Exception as exc:
@@ -1428,6 +1492,7 @@ class PersistenceMixin:
             metadata.update({"slot_name": requested, "folder": target_group, "saved_at": datetime.now().isoformat(timespec="seconds")})
             copied_data["_save_meta"] = metadata
             atomic_write_json_compact(copied_primary, copied_data)
+            self.write_save_metadata_sidecar(copied_primary, metadata)
         except Exception as exc:
             LOGGER.exception("Could not duplicate save slot %s to %s: %s", source_root, target_root, exc)
             if target_root.exists():
@@ -1490,16 +1555,15 @@ class PersistenceMixin:
             group_prefix = f"[{group}] " if visible_group == "All Saves" else ""
             label = group_prefix + (f"{display_name} | {kind}" if kind else display_name)
             try:
-                stat = file.stat()
                 cache_key = str(file.resolve())
-                signature = (stat.st_mtime_ns, stat.st_size)
+                signature = self.save_metadata_file_signature(file)
                 live_cache_keys.add(cache_key)
                 cached = metadata_cache.get(cache_key)
                 if cached and cached[0] == signature:
                     meta = cached[1]
                 else:
-                    data = json.loads(read_json_text(file))
-                    meta = data.get("_save_meta", {}) if isinstance(data, dict) else {}
+                    meta = self.read_save_metadata_fast(file)
+                    signature = self.save_metadata_file_signature(file)
                     metadata_cache[cache_key] = (signature, meta)
                 if meta:
                     company = meta.get("company", "Unknown")
@@ -1999,6 +2063,7 @@ class PersistenceMixin:
             data = self.serialize_world()
             data["_save_meta"] = self.save_metadata(name)
             atomic_write_json_compact(path, data)
+            self.write_save_metadata_sidecar(path, data["_save_meta"])
             self.prune_save_backups()
         except Exception as exc:
             self.set_active_save_location(previous_name, previous_group)

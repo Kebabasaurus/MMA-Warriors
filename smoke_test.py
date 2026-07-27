@@ -29,7 +29,18 @@ def main():
     root = tk.Tk()
     root.withdraw()
     try:
-        app = game.FightEmpireApp(root)
+        startup_updates = []
+        app = game.FightEmpireApp(root, startup_progress=lambda value, text: startup_updates.append((value, text)))
+        assert_true(startup_updates and startup_updates[-1][0] == 100, "Startup progress did not reach its ready state")
+        assert_true(all(a[0] <= b[0] for a, b in zip(startup_updates, startup_updates[1:])), "Startup progress moved backwards")
+        app.start_company_choice.set("Spectator Mode")
+        app.new_game()
+        assert_true(app.spectator_mode, "Spectator Mode failed before lazy Log screen construction")
+        app.start_company_choice.set(game.PLAYER_PROMOTION_NAME)
+        app.new_game()
+        for screen_name in app.screen_builders:
+            app.ensure_screen_built(screen_name)
+        assert_true(set(app.screen_builders) == app.built_screens, "One or more lazy management screens failed to build")
         champion_probe = next((fighter for fighter in app.roster if fighter.champion or fighter.interim_champion), None)
         if champion_probe is None:
             champion_probe = max(app.roster, key=app.champion_sort_value)
@@ -501,6 +512,16 @@ def main():
         ufc = next(promo for promo in app.promotions if promo.name == "Ultimate Fighting Championship")
         assert_true(any(fighter.name == "Islam Makhachev" for fighter in ufc.roster), "New-game reset replaced authored UFC fighters with generated filler")
         assert_true(any(fighter.name == "AJ McKee" for promo in app.promotions if promo.name == "Professional Fighters League" for fighter in promo.roster), "New-game reset replaced authored PFL fighters with generated filler")
+        pfl = next(promo for promo in app.promotions if promo.name == "Professional Fighters League")
+        cage_warriors = next(promo for promo in app.promotions if promo.name == "Cage Warriors")
+        lewis = next(fighter for fighter in pfl.roster if fighter.name == "Lewis McGrillen")
+        omar = next(fighter for fighter in cage_warriors.roster if fighter.name == "Omar Tugarev")
+        brett = next(fighter for fighter in app.free_agents if fighter.name == "Brett Akey")
+        assert_true(not lewis.generated and lewis.weight == "Bantamweight" and lewis.source_url, "PFL real-fighter replacement was not seeded in-place")
+        assert_true(not omar.generated and omar.weight == "Lightweight" and omar.source_url, "Cage Warriors real-fighter replacement was not seeded in-place")
+        assert_true(not brett.generated and brett.weight == "Lightweight" and brett.potential >= 87, "Custom real-fighter replacement did not retain its requested ceiling")
+        curated_names = {"Lewis McGrillen", "Omar Tugarev", "Brett Akey", "Markell Holmes", "Max Holzer"}
+        assert_true(sum(fighter.name in curated_names for fighter in app.all_database_fighters()) == len(curated_names), "Curated real-fighter replacement introduced a duplicate")
         feeder_rosters = [promo for promo in app.promotions if getattr(promo, "is_regional_feeder", False)]
         assert_true(feeder_rosters and all(len(promo.roster) == 70 for promo in feeder_rosters), "Regional feeder promotions should open with 70 fighters each")
         app.start_company_choice.set("Spectator Mode")
@@ -803,8 +824,30 @@ def main():
         for fighter in candidates:
             fighter.sport_employer = app.player_company_name
         division["roster"] = [signed_youth.name] + [fighter.name for fighter in candidates]
-        player_card = app.run_combat_sport_card("Boxing", app.combat_sport_worlds["Boxing"], app.player_company_name, player_owned=True, target_bouts=5)
+        existing_windows = set(root.winfo_children())
+        app.open_player_combat_division_window("Boxing")
+        root.update_idletasks()
+        sport_windows = [child for child in root.winfo_children() if child not in existing_windows and child.winfo_class() == "Toplevel"]
+        assert_true(sport_windows, "Player combat-sport management window did not open")
+        sport_window = sport_windows[-1]
+        descendants = []
+        pending = list(sport_window.winfo_children())
+        while pending:
+            widget = pending.pop()
+            descendants.append(widget)
+            pending.extend(widget.winfo_children())
+        notebooks = [widget for widget in descendants if widget.winfo_class() == "TNotebook"]
+        assert_true(notebooks and len(notebooks[0].tabs()) == 4, "Player combat-sport manager did not render its four workspaces")
+        auto_fill_buttons = [widget for widget in descendants if widget.winfo_class() == "TButton" and widget.cget("text") == "Auto-Fill Card"]
+        assert_true(auto_fill_buttons, "Player combat-sport manager did not render the editable smart-card action")
+        auto_fill_buttons[0].invoke()
+        root.update_idletasks()
+        assert_true(division.get("booked_bouts"), "Player combat-sport auto-fill did not create an editable card")
+        division["booked_bouts"] = []
+        sport_window.destroy()
+        player_card = app.run_combat_sport_card("Boxing", app.combat_sport_worlds["Boxing"], app.player_company_name, player_owned=True, target_bouts=5, event_name="Smoke Boxing Night")
         assert_true(player_card and len(player_card["results"]) >= 4 and division.get("events"), "Player combat-sport card builder failed")
+        assert_true(player_card.get("event_name") == "Smoke Boxing Night", "Player combat-sport custom event name was not preserved")
         sport_result = player_card["results"][0]
         assert_true(any(line.startswith("Camp:") for line in sport_result.get("log", [])), "Combat-sport camps are not reaching the fight log")
         assert_true(any(line.startswith("Weigh-in:") for line in sport_result.get("log", [])), "Combat-sport weigh-ins are not reaching the fight log")

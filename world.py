@@ -6376,7 +6376,7 @@ class WorldMixin:
             used.update([fighter.name, opponent.name])
         return bouts
 
-    def run_combat_sport_card(self, sport, world, employer, player_owned=False, target_bouts=6, bouts=None):
+    def run_combat_sport_card(self, sport, world, employer, player_owned=False, target_bouts=6, bouts=None, event_name=""):
         division = getattr(self, "player_combat_divisions", {}).get(sport) if player_owned else None
         if player_owned and division and bouts is None:
             target_bouts = {"Prospect Builder": 6, "Star Showcase": 4, "Title Focus": 5}.get(division.get("strategy", "Balanced"), target_bouts)
@@ -6393,7 +6393,8 @@ class WorldMixin:
         ) for bout in bouts]
         title_result = next((item for item in results if item.get("title")), None)
         finishes = sum(1 for item in results if item.get("method") not in ("Decision", "Points", "Draw"))
-        headline = f"Month {self.month}: {promotion} ran a {sport} card headlined by {results[0]['result']}."
+        event_label = event_name.strip() or f"{promotion} {sport} Card {event_no}"
+        headline = f"Month {self.month}: {event_label} was headlined by {results[0]['result']}."
         strategy = self.combat_sport_card_strategy(sport, world, employer, player_owned)
         recap = f"{len(results)} bouts | {finishes} finish(es) | Strategy: {strategy}"
         if title_result:
@@ -6425,7 +6426,7 @@ class WorldMixin:
             "result": item.get("result", ""),
             "lines": item.get("log", []),
         } for item in results]
-        card = {"month": self.month, "week": self.week, "sport": sport, "promotion": promotion, "event": event_no, "event_name": f"{promotion} {sport} Card {event_no}", "results": results, "fight_logs": fight_logs, "headline": headline, "recap": recap, "strategy": strategy, "bouts": [{"a": bout["a"].name, "b": bout["b"].name, "title": bout.get("title", False), "title_key": bout.get("title_key", ""), "reason": bout.get("booking_reason", "Sport matchmaking")} for bout in bouts]}
+        card = {"month": self.month, "week": self.week, "sport": sport, "promotion": promotion, "event": event_no, "event_name": event_label, "results": results, "fight_logs": fight_logs, "headline": headline, "recap": recap, "strategy": strategy, "bouts": [{"a": bout["a"].name, "b": bout["b"].name, "title": bout.get("title", False), "title_key": bout.get("title_key", ""), "reason": bout.get("booking_reason", "Sport matchmaking")} for bout in bouts]}
         world["event_history"] = ([headline] + world.get("event_history", []))[:80]
         world["media"] = ([headline] + world.get("media", []))[:24]
         self.refresh_combat_sport_rankings(sport, world, employer=employer)
@@ -6475,7 +6476,7 @@ class WorldMixin:
         self.archive_result_record({
             "date": f"Month {self.month} Week {self.week}",
             "company": promotion,
-            "event": f"{sport} Card {event_no}",
+            "event": event_label,
             "summary": recap,
             "fights": len(results),
             "gate": f"${card.get('finance', {}).get('revenue', 0):,}",
@@ -11104,6 +11105,11 @@ class WorldMixin:
         return report
 
     def write_log(self):
+        # The Log screen is lazy-built. Startup, spectator mode and world
+        # simulation can all create an event log before its text widget exists.
+        # Keep the data in self.event_log and render it when the screen opens.
+        if not hasattr(self, "log_text"):
+            return
         self.log_text.config(state="normal")
         self.log_text.delete("1.0", "end")
         self.log_text.insert("end", "\n".join(self.event_log) if self.event_log else "No news yet.")

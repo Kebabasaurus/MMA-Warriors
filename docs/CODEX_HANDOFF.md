@@ -56,7 +56,7 @@ The intended game is a deep, dark, playable WMMA-style business and world simula
 - Fights resolve through mechanics and attributes, never post-result fudging.
 - The UI should be data-rich, readable, linked, and game-like rather than a wall of static text.
 
-Core competitive promotions are BAMMA, UFC, PFL, ONE, RIZIN, KSW, Cage Warriors, LFA,
+Core competitive promotions include BAMMA, UFC, PFL, ONE, RIZIN, KSW, Cage Warriors, LFA,
 Oktagon, BRAVE, ACA, PRIDE, Strikeforce, and WEC. The expanded feeder network covers
 Japan, the UK, North America, Europe, Asia, Brazil, Latin America, Canada, Oceania,
 Africa, the US Midwest, the Nordic region, Korea, South America, and Britain.

@@ -296,6 +296,8 @@ class UIMixin:
         return page, content
 
     def build_layout(self):
+        report_startup = getattr(self, "report_startup_progress", lambda *_args: None)
+        report_startup(79, "Building the promoter office...")
         shell = ttk.Frame(self.root, style="Chrome.TFrame")
         shell.pack(fill="both", expand=True)
 
@@ -405,30 +407,51 @@ class UIMixin:
             setattr(self, attr, content)
             self.tabs.add(page, text=label)
 
-        self.build_game_menu_tab()
-        self.build_website_tab()
-        self.build_assistant_tab()
-        self.build_roster_tab()
-        self.build_contracts_tab()
-        self.build_companies_tab()
-        self.build_regions_tab()
-        self.build_results_tab()
-        self.build_company_editor_tab()
-        self.build_inbox_tab()
-        self.build_staff_tab()
-        self.build_scouting_tab()
-        self.build_finance_tab()
-        self.build_booking_tab()
-        self.build_market_tab()
-        self.build_world_tab()
-        self.build_regional_prospects_tab()
-        self.build_fighter_search_tab()
-        self.build_rankings_tab()
-        self.build_editor_tab()
-        self.build_sim_lab_tab()
-        self.build_log_tab()
+        self.screen_builders = {
+            "game_menu": self.build_game_menu_tab,
+            "website": self.build_website_tab,
+            "assistant": self.build_assistant_tab,
+            "roster": self.build_roster_tab,
+            "contracts": self.build_contracts_tab,
+            "companies": self.build_companies_tab,
+            "regions": self.build_regions_tab,
+            "results": self.build_results_tab,
+            "company_editor": self.build_company_editor_tab,
+            "inbox": self.build_inbox_tab,
+            "staff": self.build_staff_tab,
+            "scouting": self.build_scouting_tab,
+            "finance": self.build_finance_tab,
+            "booking": self.build_booking_tab,
+            "market": self.build_market_tab,
+            "world": self.build_world_tab,
+            "regional_prospects": self.build_regional_prospects_tab,
+            "fighter_search": self.build_fighter_search_tab,
+            "rankings": self.build_rankings_tab,
+            "editor": self.build_editor_tab,
+            "sim_lab": self.build_sim_lab_tab,
+            "log": self.build_log_tab,
+        }
+        self.built_screens = set()
+        self._building_screens = set()
+        report_startup(88, "Preparing the promoter dashboard...")
+        self.ensure_screen_built("game_menu")
+        report_startup(95, "Applying the presentation theme...")
         self.retheme_plain_widgets(self.root)
         self.select_tab("game_menu")
+
+    def ensure_screen_built(self, name):
+        """Construct a management screen once, when the player first opens it."""
+        if name in getattr(self, "built_screens", set()) or name in getattr(self, "_building_screens", set()):
+            return
+        builder = getattr(self, "screen_builders", {}).get(name)
+        if not builder:
+            return
+        self._building_screens.add(name)
+        try:
+            builder()
+            self.built_screens.add(name)
+        finally:
+            self._building_screens.discard(name)
 
     def apply_selected_theme(self):
         self.theme_name = self.theme_name_var.get()
@@ -480,6 +503,7 @@ class UIMixin:
             self.retheme_plain_widgets(child)
 
     def select_tab(self, name):
+        self.ensure_screen_built(name)
         lookup = {
             "game_menu": self.tab_pages["game_menu"],
             "website": self.tab_pages["website"],
@@ -2849,5 +2873,5 @@ class UIMixin:
         panel.pack(fill="both", expand=True)
         self.log_text = tk.Text(inner, wrap="word", font=("Courier New", 9), bg=self.colors["cream"], fg=self.colors["text"], insertbackground=self.colors["text"], padx=10, pady=10, relief="flat")
         self.log_text.pack(fill="both", expand=True)
-        self.log_text.insert("end", "Book a card, then run the event to see blow-by-blow results here.\n")
+        self.log_text.insert("end", "\n".join(self.event_log) if self.event_log else "Book a card, then run the event to see blow-by-blow results here.\n")
         self.log_text.config(state="disabled")

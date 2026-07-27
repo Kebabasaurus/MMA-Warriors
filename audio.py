@@ -14,12 +14,25 @@ import re
 import threading
 import time
 
-try:
-    import numpy as np
-    import sounddevice as sd
-except Exception:  # The game remains playable on machines without audio support.
-    np = None
-    sd = None
+np = None
+sd = None
+_audio_import_attempted = False
+
+
+def load_audio_modules():
+    """Delay heavy audio imports until the player opens or uses audio controls."""
+    global np, sd, _audio_import_attempted
+    if _audio_import_attempted:
+        return np is not None and sd is not None
+    _audio_import_attempted = True
+    try:
+        import numpy as numpy_module
+        import sounddevice as sounddevice_module
+    except Exception:  # The game remains playable on machines without audio support.
+        return False
+    np = numpy_module
+    sd = sounddevice_module
+    return True
 
 
 class FightNightAudioMixin:
@@ -29,6 +42,7 @@ class FightNightAudioMixin:
     def available_fight_night_outputs(self):
         """Return visible output choices without making audio hardware required."""
         choices = [(self.AUDIO_DEFAULT, None)]
+        load_audio_modules()
         if sd is None:
             return choices
         try:
@@ -59,8 +73,6 @@ class FightNightAudioMixin:
         self.ensure_audio_defaults()
         if not self.rules.get("fight_night_audio_enabled", True):
             return "Off"
-        if sd is None or np is None:
-            return "Windows default speaker"
         selected = self.rules.get("fight_night_audio_output", self.AUDIO_DEFAULT)
         return str(selected)
 
@@ -198,6 +210,7 @@ class FightNightAudioMixin:
         volume = max(0, min(100, int(self.rules.get("fight_night_audio_volume", 55)))) / 100
         if volume <= 0:
             return False
+        load_audio_modules()
         if not hasattr(self, "_fight_night_audio_queue"):
             self._fight_night_audio_queue = queue.Queue(maxsize=6)
 

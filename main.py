@@ -23,6 +23,63 @@ from awards import AwardsMixin
 from audio import FightNightAudioMixin
 
 
+class StartupSplash:
+    """Small responsive startup window shown while the simulation is assembled."""
+
+    def __init__(self, root):
+        self.root = root
+        self.window = tk.Toplevel(root)
+        self.window.overrideredirect(True)
+        self.window.configure(bg="#090909")
+        width, height = 540, 210
+        screen_width = root.winfo_screenwidth()
+        screen_height = root.winfo_screenheight()
+        x = max(0, (screen_width - width) // 2)
+        y = max(0, (screen_height - height) // 2)
+        self.window.geometry(f"{width}x{height}+{x}+{y}")
+        self.window.attributes("-topmost", True)
+        border = tk.Frame(self.window, bg="#d20a0a", padx=2, pady=2)
+        border.pack(fill="both", expand=True)
+        body = tk.Frame(border, bg="#111111")
+        body.pack(fill="both", expand=True)
+        tk.Label(
+            body, text=GAME_NAME.upper(), bg="#111111", fg="#f3f3f3",
+            font=("Arial", 23, "bold"), anchor="w",
+        ).pack(fill="x", padx=24, pady=(24, 2))
+        tk.Label(
+            body, text="PROMOTION MANAGEMENT SIM", bg="#111111", fg="#bdbdbd",
+            font=("Arial", 9, "bold"), anchor="w",
+        ).pack(fill="x", padx=25, pady=(0, 20))
+        self.status = tk.StringVar(value="Starting...")
+        tk.Label(
+            body, textvariable=self.status, bg="#111111", fg="#f3f3f3",
+            font=("Tahoma", 9), anchor="w",
+        ).pack(fill="x", padx=25, pady=(0, 7))
+        self.progress = ttk.Progressbar(body, mode="determinate", maximum=100, length=490)
+        self.progress.pack(fill="x", padx=25, pady=(0, 7))
+        self.percent = tk.StringVar(value="0%")
+        tk.Label(
+            body, textvariable=self.percent, bg="#111111", fg="#bdbdbd",
+            font=("Tahoma", 8), anchor="e",
+        ).pack(fill="x", padx=25)
+        self.window.update_idletasks()
+        self.window.update()
+
+    def update(self, value, text):
+        if not self.window.winfo_exists():
+            return
+        value = max(0, min(100, int(value)))
+        self.progress["value"] = value
+        self.status.set(text)
+        self.percent.set(f"{value}%")
+        self.window.update_idletasks()
+        self.window.update()
+
+    def close(self):
+        if self.window.winfo_exists():
+            self.window.destroy()
+
+
 class FightEmpireApp(
     FightNightAudioMixin,
     UIMixin,
@@ -36,8 +93,10 @@ class FightEmpireApp(
     PersistenceMixin,
     AwardsMixin,
 ):
-    def __init__(self, root):
+    def __init__(self, root, startup_progress=None):
         self.root = root
+        self._startup_progress_callback = startup_progress
+        self.report_startup_progress(5, "Preparing the application...")
         self.root.report_callback_exception = self.handle_uncaught_exception
         register_crash_app(self)
         self.root.title(GAME_NAME)
@@ -61,6 +120,7 @@ class FightEmpireApp(
         launch_height = min(760, available_height)
         self.root.geometry(f"{launch_width}x{launch_height}+{max(0, (screen_width - launch_width) // 2)}+{max(0, (screen_height - launch_height) // 3)}")
         self.root.minsize(min(960, launch_width), min(620, launch_height))
+        self.report_startup_progress(10, "Reading promotion settings...")
 
         self.cash = 275_000
         self.company_pop = 38
@@ -93,9 +153,13 @@ class FightEmpireApp(
         self.player_managed_divisions = set()
         self._seeding_universe = True
         try:
+            self.report_startup_progress(18, "Loading your promotion roster...")
             self.roster = self.seed_roster()
+            self.report_startup_progress(28, "Loading the fighter market...")
             self.free_agents = self.seed_free_agents()
+            self.report_startup_progress(39, "Building the MMA world...")
             self.promotions = self.seed_promotions()
+            self.report_startup_progress(57, "Building boxing and combat-sport circuits...")
             self.combat_sport_worlds = self.seed_combat_sport_worlds()
         finally:
             self._seeding_universe = False
@@ -103,6 +167,7 @@ class FightEmpireApp(
         self.standings_history = {}
         self.regions = self.seed_regions()
         self.gyms = self.seed_gyms()
+        self.report_startup_progress(67, "Connecting gyms, regions, and athletes...")
         self.normalize_gym_assignments()
         self.sync_gym_membership()
         self.result_history = []
@@ -153,6 +218,7 @@ class FightEmpireApp(
             self.event_name.set(self.default_event_name())
         self.clean_numbered_fighter_names()
         self.refresh_promotion_rankings(track=False)
+        self.report_startup_progress(74, "Preparing contracts, finance, and staff...")
 
         self.event_name = tk.StringVar(value=self.default_event_name())
         self.venue = tk.StringVar(value="Regional Arena")
@@ -221,7 +287,14 @@ class FightEmpireApp(
         self.build_layout()
         self.root.protocol("WM_DELETE_WINDOW", self.confirm_exit_application)
         self.root.bind_all("<space>", self.handle_spectator_space_stop, add="+")
-        self.refresh_all(full=True)
+        self.report_startup_progress(97, "Opening the promoter dashboard...")
+        self.refresh_all(full=False)
+        self.report_startup_progress(100, "Ready.")
+
+    def report_startup_progress(self, value, text):
+        callback = getattr(self, "_startup_progress_callback", None)
+        if callable(callback):
+            callback(value, text)
 
     def confirm_exit_application(self):
         if messagebox.askyesno(
@@ -242,10 +315,23 @@ class FightEmpireApp(
 if __name__ == "__main__":
     configure_runtime_logging()
     install_global_exception_handlers()
+    root = None
+    splash = None
     try:
         root = tk.Tk()
-        app = FightEmpireApp(root)
+        root.withdraw()
+        splash = StartupSplash(root)
+        app = FightEmpireApp(root, startup_progress=splash.update)
+        splash.close()
+        splash = None
+        root.deiconify()
+        root.lift()
+        root.focus_force()
     except Exception as exc:
+        if splash is not None:
+            splash.close()
+        if root is not None:
+            root.deiconify()
         report_path, _ = write_crash_report(type(exc), exc, exc.__traceback__, "Application startup")
         error_message = "MMA Warriors could not start. Your saves were not changed."
         if report_path:

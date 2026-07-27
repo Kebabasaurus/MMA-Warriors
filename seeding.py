@@ -103,9 +103,16 @@ class SeedMixin:
         return path if path.exists() else default
 
     def load_universe_database_pack(self, path=None):
-        path = path or self.active_universe_database_path()
+        path = Path(path or self.active_universe_database_path())
         try:
-            data = json.loads(Path(path).read_text(encoding="utf-8"))
+            signature = (path.stat().st_mtime_ns, path.stat().st_size)
+        except OSError:
+            signature = None
+        cached = getattr(self, "_universe_database_cache", None)
+        if cached and cached.get("path") == path and cached.get("signature") == signature:
+            return cached["data"]
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
             if data.get("type") != "universe_database" or "sections" not in data:
                 raise ValueError("not a universe database pack")
             changed = False
@@ -154,7 +161,12 @@ class SeedMixin:
                 if self.merge_default_combat_sport_database(combat_section):
                     changed = True
             if changed:
-                self.write_seed_database_file(Path(path), data)
+                self.write_seed_database_file(path, data)
+            try:
+                signature = (path.stat().st_mtime_ns, path.stat().st_size)
+            except OSError:
+                signature = None
+            self._universe_database_cache = {"path": path, "signature": signature, "data": data}
             return data
         except Exception as exc:
             backup = Path(path).with_suffix(f".broken_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
@@ -167,6 +179,11 @@ class SeedMixin:
             default_path = self.universe_database_path("Default Universe")
             self.write_seed_database_file(default_path, default)
             self.active_universe_marker().write_text(default_path.name, encoding="utf-8")
+            try:
+                signature = (default_path.stat().st_mtime_ns, default_path.stat().st_size)
+            except OSError:
+                signature = None
+            self._universe_database_cache = {"path": default_path, "signature": signature, "data": default}
             return default
 
     def merge_default_fighter_database(self, fighters):
@@ -354,6 +371,9 @@ class SeedMixin:
         temp = path.with_suffix(path.suffix + ".tmp")
         temp.write_text(json.dumps(data, indent=2), encoding="utf-8")
         temp.replace(path)
+        cached = getattr(self, "_universe_database_cache", None)
+        if cached and cached.get("path") == Path(path):
+            self._universe_database_cache = None
 
     def build_seed_fighter_database(self):
         return {
@@ -506,6 +526,7 @@ class SeedMixin:
             self.avoid_name_collision(fighter, existing_names)
             fighters.append(fighter)
         self.ensure_free_agent_division_depth(fighters, reserved_names=existing_names)
+        self.replace_generated_opening_slots(fighters, "Free Agents", existing_names)
         self.seed_relationships(fighters)
         return fighters
 
@@ -619,7 +640,7 @@ class SeedMixin:
             ],
         }
 
-    def create_real_fighter(self, name, weight, org, popularity, skill, age, wins, losses, region, style, player_owned=False):
+    def create_real_fighter(self, name, weight, org, popularity, skill, age, wins, losses, region, style, player_owned=False, source_url=""):
         spread = lambda amount=8: random.randint(-amount, amount)
         fighter = Fighter(
             name=name,
@@ -643,6 +664,7 @@ class SeedMixin:
         fighter.nationality = self.infer_nationality(name, region)
         fighter.style = style if style in STYLES else "Well-Rounded"
         fighter.camp = org
+        fighter.source_url = source_url
         self.assign_regional_identity(fighter, region, birth_region=region, force=True)
         self.apply_real_fighter_birthplace(fighter, region)
         fighter.detailed_skills = None
@@ -731,6 +753,90 @@ class SeedMixin:
         fighter.contract_type = "Exclusive" if player_owned else "Non-Exclusive"
         fighter.rank_score = self.rank_value(fighter)
         return fighter
+
+    def initial_real_fighter_replacements(self, destination):
+        """Real athletes that replace launch filler without changing roster depth."""
+        url = "https://www.tapology.com/fightcenter/fighters/"
+        data = {
+            "Professional Fighters League": [
+                ("Lewis McGrillen", "Bantamweight", 47, 79, 26, 12, 1, "UK", "Kickboxer", 86, f"{url}168234-lewis-mcgrillen-evans"),
+            ],
+            "Cage Warriors": [
+                ("Andreeas Binder", "Welterweight", 38, 72, 31, 10, 6, "Europe", "Judo", 78, f"{url}103058-andreeas-binder"),
+                ("Omar Tugarev", "Lightweight", 46, 77, 28, 8, 1, "Europe", "Well-Rounded", 86, f"{url}165138-omar-tugarev"),
+                ("Tom Mullen", "Bantamweight", 35, 70, 31, 8, 6, "UK", "BJJ", 76, f"{url}101037-tom-mullen"),
+                ("Solomon Simon", "Bantamweight", 31, 68, 25, 5, 1, "UK", "Wrestler", 82, f"{url}180334-soloman-simon"),
+                ("Marin Vetrila", "Welterweight", 37, 72, 27, 8, 2, "Europe", "Well-Rounded", 83, f"{url}169351-marin-vetrila"),
+                ("Tim Wilde", "Lightweight", 43, 74, 37, 18, 6, "UK", "Kickboxer", 76, f"{url}51844-tim-wilde"),
+            ],
+            "Free Agents": [
+                ("Max Holzer", "Featherweight", 44, 79, 24, 11, 0, "Europe", "Kickboxer", 91, f"{url}255458-max-holzer"),
+                ("Lizzy Gevers", "Strawweight", 25, 64, 24, 3, 1, "UK", "BJJ", 82, f"{url}183504-lizzy-gevers", "Female"),
+                ("Gemma Auld", "Strawweight", 20, 60, 21, 1, 0, "UK", "Well-Rounded", 82, f"{url}392025-gemma-auld", "Female"),
+                ("Elsa Cerezo", "Strawweight", 22, 63, 23, 3, 1, "Europe", "Kickboxer", 82, f"{url}386311-elsa-cerezo", "Female"),
+                ("Amy Scully", "Strawweight", 21, 61, 22, 2, 0, "UK", "BJJ", 82, f"{url}415419-amy-scully", "Female"),
+                ("Hayley Valentine", "Strawweight", 29, 67, 29, 6, 3, "UK", "Kickboxer", 77, f"{url}120718-hayley-valentine", "Female"),
+                ("Valentina Scatizzi", "Strawweight", 27, 67, 31, 7, 3, "Europe", "Kickboxer", 75, f"{url}283991-valentina-scatizzi", "Female"),
+                ("Chloe Crozier", "Strawweight", 22, 63, 24, 3, 1, "UK", "BJJ", 82, f"{url}344543-chole-crozier", "Female"),
+                ("Rose Berry", "Flyweight", 20, 61, 22, 2, 0, "UK", "Well-Rounded", 82, f"{url}468214-rosea-berry", "Female"),
+                ("Eabha Cruise", "Flyweight", 25, 65, 26, 5, 2, "UK", "BJJ", 80, f"{url}304530-eabha-cruise", "Female"),
+                ("Stephanie Evans", "Flyweight", 28, 68, 29, 8, 3, "UK", "Kickboxer", 77, f"{url}169601-stephanie-evans", "Female"),
+                ("Tatiana Postarnakova", "Bantamweight", 27, 68, 30, 7, 3, "Europe", "Wrestler", 78, f"{url}236472-tatiana-postarnakova", "Female"),
+                ("Alena Agisheva", "Bantamweight", 24, 65, 25, 5, 2, "Europe", "Kickboxer", 81, f"{url}306734-alena-agisheva", "Female"),
+                ("Anna Safeeva", "Bantamweight", 25, 66, 28, 6, 3, "Europe", "Wrestler", 78, f"{url}306269-anna-safeeva", "Female"),
+                ("Diana Pogosyan", "Bantamweight", 22, 63, 23, 3, 1, "Europe", "Judo", 82, f"{url}311771-diana-pogosyan", "Female"),
+                ("Alena Ignatyeva", "Bantamweight", 21, 62, 24, 3, 1, "Europe", "Wrestler", 82, f"{url}392134-alena-ignatyeva", "Female"),
+                ("Giovanna Canuto", "Atomweight", 42, 75, 30, 9, 2, "Brazil", "BJJ", 81, f"{url}289181-giovanna-canuto-gigi", "Female"),
+                ("Antonina Kotlyarevskaya", "Flyweight", 28, 68, 28, 7, 2, "Europe", "Kickboxer", 80, f"{url}228650-antonina-kotlyarevskaya", "Female"),
+                ("Zamzagul Fayzallanova", "Flyweight", 28, 68, 28, 8, 3, "Asia", "Wrestler", 80, f"{url}123720-zamzagul-fayzallanova", "Female"),
+                ("Kate Lotus", "Atomweight", 34, 71, 27, 9, 2, "Japan", "Kickboxer", 82, f"{url}272248-kate-lotus", "Female"),
+                ("Mariam Torchinava", "Strawweight", 24, 65, 28, 5, 2, "Europe", "Judo", 79, f"{url}302493-mariam-torchinava", "Female"),
+                ("Melissa Gomez", "Strawweight", 27, 67, 29, 7, 3, "Latin America", "Boxer", 78, f"{url}125367-melissa-gomez", "Female"),
+                ("Daniela Hernandez", "Strawweight", 26, 66, 28, 6, 3, "Latin America", "Kickboxer", 78, f"{url}242749-daniela-hernandez", "Female"),
+                ("Brett Akey", "Lightweight", 36, 80, 27, 9, 2, "Canada", "Wrestler", 87, ""),
+                ("Markell Holmes", "Lightweight", 33, 78, 26, 8, 2, "USA", "Kickboxer", 86, ""),
+            ],
+        }
+        return data.get(destination, ())
+
+    def replace_generated_opening_slots(self, roster, destination, global_names=None):
+        """Replace same-division generated opening slots with curated athletes."""
+        global_names = global_names if global_names is not None else set()
+        known = {self.fighter_name_key(name) for name in global_names if isinstance(name, str)}
+        known.update(self.fighter_name_key(fighter.name) for fighter in roster)
+        replacements = []
+        for row in self.initial_real_fighter_replacements(destination):
+            name, weight, popularity, skill, age, wins, losses, region, style, potential, source_url, *gender_value = row
+            name_key = self.fighter_name_key(name)
+            if name_key in known:
+                continue
+            gender = gender_value[0] if gender_value else self.infer_gender(name)
+            slot = next((fighter for fighter in roster if fighter.generated and fighter.weight == weight and fighter.gender == gender), None)
+            if slot is None:
+                continue
+            replacement = self.create_real_fighter(name, weight, destination, popularity, skill, age, wins, losses, region, style, source_url=source_url)
+            replacement.gender = gender
+            replacement.potential = max(replacement.overall, potential)
+            replacement.contract_months = slot.contract_months
+            replacement.exclusive = slot.exclusive
+            replacement.contract_type = slot.contract_type
+            replacement.camp = slot.camp
+            if name == "Brett Akey":
+                self.ensure_detailed_skills(replacement)
+                for key in ("low_kick_power", "low_kick_technique", "low_kick_speed", "mobility", "resilience"):
+                    if key in replacement.detailed_skills:
+                        replacement.detailed_skills[key] = max(35, replacement.detailed_skills[key] - 14)
+                self.sync_broad_skills_from_details(replacement)
+            elif name == "Markell Holmes":
+                self.ensure_detailed_skills(replacement)
+                replacement.detailed_skills["conditioning"] = max(38, replacement.detailed_skills.get("conditioning", 55) - 15)
+                self.sync_broad_skills_from_details(replacement)
+            replacement.rank_score = self.rank_value(replacement)
+            roster[roster.index(slot)] = replacement
+            known.add(name_key)
+            global_names.update((name, name_key))
+            replacements.append(name)
+        return replacements
 
     def infer_gender(self, name):
         female_names = {
@@ -4086,6 +4192,7 @@ class SeedMixin:
                 roster.append(fighter)
             generated_names = self.ensure_roster_division_depth(roster, region, name, size, reserved_names=global_names)
             global_names.update(generated_names)
+            self.replace_generated_opening_slots(roster, name, global_names)
             self.seed_relationships(roster)
             belts, interim_belts, belt_history = self.ensure_company_champions(roster, {}, name, region, size, player_owned=False)
             broadcasters = self.promotion_broadcasters(name, size)
