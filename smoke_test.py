@@ -45,6 +45,23 @@ def main():
         assert_true(addin_names.issubset(opening_roster_names), "A requested BAMMA add-in fighter was omitted from the opening roster")
         assert_true(all(all_opening_names.count(name) == 1 for name in addin_names),
                     "A BAMMA add-in fighter was duplicated elsewhere in the initial database")
+        latest_bamma_additions = {
+            "Lani Daniels", "Danielle Perkins", "Nyrene Crowley", "Forrest Molinari",
+            "Sara Collins", "Noor Oosterhoff", "Victoria Friday Uduak",
+        }
+        assert_true(len(app.roster) >= 167, "BAMMA's expanded opening roster target was not retained")
+        assert_true(latest_bamma_additions.issubset(opening_roster_names), "A supplied second-wave BAMMA fighter was omitted")
+        assert_true(all(all_opening_names.count(name) == 1 for name in latest_bamma_additions),
+                    "A supplied second-wave BAMMA fighter was duplicated in the initial database")
+        lani_daniels = next(fighter for fighter in app.roster if fighter.name == "Lani Daniels")
+        assert_true(lani_daniels.record == "12-4-2", "Lani Daniels did not retain her authored pre-universe record")
+        bamma_closed = app.bamma_initial_closed_divisions()
+        assert_true(bamma_closed.issubset(app.closed_divisions), "BAMMA's requested female divisions did not start closed")
+        assert_true(not any(app.belt_key(fighter.gender, fighter.weight) in bamma_closed for fighter in app.roster),
+                    "A BAMMA fighter remained in a requested closed division")
+        bamma_as_ai = app.player_company_as_promotion()
+        assert_true(all(not app.promotion_division_open(bamma_as_ai, "Female", weight) for weight in ("Middleweight", "Light Heavyweight", "Heavyweight")),
+                    "BAMMA's closed female divisions remain eligible for AI recruitment")
         assert_true(all(fighter.weight in game.WEIGHTS for fighter in app.all_database_fighters()),
                     "Initial database contains a fighter outside the normal game divisions")
         for screen_name in app.screen_builders:

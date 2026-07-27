@@ -1111,7 +1111,7 @@ class AdminMixin:
     def ensure_all_company_champions(self):
         if not getattr(self, "spectator_mode", False):
             self.review_player_champion_credibility()
-            self.belts, self.interim_belts, self.belt_history = self.ensure_company_champions(self.roster, self.belts, self.player_company_name, self.player_region, self.company_pop, player_owned=True, interim_belts=self.interim_belts, belt_history=self.belt_history)
+            self.belts, self.interim_belts, self.belt_history = self.ensure_company_champions(self.roster, self.belts, self.player_company_name, self.player_region, self.company_pop, player_owned=True, interim_belts=self.interim_belts, belt_history=self.belt_history, closed_divisions=self.closed_divisions)
             self.sync_player_vacant_title_alerts()
         for promo in self.promotions:
             closed = self.company_closed_divisions(promo)

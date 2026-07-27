@@ -496,10 +496,10 @@ class SeedMixin:
         promotion_data = seed_db.get("promotions") or self.expanded_real_fighter_data()
         company_names = {row[0] for rows in promotion_data.values() for row in rows}
         existing_names = {fighter.name for fighter in roster} | company_names
-        # BAMMA's curated add-in is intentionally additional depth. Keep the
+        # BAMMA's curated add-ins are intentionally additional depth. Keep the
         # normal generated-divisional safety net, but open with a promotion-
-        # sized 160-fighter roster instead of crowding real names out.
-        while len(roster) < 160:
+        # sized 167-fighter roster instead of crowding real names out.
+        while len(roster) < 167:
             prospect = self.create_generated_fighter(8, 48, 43, 82)
             self.avoid_name_collision(prospect, existing_names)
             prospect.contract_months = random.randint(6, 22)
@@ -507,9 +507,27 @@ class SeedMixin:
             prospect.contract_type = "Exclusive"
             roster.append(prospect)
         self.ensure_roster_division_depth(roster, self.player_region, self.player_company_name, self.company_pop, player_owned=True)
+        closed_divisions = self.bamma_initial_closed_divisions()
+        self.reassign_bamma_closed_division_fighters(roster, closed_divisions)
         self.seed_relationships(roster)
-        self.belts, self.interim_belts, self.belt_history = self.ensure_company_champions(roster, self.belts, self.player_company_name, self.player_region, self.company_pop, player_owned=True, interim_belts=self.interim_belts, belt_history=self.belt_history)
+        self.belts, self.interim_belts, self.belt_history = self.ensure_company_champions(
+            roster, self.belts, self.player_company_name, self.player_region, self.company_pop,
+            player_owned=True, interim_belts=self.interim_belts, belt_history=self.belt_history,
+            closed_divisions=closed_divisions,
+        )
         return roster
+
+    def bamma_initial_closed_divisions(self):
+        return {
+            self.belt_key("Female", weight)
+            for weight in ("Middleweight", "Light Heavyweight", "Heavyweight")
+        }
+
+    def reassign_bamma_closed_division_fighters(self, roster, closed_divisions):
+        """Keep BAMMA's opening women roster in divisions the promotion runs."""
+        for fighter in roster:
+            if self.belt_key(fighter.gender, fighter.weight) in closed_divisions:
+                fighter.weight = "Welterweight"
 
     def bamma_initial_addin_data(self):
         """User-supplied real-fighter expansion for BAMMA's opening roster.
@@ -542,6 +560,15 @@ class SeedMixin:
         add("Ana Clara Santos", "Strawweight", 27, 65, 24, 4, 1, "Brazil", "BJJ", "Female")
         add("Angelina Calpito", "Atomweight", 21, 61, 23, 2, 0, "Asia", "Kickboxer", "Female")
         add("Veronika Smolkova", "Bantamweight", 31, 68, 27, 7, 3, "Europe", "Kickboxer", "Female")
+        # Second supplied BAMMA expansion. The divisions intentionally follow
+        # the user's requested game classes rather than adding new classes.
+        add("Lani Daniels", "Welterweight", 48, 74, 37, 12, 4, "Australia", "Boxer", "Female")
+        add("Danielle Perkins", "Welterweight", 55, 77, 43, 6, 1, "USA", "Boxer", "Female")
+        add("Nyrene Crowley", "Welterweight", 37, 71, 36, 5, 4, "Australia", "BJJ", "Female")
+        add("Forrest Molinari", "Lightweight", 34, 70, 30, 2, 1, "USA", "Wrestler", "Female")
+        add("Sara Collins", "Lightweight", 57, 79, 35, 6, 1, "Australia", "BJJ", "Female")
+        add("Noor Oosterhoff", "Lightweight", 31, 69, 26, 3, 1, "Europe", "Kickboxer", "Female")
+        add("Victoria Friday Uduak", "Lightweight", 33, 71, 24, 5, 0, "Africa", "BJJ", "Female")
 
         # Men
         add("Stuart Austin", "Heavyweight", 49, 75, 35, 17, 8, "UK", "Wrestler", "Male")
@@ -1367,6 +1394,7 @@ class SeedMixin:
     def real_fighter_draws(self):
         return {
             "Demetrious Johnson": 1, "Fedor Emelianenko": 1, "Frankie Edgar": 1,
+            "Lani Daniels": 2,
             "Brandon Moreno": 2, "Jan Blachowicz": 1, "Wanderlei Silva": 1,
             "Deiveson Figueiredo": 1, "Paul Craig": 1, "Niko Price": 2,
             "Rodrigo Nascimento": 1, "Ion Cutelaba": 1, "Marcin Held": 0,
