@@ -49,7 +49,7 @@ def main():
             "Lani Daniels", "Danielle Perkins", "Nyrene Crowley", "Forrest Molinari",
             "Sara Collins", "Noor Oosterhoff", "Victoria Friday Uduak",
         }
-        assert_true(len(app.roster) >= 167, "BAMMA's expanded opening roster target was not retained")
+        assert_true(len(app.roster) >= 175, "BAMMA's expanded opening roster target was not retained")
         assert_true(latest_bamma_additions.issubset(opening_roster_names), "A supplied second-wave BAMMA fighter was omitted")
         assert_true(all(all_opening_names.count(name) == 1 for name in latest_bamma_additions),
                     "A supplied second-wave BAMMA fighter was duplicated in the initial database")
@@ -59,6 +59,8 @@ def main():
         assert_true(bamma_closed.issubset(app.closed_divisions), "BAMMA's requested female divisions did not start closed")
         assert_true(not any(app.belt_key(fighter.gender, fighter.weight) in bamma_closed for fighter in app.roster),
                     "A BAMMA fighter remained in a requested closed division")
+        female_featherweights = [fighter for fighter in app.roster if fighter.gender == "Female" and fighter.weight == "Featherweight"]
+        assert_true(len(female_featherweights) >= 3, "BAMMA did not receive its two additional generated female featherweight slots")
         bamma_as_ai = app.player_company_as_promotion()
         assert_true(all(not app.promotion_division_open(bamma_as_ai, "Female", weight) for weight in ("Middleweight", "Light Heavyweight", "Heavyweight")),
                     "BAMMA's closed female divisions remain eligible for AI recruitment")
