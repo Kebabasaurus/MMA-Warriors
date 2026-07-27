@@ -737,7 +737,12 @@ class SeedMixin:
             ],
         }
 
+    def game_weight_class(self, weight):
+        """Map real-world classes onto MMA Warriors' eight supported divisions."""
+        return {"Atomweight": "Flyweight", "Strawweight": "Flyweight"}.get(weight, weight if weight in WEIGHTS else "Lightweight")
+
     def create_real_fighter(self, name, weight, org, popularity, skill, age, wins, losses, region, style, player_owned=False, source_url=""):
+        weight = self.game_weight_class(weight)
         spread = lambda amount=8: random.randint(-amount, amount)
         fighter = Fighter(
             name=name,
@@ -4157,7 +4162,7 @@ class SeedMixin:
             record_w = record_l = 0
         fighter = Fighter(
             name=name,
-            weight=weight or random.choice(WEIGHTS),
+            weight=self.game_weight_class(weight) if weight else random.choice(WEIGHTS),
             age=age,
             record_w=record_w,
             record_l=record_l,

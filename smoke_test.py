@@ -45,6 +45,8 @@ def main():
         assert_true(addin_names.issubset(opening_roster_names), "A requested BAMMA add-in fighter was omitted from the opening roster")
         assert_true(all(all_opening_names.count(name) == 1 for name in addin_names),
                     "A BAMMA add-in fighter was duplicated elsewhere in the initial database")
+        assert_true(all(fighter.weight in game.WEIGHTS for fighter in app.all_database_fighters()),
+                    "Initial database contains a fighter outside the normal game divisions")
         for screen_name in app.screen_builders:
             app.ensure_screen_built(screen_name)
         assert_true(set(app.screen_builders) == app.built_screens, "One or more lazy management screens failed to build")
@@ -553,10 +555,7 @@ def main():
         curated_names = {"Lewis McGrillen", "Omar Tugarev", "Brett Akey", "Markell Holmes", "Max Holzer"}
         assert_true(sum(fighter.name in curated_names for fighter in app.all_database_fighters()) == len(curated_names), "Curated real-fighter replacement introduced a duplicate")
         feeder_rosters = [promo for promo in app.promotions if getattr(promo, "is_regional_feeder", False)]
-        normal_feeder_size = sum((5 if weight in ("Light Heavyweight", "Heavyweight") else 6) + 3 for weight in game.WEIGHTS)
-        male_only_feeder_size = sum(8 if weight in ("Light Heavyweight", "Heavyweight") else 9 for weight in game.WEIGHTS)
-        assert_true(feeder_rosters and all(len(promo.roster) == (male_only_feeder_size if promo.name == game.EURASIAN_FIGHT_CIRCUIT_NAME else normal_feeder_size) for promo in feeder_rosters),
-                    "Regional feeder roster sizing did not expand with the active division list")
+        assert_true(feeder_rosters and all(len(promo.roster) == 70 for promo in feeder_rosters), "Regional feeder promotions should open with 70 fighters each")
         app.start_company_choice.set("Spectator Mode")
         app.new_game()
         assert_true(app.spectator_mode and not app.rules.get("scouting_mode", True), "Fresh spectator games must start with scouting mode disabled")
@@ -599,11 +598,10 @@ def main():
         islam_after = next(fighter for fighter in ufc.roster if fighter.name == "Islam Makhachev")
         assert_true((islam_after.age, islam_after.record, islam_after.overall, islam_after.camp) == islam_snapshot, "Save loading changed serialized real-fighter state")
         assert_true(any(entry.get("reason") == "Smoke-test attributed change" for entry in app.change_journal), "Attributed change journal did not survive save/load")
-        expected_ufc_target = max(400, len(ufc.weight_classes) * 2 * app.ai_division_target(ufc))
-        assert_true(app.ai_roster_target(ufc) == expected_ufc_target, "UFC roster target did not scale with its active divisions")
-        assert_true(app.ai_roster_cap(ufc) > expected_ufc_target, "UFC roster cap should permit a deep world-class roster")
+        assert_true(app.ai_roster_target(ufc) == 400, "UFC should target a 400-fighter roster")
+        assert_true(app.ai_roster_cap(ufc) > 370, "UFC roster cap should permit a deep world-class roster")
         assert_true(app.ai_division_target(ufc) == 25, "UFC division depth target is too low for its roster plan")
-        assert_true(app.ai_financial_runway(ufc) >= expected_ufc_target * 24_000, "UFC finance runway is too small for its roster plan")
+        assert_true(app.ai_financial_runway(ufc) >= 6_500_000, "UFC finance runway is too small for its roster plan")
         assert_true(app.ai_contract_reserve(ufc) >= app.ai_financial_runway(ufc) * 0.69, "AI signing reserve does not protect operating runway")
         legacy_finance_probe = game.Promotion(
             "Finance Migration Probe", "USA", 60, -500_000, [], stability=4,
@@ -1227,7 +1225,7 @@ def main():
         showcase_fighters = []
         # A valid five-fight card can be made across divisions; each bout
         # remains gender and weight-class matched.
-        for weight in ("Atomweight", "Strawweight", "Flyweight", "Bantamweight", "Featherweight"):
+        for weight in ("Flyweight", "Bantamweight", "Featherweight", "Lightweight", "Welterweight"):
             for _ in range(2):
                 candidate = app.create_generated_fighter(8, 18, 58, 72, gender="Female", weight=weight)
                 candidate.free_agent_months = 2

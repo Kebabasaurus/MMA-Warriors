@@ -1906,6 +1906,8 @@ class EventMixin:
         self.record_finance_transaction(f"Signing bonus: {fighter.name}", costs=signing_bonus)
         self.free_agents.remove(fighter)
         self.clear_ai_contract_offer(fighter)
+        # AI roster caps prevent market hoarding; player-controlled promotions
+        # are deliberately uncapped, including after a company takeover.
         fighter.contract_months = random.randint(10, 24)
         fighter.morale = min(100, fighter.morale + 8)
         self.roster.append(fighter)

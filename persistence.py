@@ -858,12 +858,17 @@ class PersistenceMixin:
         self.roster = [Fighter(**row) for row in data.get("roster", [])]
         self.free_agents = [Fighter(**row) for row in data.get("free_agents", [])]
         for fighter in self.roster + self.free_agents:
+            fighter.weight = self.game_weight_class(fighter.weight)
             self.ensure_detailed_skills(fighter)
             self.ensure_fighter_business_stats(fighter)
         self.promotions = []
         self.defunct_promotions = list(data.get("defunct_promotions", []))
         for row in data.get("promotions", []):
             row["roster"] = [Fighter(**fighter) for fighter in row.get("roster", [])]
+            row["weight_classes"] = list(dict.fromkeys(
+                self.game_weight_class(weight) for weight in row.get("weight_classes", [])
+                if self.game_weight_class(weight) in WEIGHTS
+            )) or list(WEIGHTS)
             row.setdefault("stability", max(5, min(99, row.get("cash", 0) // 20000)))
             row.setdefault("strategy", self.seed_promotion_strategy(row.get("name", ""), row.get("show_personality", "Balanced")))
             row.setdefault("strategic_rival", "")
@@ -874,6 +879,7 @@ class PersistenceMixin:
             row.setdefault("special_belts", {})
             row.setdefault("regional_division_activity", {})
             for fighter in row["roster"]:
+                fighter.weight = self.game_weight_class(fighter.weight)
                 self.ensure_detailed_skills(fighter)
                 self.ensure_fighter_business_stats(fighter)
             self.promotions.append(Promotion(**row))
@@ -921,6 +927,7 @@ class PersistenceMixin:
         self.independent_showcase_counter = max(1, data.get("independent_showcase_counter", 1))
         self.retired_fighters = [Fighter(**row) for row in data.get("retired_fighters", [])]
         for fighter in self.retired_fighters:
+            fighter.weight = self.game_weight_class(fighter.weight)
             self.ensure_detailed_skills(fighter)
             self.ensure_fighter_business_stats(fighter)
         self.repair_premature_retirements()
@@ -992,7 +999,10 @@ class PersistenceMixin:
             self.change_journal = self.change_journal[-400:]
         self.broadcasters = data.get("broadcasters", [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}])
         self.ensure_media_system()
-        self.weight_classes = data.get("weight_classes", list(WEIGHTS))
+        self.weight_classes = list(dict.fromkeys(
+            self.game_weight_class(weight) for weight in data.get("weight_classes", list(WEIGHTS))
+            if self.game_weight_class(weight) in WEIGHTS
+        )) or list(WEIGHTS)
         self.post_show_bonuses = data.get("post_show_bonuses", {"fight": 5000, "ko": 5000, "sub": 5000})
         self.scheduled_events = data.get("scheduled_events", [])
         # Older builds silently moved cancelled bouts to other cards or created a

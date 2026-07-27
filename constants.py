@@ -50,10 +50,8 @@ ROLLING_SAVE_SLOT_COUNT = 2
 # never vanish from the results database simply because its replay aged out.
 RESULT_INDEX_LIMIT = 100000
 GLOBAL_RESULT_REPLAY_LIMIT = 2000
-WEIGHTS = ["Atomweight", "Strawweight", "Flyweight", "Bantamweight", "Featherweight", "Lightweight", "Welterweight", "Middleweight", "Light Heavyweight", "Heavyweight"]
+WEIGHTS = ["Flyweight", "Bantamweight", "Featherweight", "Lightweight", "Welterweight", "Middleweight", "Light Heavyweight", "Heavyweight"]
 WEIGHT_LIMITS = {
-    "Atomweight": 105,
-    "Strawweight": 115,
     "Flyweight": 125,
     "Bantamweight": 135,
     "Featherweight": 145,
