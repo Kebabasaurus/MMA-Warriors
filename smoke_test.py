@@ -48,6 +48,12 @@ def main():
         li_jingliang = next(fighter for fighter in app.roster + [fighter for promo in app.promotions for fighter in promo.roster] if fighter.name == "Li Jingliang")
         assert_true((li_jingliang.birth_country, li_jingliang.birth_region, li_jingliang.nationality) == ("People's Republic of China", "Asia", "Chinese"),
                     "Verified country labels did not resolve to a specific nationality and region")
+        all_seeded_fighters = app.roster + [fighter for promo in app.promotions for fighter in promo.roster]
+        for fighter_name, expected_flag in (("Benoit Saint Denis", "europe.png"), ("Eduard Folayang", "asia.png"), ("Cameron Saaiman", "africa.png")):
+            fallback_fighter = next(fighter for fighter in all_seeded_fighters if fighter.name == fighter_name)
+            flag_path = app.country_flag_path_for_fighter(fallback_fighter)
+            assert_true(flag_path and flag_path.name == expected_flag,
+                        f"{fighter_name} did not receive the expected regional fallback flag")
         bamma_as_ai = next(promo for promo in app.promotions if promo.name == game.PLAYER_PROMOTION_NAME)
         assert_true(app.bamma_initial_closed_divisions().issubset(set(bamma_as_ai.closed_divisions or [])),
                     "BAMMA lost its closed-division policy when another promotion was selected")
