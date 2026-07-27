@@ -1427,6 +1427,10 @@ def main():
         import persistence
         original_active_path = app.active_save_path
         original_showinfo = persistence.messagebox.showinfo
+        original_askyesno = persistence.messagebox.askyesno
+        original_save_slot_dir = app.save_slot_dir
+        original_save_name = app.save_slot_name.get()
+        original_active_name = app.active_save_name
         with tempfile.TemporaryDirectory(prefix="mma_warriors_quick_save_") as temp_dir:
             quick_path = Path(temp_dir) / "savegame.json"
             app.active_save_path = lambda: quick_path
@@ -1439,6 +1443,25 @@ def main():
             quick_data = json.loads(quick_path.read_text(encoding="utf-8"))
             assert_true(quick_data.get("_save_meta", {}).get("slot_name") == app.active_save_name,
                         "Quick save did not write a valid save payload")
+            app.save_slot_name.set("")
+            app.set_active_save_name("Do Not Autofill")
+            assert_true(app.save_slot_name.get() == "", "Active save name leaked into the save-slot destination field")
+            slot_root = Path(temp_dir) / "Existing Slot"
+            slot_root.mkdir()
+            existing_slot = slot_root / "savegame.json"
+            existing_slot.write_text('{"preserve": true}', encoding="utf-8")
+            app.save_slot_dir = lambda _name=None, create=True, group=None: slot_root
+            app.save_slot_name.set("Existing Slot")
+            persistence.messagebox.askyesno = lambda *_args, **_kwargs: False
+            app.save_selected_slot()
+            assert_true(existing_slot.read_text(encoding="utf-8") == '{"preserve": true}',
+                        "Declining a save-slot overwrite still changed the existing save")
+        app.active_save_path = original_active_path
+        app.save_slot_dir = original_save_slot_dir
+        app.save_slot_name.set(original_save_name)
+        app.set_active_save_name(original_active_name)
+        persistence.messagebox.showinfo = original_showinfo
+        persistence.messagebox.askyesno = original_askyesno
 
         print("SMOKE TEST PASSED")
         print(f"Roster: {len(app.roster)} | Free agents: {len(app.free_agents)} | Promotions: {promotion_names} | Gyms: {len(app.gyms)}")

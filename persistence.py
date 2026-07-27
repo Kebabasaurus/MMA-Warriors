@@ -352,8 +352,6 @@ class PersistenceMixin:
 
     def set_active_save_name(self, name):
         self.active_save_name = self.normalized_save_name(name)
-        if hasattr(self, "save_slot_name"):
-            self.save_slot_name.set(self.active_save_name)
 
     def set_active_save_location(self, name, group="Main"):
         self.active_save_group = self.normalized_save_group(group)
@@ -2114,11 +2112,21 @@ class PersistenceMixin:
 
     def save_selected_slot(self):
         SAVE_DIR.mkdir(parents=True, exist_ok=True)
-        name = self.safe_filename(self.save_slot_name.get())
+        requested_name = self.save_slot_name.get().strip() if hasattr(self, "save_slot_name") else ""
+        if not requested_name:
+            messagebox.showinfo("Save name required", "Enter a new save-slot name before saving.")
+            return
+        name = self.safe_filename(requested_name)
         group = self.normalized_save_group(self.save_folder_target.get() if hasattr(self, "save_folder_target") else getattr(self, "active_save_group", "Main"))
         path = self.save_slot_dir(name, group=group) / "savegame.json"
         previous_name = getattr(self, "active_save_name", "Game 1")
         previous_group = getattr(self, "active_save_group", "Main")
+        if path.exists() and not messagebox.askyesno(
+            "Overwrite Save Slot",
+            f"'{name}' already exists in {group}.\n\nOverwrite this save? A recovery backup will be created first.",
+        ):
+            self.set_save_manager_status(f"Save cancelled. '{name}' was not overwritten.")
+            return
         try:
             if path.exists():
                 self.backup_save_file(path, "before_slot_save")

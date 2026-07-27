@@ -793,7 +793,9 @@ class UIMixin:
         self.save_slot_list.pack(fill="both", expand=True)
         row = ttk.Frame(save_inner, style="Inset.TFrame")
         row.pack(fill="x", pady=6)
-        self.save_slot_name = tk.StringVar(value="Game 1")
+        # This is a deliberate destination field, never a reflection of the
+        # active career. Keeping it blank prevents accidental overwrites.
+        self.save_slot_name = tk.StringVar()
         ttk.Entry(row, textvariable=self.save_slot_name, width=18).grid(row=0, column=0, columnspan=4, sticky="ew", padx=4, pady=2)
         ttk.Button(row, text="Save Slot", command=self.save_selected_slot).grid(row=1, column=0, sticky="ew", padx=3, pady=2)
         ttk.Button(row, text="Load Slot", command=self.load_selected_slot).grid(row=1, column=1, sticky="ew", padx=3, pady=2)
