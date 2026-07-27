@@ -7900,6 +7900,10 @@ class WorldMixin:
         # maintain the same activity target at its larger roster scale.
         if promo.name == "Ultimate Fighting Championship" and mode != "Financial Recovery":
             show_chance = max(show_chance, 0.76)
+        # BAMMA opens with roughly 190 athletes. At 12-13 bouts per card it
+        # needs about 23 shows to sustain three appearances per active fighter.
+        if promo.name == PLAYER_PROMOTION_NAME and mode != "Financial Recovery":
+            show_chance = max(show_chance, 0.44)
         return max(0.04, min(0.78, show_chance))
 
     def ai_should_run_show(self, promo):

@@ -36,6 +36,15 @@ def main():
         app.start_company_choice.set("Spectator Mode")
         app.new_game()
         assert_true(app.spectator_mode, "Spectator Mode failed before lazy Log screen construction")
+        app.start_company_choice.set("Ultimate Fighting Championship")
+        app.new_game()
+        bamma_as_ai = next(promo for promo in app.promotions if promo.name == game.PLAYER_PROMOTION_NAME)
+        assert_true(app.bamma_initial_closed_divisions().issubset(set(bamma_as_ai.closed_divisions or [])),
+                    "BAMMA lost its closed-division policy when another promotion was selected")
+        assert_true(not any(app.belt_key(fighter.gender, fighter.weight) in set(bamma_as_ai.closed_divisions or []) for fighter in bamma_as_ai.roster),
+                    "AI BAMMA retained a fighter in a closed division after player takeover")
+        assert_true(app.ai_show_chance(bamma_as_ai) >= 0.44,
+                    "AI BAMMA cadence cannot sustain three annual appearances per fighter")
         app.start_company_choice.set(game.PLAYER_PROMOTION_NAME)
         app.new_game()
         addin_names = {row[0] for row, _gender in app.bamma_initial_addin_data()}

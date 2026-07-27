@@ -317,4 +317,5 @@ class Promotion:
     legacy_score: int = 0
     academy: dict = None
     closed_divisions: list = None
+    closed_division_policy_set: bool = False
     regional_division_activity: dict = None

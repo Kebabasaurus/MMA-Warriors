@@ -4715,6 +4715,11 @@ class SeedMixin:
                     self.promotions.append(promo)
             self.news.insert(0, f"World database repaired: restored missing promotions ({', '.join(missing)}).")
 
+        bamma = next((promo for promo in self.promotions if promo.name == PLAYER_PROMOTION_NAME), None)
+        if bamma is not None and not getattr(bamma, "closed_division_policy_set", False):
+            bamma.closed_divisions = sorted(self.bamma_initial_closed_divisions())
+            bamma.closed_division_policy_set = True
+
         # Versioned expansion: existing saves gain only the five additional
         # feeder circuits, with no resurrection of unrelated defunct companies.
         pipeline_version = int(getattr(self, "rules", {}).get("regional_pipeline_version", 0) or 0)

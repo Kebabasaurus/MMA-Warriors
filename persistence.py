@@ -874,6 +874,7 @@ class PersistenceMixin:
             row.setdefault("era_history", [])
             row.setdefault("legacy_score", 0)
             row.setdefault("closed_divisions", [])
+            row.setdefault("closed_division_policy_set", False)
             row.setdefault("special_belts", {})
             row.setdefault("regional_division_activity", {})
             for fighter in row["roster"]:
@@ -1030,6 +1031,14 @@ class PersistenceMixin:
                 ),
             })
             self.change_journal = self.change_journal[-400:]
+        ai_closed_division_repair = self.reconcile_closed_ai_division_rosters()
+        if ai_closed_division_repair:
+            self.change_journal.append({
+                "date": self.format_game_date(),
+                "type": "Roster Repair",
+                "summary": f"Released {ai_closed_division_repair} fighter(s) retained in closed AI divisions.",
+            })
+            self.change_journal = self.change_journal[-400:]
         regional_repairs = self.repair_regional_fighter_tracking()
         regional_title_repairs = self.repair_regional_title_state()
         if regional_repairs["origin"] or regional_repairs["activity"] or regional_repairs.get("division_activity", 0):
@@ -1140,6 +1149,51 @@ class PersistenceMixin:
                 existing_ids.add(fighter.fighter_id)
         self.roster = [fighter for fighter in self.roster if fighter not in released]
         return len(released)
+
+    def reconcile_closed_ai_division_rosters(self):
+        """Release legacy AI roster entries in divisions their promotion has closed."""
+        released_total = 0
+        existing_ids = {fighter.fighter_id for fighter in self.free_agents}
+        for promo in self.promotions:
+            closed = self.company_closed_divisions(promo)
+            if not closed:
+                continue
+            released = [
+                fighter for fighter in promo.roster
+                if self.belt_key(fighter.gender, fighter.weight) in closed
+            ]
+            if not released:
+                continue
+            released_names = {fighter.name for fighter in released}
+            for event in list(getattr(promo, "scheduled_events", []) or []):
+                event["fights"] = [
+                    fight for fight in event.get("fights", [])
+                    if not (set(self.event_fight_participants(fight)) & released_names)
+                ]
+            promo.scheduled_events = [
+                event for event in (getattr(promo, "scheduled_events", []) or []) if event.get("fights")
+            ]
+            promo.belts = self.normalize_belts(promo.belts or {})
+            promo.interim_belts = self.normalize_belts(promo.interim_belts or {})
+            for key in closed:
+                promo.belts[key] = ""
+                promo.interim_belts[key] = ""
+            for fighter in released:
+                fighter.champion = False
+                fighter.interim_champion = False
+                fighter.contract_months = 0
+                fighter.exclusive = False
+                fighter.contract_type = "Free Agent"
+                fighter.ai_offer_company = ""
+                fighter.ai_offer_purse = 0
+                fighter.ai_offer_months = 0
+                fighter.ai_offer_signing_bonus = 0
+                if fighter.fighter_id not in existing_ids:
+                    self.free_agents.append(fighter)
+                    existing_ids.add(fighter.fighter_id)
+            promo.roster = [fighter for fighter in promo.roster if fighter not in released]
+            released_total += len(released)
+        return released_total
 
     def migrate_detailed_skill_balance(self, fighters):
         """One-time repair for saves created by group-wide detailed growth."""
@@ -1768,6 +1822,7 @@ class PersistenceMixin:
             era_history=[],
             academy=json.loads(json.dumps(self.repair_academy(getattr(self, "academy", {})))) if hasattr(self, "repair_academy") else {},
             closed_divisions=sorted(getattr(self, "closed_divisions", set())),
+            closed_division_policy_set=True,
         )
 
     def enter_spectator_mode(self):
@@ -2989,8 +3044,8 @@ class PersistenceMixin:
         self.interim_belts = self.blank_belts()
         self.special_belts = {}
         self.belt_history = self.blank_belt_history()
-        self.closed_divisions = self.bamma_initial_closed_divisions() if choice == self.player_company_name else set()
-        self.player_managed_divisions = set(self.closed_divisions)
+        self.closed_divisions = self.bamma_initial_closed_divisions()
+        self.player_managed_divisions = set()
         self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "allow_mixed_gender": False, "active_fighter_target": 1200, "ai_offer_market_target": 100, "global_result_replay_limit": 2000, "auto_renew_enabled": False, "scouting_mode": True, "fight_night_audio_enabled": True, "fight_night_audio_output": "System default", "fight_night_audio_volume": 55, "autosave_enabled": True, "autosave_interval_months": 2, "autosave_weekly_keep": 2, "autosave_monthly_keep": 2, "save_backup_keep": 2, "save_retention_version": 4, "detailed_skill_balance_version": 1}
         media_section = self.universe_section("media", {}) if hasattr(self, "universe_section") else {}
         self.broadcasters = media_section.get("player_broadcasters", self.default_player_media() if hasattr(self, "default_player_media") else [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}])
@@ -3020,7 +3075,7 @@ class PersistenceMixin:
             self.enter_spectator_mode()
             return
         if choice != self.player_company_name:
-            self.take_control_of_company(choice, keep_current=False)
+            self.take_control_of_company(choice, keep_current=True)
             self.news.insert(0, f"New game started as {self.player_company_name}.")
             return
         self.refresh_all()
