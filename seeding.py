@@ -498,8 +498,8 @@ class SeedMixin:
         existing_names = {fighter.name for fighter in roster} | company_names
         # BAMMA's curated add-ins are intentionally additional depth. Keep the
         # normal generated-divisional safety net, but open with a promotion-
-        # sized 175-fighter roster instead of crowding real names out.
-        while len(roster) < 175:
+        # sized 190-fighter roster instead of crowding real names out.
+        while len(roster) < 190:
             prospect = self.create_generated_fighter(8, 48, 43, 82)
             self.avoid_name_collision(prospect, existing_names)
             prospect.contract_months = random.randint(6, 22)
@@ -509,7 +509,7 @@ class SeedMixin:
         self.ensure_roster_division_depth(roster, self.player_region, self.player_company_name, self.company_pop, player_owned=True)
         closed_divisions = self.bamma_initial_closed_divisions()
         self.reassign_bamma_closed_division_fighters(roster, closed_divisions)
-        self.add_bamma_female_featherweight_slots(roster)
+        self.ensure_bamma_womens_division_depth(roster)
         self.seed_relationships(roster)
         self.belts, self.interim_belts, self.belt_history = self.ensure_company_champions(
             roster, self.belts, self.player_company_name, self.player_region, self.company_pop,
@@ -530,18 +530,22 @@ class SeedMixin:
             if self.belt_key(fighter.gender, fighter.weight) in closed_divisions:
                 fighter.weight = "Welterweight"
 
-    def add_bamma_female_featherweight_slots(self, roster):
-        """Add two intentional generated slots to BAMMA's women's featherweights."""
+    def ensure_bamma_womens_division_depth(self, roster):
+        """Guarantee viable fresh-start depth in BAMMA's women's divisions."""
         existing_names = {fighter.name for fighter in roster}
-        for _ in range(2):
-            fighter = self.create_generated_fighter(
-                8, 48, 43, 82, weight="Featherweight", gender="Female", region=self.player_region,
-            )
-            self.avoid_name_collision(fighter, existing_names)
-            existing_names.add(fighter.name)
-            roster.append(self.prepare_company_generated_fighter(
-                fighter, self.player_region, self.player_company_name, player_owned=True,
-            ))
+        for weight in ("Featherweight", "Bantamweight"):
+            while sum(
+                fighter.gender == "Female" and fighter.weight == weight
+                for fighter in roster
+            ) < 6:
+                fighter = self.create_generated_fighter(
+                    8, 48, 43, 82, weight=weight, gender="Female", region=self.player_region,
+                )
+                self.avoid_name_collision(fighter, existing_names)
+                existing_names.add(fighter.name)
+                roster.append(self.prepare_company_generated_fighter(
+                    fighter, self.player_region, self.player_company_name, player_owned=True,
+                ))
 
     def bamma_initial_addin_data(self):
         """User-supplied real-fighter expansion for BAMMA's opening roster.
