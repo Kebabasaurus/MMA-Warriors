@@ -42,6 +42,9 @@ def main():
         magomed = next(fighter for fighter in eurasian_circuit.roster if fighter.name == "Magomed Zaynukov")
         assert_true((magomed.birth_country, magomed.birth_region, magomed.hometown, magomed.nationality) == ("Russia", "Russia", "Makhachkala", "Russian"),
                     "Eurasian headliner retained an unrelated birthplace after receiving a Dagestani identity")
+        ian_garry = next(fighter for fighter in app.roster + [fighter for promo in app.promotions for fighter in promo.roster] if fighter.name == "Ian Machado Garry")
+        assert_true((ian_garry.birth_country, ian_garry.birth_region, ian_garry.hometown, ian_garry.nationality) == ("Ireland", "Europe", "Dublin", "Irish"),
+                    "Ian Machado Garry retained a generic European identity instead of his Irish origin")
         bamma_as_ai = next(promo for promo in app.promotions if promo.name == game.PLAYER_PROMOTION_NAME)
         assert_true(app.bamma_initial_closed_divisions().issubset(set(bamma_as_ai.closed_divisions or [])),
                     "BAMMA lost its closed-division policy when another promotion was selected")

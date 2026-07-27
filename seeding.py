@@ -1145,6 +1145,7 @@ class SeedMixin:
         # than falling back to a promotion's broad market region.
         overrides = {
             "Matthew Green": {"city": "Birmingham", "birth_country": "United Kingdom", "citizenship": "United Kingdom"},
+            "Ian Machado Garry": {"city": "Dublin", "birth_country": "Ireland", "citizenship": "Ireland"},
             "Ramazan Kuramagomedov": {"city": "Makhachkala", "birth_country": "Russia", "citizenship": "Russia"},
             "Max Holzer": {"city": "Hannover", "birth_country": "Germany", "citizenship": "Germany"},
             "Lewis McGrillen": {"city": "Manchester", "birth_country": "United Kingdom", "citizenship": "United Kingdom"},
