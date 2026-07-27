@@ -1271,6 +1271,60 @@ class ViewMixin:
         tk.Label(parent, text=str(value), bg=self.colors["panel"], fg=self.colors["text"], font=("Tahoma", 9, "bold"), anchor="w").grid(row=row, column=1, sticky="ew", padx=8, pady=3)
         parent.grid_columnconfigure(1, weight=1)
 
+    def country_flag_path_for_fighter(self, fighter):
+        """Find the bundled national flag, preferring a fighter's recorded birthplace."""
+        flag_dir = BUNDLE_DIR / "country_flags"
+        aliases = {
+            "usa": "united_states", "us": "united_states", "u.s.a.": "united_states",
+            "united states of america": "united_states", "american": "united_states",
+            "uk": "united_kingdom", "u.k.": "united_kingdom", "british": "united_kingdom",
+            "england": "united_kingdom", "scotland": "united_kingdom", "wales": "united_kingdom",
+            "northern ireland": "united_kingdom", "northern irish": "united_kingdom",
+            "czech republic": "czechia", "czech": "czechia",
+            "south korean": "south_korea", "korean": "south_korea",
+            "new zealander": "new_zealand", "emirati": "united_arab_emirates",
+        }
+        candidates = [
+            getattr(fighter, "birth_country", ""),
+            getattr(fighter, "nationality", ""),
+            getattr(fighter, "region", ""),
+        ]
+        nationality = str(getattr(fighter, "nationality", "") or "").strip()
+        candidates.extend(country for country, value in COUNTRY_NATIONALITIES.items() if value == nationality)
+        region = str(getattr(fighter, "region", "") or "").strip()
+        if region in REGION_COUNTRIES:
+            candidates.append(REGION_COUNTRIES[region])
+
+        for candidate in candidates:
+            candidate = str(candidate or "").strip()
+            if not candidate:
+                continue
+            key = candidate.lower()
+            slug = aliases.get(key, re.sub(r"[^a-z0-9]+", "_", key).strip("_"))
+            path = flag_dir / f"{slug}.png"
+            if path.exists():
+                return path
+        return None
+
+    def profile_country_flag_badge(self, parent, fighter):
+        path = self.country_flag_path_for_fighter(fighter)
+        if not path:
+            return None
+        try:
+            flag = tk.PhotoImage(file=str(path))
+        except tk.TclError:
+            return None
+        scale = max(1, (flag.width() + 43 - 1) // 43, (flag.height() + 29 - 1) // 29)
+        if scale > 1:
+            flag = flag.subsample(scale, scale)
+        frame = tk.Frame(parent, bg=self.colors["panel_dark"], highlightthickness=1, highlightbackground=self.colors["line"])
+        frame.pack(side="left", padx=4, pady=4)
+        tk.Label(frame, text="FLAG", bg=self.colors["panel_dark"], fg=self.colors["muted"], font=("Tahoma", 7, "bold")).pack(padx=8, pady=(5, 1))
+        label = tk.Label(frame, image=flag, bg=self.colors["panel_dark"], bd=0)
+        label.image = flag  # Keep the Tk image alive for the lifetime of the profile.
+        label.pack(padx=8, pady=(0, 5))
+        return frame
+
     def profile_badge(self, parent, text, value=None):
         frame = tk.Frame(parent, bg=self.colors["panel_dark"], highlightthickness=1, highlightbackground=self.colors["line"])
         frame.pack(side="left", padx=4, pady=4)
@@ -1694,6 +1748,7 @@ class ViewMixin:
         self.profile_badge(badge_row, "SPORT RTG" if sport else "OVR", overall_badge if stats_visible else "SCOUT")
         self.profile_badge(badge_row, "ELO", fighter.elo_rating if stats_visible else "SCOUT")
         self.profile_badge(badge_row, "P4P", world_rank)
+        self.profile_country_flag_badge(badge_row, fighter)
         current_titles = self.fighter_current_championships(fighter)
         if current_titles:
             self.championship_profile_badge(left, current_titles)
