@@ -45,6 +45,16 @@ def main():
                     "AI BAMMA retained a fighter in a closed division after player takeover")
         assert_true(app.ai_show_chance(bamma_as_ai) >= 0.44,
                     "AI BAMMA cadence cannot sustain three annual appearances per fighter")
+        for fighter in bamma_as_ai.roster:
+            if fighter.gender == "Male" and fighter.weight == "Lightweight" and not fighter.champion:
+                fighter.ranking_position = 999
+        title_queue_probe = app.create_generated_fighter(weight="Lightweight", gender="Male")
+        title_queue_probe.ranking_position = 1
+        title_queue_probe.rank_score = 100_000
+        title_queue_probe.career_win_streak = 11
+        bamma_as_ai.roster.append(title_queue_probe)
+        assert_true(app.ai_title_contender_pressure(bamma_as_ai, "Male", "Lightweight") >= 3,
+                    "An elite #1 contender was not prioritised for an AI title shot")
         app.start_company_choice.set(game.PLAYER_PROMOTION_NAME)
         app.new_game()
         addin_names = {row[0] for row, _gender in app.bamma_initial_addin_data()}

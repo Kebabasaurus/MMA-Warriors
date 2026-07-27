@@ -8074,6 +8074,32 @@ class WorldMixin:
         holder_name = self.ai_primary_title_holder_name(promo, a.gender, a.weight)
         return not holder_name or holder_name in {a.name, b.name}
 
+    def ai_title_contender_pressure(self, promo, gender, weight):
+        """Return urgency for an AI division's leading contender getting a shot."""
+        contenders = sorted(
+            (
+                fighter for fighter in promo.roster
+                if not fighter.retired and fighter.gender == gender and fighter.weight == weight
+                and not fighter.champion
+            ),
+            key=lambda fighter: (
+                getattr(fighter, "ranking_position", 999),
+                -getattr(fighter, "rank_score", 0),
+            ),
+        )
+        if not contenders:
+            return 0
+        leader = contenders[0]
+        rank = getattr(leader, "ranking_position", 999)
+        streak = max(0, int(getattr(leader, "career_win_streak", 0) or 0))
+        if getattr(leader, "owed_title_shot", False):
+            return 4
+        if rank == 1 and streak >= 8:
+            return 3
+        if rank == 1 and streak >= 5:
+            return 2
+        return 1 if rank == 1 else 0
+
     def build_ai_card(self, promo, ready, target):
         """Matchmake a believable AI card: title fights for champions vs top contenders,
         grudge matches for rivalries, ranking-based pairings for the rest, and a
@@ -8095,7 +8121,10 @@ class WorldMixin:
         random.shuffle(divisions)
         # Vacant championships need a sporting resolution before routine
         # defenses consume the card's limited title-fight slots.
-        divisions.sort(key=lambda division: bool(belts.get(self.belt_key(*division))))
+        divisions.sort(key=lambda division: (
+            bool(belts.get(self.belt_key(*division))),
+            -self.ai_title_contender_pressure(promo, *division),
+        ))
 
         def pool_for(gender, weight):
             pool = [f for f in ready if f.gender == gender and f.weight == weight and f.name not in used]
@@ -8174,7 +8203,13 @@ class WorldMixin:
                                    "booking_reason": "Vacant championship between the two leading available contenders"})
                     titles += 1
                     continue
-            if champ and len(pool) >= 2 and random.random() < (0.52 if mode in ("Title Push", "Contender Cycle") else 0.4):
+            contender_pressure = self.ai_title_contender_pressure(promo, gender, weight)
+            defense_chance = 0.52 if mode in ("Title Push", "Contender Cycle") else 0.4
+            if contender_pressure >= 3:
+                defense_chance = max(defense_chance, 0.9)
+            elif contender_pressure >= 2:
+                defense_chance = max(defense_chance, 0.7)
+            if champ and len(pool) >= 2 and random.random() < defense_chance:
                 contenders = [fighter for fighter in pool if fighter.name != champ.name
                               and not self.ai_matchup_is_stale(champ, fighter, title=True)]
                 contender = min(
