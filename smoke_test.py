@@ -66,6 +66,12 @@ def main():
         bamma_as_ai = app.player_company_as_promotion()
         assert_true(all(not app.promotion_division_open(bamma_as_ai, "Female", weight) for weight in ("Middleweight", "Light Heavyweight", "Heavyweight")),
                     "BAMMA's closed female divisions remain eligible for AI recruitment")
+        leaked_closed_fighter = app.create_generated_fighter(weight="Light Heavyweight", gender="Female")
+        app.roster.append(leaked_closed_fighter)
+        assert_true(app.reconcile_closed_player_division_roster() == 1,
+                    "Closed-player division repair did not identify a leaked roster fighter")
+        assert_true(leaked_closed_fighter not in app.roster and leaked_closed_fighter in app.free_agents,
+                    "A leaked fighter remained contracted in a closed player division")
         assert_true(all(fighter.weight in game.WEIGHTS for fighter in app.all_database_fighters()),
                     "Initial database contains a fighter outside the normal game divisions")
         for screen_name in app.screen_builders:

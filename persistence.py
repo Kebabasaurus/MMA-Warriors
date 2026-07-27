@@ -1019,6 +1019,17 @@ class PersistenceMixin:
         self.season_stats = data.get("season_stats", {})
         self.awards_history = data.get("awards_history", [])
         self.clean_numbered_fighter_names()
+        closed_division_repair = self.reconcile_closed_player_division_roster()
+        if closed_division_repair:
+            self.change_journal.append({
+                "date": self.format_game_date(),
+                "type": "Roster Repair",
+                "summary": (
+                    f"Released {closed_division_repair} fighter(s) retained in closed player divisions. "
+                    "Reopen a division through Manage Divisions before signing fighters into it."
+                ),
+            })
+            self.change_journal = self.change_journal[-400:]
         regional_repairs = self.repair_regional_fighter_tracking()
         regional_title_repairs = self.repair_regional_title_state()
         if regional_repairs["origin"] or regional_repairs["activity"] or regional_repairs.get("division_activity", 0):
@@ -1083,6 +1094,52 @@ class PersistenceMixin:
         self.ensure_all_company_champions()
         self.rebalance_ai_finance_model()
         self.maintain_inbox()
+
+    def reconcile_closed_player_division_roster(self):
+        """Keep closed player divisions empty when loading a legacy save."""
+        closed = set(getattr(self, "closed_divisions", set()) or ())
+        if not closed:
+            return 0
+        released = [
+            fighter for fighter in self.roster
+            if self.belt_key(fighter.gender, fighter.weight) in closed
+        ]
+        if not released:
+            return 0
+        released_names = {fighter.name for fighter in released}
+        self.booked = [
+            fight for fight in getattr(self, "booked", [])
+            if not (set(self.event_fight_participants(fight)) & released_names)
+        ]
+        for event in getattr(self, "scheduled_events", []):
+            event["fights"] = [
+                fight for fight in event.get("fights", [])
+                if not (set(self.event_fight_participants(fight)) & released_names)
+            ]
+        self.scheduled_events = [
+            event for event in getattr(self, "scheduled_events", []) if event.get("fights")
+        ]
+        self.belts = self.normalize_belts(self.belts)
+        self.interim_belts = self.normalize_belts(self.interim_belts)
+        for key in closed:
+            self.belts[key] = ""
+            self.interim_belts[key] = ""
+        existing_ids = {fighter.fighter_id for fighter in self.free_agents}
+        for fighter in released:
+            fighter.champion = False
+            fighter.interim_champion = False
+            fighter.contract_months = 0
+            fighter.exclusive = False
+            fighter.contract_type = "Free Agent"
+            fighter.ai_offer_company = ""
+            fighter.ai_offer_purse = 0
+            fighter.ai_offer_months = 0
+            fighter.ai_offer_signing_bonus = 0
+            if fighter.fighter_id not in existing_ids:
+                self.free_agents.append(fighter)
+                existing_ids.add(fighter.fighter_id)
+        self.roster = [fighter for fighter in self.roster if fighter not in released]
+        return len(released)
 
     def migrate_detailed_skill_balance(self, fighters):
         """One-time repair for saves created by group-wide detailed growth."""
