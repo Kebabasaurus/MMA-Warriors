@@ -63,6 +63,7 @@ CAREER_ARCHETYPE_TABLE = weighted_choice_table(
     (16, 53, 17, 14),
 )
 REGIONAL_FEEDER_AGE_TABLE = weighted_choice_table(range(17, 22), (5, 8, 10, 8, 5))
+MMA_FIGHTER_DATABASE_SCHEMA = 2
 
 
 class SeedMixin:
@@ -242,6 +243,12 @@ class SeedMixin:
         """Keep the shipped real-life pool additive as the default pack evolves."""
         shipped = self.build_seed_fighter_database()
         changed = False
+        if fighters.get("all_fighters"):
+            normalized = self.normalize_seed_fighter_database(fighters)
+            for key in ("player_roster", "free_agents", "promotions"):
+                if fighters.get(key) != normalized.get(key):
+                    fighters[key] = normalized.get(key)
+                    changed = True
         promotions = fighters.setdefault("promotions", {})
         for company, rows in shipped.get("promotions", {}).items():
             current = promotions.setdefault(company, [])
@@ -270,7 +277,7 @@ class SeedMixin:
             current = fighters.setdefault(key, [])
             known = {row[0] for row in current if isinstance(row, (list, tuple)) and row}
             for row in shipped.get(key, []):
-                if row[0] not in known and row[0] not in company_names:
+                if row[0] not in known and (key == "player_roster" or row[0] not in company_names):
                     current.append(row)
                     known.add(row[0])
                     changed = True
@@ -297,6 +304,23 @@ class SeedMixin:
             changed = True
         elif list(existing_mg) != target_mg:
             agents[agents.index(existing_mg)] = list(target_mg)
+            changed = True
+        rebuilt_records = self.fighter_database_records_from_groups(
+            fighters.get("player_roster", []), fighters.get("free_agents", []), fighters.get("promotions", {})
+        )
+        if fighters.get("all_fighters") != rebuilt_records:
+            fighters["all_fighters"] = rebuilt_records
+            changed = True
+        for key, value in (
+            ("schema", MMA_FIGHTER_DATABASE_SCHEMA),
+            ("database_name", "Core MMA Fighter Database"),
+            ("notes", "Canonical new-game MMA fighter seed database. Edit all_fighters to change named starting rosters; grouped sections are compatibility views."),
+        ):
+            if fighters.get(key) != value:
+                fighters[key] = value
+                changed = True
+        if not fighters.get("bamma_addins_embedded"):
+            fighters["bamma_addins_embedded"] = True
             changed = True
         fighters["real_roster_depth_version"] = 1
         return changed
@@ -427,19 +451,130 @@ class SeedMixin:
         if cached and cached.get("path") == Path(path):
             self._universe_database_cache = None
 
-    def build_seed_fighter_database(self):
+    def seed_fighter_record_from_row(self, row, placement, owner=None, gender=None):
+        row = list(row)
+        if len(row) < 10:
+            raise ValueError(f"Fighter database row for {row[0] if row else 'unknown'} is incomplete")
         return {
-            "schema": 1,
-            "notes": "Canonical new-game fighter seed database. Edit this file to change new-game MMA rosters without editing Python source.",
-            "player_roster": self.cage_empire_fighter_data(),
+            "database_type": "mma",
+            "generated": False,
+            "placement": placement,
+            "owner": owner or row[2],
+            "seed_org": row[2],
+            "name": row[0],
+            "weight": row[1],
+            "gender": gender or self.infer_gender(row[0]),
+            "popularity": row[3],
+            "rating": row[4],
+            "age": row[5],
+            "record_w": row[6],
+            "record_l": row[7],
+            "record_d": self.real_fighter_draws().get(row[0], 0),
+            "region": row[8],
+            "style": row[9],
+            "source_url": row[10] if len(row) > 10 else "",
+        }
+
+    def seed_fighter_row_from_record(self, record):
+        if isinstance(record, (list, tuple)):
+            return list(record)
+        owner = record.get("owner") or record.get("company") or record.get("promotion") or "Free Agent"
+        seed_org = record.get("seed_org") or owner
+        return [
+            record.get("name", "Unnamed Fighter"),
+            record.get("weight", "Lightweight"),
+            seed_org,
+            int(record.get("popularity", record.get("pop", 35)) or 35),
+            int(record.get("rating", record.get("skill", record.get("overall", 65))) or 65),
+            int(record.get("age", 28) or 28),
+            int(record.get("record_w", record.get("wins", 0)) or 0),
+            int(record.get("record_l", record.get("losses", 0)) or 0),
+            record.get("region", "USA"),
+            record.get("style", "Well-Rounded"),
+        ] + ([record.get("source_url", "")] if record.get("source_url") else [])
+
+    def fighter_database_records_from_groups(self, player_roster, free_agents, promotions):
+        records = []
+        seen = set()
+
+        def add(row, placement, owner=None, gender=None):
+            try:
+                record = self.seed_fighter_record_from_row(row, placement, owner=owner, gender=gender)
+            except ValueError:
+                return
+            key = (self.fighter_name_key(record["name"]), record.get("owner", ""))
+            if key in seen:
+                return
+            seen.add(key)
+            records.append(record)
+
+        for row in player_roster:
+            add(row, "player_roster", PLAYER_PROMOTION_NAME)
+        for row in free_agents:
+            add(row, "free_agents", row[2] if isinstance(row, (list, tuple)) and len(row) > 2 else "Free Agent")
+        for company, rows in (promotions or {}).items():
+            for row in rows:
+                add(row, "promotion", company)
+        return records
+
+    def normalize_seed_fighter_database(self, data):
+        data = dict(data or {})
+        records = data.get("all_fighters")
+        if isinstance(records, list) and records:
+            player_roster, free_agents, promotions = [], [], {}
+            for record in records:
+                if not isinstance(record, dict):
+                    continue
+                row = self.seed_fighter_row_from_record(record)
+                owner = record.get("owner") or row[2]
+                placement = str(record.get("placement", "")).lower()
+                if placement in ("promotion", "promotions"):
+                    promotions.setdefault(owner, []).append(row)
+                elif placement in ("player", "player_roster") or owner == PLAYER_PROMOTION_NAME:
+                    player_roster.append(row)
+                elif placement in ("free_agent", "free_agents") or owner in ("Free Agent", "Legend"):
+                    free_agents.append(row)
+                else:
+                    promotions.setdefault(owner, []).append(row)
+            data["player_roster"] = self.unique_fighter_rows(player_roster)
+            data["free_agents"] = self.unique_fighter_rows(free_agents)
+            data["promotions"] = {company: self.unique_fighter_rows(rows) for company, rows in promotions.items()}
+        else:
+            player_roster = data.get("player_roster") or []
+            free_agents = data.get("free_agents") or []
+            promotions = data.get("promotions") or {}
+            data["all_fighters"] = self.fighter_database_records_from_groups(player_roster, free_agents, promotions)
+        data["schema"] = max(MMA_FIGHTER_DATABASE_SCHEMA, int(data.get("schema", 1) or 1))
+        data.setdefault("database_name", "Core MMA Fighter Database")
+        data.setdefault(
+            "notes",
+            "Canonical new-game MMA fighter seed database. Edit all_fighters to change named starting rosters; grouped sections are compatibility views.",
+        )
+        return data
+
+    def build_seed_fighter_database(self):
+        player_roster = list(self.cage_empire_fighter_data())
+        known = {self.fighter_name_key(row[0]) for row in player_roster}
+        for row, _gender in self.bamma_initial_addin_data():
+            if self.fighter_name_key(row[0]) not in known:
+                player_roster.append(row)
+                known.add(self.fighter_name_key(row[0]))
+        data = {
+            "schema": MMA_FIGHTER_DATABASE_SCHEMA,
+            "database_name": "Core MMA Fighter Database",
+            "notes": "Canonical new-game MMA fighter seed database. Edit all_fighters to change named starting rosters; grouped sections are compatibility views.",
+            "bamma_addins_embedded": True,
+            "player_roster": player_roster,
             "free_agents": self.independent_fighter_data() + self.legend_fighter_data(),
             "promotions": self.expanded_real_fighter_data(),
         }
+        data["all_fighters"] = self.fighter_database_records_from_groups(data["player_roster"], data["free_agents"], data["promotions"])
+        return data
 
     def load_seed_fighter_database(self):
         section = self.universe_section("fighters", None)
         if section:
-            return section
+            return self.normalize_seed_fighter_database(section)
         path = self.seed_database_file("core_fighter_database.json")
         if not path.exists():
             self.write_seed_database_file(path, self.build_seed_fighter_database())
@@ -447,7 +582,10 @@ class SeedMixin:
             data = json.loads(path.read_text(encoding="utf-8"))
             if not isinstance(data, dict) or "promotions" not in data:
                 raise ValueError("core fighter database is missing promotions")
-            return data
+            normalized = self.normalize_seed_fighter_database(data)
+            if normalized != data:
+                self.write_seed_database_file(path, normalized)
+            return normalized
         except Exception as exc:
             backup = path.with_suffix(f".broken_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
             try:
@@ -538,13 +676,14 @@ class SeedMixin:
         featured = self.unique_fighter_rows(featured)
         roster = [self.create_real_fighter(*row, player_owned=True) for row in featured]
         existing_featured = {self.fighter_name_key(fighter.name) for fighter in roster}
-        for row, gender in self.bamma_initial_addin_data():
-            if self.fighter_name_key(row[0]) in existing_featured:
-                continue
-            fighter = self.create_real_fighter(*row, player_owned=True)
-            fighter.gender = gender
-            roster.append(fighter)
-            existing_featured.add(self.fighter_name_key(fighter.name))
+        if not seed_db.get("bamma_addins_embedded"):
+            for row, gender in self.bamma_initial_addin_data():
+                if self.fighter_name_key(row[0]) in existing_featured:
+                    continue
+                fighter = self.create_real_fighter(*row, player_owned=True)
+                fighter.gender = gender
+                roster.append(fighter)
+                existing_featured.add(self.fighter_name_key(fighter.name))
         promotion_data = seed_db.get("promotions") or self.expanded_real_fighter_data()
         company_names = {row[0] for rows in promotion_data.values() for row in rows}
         existing_names = {fighter.name for fighter in roster} | company_names
