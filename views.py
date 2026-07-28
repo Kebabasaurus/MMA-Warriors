@@ -2529,7 +2529,7 @@ class ViewMixin:
 
     def suggested_matchmaking_opponent(self, fighter, target_month, target_week):
         busy = self.scheduled_fighter_names(include_booked=True)
-        if fighter.name in busy or fighter.injured or fighter.fatigue >= 65 or not self.fighter_available_for_date(fighter, target_month, target_week):
+        if fighter.name in busy or fighter.injured or fighter.fatigue >= 65 or not self.fighter_available_for_date(fighter, target_month, target_week, self.selected_booking_day()):
             return None
         candidates = []
         for opponent in self.roster:
@@ -2803,7 +2803,10 @@ class ViewMixin:
         self.refresh_event_atmosphere_forecast()
 
     def event_date_label(self, event):
-        return self.format_game_date(event.get("month", self.month), event.get("week", 1))
+        # Cards booked before bookings carried a weekday show the date they
+        # were always shown with, rather than a day nobody picked.
+        day = self.event_day(event) if isinstance(event, dict) and event.get("day") is not None else None
+        return self.format_game_date(event.get("month", self.month), event.get("week", 1), day=day)
 
     def sync_booking_internal_date(self):
         """Translate the calendar controls into the save-stable month index."""
@@ -2825,6 +2828,15 @@ class ViewMixin:
             year, calendar_month, _week = self.calendar_parts(month, week)
             self.event_calendar_month.set(CALENDAR_MONTH_ABBREVIATIONS[calendar_month - 1])
             self.event_year.set(year)
+
+    def selected_booking_day(self):
+        """The weekday chosen for the card, defaulting to the weekend."""
+        if not hasattr(self, "event_day_choice"):
+            return DEFAULT_EVENT_DAY
+        try:
+            return CALENDAR_DAYS.index(self.event_day_choice.get()) + 1
+        except (ValueError, tk.TclError):
+            return DEFAULT_EVENT_DAY
 
     def selected_booking_date(self, reject_past=False):
         """Return the chosen date, rejecting a past calendar selection when asked."""

@@ -39,7 +39,7 @@ class EventMixin:
         unavailable = []
         for name in names:
             fighter = self.get_fighter(name)
-            if not self.fighter_available_for_date(fighter, month, week):
+            if not self.fighter_available_for_date(fighter, month, week, self.selected_booking_day()):
                 unavailable.append(f"{fighter.name} ({self.fighter_return_label(fighter)})")
         if unavailable:
             earliest_month, earliest_week = self.earliest_booked_card_date()
@@ -90,6 +90,7 @@ class EventMixin:
             "city": self.event_city.get(),
             "month": month,
             "week": week,
+            "day": self.selected_booking_day(),
             "broadcaster": self.event_broadcaster.get(),
             "fights": scheduled_fights,
         }
@@ -155,8 +156,21 @@ class EventMixin:
         fighter = self.get_fighter(name)
         return fighter.gender if fighter else "Male"
 
+    def event_camp_days(self, event):
+        """Days from now until a card runs, which is the real length of its camp."""
+        days = self.calendar_day_index(
+            event.get("month", self.month), event.get("week", 1), self.event_day(event)
+        ) - self.current_day_index()
+        return max(1, days)
+
     def assign_event_camps(self, event):
-        weeks_out = max(1, (event["month"] - self.month) * 4 + (event.get("week", 1) - self.week))
+        # Camp is measured in days, so a card booked on the Saturday of a week
+        # is nearly a full extra week of preparation over the same card on the
+        # Monday. The fractional length drives the boost; camp_weeks stays a
+        # whole number because it is a display value.
+        camp_days = self.event_camp_days(event)
+        camp_length_weeks = camp_days / DAYS_PER_WEEK
+        weeks_out = max(1, round(camp_length_weeks))
         for fight in event["fights"]:
             for name in self.event_fight_participants(fight):
                 if name == "TBA":
@@ -171,7 +185,7 @@ class EventMixin:
                 intensity = getattr(fighter, "camp_intensity", "Standard")
                 intensity_bonus = {"Light": -1, "Standard": 0, "Hard": 4}.get(intensity, 0)
                 attention = self.gym_attention_multiplier(gym)
-                base_boost = round(weeks_out * (quality + specialty + focus_bonus + intensity_bonus) / 112 * (0.55 + professionalism * 0.3 + motivation * 0.25) / 2.8 * attention)
+                base_boost = round(camp_length_weeks * (quality + specialty + focus_bonus + intensity_bonus) / 112 * (0.55 + professionalism * 0.3 + motivation * 0.25) / 2.8 * attention)
                 camp_boost = min(12, max(0, base_boost + self.camp_form_variance(fighter, gym)))
                 fighter.camp_quality = quality
                 fighter.camp_weeks = weeks_out
@@ -2700,6 +2714,8 @@ class EventMixin:
     def prepare_event_result(self, event):
         # A player-arranged card is not re-sorted on fight night. The top row
         # is the main event, and therefore the name and watch order source.
+        # Title changes decided tonight are dated to the day this card runs.
+        self._active_card_day = self.event_day(event)
         self.normalize_card_order(event.get("fights", []))
         self.refresh_scheduled_event_auto_name(event)
         log = [f"{event['name']} - {event['venue']} ({self.event_date_label(event)})", "=" * 72]
@@ -2868,7 +2884,7 @@ class EventMixin:
         log.append(f"Company popularity will move from {self.company_pop} to {projected_pop}. Stability will move from {self.company_stability} to {projected_stability}.")
         tournament_note = f", {len(tournament_brackets)} tournament(s)" if tournament_brackets else ""
         summary = f"{event['name']} ({event['venue']}, {self.event_date_label(event)}): {len(results)} fights{tournament_note}, excitement {round(avg_excitement)}, gate ${gate:,}, profit ${profit:,}, popularity {projected_pop}%, stability {projected_stability}%"
-        return {
+        package = {
             "log": log,
             "results": results,
             "gate": gate,
@@ -2892,9 +2908,12 @@ class EventMixin:
             "city": event.get("city", ""),
             "month": event["month"],
             "week": event.get("week", 1),
+            "day": self.event_day(event),
             "summary": summary,
             "media_outcome": media_outcome,
         }
+        self._active_card_day = None
+        return package
 
     def card_mismatch_penalty(self, results):
         penalty = 0

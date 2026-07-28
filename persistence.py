@@ -1379,6 +1379,10 @@ class PersistenceMixin:
         fighter.retirement_requested_month = max(0, getattr(fighter, "retirement_requested_month", 0) or 0)
         fighter.retirement_fight_completed = bool(getattr(fighter, "retirement_fight_completed", False))
         fighter.retirement_fight_due_after_month = max(0, getattr(fighter, "retirement_fight_due_after_month", 0) or 0)
+        # Day-precision clock. Saves written before cards carried a weekday have
+        # neither value; zero means "fall back to the week-level fields".
+        fighter.available_day = max(0, int(getattr(fighter, "available_day", 0) or 0))
+        fighter.last_fight_day_index = max(0, int(getattr(fighter, "last_fight_day_index", 0) or 0))
         fighter.comeback_completion_prompted = bool(getattr(fighter, "comeback_completion_prompted", False))
         fighter.camp_quality = getattr(fighter, "camp_quality", 0) or self.gym_quality(fighter.camp)
         fighter.camp_joined_month = max(0, getattr(fighter, "camp_joined_month", 0) or 0)

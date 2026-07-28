@@ -509,12 +509,29 @@ class FightEngineMixin:
         values = state.get("context", {}).get(fighter.name, {})
         return sum(values.get(key, 0) for key in keys) * 0.45
 
+    def turnaround_recovery_modifier(self, fighter):
+        """How much the gap since a fighter's last bout leaves in the tank.
+
+        Deliberately small: the day a card is booked on should colour a fight,
+        not decide it. Returns 0 for anyone without a dated previous bout, so
+        older saves are unaffected.
+        """
+        rest_days = self.fighter_rest_days(
+            fighter, self.month, self.week, getattr(self, "_active_card_day", None)
+        )
+        if rest_days is None:
+            return 0.0
+        # Six weeks is an unremarkable turnaround; short notice costs more than
+        # a long lay-off gives back.
+        return max(-0.7, min(0.3, (rest_days - 42) / 130))
+
     def recover_between_rounds(self, a, b, state):
         for fighter in (a, b):
             conditioning = self.ds(fighter, "conditioning", fighter.cardio)
             resilience = self.ds(fighter, "resilience", fighter.toughness)
             camp_quality = fighter.camp_quality or self.gym_quality(fighter.camp)
             camp_recovery = min(2.4, camp_quality / 70 + fighter.camp_weeks * 0.08 + fighter.camp_boost * 0.12)
+            camp_recovery += self.turnaround_recovery_modifier(fighter)
             recovery = 2 + conditioning / 30 + fighter.cardio / 36 + resilience / 55 + camp_recovery
             recovery -= state["damage"][fighter.name] / 28 + state["body"][fighter.name] / 9 + state["leg"][fighter.name] / 24
             if fighter.trait == "Cardio Machine":

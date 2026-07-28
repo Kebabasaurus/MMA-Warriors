@@ -667,6 +667,19 @@ class AwardsMixin:
         match = re.search(r"Month\s+(\d+)", str(date_value or ""))
         return int(match.group(1)) if match else None
 
+    def belt_history_date_label(self, entry):
+        """Render a title event's date, including the day once one was recorded.
+
+        Entries written before cards carried a weekday have no day, so they
+        keep their original month-and-week stamp rather than being given a
+        misleading one.
+        """
+        text = self.format_game_date_text((entry or {}).get("date", ""))
+        day = (entry or {}).get("day")
+        if day is None:
+            return text
+        return f"{text} ({self.day_name(day, short=False)})"
+
     def format_month_span(self, months):
         """Render a month count as a compact 'Ny Nmo' reign length."""
         if months is None:
@@ -1102,7 +1115,7 @@ class AwardsMixin:
                         if end is None:
                             reign_label += " (current)"
                 detail_tree.insert("", "end", tags=(action_tag(action),), values=(
-                    self.format_game_date_text(entry.get("date", "")), action,
+                    self.belt_history_date_label(entry), action,
                     entry.get("fighter", ""), reign_label, entry.get("note", ""),
                 ))
 

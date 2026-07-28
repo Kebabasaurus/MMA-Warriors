@@ -26,10 +26,52 @@ class WorldMixin:
         """Return the internal month index for a selected calendar month and year."""
         return max(1, (max(GAME_START_YEAR, int(year)) - GAME_START_YEAR) * 12 + max(1, min(12, int(calendar_month))))
 
-    def format_game_date(self, month=None, week=None, include_week=True):
+    @staticmethod
+    def normalize_day(day=None, default=LEGACY_EVENT_DAY):
+        """Clamp a weekday to 1-7 (Monday-Sunday), falling back to `default`."""
+        try:
+            value = int(day)
+        except (TypeError, ValueError):
+            return default
+        return max(1, min(DAYS_PER_WEEK, value))
+
+    def calendar_day_index(self, month=None, week=None, day=None):
+        """A single running day number, the fine clock under the month/week one.
+
+        The simulation still advances a week at a time; this exists so camp
+        length and recovery can be measured in days rather than being rounded
+        to the week a card happens to sit in.
+        """
+        week_index = self.calendar_week_index(month, week)
+        return (week_index - 1) * DAYS_PER_WEEK + self.normalize_day(day)
+
+    def current_day_index(self):
+        """Today. A simulated week is entered on its first day."""
+        return self.calendar_day_index(self.month, self.week, getattr(self, "day", LEGACY_EVENT_DAY))
+
+    def event_day(self, event):
+        """The weekday a card runs on.
+
+        Cards scheduled before bookings carried a day have none recorded, and
+        are treated as running on the first day of their week so their camps
+        are exactly as long as they were when they were booked.
+        """
+        if not isinstance(event, dict):
+            return LEGACY_EVENT_DAY
+        return self.normalize_day(event.get("day"), LEGACY_EVENT_DAY)
+
+    def day_name(self, day=None, short=True):
+        index = self.normalize_day(day) - 1
+        return (CALENDAR_DAY_ABBREVIATIONS if short else CALENDAR_DAYS)[index]
+
+    def format_game_date(self, month=None, week=None, include_week=True, day=None):
         year, calendar_month, week_number = self.calendar_parts(month, week)
         label = CALENDAR_MONTH_ABBREVIATIONS[calendar_month - 1]
-        return f"{label} W{week_number} {year}" if include_week else f"{label} {year}"
+        if not include_week:
+            return f"{label} {year}"
+        if day is None:
+            return f"{label} W{week_number} {year}"
+        return f"{label} W{week_number} {self.day_name(day)} {year}"
 
     def format_game_date_text(self, value):
         """Render save-stable numeric dates in the player-facing calendar format."""
@@ -375,8 +417,35 @@ class WorldMixin:
     def calendar_week_index(self, month=None, week=None):
         return (max(1, month if month is not None else self.month) - 1) * 4 + max(1, week if week is not None else self.week)
 
-    def fighter_available_for_date(self, fighter, month=None, week=None):
-        return not fighter.injured and self.calendar_week_index(month, week) >= getattr(fighter, "available_week", 0)
+    def fighter_available_for_date(self, fighter, month=None, week=None, day=None):
+        if fighter.injured:
+            return False
+        available_day = int(getattr(fighter, "available_day", 0) or 0)
+        if available_day and day is not None:
+            return self.calendar_day_index(month, week, day) >= available_day
+        return self.calendar_week_index(month, week) >= getattr(fighter, "available_week", 0)
+
+    def stamp_last_fight_date(self, *fighters):
+        """Record when a fighter last competed, to the day of the card."""
+        day_index = self.calendar_day_index(
+            self.month, self.week, getattr(self, "_active_card_day", None) or LEGACY_EVENT_DAY
+        )
+        for fighter in fighters:
+            if fighter is None:
+                continue
+            fighter.last_fight_month = self.month
+            fighter.last_fight_day_index = day_index
+
+    def fighter_rest_days(self, fighter, month=None, week=None, day=None):
+        """Days between a fighter's last dated bout and the card being considered.
+
+        Returns None until they have fought on a dated card, so callers can
+        keep their existing week-based behaviour for older saves.
+        """
+        last = int(getattr(fighter, "last_fight_day_index", 0) or 0)
+        if not last:
+            return None
+        return max(0, self.calendar_day_index(month, week, day) - last)
 
     def fighter_return_label(self, fighter):
         available = getattr(fighter, "available_week", 0)
@@ -1037,7 +1106,16 @@ class WorldMixin:
             adjustment += 1 if self.staff_skill("Doctor") >= 74 else 0
         if fighter.injured:
             base += fighter.injured * 4
-        fighter.available_week = max(getattr(fighter, "available_week", 0), self.calendar_week_index() + max(2, base - adjustment))
+        layoff_weeks = max(2, base - adjustment)
+        fighter.available_week = max(getattr(fighter, "available_week", 0), self.calendar_week_index() + layoff_weeks)
+        # Count the layoff from the day they actually fought, so a Saturday
+        # card returns them a day later than a Friday one rather than both
+        # rounding to the same week.
+        fought_on = int(getattr(fighter, "last_fight_day_index", 0) or 0) or self.current_day_index()
+        fighter.available_day = max(
+            int(getattr(fighter, "available_day", 0) or 0),
+            fought_on + layoff_weeks * DAYS_PER_WEEK,
+        )
 
     def spectator_advance_weeks(self, weeks=1, status_prefix="Simulating", on_complete=None, stop_condition=None):
         if not getattr(self, "spectator_mode", False):
@@ -1285,8 +1363,7 @@ class WorldMixin:
         self.set_post_fight_recovery(loser, method, lost=True)
         winner.last_fight = f"W over {loser.name}"
         loser.last_fight = f"L to {winner.name}"
-        winner.last_fight_month = self.month
-        loser.last_fight_month = self.month
+        self.stamp_last_fight_date(winner, loser)
         winner.rank_score = self.rank_value(winner)
         loser.rank_score = self.rank_value(loser)
         result_line = f"Month {self.month} Week {self.week}: {winner.name} def. {loser.name} by {method}"
@@ -1372,8 +1449,7 @@ class WorldMixin:
         self.record_contract_fight_completion(b)
         a.career_win_streak = 0
         b.career_win_streak = 0
-        a.last_fight_month = self.month
-        b.last_fight_month = self.month
+        self.stamp_last_fight_date(a, b)
         a.momentum = max(-5, min(5, a.momentum))
         b.momentum = max(-5, min(5, b.momentum))
         a.morale = min(100, a.morale + random.randint(0, 3))
@@ -6215,7 +6291,7 @@ class WorldMixin:
             fighter.multi_sport_records[sport] = f"{fighter.record_w}-{fighter.record_l}-{fighter.record_d}"
             self.add_fight_history_entry(fighter, result_line)
             fighter.last_fight = result_line
-            fighter.last_fight_month = self.month
+            self.stamp_last_fight_date(fighter)
             condition = sim.get("condition", {}).get(fighter.name, {})
             exertion = max(0, 100 - condition.get("stamina", 70))
             damage_load = condition.get("damage", 0) + condition.get("body", 0) * 0.6 + condition.get("leg", 0) * 0.7
@@ -6629,7 +6705,7 @@ class WorldMixin:
         fighter.sport_employer = promotion
         fighter.contract_type = f"{sport} Development Deal"
         fighter.exclusive = True
-        fighter.last_fight_month = self.month
+        self.stamp_last_fight_date(fighter)
         ladder = self.combat_sport_weight_ladder(sport, fighter.gender)
         counts = {
             label: sum(
@@ -6906,7 +6982,7 @@ class WorldMixin:
                 fighter.contract_months = 0
                 fighter.exclusive = False
                 fighter.camp_focus = "Balanced"
-                fighter.last_fight_month = self.month
+                self.stamp_last_fight_date(fighter)
                 world["roster"].remove(fighter)
                 self.free_agents.append(fighter)
                 headline = f"CROSSOVER: Former {sport} standout {fighter.name} has entered the MMA free-agent market."
@@ -7931,7 +8007,7 @@ class WorldMixin:
         strategy = self.update_ai_promotion_strategy(promo)
         if promo.cash < max(120_000, promo.size * 6500):
             return False
-        ready = [f for f in promo.roster if self.fighter_available_for_date(f) and f.fatigue < self.ai_fatigue_limit(promo)]
+        ready = [f for f in promo.roster if self.fighter_available_for_date(f, day=self.ai_card_day(promo)) and f.fatigue < self.ai_fatigue_limit(promo)]
         if len(ready) < self.ai_min_ready_fighters(promo):
             return False
         if strategy.get("current_mode") == "Financial Recovery" and promo.cash < max(350_000, promo.size * 12_000):
@@ -7945,6 +8021,18 @@ class WorldMixin:
     def ai_min_ready_fighters(self, promo):
         return {"Super Shows": 14, "Seasonal": 12, "Prospect Builder": 11, "Frequent Small Cards": 11}.get(getattr(promo, "show_personality", "Balanced"), 11)
 
+    def ai_card_day(self, promo):
+        """The weekday an AI promotion runs its card on.
+
+        Real promotions run at the weekend, and the AI should book the same way
+        so its camps and turnarounds behave like the player's. Kept stable per
+        promotion and month rather than re-rolled, so a company has a settled
+        slot instead of drifting across the week at random.
+        """
+        seed = sum(ord(char) for char in str(getattr(promo, "name", ""))) + self.month
+        # Mostly Saturday, sometimes Friday or Sunday, occasionally midweek.
+        return (6, 6, 6, 5, 7, 6, 5, 3)[seed % 8]
+
     def apply_ai_camp(self, fighter, promo):
         if not self.gym_by_name(fighter.camp):
             target = self.gym_by_name(self.suggest_camp_for_fighter(fighter, getattr(promo, "region", "USA")))
@@ -7952,12 +8040,17 @@ class WorldMixin:
         gym = self.gym_by_name(fighter.camp)
         quality = self.gym_quality(fighter.camp)
         weeks = random.randint(3, 10) if getattr(promo, "show_personality", "Balanced") != "Frequent Small Cards" else random.randint(2, 6)
+        # An AI card runs on a weekday too, so its camp is measured to that day
+        # rather than to the start of the week. Booking later in the week buys
+        # the same extra preparation it does for the player.
+        card_day = self.normalize_day(getattr(self, "_active_card_day", None), LEGACY_EVENT_DAY)
+        camp_length_weeks = weeks + (card_day - LEGACY_EVENT_DAY) / DAYS_PER_WEEK
         professionalism = fighter.professionalism / 100
         specialty = self.gym_specialty_bonus(fighter, gym)
         fighter.camp_quality = quality
         fighter.camp_weeks = weeks
         attention = self.gym_attention_multiplier(gym)
-        base_boost = round(weeks * (quality + specialty) / 125 * (0.7 + professionalism * 0.35) / 3 * attention)
+        base_boost = round(camp_length_weeks * (quality + specialty) / 125 * (0.7 + professionalism * 0.35) / 3 * attention)
         fighter.camp_boost = min(12, max(0, base_boost + self.camp_form_variance(fighter, gym)))
         self.apply_gym_camp_micro_improvement(fighter, gym, weeks)
 
@@ -8463,7 +8556,7 @@ class WorldMixin:
         self.ensure_ai_media_state(promo)
         self.review_ai_media_deals(promo)
         commercial_strength, market_volatility, market_momentum = self.update_ai_financial_market(promo)
-        ready = [f for f in promo.roster if self.fighter_available_for_date(f) and f.fatigue < self.ai_fatigue_limit(promo)]
+        ready = [f for f in promo.roster if self.fighter_available_for_date(f, day=self.ai_card_day(promo)) and f.fatigue < self.ai_fatigue_limit(promo)]
         if len(ready) < self.ai_min_ready_fighters(promo):
             if random.random() < 0.45:
                 open_divisions = [
@@ -8512,9 +8605,13 @@ class WorldMixin:
         elif mode == "Contender Cycle":
             fight_target = min(16, fight_target + 1)
         fight_target = min(16, fight_target)
+        # Pick the card's day before matchmaking, so camps and the fighters'
+        # availability for it are both measured against the same date.
+        self._active_card_day = self.ai_card_day(promo)
         fights = self.build_ai_card(promo, ready, fight_target)
         minimum_card = 5 if strategy.get("current_mode") == "Financial Recovery" else 6
         if len(fights) < minimum_card:
+            self._active_card_day = None
             return
         projected_cost = sum(f["a"].purse + f["b"].purse for f in fights) + promo.size * 9500 + len(fights) * 22000
         # Broadcasters and venues advance a portion of expected receipts. AI
@@ -8611,8 +8708,7 @@ class WorldMixin:
             if method != "Draw":
                 winner.last_fight = line
                 loser.last_fight = line
-                winner.last_fight_month = self.month
-                loser.last_fight_month = self.month
+                self.stamp_last_fight_date(winner, loser)
                 winner.momentum = min(5, winner.momentum + 1)
                 loser.momentum = max(-5, loser.momentum - 1)
                 self.register_fight_popularity(winner, loser, bout, method)
@@ -8771,6 +8867,7 @@ class WorldMixin:
             region_data["mma_love"] = max(10, min(100, region_data.get("mma_love", 50) + (1 if event_hype > promo.size * 3 else 0)))
         if random.random() < 0.65:
             self.news.insert(0, f"{promo.name} ran {event_name}; {main_result}.")
+        self._active_card_day = None
 
     def major_roster_population_status(self):
         """Return live major-promotion demand without treating capacity as free agents."""
@@ -9119,7 +9216,7 @@ class WorldMixin:
 
     def simulate_regional_feeder_month(self, promo):
         """Low-cost developmental circuit: young fighters build records, not profits."""
-        ready = [fighter for fighter in promo.roster if self.fighter_available_for_date(fighter) and fighter.fatigue < 58]
+        ready = [fighter for fighter in promo.roster if self.fighter_available_for_date(fighter, day=self.ai_card_day(promo)) and fighter.fatigue < 58]
         by_division = {}
         for fighter in ready:
             by_division.setdefault((fighter.gender, fighter.weight), []).append(fighter)
@@ -9253,6 +9350,9 @@ class WorldMixin:
                 title_flags[index] = True
                 title_keys_used.add(key)
 
+        # Development cards run on a weekday like any other, so their bouts are
+        # dated and count toward a prospect's turnaround the same way.
+        self._active_card_day = self.ai_card_day(promo)
         event_name = f"{promo.name} Development Night {promo.event_counter}"
         promo.event_counter += 1
         results = []
@@ -9307,7 +9407,7 @@ class WorldMixin:
             self.add_fight_history_entry(winner, line)
             self.add_fight_history_entry(loser, line)
             winner.last_fight = loser.last_fight = line
-            winner.last_fight_month = loser.last_fight_month = self.month
+            self.stamp_last_fight_date(winner, loser)
             if winner.age <= 24 and winner.overall < winner.potential and random.random() < 0.34:
                 self.adjust_random_skill(winner, 1)
                 self.adjust_detailed_skill(winner, 1)
@@ -9334,6 +9434,7 @@ class WorldMixin:
             "fights": len(fights), "gate": "—", "profit": "—", "log": [*results], "fight_logs": fight_logs,
             "replay_available": False,
         }, retain_detail=False)
+        self._active_card_day = None
         self.regional_review_underperformers(promo)
         self.regional_graduate_fighters(promo)
         # A busy regional card can graduate several people. Refill promptly so

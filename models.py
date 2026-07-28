@@ -145,6 +145,11 @@ class Fighter:
     career_stat_rounds: int = 0
     career_stat_fights: int = 0
     available_week: int = 0
+    # Day-precision clearance. available_week stays the coarse gate so older
+    # saves keep working; this refines it once a fighter has fought on a dated
+    # card. Zero means "fall back to available_week".
+    available_day: int = 0
+    last_fight_day_index: int = 0
     hall_of_fame: bool = False
     legacy_score: int = 0
     title_wins: int = 0

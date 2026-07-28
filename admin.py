@@ -865,13 +865,20 @@ class AdminMixin:
         fighter.special_titles = []
 
     def belt_history_entry(self, action, key, fighter_name="", note=""):
-        return {
+        entry = {
             "date": f"Month {getattr(self, 'month', 1)} Week {getattr(self, 'week', 1)}",
             "action": action,
             "division": key,
             "fighter": fighter_name,
             "note": note,
         }
+        # A title change belongs to the day its card ran, so a lineage reads as
+        # a sequence of dated events rather than a list of weeks. Fighter fight
+        # histories deliberately stay week-level.
+        day = getattr(self, "_active_card_day", None)
+        if day is not None:
+            entry["day"] = self.normalize_day(day)
+        return entry
 
     def record_belt_history(self, history, key, action, fighter_name="", note=""):
         history = self.normalize_belt_history(history)
