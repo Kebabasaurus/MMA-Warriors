@@ -971,10 +971,22 @@ class WorldMixin:
         if not heat:
             return
         marquee = bool(fight.get("main") or fight.get("title"))
-        rematch = method == "Decision" and (marquee or heat >= 55) and random.random() < 0.62
+        series = self.matchup_series_record(winner, loser)
+        tied_series = series["meetings"] >= 2 and series["a_wins"] == series["b_wins"]
+        rematch = (
+            tied_series
+            or method == "Decision" and (marquee or heat >= 55) and random.random() < 0.62
+        )
         if rematch:
-            next_heat = min(100, heat + random.randint(12, 24))
-            outcome = f"The close result fuels a demanded rematch after {winner.name} beat {loser.name} by {method}."
+            next_heat = min(100, heat + random.randint(18, 32) if tied_series else heat + random.randint(12, 24))
+            if tied_series:
+                outcome = (
+                    f"The rivalry series is level at {series['a_wins']}-{series['b_wins']}"
+                    f"{f'-{series['draws']}' if series['draws'] else ''}; both camps want a decider after "
+                    f"{winner.name} beat {loser.name} by {method}."
+                )
+            else:
+                outcome = f"The close result fuels a demanded rematch after {winner.name} beat {loser.name} by {method}."
             winner.rivalry_rematch_due = loser.rivalry_rematch_due = True
         else:
             next_heat = max(0, heat - (random.randint(28, 48) if method != "Decision" else random.randint(12, 25)))
@@ -1441,6 +1453,17 @@ class WorldMixin:
         self.add_fight_history_entry(loser, result_line)
         if winner.rival == loser.name or loser.rival == winner.name:
             self.resolve_rivalry_result(winner, loser, fight, method)
+        else:
+            series = self.matchup_series_record(winner, loser)
+            if series["meetings"] >= 2 and series["a_wins"] == series["b_wins"]:
+                heat = 48 + min(24, series["meetings"] * 4) + (8 if fight.get("main") or fight.get("title") else 0)
+                if self.establish_rivalry(winner, loser, f"Level series at {series['a_wins']}-{series['b_wins']}", heat=heat, rematch_due=True):
+                    note = (
+                        f"Month {self.month}: The head-to-head series is tied "
+                        f"{series['a_wins']}-{series['b_wins']}; both fighters want the decider."
+                    )
+                    winner.rivalry_history = (winner.rivalry_history or [])[-39:] + [note]
+                    loser.rivalry_history = (loser.rivalry_history or [])[-39:] + [note]
         winner.last_fight = result_line
         loser.last_fight = result_line
         if winner.trait == "Fan Favourite":
@@ -1538,12 +1561,20 @@ class WorldMixin:
             fighter.last_fight = result_line
         heat = self.rivalry_heat_between(a, b)
         if heat:
-            next_heat = min(100, heat + random.randint(16, 28))
+            next_heat = min(100, heat + random.randint(22, 38))
             for fighter in (a, b):
                 fighter.rivalry_heat = next_heat
                 fighter.rivalry_rematch_due = True
                 fighter.rivalry_last_month = self.month
                 fighter.rivalry_history = (fighter.rivalry_history or [])[-39:] + [f"Month {self.month}: Draw with {b.name if fighter is a else a.name}; rematch demand intensifies. Heat now {next_heat}/100."]
+        else:
+            heat = 42 + (10 if fight.get("main") or fight.get("title") else 0)
+            if self.establish_rivalry(a, b, "Unsettled draw", heat=heat, rematch_due=True):
+                for fighter in (a, b):
+                    opponent = b.name if fighter is a else a.name
+                    fighter.rivalry_history = (fighter.rivalry_history or [])[-39:] + [
+                        f"Month {self.month}: Draw with {opponent}; both camps want a rematch. Heat now {fighter.rivalry_heat}/100."
+                    ]
         if fight.get("special_belt"):
             self.news.insert(0, f"The {fight['special_belt']} title fight between {a.name} and {b.name} ended in a draw; the holder remains unchanged.")
         if fight.get("divisional_title", fight.get("title") and not fight.get("special_belt")):
@@ -3205,9 +3236,12 @@ class WorldMixin:
             current_spread = max(1, current_spread - 2)
         if specialty == "International network" and fighter.region != self.player_region:
             current_spread = max(1, current_spread - 1)
-        bias = random.randint(-max(1, (100 - reliability) // 15), max(1, (100 - reliability) // 15))
+        current_error = max(1, round((118 - reliability - judging * 0.35) / 18))
+        potential_error = max(1, round((124 - reliability - potential_judging * 0.35) / 17))
+        current_bias = random.randint(-current_error, current_error)
+        potential_bias = random.randint(-potential_error, potential_error)
 
-        def estimate(value, spread=current_spread):
+        def estimate(value, spread=current_spread, bias=current_bias):
             centre = max(1, min(99, int(value) + bias))
             return {"low": max(1, centre - spread), "high": min(99, centre + spread), "mid": centre}
 
@@ -3218,7 +3252,7 @@ class WorldMixin:
             "star_quality": estimate(fighter.star_quality, max(3, current_spread + 2)),
             "media_presence": estimate(fighter.media_presence, max(3, current_spread + 2)),
             "professionalism": estimate(fighter.professionalism, max(3, current_spread + 1)),
-            "potential": estimate(fighter.potential, potential_spread),
+            "potential": estimate(fighter.potential, potential_spread, potential_bias),
         }
         if exact_current:
             for key in ("overall", "popularity", "star_quality", "media_presence", "professionalism"):
@@ -3335,31 +3369,105 @@ class WorldMixin:
         advice = f"\n\n{report.get('recommendation')}: {report.get('recommendation_reason')}" if report.get("recommendation") else ""
         self.inbox.append({"subject": f"Fight Observation Complete - {name}", "body": f"{report.get('scout', 'Your scout')} observed {name}'s latest fight. The live evidence produced a {confidence}% confidence report; a full evaluation is still required for exact current ratings.{advice}", "type": "Scouting", "resolved": False, "fighter_id": self.scouting_report_key(fighter)})
 
-    def talent_search_cost(self, region, scout=None):
+    def normalize_scouting_focus(self, focus):
+        return focus if focus in SCOUTING_SEARCH_FOCUSES else "Free Agent Pool"
+
+    def scouting_search_candidate_rows(self, focus):
+        focus = self.normalize_scouting_focus(focus)
+        player_ids = {self.scouting_report_key(fighter) for fighter in getattr(self, "roster", [])}
+        rows, seen = [], set()
+
+        def add(source, roster):
+            for fighter in roster:
+                key = self.scouting_report_key(fighter)
+                if key in seen or key in player_ids or getattr(fighter, "retired", False):
+                    continue
+                if getattr(fighter, "sport_employer", "") and getattr(fighter, "primary_discipline", "MMA") != "MMA":
+                    continue
+                seen.add(key)
+                rows.append((fighter, source))
+
+        if focus in ("Free Agent Pool", "Any Market", "Regional Prospects", "Young Prospects"):
+            add("Free Agent", getattr(self, "free_agents", []))
+        if focus in ("Rival Rosters", "Any Market", "Young Prospects"):
+            for promo in getattr(self, "promotions", []):
+                if focus == "Rival Rosters" and getattr(promo, "is_regional_feeder", False):
+                    continue
+                add(promo.name, promo.roster)
+        if focus == "Regional Prospects":
+            for promo in getattr(self, "promotions", []):
+                if getattr(promo, "is_regional_feeder", False):
+                    add(promo.name, promo.roster)
+            rows = [(fighter, source) for fighter, source in rows if fighter.age <= 27 or fighter.potential >= fighter.overall + 10]
+        elif focus == "Young Prospects":
+            rows = [(fighter, source) for fighter, source in rows if fighter.age <= 25 or fighter.potential >= fighter.overall + 14]
+        return rows
+
+    def scouting_search_score(self, fighter, scout, focus, source):
+        focus = self.normalize_scouting_focus(focus)
+        skill = int(scout.get("skill", 45) or 45)
+        fighter_judging = int(scout.get("fighter_judging", skill) or skill)
+        potential_judging = int(scout.get("potential_judging", skill) or skill)
+        networking = int(scout.get("networking", skill) or skill)
+        regional = int(scout.get("regional_knowledge", skill) or skill)
+        reliability = int(scout.get("reliability", skill) or skill)
+        noise = random.uniform(-18, 18) * max(0.35, (112 - reliability) / 70)
+        scout_lift = (networking - 50) * 0.12 + (regional - 50) * 0.08
+        overall_read = fighter.overall * (0.25 + fighter_judging / 260)
+        upside_read = fighter.potential * (0.20 + potential_judging / 240)
+        youth = max(0, 29 - fighter.age) * 1.1
+        market = fighter.popularity * 0.12 + fighter.star_quality * 0.10
+        affordability = max(-6, min(8, (60_000 / max(1, fighter.purse)) - 3))
+        source_bonus = 5 if source == "Free Agent" else 0
+        if focus == "Free Agent Pool":
+            source_bonus += 12 if source == "Free Agent" else -8
+            affordability *= 1.25
+        elif focus == "Rival Rosters":
+            source_bonus += 10 if source != "Free Agent" else -10
+            market += getattr(fighter, "record_w", 0) * 0.6
+        elif focus == "Regional Prospects":
+            upside_read *= 1.18
+            youth *= 1.3
+            market *= 0.7
+        elif focus == "Young Prospects":
+            upside_read *= 1.25
+            youth *= 1.45
+        if scout.get("specialty") == "Prospect eye" and (fighter.age <= 27 or fighter.potential >= fighter.overall + 10):
+            scout_lift += 8
+        if scout.get("specialty") == "Women’s divisions" and fighter.gender == "Female":
+            scout_lift += 8
+        if scout.get("specialty") == "International network" and fighter.region != self.player_region:
+            scout_lift += 7
+        return overall_read + upside_read + youth + market + affordability + source_bonus + scout_lift + noise
+
+    def talent_search_cost(self, region, scout=None, focus="Free Agent Pool"):
         distance = 0 if region == self.player_region else 1
         efficiency = int((scout or {}).get("efficiency", 45) or 45)
-        return max(3500, round((6500 + distance * 4500) * (1.12 - efficiency / 500)))
+        focus = self.normalize_scouting_focus(focus)
+        multiplier = {"Free Agent Pool": 1.0, "Rival Rosters": 1.22, "Regional Prospects": 0.95, "Young Prospects": 1.05, "Any Market": 1.08}.get(focus, 1.0)
+        return max(3500, round((6500 + distance * 4500) * multiplier * (1.12 - efficiency / 500)))
 
-    def start_talent_search(self, scout_name, region, gender="All", weight="All"):
+    def start_talent_search(self, scout_name, region, gender="All", weight="All", focus="Free Agent Pool"):
         scout = next((member for member in self.staff if member.get("role") == "Scout" and member.get("name") == scout_name), None)
         if not scout:
             return False, "Select a hired scout."
         if self.scout_workload(scout_name) >= self.scout_capacity(scout):
             return False, f"{scout_name} has no free assignment slots."
-        cost = self.talent_search_cost(region, scout)
+        focus = self.normalize_scouting_focus(focus)
+        cost = self.talent_search_cost(region, scout, focus)
         if self.cash < cost:
             return False, f"This search needs ${cost:,}."
         efficiency = int(scout.get("efficiency", scout.get("skill", 45)) or 45)
         weeks = max(2, 5 - int(efficiency >= 65) - int(efficiency >= 88))
         if scout.get("specialty") == "International network" and region != self.player_region:
             weeks = max(2, weeks - 1)
-        assignment = {"assignment_id": f"SEARCH-{self.calendar_week_index()}-{len(getattr(self, 'scouting_searches', [])) + 1}", "type": "Talent Search", "scout": scout_name, "region": region, "gender": gender, "weight": weight, "status": "In progress", "weeks_remaining": weeks, "started_week": self.calendar_week_index(), "cost": cost}
+        assignment = {"assignment_id": f"SEARCH-{self.calendar_week_index()}-{len(getattr(self, 'scouting_searches', [])) + 1}", "type": "Talent Search", "scout": scout_name, "region": region, "gender": gender, "weight": weight, "focus": focus, "status": "In progress", "weeks_remaining": weeks, "started_week": self.calendar_week_index(), "cost": cost}
         self.scouting_searches = list(getattr(self, "scouting_searches", []))
         self.scouting_searches.append(assignment)
         self.cash -= cost
-        self.record_finance_transaction(f"Talent search: {region}", costs=cost)
-        self.scouting.append(f"{scout_name} began a {region} talent search ({gender}, {weight}); due in {weeks} week(s).")
-        return True, f"{scout_name} started the {region} search. Report due in {weeks} week(s)."
+        self.record_finance_transaction(f"Talent search: {focus} ({region})", costs=cost)
+        self.scouting.append(f"{scout_name} began a {focus} search in {region} ({gender}, {weight}); due in {weeks} week(s).")
+        return True, f"{scout_name} started the {focus} search in {region}. Report due in {weeks} week(s)."
 
     def process_talent_searches(self):
         for search in getattr(self, "scouting_searches", []):
@@ -3368,32 +3476,40 @@ class WorldMixin:
             search["weeks_remaining"] = max(0, int(search.get("weeks_remaining", 0)) - 1)
             if search["weeks_remaining"] > 0:
                 continue
-            scout = next((member for member in self.staff if member.get("name") == search.get("scout")), {"skill": 45})
-            candidates = [fighter for fighter in self.free_agents if not fighter.retired]
-            for promo in self.promotions:
-                if getattr(promo, "is_regional_feeder", False):
-                    candidates.extend(fighter for fighter in promo.roster if not fighter.retired)
-            candidates = [fighter for fighter in candidates if (search.get("region") in ("All", "Worldwide") or fighter.region == search.get("region")) and (search.get("gender") == "All" or fighter.gender == search.get("gender")) and (search.get("weight") == "All" or fighter.weight == search.get("weight"))]
-            unseen = [fighter for fighter in candidates if not self.scouting_report_for(fighter)]
+            scout = next((member for member in self.staff if member.get("name") == search.get("scout")), {"skill": 45, "fighter_judging": 45, "potential_judging": 45, "networking": 45, "regional_knowledge": 45, "reliability": 45})
+            focus = self.normalize_scouting_focus(search.get("focus", "Free Agent Pool"))
+            candidate_rows = self.scouting_search_candidate_rows(focus)
+            candidate_rows = [(fighter, source) for fighter, source in candidate_rows if (search.get("region") in ("All", "Worldwide") or fighter.region == search.get("region")) and (search.get("gender") == "All" or fighter.gender == search.get("gender")) and (search.get("weight") == "All" or fighter.weight == search.get("weight"))]
+            unseen = [(fighter, source) for fighter, source in candidate_rows if not self.scouting_report_for(fighter)]
             if not unseen and sum(not fighter.retired for fighter in self.free_agents) < 160:
                 region = search.get("region") if search.get("region") not in ("All", "Worldwide") else random.choice(REGIONS)
                 gender = search.get("gender") if search.get("gender") != "All" else random.choices(("Male", "Female"), weights=(72, 28), k=1)[0]
                 weight = search.get("weight") if search.get("weight") != "All" else random.choice(WEIGHTS)
-                emergency_lead = self.create_generated_fighter(4, 28, 48, 75, weight=weight, gender=gender, region=region, age_override=random.randint(17, 24), pre_universe=False)
-                self.free_agents.append(emergency_lead)
-                unseen = [emergency_lead]
+                if focus != "Rival Rosters":
+                    emergency_lead = self.create_generated_fighter(4, 28, 48, 75, weight=weight, gender=gender, region=region, age_override=random.randint(17, 24), pre_universe=False)
+                    self.free_agents.append(emergency_lead)
+                    unseen = [(emergency_lead, "Free Agent")]
             if unseen:
                 networking = int(scout.get("networking", scout.get("skill", 45)) or 45)
-                target = max(random.sample(unseen, k=min(len(unseen), max(1, 1 + networking // 30))), key=lambda fighter: fighter.overall + fighter.potential * 0.45 + random.randint(-12, 12))
-                confidence = max(45, min(82, round((scout.get("fighter_judging", 45) + scout.get("potential_judging", 45) + scout.get("reliability", 45)) / 3 + random.randint(-5, 5))))
+                sample_size = min(len(unseen), max(2, 1 + networking // 22))
+                sampled = random.sample(unseen, k=sample_size)
+                target, source = max(sampled, key=lambda row: self.scouting_search_score(row[0], scout, focus, row[1]))
+                confidence_base = (
+                    scout.get("fighter_judging", 45) * 0.34
+                    + scout.get("potential_judging", 45) * 0.27
+                    + scout.get("reliability", 45) * 0.24
+                    + scout.get("regional_knowledge", 45) * 0.08
+                    + scout.get("networking", 45) * 0.07
+                )
+                confidence = max(45, min(88, round(confidence_base + random.randint(-max(2, (100 - int(scout.get("reliability", 45))) // 18), 5))))
                 key = self.scouting_report_key(target)
-                self.scouting_reports[key] = {"schema_version": 2, "fighter_id": key, "fighter_name": target.name, "kind": "basic", "status": "Complete", "started_week": search.get("started_week", self.calendar_week_index()), "completed_week": self.calendar_week_index(), "weeks_remaining": 0, "confidence": confidence, "reveal": confidence, "scout": search.get("scout"), "region": target.region, "notes": ["Identified through a regional talent search."], "estimates": self.build_scouting_estimates(target, scout, "basic", confidence)}
+                self.scouting_reports[key] = {"schema_version": 2, "fighter_id": key, "fighter_name": target.name, "kind": "basic", "status": "Complete", "started_week": search.get("started_week", self.calendar_week_index()), "completed_week": self.calendar_week_index(), "weeks_remaining": 0, "confidence": confidence, "reveal": confidence, "scout": search.get("scout"), "region": target.region, "notes": [f"Identified through a {focus.lower()} scouting brief.", f"Current market: {source}."], "estimates": self.build_scouting_estimates(target, scout, "basic", confidence)}
                 search.update({"status": "Complete", "result_fighter_id": key, "result_name": target.name})
-                body = f"{search.get('scout')} identified {target.name}, a {target.gender} {target.weight} from {target.region}. A {confidence}% basic dossier is now available."
+                body = f"{search.get('scout')} identified {target.name}, a {target.gender} {target.weight} from {target.region} ({source}). A {confidence}% basic dossier is now available from the {focus} brief."
             else:
                 search.update({"status": "Complete", "result_name": "No suitable lead"})
-                body = f"{search.get('scout')} completed the {search.get('region')} search but found no suitable unscouted lead matching the brief."
-            self.inbox.append({"subject": f"Talent Search Complete - {search.get('region')}", "body": body, "type": "Scouting", "resolved": False, "fighter_id": search.get("result_fighter_id", "")})
+                body = f"{search.get('scout')} completed the {focus} search in {search.get('region')} but found no suitable unscouted lead matching the brief."
+            self.inbox.append({"subject": f"Talent Search Complete - {focus}", "body": body, "type": "Scouting", "resolved": False, "fighter_id": search.get("result_fighter_id", "")})
 
     def record_finance_transaction(self, label, revenue=0, costs=0):
         self.ensure_finance_defaults()
@@ -3649,15 +3765,18 @@ class WorldMixin:
             direction = "clicked with the room" if swing > 0 else "had a difficult week with the room"
             self.news.insert(0, f"Week {self.week}: {fighter.name} {direction} at {fighter.camp}; morale {'rose' if swing > 0 else 'fell'}.")
 
-    def gym_fit_score(self, fighter, gym, promotion_region="", randomize=False):
+    def gym_fit_base_score(self, fighter, gym, promotion_region=""):
         local = 18 if gym.region == fighter.region else 9 if gym.region == promotion_region else 0
         style = self.gym_specialty_bonus(fighter, gym)
         attention = self.gym_attention_multiplier(gym)
         overfull = max(0.0, gym.member_count / max(1, gym.capacity) - 1.0) if gym.capacity < 500 else 0
-        affordability = -max(0, gym.monthly_fee - max(1200, fighter.purse // 8)) / 650
         prospect = 5 if fighter.age < fighter.prime_start and "Prospect Development" in gym.specialties else 0
+        return self.gym_effective_training(gym, fighter) * 0.70 + gym.reputation * 0.12 + style + local + prospect - overfull * 24 + attention * 4
+
+    def gym_fit_score(self, fighter, gym, promotion_region="", randomize=False):
+        affordability = -max(0, gym.monthly_fee - max(1200, fighter.purse // 8)) / 650
         noise = random.uniform(-4, 4) if randomize else 0
-        return self.gym_effective_training(gym, fighter) * 0.70 + gym.reputation * 0.12 + style + local + prospect + affordability - overfull * 24 + attention * 4 + noise
+        return self.gym_fit_base_score(fighter, gym, promotion_region) + affordability + noise
 
     def move_fighter_to_gym(self, fighter, gym, reason="Career move"):
         if not gym or fighter.camp == gym.name:
@@ -3677,6 +3796,11 @@ class WorldMixin:
         if not getattr(self, "gyms", None):
             return 0
         self.sync_gym_membership()
+        gym_pool = getattr(self, "gyms", [])
+        gym_lookup = {gym.name: gym for gym in gym_pool}
+        viable_gyms = [gym for gym in gym_pool if gym.capacity >= 500 or gym.member_count < gym.capacity * 1.18]
+        viable_gyms = viable_gyms or gym_pool
+        gym_score_cache = {}
         rows = [(fighter, self.player_region) for fighter in self.roster + self.free_agents]
         for promo in self.promotions:
             rows.extend((fighter, promo.region) for fighter in promo.roster)
@@ -3684,10 +3808,10 @@ class WorldMixin:
             rows.extend((fighter, getattr(fighter, "region", "")) for fighter in sport_world.get("roster", []))
         seen, moved = set(), 0
         for fighter, owner_region in rows:
-            if id(fighter) in seen or fighter.retired or self.gym_by_name(fighter.camp):
+            if id(fighter) in seen or fighter.retired or gym_lookup.get(fighter.camp):
                 continue
             seen.add(id(fighter))
-            target = self.gym_by_name(self.suggest_camp_for_fighter(fighter, owner_region))
+            target = gym_lookup.get(self.suggest_camp_for_fighter(fighter, owner_region, gym_pool=viable_gyms, gym_score_cache=gym_score_cache))
             if not target:
                 continue
             old = fighter.camp or "Independent"
@@ -3697,16 +3821,34 @@ class WorldMixin:
             fighter.training_location = target.region
             if self.month > 1:
                 fighter.camp_history = ((getattr(fighter, "camp_history", None) or []) + [{"month": self.month, "from": old, "to": target.name, "reason": "Joined the recognised world gym network"}])[-20:]
-            target.member_count += 1
             moved += 1
         self.sync_gym_membership()
         return moved
 
-    def suggest_camp_for_fighter(self, fighter, promotion_region):
-        gyms = getattr(self, "gyms", []) or self.seed_gyms()
-        viable = [gym for gym in gyms if gym.capacity >= 500 or gym.member_count < gym.capacity * 1.18]
-        pool = viable or gyms
-        ranked = sorted(pool, key=lambda gym: self.gym_fit_score(fighter, gym, promotion_region, True), reverse=True)[:4]
+    def suggest_camp_for_fighter(self, fighter, promotion_region, gym_pool=None, gym_score_cache=None):
+        gyms = gym_pool if gym_pool is not None else (getattr(self, "gyms", []) or self.seed_gyms())
+        pool = gyms or getattr(self, "gyms", []) or self.seed_gyms()
+        if gym_score_cache is not None:
+            cache_key = (
+                getattr(fighter, "region", ""),
+                promotion_region,
+                getattr(fighter, "style", ""),
+                bool(getattr(fighter, "age", 0) < getattr(fighter, "prime_start", 27)),
+            )
+            scored = gym_score_cache.get(cache_key)
+            if scored is None:
+                scored = [(gym, self.gym_fit_base_score(fighter, gym, promotion_region)) for gym in pool]
+                gym_score_cache[cache_key] = scored
+            affordability_floor = max(1200, int(getattr(fighter, "purse", 0) or 0) // 8)
+            ranked = [
+                gym for gym, _score in sorted(
+                    scored,
+                    key=lambda item: item[1] - max(0, item[0].monthly_fee - affordability_floor) / 650 + random.uniform(-4, 4),
+                    reverse=True,
+                )[:4]
+            ]
+        else:
+            ranked = sorted(pool, key=lambda gym: self.gym_fit_score(fighter, gym, promotion_region, True), reverse=True)[:4]
         if not ranked:
             return "Independent"
         weights = [8, 5, 3, 1][:len(ranked)]
@@ -8196,6 +8338,36 @@ class WorldMixin:
             cache.clear()
         cache[key] = result
         return result
+
+    def matchup_series_record(self, a, b):
+        """Return head-to-head wins from a's perspective, including draws."""
+        record = {"meetings": 0, "a_wins": 0, "b_wins": 0, "draws": 0}
+        if not a or not b:
+            return record
+        a_name = a.name.casefold()
+        b_name = b.name.casefold()
+        for entry in (getattr(a, "fight_history", None) or [])[:120]:
+            text = str(entry)
+            lowered = text.casefold()
+            if b_name not in lowered:
+                continue
+            if "fought to a draw" in lowered:
+                record["meetings"] += 1
+                record["draws"] += 1
+                continue
+            match = re.search(r":\s*(.+?)\s+def\.\s+(.+?)\s+by\s+", text, re.IGNORECASE)
+            if not match:
+                continue
+            winner_name = match.group(1).strip().casefold()
+            loser_name = match.group(2).strip().casefold()
+            if {winner_name, loser_name} != {a_name, b_name}:
+                continue
+            record["meetings"] += 1
+            if winner_name == a_name:
+                record["a_wins"] += 1
+            elif winner_name == b_name:
+                record["b_wins"] += 1
+        return record
 
     def matchup_display_name(self, a, b):
         """Return the promotional matchup title, including a confirmed rematch number."""

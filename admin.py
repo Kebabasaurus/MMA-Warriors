@@ -3,6 +3,7 @@ import random
 import sys
 import unicodedata
 import traceback
+from functools import lru_cache
 from datetime import datetime
 import tkinter as tk
 from dataclasses import asdict, dataclass
@@ -1056,11 +1057,11 @@ class AdminMixin:
             self.belts, self.interim_belts, self.belt_history = self.vacate_fighter_belts(champion, self.roster, self.belts, self.interim_belts, self.belt_history, reason)
             self.news.insert(0, f"{key} title vacated: {champion.name} failed the championship credibility review.")
 
-    def ensure_company_champions(self, roster, belts, company_name, region, size, player_owned=False, min_per_division=3, interim_belts=None, belt_history=None, closed_divisions=None, allow_appointed=True):
+    def ensure_company_champions(self, roster, belts, company_name, region, size, player_owned=False, min_per_division=3, interim_belts=None, belt_history=None, closed_divisions=None, allow_appointed=True, existing_names=None):
         belts = self.normalize_belts(belts)
         interim_belts = self.normalize_belts(interim_belts)
         belt_history = self.normalize_belt_history(belt_history)
-        existing_names = self.active_fighter_names()
+        existing_names = existing_names if isinstance(existing_names, set) else (set(existing_names) if existing_names is not None else self.active_fighter_names())
         existing_names.update(fighter.name for fighter in roster)
         closed = set(closed_divisions or ())
         for weight in WEIGHTS:
@@ -1116,9 +1117,14 @@ class AdminMixin:
         return closed
 
     def ensure_all_company_champions(self):
+        existing_names = self.active_fighter_names()
         if not getattr(self, "spectator_mode", False):
             self.review_player_champion_credibility()
-            self.belts, self.interim_belts, self.belt_history = self.ensure_company_champions(self.roster, self.belts, self.player_company_name, self.player_region, self.company_pop, player_owned=True, interim_belts=self.interim_belts, belt_history=self.belt_history, closed_divisions=self.closed_divisions)
+            self.belts, self.interim_belts, self.belt_history = self.ensure_company_champions(
+                self.roster, self.belts, self.player_company_name, self.player_region, self.company_pop,
+                player_owned=True, interim_belts=self.interim_belts, belt_history=self.belt_history,
+                closed_divisions=self.closed_divisions, existing_names=existing_names,
+            )
             self.sync_player_vacant_title_alerts()
         for promo in self.promotions:
             closed = self.company_closed_divisions(promo)
@@ -1126,9 +1132,11 @@ class AdminMixin:
                 promo.roster, promo.belts or {}, promo.name, promo.region, promo.reputation_score,
                 player_owned=False, interim_belts=promo.interim_belts or {}, belt_history=promo.belt_history or {},
                 closed_divisions=closed, allow_appointed=not getattr(promo, "is_regional_feeder", False),
+                existing_names=existing_names,
             )
 
     @staticmethod
+    @lru_cache(maxsize=200000)
     def fighter_name_key(name):
         """Identity of a fighter name, ignoring case and accents.
 

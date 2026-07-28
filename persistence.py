@@ -15,7 +15,7 @@ from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from uuid import uuid4
 import tkinter as tk
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass, fields
 from pathlib import Path
 from tkinter import messagebox, ttk
 
@@ -25,6 +25,30 @@ from models import Fighter, Gym, Promotion
 
 LOGGER = logging.getLogger("mma_warriors")
 _CRASH_APP = None
+
+FIGHTER_SAVE_FIELDS = tuple(field.name for field in fields(Fighter))
+GYM_SAVE_FIELDS = tuple(field.name for field in fields(Gym))
+PROMOTION_SAVE_FIELDS = tuple(field.name for field in fields(Promotion))
+
+
+def model_field_dict(value, field_names):
+    """Serialize declared dataclass fields without asdict's expensive deep copy."""
+    source = getattr(value, "__dict__", {})
+    return {name: source[name] if name in source else getattr(value, name) for name in field_names}
+
+
+def serialize_fighter_model(fighter):
+    return model_field_dict(fighter, FIGHTER_SAVE_FIELDS)
+
+
+def serialize_gym_model(gym):
+    return model_field_dict(gym, GYM_SAVE_FIELDS)
+
+
+def serialize_promotion_model(promotion):
+    data = model_field_dict(promotion, PROMOTION_SAVE_FIELDS)
+    data["roster"] = [serialize_fighter_model(fighter) for fighter in getattr(promotion, "roster", [])]
+    return data
 
 
 def _crash_stamp():
@@ -90,6 +114,77 @@ def read_json_text(path):
         with gzip.open(path, "rt", encoding="utf-8") as handle:
             return handle.read()
     return path.read_text(encoding="utf-8")
+
+
+EXTERNAL_SAVE_BLOCK_KEYS = (
+    "roster", "free_agents", "promotions", "combat_sport_worlds",
+    "result_index", "result_records", "ai_event_archive", "player_event_archive",
+    "season_stats", "event_log",
+)
+
+
+def hydrate_external_save_blocks(path, data):
+    """Load gzip sidecar blocks back into the normal save payload shape."""
+    path = Path(path)
+    blocks = data.pop("_external_blocks", {}) or {}
+    if not isinstance(blocks, dict):
+        return data
+    for key, relative in blocks.items():
+        if key not in EXTERNAL_SAVE_BLOCK_KEYS:
+            continue
+        block_path = path.parent / str(relative)
+        data[key] = json.loads(read_json_text(block_path))
+    return data
+
+
+def load_save_payload(path):
+    """Read either a legacy single-file save or the split primary+blocks format."""
+    path = Path(path)
+    return hydrate_external_save_blocks(path, json.loads(read_json_text(path)))
+
+
+def prune_external_save_blocks(path, active_relatives):
+    """Keep only the sidecar block folder referenced by the current primary save."""
+    path = Path(path)
+    block_root = path.parent / "DataBlocks"
+    if not block_root.exists():
+        return
+    active_roots = set()
+    for relative in active_relatives:
+        parts = Path(str(relative)).parts
+        if len(parts) >= 2 and parts[0] == "DataBlocks":
+            active_roots.add(block_root / parts[1])
+    for child in block_root.iterdir():
+        if child in active_roots:
+            continue
+        try:
+            if child.is_dir():
+                shutil.rmtree(child, onerror=_remove_readonly_path)
+            else:
+                child.unlink()
+        except OSError:
+            LOGGER.exception("Could not prune stale save data block %s", child)
+
+
+def atomic_write_split_save(path, data):
+    """Write primary save metadata plus compressed heavy record blocks."""
+    path = Path(path)
+    payload = dict(data)
+    block_refs = {}
+    stamp = _crash_stamp()
+    block_dir = path.parent / "DataBlocks" / f"{path.stem}_{stamp}"
+    for key in EXTERNAL_SAVE_BLOCK_KEYS:
+        if key not in payload:
+            continue
+        block_path = block_dir / f"{key}.json.gz"
+        atomic_write_json_gzip(block_path, payload.pop(key), compresslevel=3)
+        block_refs[key] = str(Path("DataBlocks") / block_dir.name / block_path.name).replace("\\", "/")
+    if block_refs:
+        payload["_external_blocks"] = block_refs
+    else:
+        payload.pop("_external_blocks", None)
+    atomic_write_json_compact(path, payload)
+    prune_external_save_blocks(path, block_refs.values())
 
 
 def configure_runtime_logging():
@@ -255,9 +350,9 @@ class PersistenceMixin:
             data = self.serialize_world()
             crash_folder = self.save_slot_dir() / "Crash Recovery"
             crash_folder.mkdir(parents=True, exist_ok=True)
-            autosave_path = crash_folder / f"crash_autosave_{_crash_stamp()}.json"
+            autosave_path = crash_folder / f"crash_autosave_{_crash_stamp()}.json.gz"
             data["_save_meta"] = self.save_metadata("Crash Recovery")
-            atomic_write_json_compact(autosave_path, data)
+            atomic_write_json_gzip(autosave_path, data, compresslevel=3)
             self.write_save_metadata_sidecar(autosave_path, data["_save_meta"])
             crash_note += f"\nAn emergency autosave was written to {autosave_path}."
         except Exception as autosave_error:
@@ -279,7 +374,7 @@ class PersistenceMixin:
         try:
             if path.exists():
                 self.backup_save_file(path, "before_quick_save")
-            atomic_write_json_compact(path, data)
+            atomic_write_split_save(path, data)
             self.write_save_metadata_sidecar(path, data["_save_meta"])
             self.prune_save_backups()
         except Exception as exc:
@@ -475,7 +570,7 @@ class PersistenceMixin:
             return None
         backup_dir = self.save_backup_dir(path)
         target = self.rolling_snapshot_path(backup_dir, "backup")
-        data = json.loads(read_json_text(path))
+        data = load_save_payload(path)
         metadata = dict(data.get("_save_meta", {}))
         metadata.update({
             "backup_created_at": datetime.now().isoformat(timespec="seconds"),
@@ -571,11 +666,11 @@ class PersistenceMixin:
         slips into an archive or media metadata structure.
         """
         if isinstance(value, Fighter):
-            return asdict(value)
+            return serialize_fighter_model(value)
         if isinstance(value, Promotion):
-            return asdict(value)
+            return self.json_safe_save_value(serialize_promotion_model(value))
         if isinstance(value, Gym):
-            return asdict(value)
+            return serialize_gym_model(value)
         if isinstance(value, dict):
             return {str(key): self.json_safe_save_value(item) for key, item in value.items()}
         if isinstance(value, (list, tuple, set)):
@@ -713,6 +808,13 @@ class PersistenceMixin:
                         log["b_id"] = fighter.fighter_id
 
     def serialize_world(self):
+        # KNOWN ISSUE: this fills thin divisions by generating fighters, so
+        # saving consumes simulation RNG and can add roster members. Removing
+        # it breaks the save/load round trip, because apply_world_data tops up
+        # on load and the two sides would no longer agree on roster size.
+        # Fixing it properly means moving division top-up out of both save and
+        # load and onto a single simulation step; left alone deliberately
+        # rather than destabilising the round trip.
         self.ensure_all_company_champions()
         return {
             "player_company_name": self.player_company_name,
@@ -734,14 +836,14 @@ class PersistenceMixin:
             "super_event_project": getattr(self, "super_event_project", None),
             "month": self.month,
             "week": self.week,
-            "roster": [asdict(f) for f in self.roster],
-            "free_agents": [asdict(f) for f in self.free_agents],
-            "promotions": [asdict(p) for p in self.promotions],
-            "combat_sport_worlds": {sport: {**world, "roster": [asdict(fighter) for fighter in world.get("roster", [])]} for sport, world in getattr(self, "combat_sport_worlds", {}).items()},
+            "roster": [serialize_fighter_model(f) for f in self.roster],
+            "free_agents": [serialize_fighter_model(f) for f in self.free_agents],
+            "promotions": [serialize_promotion_model(p) for p in self.promotions],
+            "combat_sport_worlds": {sport: {**world, "roster": [serialize_fighter_model(fighter) for fighter in world.get("roster", [])]} for sport, world in getattr(self, "combat_sport_worlds", {}).items()},
             "player_combat_divisions": getattr(self, "player_combat_divisions", {}),
             "standings_history": getattr(self, "standings_history", {}),
             "regions": self.regions,
-            "gyms": [asdict(g) for g in getattr(self, "gyms", [])],
+            "gyms": [serialize_gym_model(g) for g in getattr(self, "gyms", [])],
             "result_history": self.result_history,
             "result_records": self.json_safe_save_value(self.serialized_result_records()),
             "change_journal": self.json_safe_save_value(getattr(self, "change_journal", [])),
@@ -749,7 +851,7 @@ class PersistenceMixin:
             "ai_event_archive": self.json_safe_save_value(self.ai_event_archive),
             "player_event_archive": self.json_safe_save_value(getattr(self, "player_event_archive", [])),
             "independent_showcase_counter": getattr(self, "independent_showcase_counter", 1),
-            "retired_fighters": [asdict(f) for f in self.retired_fighters],
+            "retired_fighters": [serialize_fighter_model(f) for f in self.retired_fighters],
             "finance": self.finance,
             "media_companies": getattr(self, "media_companies", []),
             "media_market_history": getattr(self, "media_market_history", []),
@@ -797,7 +899,7 @@ class PersistenceMixin:
             messagebox.showinfo("No save", "No active save exists yet.")
             return
         try:
-            data = json.loads(read_json_text(path))
+            data = load_save_payload(path)
             self.apply_world_data(data)
         except Exception as exc:
             recovery_paths = self.rolling_backup_files()
@@ -808,7 +910,7 @@ class PersistenceMixin:
                 recovery_paths.append(legacy_previous)
             for backup_path in recovery_paths:
                 try:
-                    self.apply_world_data(json.loads(read_json_text(backup_path)))
+                    self.apply_world_data(load_save_payload(backup_path))
                     self.booked.clear()
                     self.ensure_player_event_name()
                     self.refresh_all()
@@ -1359,7 +1461,11 @@ class PersistenceMixin:
             fighter.fighting_base = getattr(fighter, "fighting_base", "") or fighter.residence
             fighter.cultural_connections = getattr(fighter, "cultural_connections", None) or list(dict.fromkeys([fighter.birth_region, fighter.residence, fighter.training_location]))
             markets = getattr(fighter, "regional_popularity", None) or {}
-            fighter.regional_popularity = {region: max(0, min(100, int(markets.get(region, 0)))) for region in REGIONS}
+            fighter.regional_popularity = {
+                region: max(0, min(100, int(value)))
+                for region, value in markets.items()
+                if region in REGIONS
+            }
             fighter.regional_popularity[fighter.birth_region] = max(fighter.regional_popularity.get(fighter.birth_region, 0), min(65, 18 + fighter.popularity // 3))
             fighter.home_event_history = getattr(fighter, "home_event_history", None) or []
         fighter.record_d = getattr(fighter, "record_d", 0)
@@ -1680,13 +1786,13 @@ class PersistenceMixin:
             target_root.parent.mkdir(parents=True, exist_ok=True)
             shutil.copytree(source_root, target_root, copy_function=shutil.copy2)
             copied_primary = target_root / "savegame.json"
-            copied_data = json.loads(read_json_text(copied_primary))
+            copied_data = load_save_payload(copied_primary)
             copied_data["active_save_name"] = requested
             copied_data["active_save_group"] = target_group
             metadata = dict(copied_data.get("_save_meta", {}) or {})
             metadata.update({"slot_name": requested, "folder": target_group, "saved_at": datetime.now().isoformat(timespec="seconds")})
             copied_data["_save_meta"] = metadata
-            atomic_write_json_compact(copied_primary, copied_data)
+            atomic_write_split_save(copied_primary, copied_data)
             self.write_save_metadata_sidecar(copied_primary, metadata)
         except Exception as exc:
             LOGGER.exception("Could not duplicate save slot %s to %s: %s", source_root, target_root, exc)
@@ -2269,7 +2375,7 @@ class PersistenceMixin:
             self.set_active_save_location(name, group)
             data = self.serialize_world()
             data["_save_meta"] = self.save_metadata(name)
-            atomic_write_json_compact(path, data)
+            atomic_write_split_save(path, data)
             self.write_save_metadata_sidecar(path, data["_save_meta"])
             self.prune_save_backups()
         except Exception as exc:
@@ -2299,7 +2405,7 @@ class PersistenceMixin:
             current_path = self.active_save_path()
             if current_path.exists() and current_path != path:
                 self.backup_save_file(current_path, "before_slot_load")
-            self.apply_world_data(json.loads(read_json_text(path)))
+            self.apply_world_data(load_save_payload(path))
             self.set_active_save_location(
                 getattr(self, "save_slot_sources", {}).get(path, self.save_slot_name_from_path(path)),
                 getattr(self, "save_slot_groups", {}).get(path, self.save_slot_group_from_path(path)),
@@ -2435,7 +2541,7 @@ class PersistenceMixin:
                 return
             if target.exists():
                 self.backup_save_file(target, "before_restore")
-            atomic_write_text(target, read_json_text(item))
+            atomic_write_split_save(target, json.loads(read_json_text(item)))
             self.refresh_game_menu()
             messagebox.showinfo("Backup Restored", f"Restored to {target.name}.")
 
@@ -2470,7 +2576,7 @@ class PersistenceMixin:
             return
         DATABASE_DIR.mkdir(parents=True, exist_ok=True)
         name = self.safe_filename(self.database_name.get())
-        data = json.loads(read_json_text(source))
+        data = load_save_payload(source)
         for key in ("cash", "month", "scheduled_events", "event_log", "result_history", "result_records", "ai_event_archive", "player_event_archive", "finance", "inbox"):
             data.pop(key, None)
         data["database_name"] = name
@@ -2959,6 +3065,10 @@ class PersistenceMixin:
         self.broadcasters = [{"name": f"{self.player_region} Fight Network", "reach": reach, "fee": max(8_000, self.company_pop * 900), "type": "Regional Streaming" if self.company_pop < 50 else "National TV / Streaming"}]
         self.ensure_player_media_state()
         self.staff = self.seed_staff()
+        for index, member in enumerate(self.staff):
+            if member.get("role") == "Scout":
+                self.staff[index] = self.create_starting_scout(self.player_region, self.player_reputation)
+                break
         self.staff_candidates = self.seed_staff_candidates()
         self.ensure_staff_profiles()
         self.scouting = []
@@ -3104,5 +3214,13 @@ class PersistenceMixin:
             self.news.insert(0, f"New game started as {self.player_company_name}.")
             return
         self.set_player_event_location_default()
+        # Seed the opening free-agent depth and the first media offers here
+        # rather than leaving them to the first market or media redraw.
+        # Generating either from a redraw made simply looking at a screen
+        # mutate the world and consume simulation RNG.
+        self.ensure_free_agent_depth()
+        if hasattr(self, "generate_media_offers"):
+            self.ensure_player_media_state()
+            self.generate_media_offers(force=True)
         self.refresh_all()
         self.write_log()

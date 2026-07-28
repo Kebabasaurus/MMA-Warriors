@@ -9,11 +9,11 @@ a = Analysis(
         ('D:\\CodexFILES\\MMA Warriors\\assets', 'assets'),
         ('D:\\CodexFILES\\MMA Warriors\\country_flags', 'country_flags'),
     ],
-    hiddenimports=['sounddevice', '_sounddevice_data'],
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=['numpy', 'sounddevice', '_sounddevice_data'],
     noarchive=False,
     optimize=0,
 )

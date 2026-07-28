@@ -3,6 +3,9 @@ from uuid import uuid4
 
 from constants import DETAILED_SKILL_GROUPS
 
+MENTAL_OVERALL_KEYS = tuple(DETAILED_SKILL_GROUPS["Mental"])
+PHYSICAL_OVERALL_KEYS = tuple(DETAILED_SKILL_GROUPS["Physical"])
+
 
 @dataclass(eq=False)
 class Fighter:
@@ -235,7 +238,10 @@ class Fighter:
     @property
     def overall(self):
         if self.detailed_skills:
-            return round((self.striking + self.wrestling + self.grappling + self.cardio + self.chin + self.detailed_group_average("Mental") + self.detailed_group_average("Physical")) / 7)
+            skills = self.detailed_skills
+            mental = round(sum(skills.get(key, 50) for key in MENTAL_OVERALL_KEYS) / len(MENTAL_OVERALL_KEYS))
+            physical = round(sum(skills.get(key, 50) for key in PHYSICAL_OVERALL_KEYS) / len(PHYSICAL_OVERALL_KEYS))
+            return round((self.striking + self.wrestling + self.grappling + self.cardio + self.chin + mental + physical) / 7)
         return round((self.striking + self.wrestling + self.grappling + self.cardio + self.chin) / 5)
 
     def detailed_group_average(self, group):

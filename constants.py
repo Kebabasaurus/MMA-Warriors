@@ -66,6 +66,8 @@ ROLLING_SAVE_SLOT_COUNT = 2
 RESULT_INDEX_LIMIT = 100000
 GLOBAL_RESULT_REPLAY_LIMIT = 2000
 WEIGHTS = ["Flyweight", "Bantamweight", "Featherweight", "Lightweight", "Welterweight", "Middleweight", "Light Heavyweight", "Heavyweight"]
+SCOUTING_SEARCH_FOCUSES = ("Free Agent Pool", "Rival Rosters", "Regional Prospects", "Young Prospects", "Any Market")
+SCOUTING_RECOMMENDATION_MODES = ("Balanced", "Aggressive", "Strict", "Prospect Focus", "Value Focus", "Roster Need")
 WEIGHT_LIMITS = {
     "Flyweight": 125,
     "Bantamweight": 135,

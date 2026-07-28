@@ -3022,7 +3022,11 @@ class ViewMixin:
         history.config(state="disabled")
 
     def refresh_market(self):
-        self.ensure_free_agent_depth()
+        # Deliberately does not top up the free-agent pool. Drawing a screen
+        # must not create fighters: it consumed simulation RNG, so opening the
+        # market could change every later random outcome in the save. The
+        # opening depth is seeded when the world is created, and the monthly
+        # market churn maintains it from there.
         self.market_tree.delete(*self.market_tree.get_children())
         self.market_tree_fighters = {}
         age_min, age_max = self.filter_range("market_age_min", "market_age_max", 16, 60)
@@ -8388,6 +8392,12 @@ class ViewMixin:
         self.rules.setdefault("fight_night_audio_output", "System default")
         self.rules.setdefault("fight_night_audio_volume", 55)
         self.rules["fight_night_audio_volume"] = max(0, min(100, int(self.rules.get("fight_night_audio_volume", 55))))
+        self.rules.setdefault("scouting_search_focus", "Free Agent Pool")
+        self.rules.setdefault("scouting_recommendation_mode", "Balanced")
+        if self.rules["scouting_search_focus"] not in SCOUTING_SEARCH_FOCUSES:
+            self.rules["scouting_search_focus"] = "Free Agent Pool"
+        if self.rules["scouting_recommendation_mode"] not in SCOUTING_RECOMMENDATION_MODES:
+            self.rules["scouting_recommendation_mode"] = "Balanced"
         self.rules.setdefault("opening_division_depth_seeded", False)
         # Absent marker means the save predates the academy price rise, so it
         # keeps the costs it was started under.
@@ -8823,13 +8833,42 @@ class ViewMixin:
             (potential_est.get("high", potential) - potential_est.get("low", potential))
         confidence_penalty = max(0, (spread - 10) * 0.25)
 
+        mode = self.rules.get("scouting_recommendation_mode", "Balanced")
+        if hasattr(self, "scouting_recommendation_mode_var"):
+            mode = self.scouting_recommendation_mode_var.get() or mode
         projected_value = overall * 0.48 + potential * 0.10 + popularity * 0.12 + star * 0.08 + need * 1.7 + runway_bonus
         affordability = max(-12, min(8, (self.cash / max(1, fighter.purse * 20) - 1) * 3))
+        sign_threshold, monitor_threshold = 60, 52
+        if mode == "Aggressive":
+            sign_threshold, monitor_threshold = 56, 48
+            projected_value += 2.5
+            affordability = max(-8, affordability)
+        elif mode == "Strict":
+            sign_threshold, monitor_threshold = 64, 56
+            confidence_penalty *= 1.3
+        elif mode == "Prospect Focus":
+            sign_threshold, monitor_threshold = 58, 50
+            if fighter.age <= 25:
+                projected_value += runway_gap * 0.16 + 3
+            elif fighter.age <= 29:
+                projected_value += runway_gap * 0.07
+            else:
+                projected_value -= max(0, fighter.age - 30) * 0.8
+        elif mode == "Value Focus":
+            sign_threshold, monitor_threshold = 59, 51
+            affordability = max(-16, min(14, (self.cash / max(1, fighter.purse * 18) - 1) * 4.2))
+            if fighter.purse <= max(3000, self.cash * 0.012):
+                projected_value += 3
+        elif mode == "Roster Need":
+            sign_threshold, monitor_threshold = 58, 50
+            projected_value += need * 1.3
+            if need <= 1:
+                projected_value -= 3
         score = projected_value + affordability - confidence_penalty
 
         context = (
             f"Projected OVR {overall}, ceiling {potential}, market pull {round((popularity + star) / 2)}, "
-            f"division depth {division_count}, asking ${fighter.purse:,}."
+            f"division depth {division_count}, asking ${fighter.purse:,}. Logic: {mode}."
         )
 
         red_flags = []
@@ -8848,11 +8887,20 @@ class ViewMixin:
         if confidence_penalty >= 4:
             context += " Report confidence is low; a fresher scouting pass would sharpen this read."
 
-        if score >= 60 or (need >= 5 and score >= 56):
+        if score >= sign_threshold or (need >= 5 and score >= sign_threshold - 4):
             return "RECOMMEND SIGNING", context + " This report sees a strong sporting or roster-fit case, subject to negotiation."
-        if score >= 52:
+        if score >= monitor_threshold:
             return "MONITOR", context + " Useful target, but price, uncertainty, or divisional need does not justify immediate pursuit."
         return "PASS", context + " The projected contribution does not currently justify the roster and salary commitment."
+
+    def update_scouting_recommendation_mode(self):
+        mode = self.scouting_recommendation_mode_var.get() if hasattr(self, "scouting_recommendation_mode_var") else "Balanced"
+        if mode not in SCOUTING_RECOMMENDATION_MODES:
+            mode = "Balanced"
+        self.rules["scouting_recommendation_mode"] = mode
+        self.reset_scouting_target_page()
+        if hasattr(self, "scouting_assignment_tree"):
+            self.refresh_scouting_center()
 
     def scouting_target_company_for(self, fighter):
         key = self.scouting_report_key(fighter)
@@ -9105,6 +9153,14 @@ class ViewMixin:
             self.scouting_target_scout_box.configure(values=scout_choices)
         if self.scouting_scout_var.get() not in scout_choices:
             self.scouting_scout_var.set("Auto Assign")
+        if hasattr(self, "scouting_focus_var"):
+            focus = self.rules.get("scouting_search_focus", "Free Agent Pool")
+            if focus not in SCOUTING_SEARCH_FOCUSES:
+                focus = "Free Agent Pool"
+            self.scouting_focus_var.set(focus)
+        if hasattr(self, "scouting_recommendation_mode_var"):
+            mode = self.rules.get("scouting_recommendation_mode", "Balanced")
+            self.scouting_recommendation_mode_var.set(mode if mode in SCOUTING_RECOMMENDATION_MODES else "Balanced")
         self.scouting_assignment_tree.delete(*self.scouting_assignment_tree.get_children())
         self.scouting_assignment_rows = {}
         fighters = {self.scouting_report_key(fighter): fighter for fighter in self.all_scoutable_fighters()}
@@ -9128,7 +9184,8 @@ class ViewMixin:
             row_id = f"search:{index}"
             self.scouting_assignment_rows[row_id] = {"type": "search", "search": search}
             due = f"{search.get('weeks_remaining', 0)} wk" if search.get("status") == "In progress" else "Complete"
-            self.scouting_assignment_tree.insert("", "end", iid=row_id, values=("Talent Search", f"{search.get('region')} | {search.get('gender')} {search.get('weight')}", search.get("scout", "-"), search.get("status", "-"), due, "-", search.get("result_name", "-") if search.get("status") == "Complete" else "Searching", f"${int(search.get('cost', 0)):,}"))
+            focus = search.get("focus", "Free Agent Pool")
+            self.scouting_assignment_tree.insert("", "end", iid=row_id, values=("Talent Search", f"{focus} | {search.get('region')} | {search.get('gender')} {search.get('weight')}", search.get("scout", "-"), search.get("status", "-"), due, "-", search.get("result_name", "-") if search.get("status") == "Complete" else "Searching", f"${int(search.get('cost', 0)):,}"))
         academy = getattr(self, "academy", {}) or {}
         if academy.get("network_scout") and (academy.get("network_active") or academy.get("network_weeks", 0) > 0):
             self.scouting_assignment_rows["academy"] = {"type": "academy"}
@@ -9157,7 +9214,7 @@ class ViewMixin:
             text = f"{report.get('fighter_name')} | {report.get('kind', 'basic').title()} | {report.get('status')}\nScout: {report.get('scout')} | Confidence: {self.scouting_effective_confidence(report)}%\n" + (" | ".join(ranges) or "Report work is still in progress.") + f"\n\n{recommendation}\n{reason}\n\n" + "\n".join(f"- {note}" for note in report.get("notes", []))
         elif row and row.get("type") == "search":
             search = row.get("search", {})
-            text = f"Talent Search | {search.get('region')}\nScout: {search.get('scout')} | Status: {search.get('status')} | Brief: {search.get('gender')} {search.get('weight')}\nResult: {search.get('result_name', 'Search in progress')}"
+            text = f"Talent Search | {search.get('focus', 'Free Agent Pool')} | {search.get('region')}\nScout: {search.get('scout')} | Status: {search.get('status')} | Brief: {search.get('gender')} {search.get('weight')}\nResult: {search.get('result_name', 'Search in progress')}"
         elif row and row.get("type") == "academy":
             text = "The academy youth network uses one assignment slot from its named scout. Manage its region, leads, and cancellation from Fight Academy."
         self.scouting_detail_text.config(state="normal")
@@ -9231,6 +9288,7 @@ class ViewMixin:
                 if scout.get("role") == "Scout" and self.scout_workload(scout.get("name")) < self.scout_capacity(scout)
             ]
             region = self.scouting_region_var.get()
+            focus = self.scouting_focus_var.get() if hasattr(self, "scouting_focus_var") else self.rules.get("scouting_search_focus", "Free Agent Pool")
             scout = max(
                 available,
                 key=lambda member: (
@@ -9239,11 +9297,17 @@ class ViewMixin:
                     + member.get("efficiency", member.get("skill", 45)) * 0.20
                     + member.get("reliability", member.get("skill", 45)) * 0.12
                     + (8 if member.get("region") == region else 0)
+                    + (7 if focus in ("Regional Prospects", "Young Prospects") and member.get("specialty") == "Prospect eye" else 0)
+                    + (6 if focus == "Rival Rosters" and member.get("fighter_judging", member.get("skill", 45)) >= 70 else 0)
                 ),
                 default=None,
             )
             scout_name = scout.get("name") if scout else ""
-        ok, message = self.start_talent_search(scout_name, self.scouting_region_var.get(), self.scouting_gender_var.get(), self.scouting_weight_var.get())
+        focus = self.scouting_focus_var.get() if hasattr(self, "scouting_focus_var") else self.rules.get("scouting_search_focus", "Free Agent Pool")
+        if focus not in SCOUTING_SEARCH_FOCUSES:
+            focus = "Free Agent Pool"
+        self.rules["scouting_search_focus"] = focus
+        ok, message = self.start_talent_search(scout_name, self.scouting_region_var.get(), self.scouting_gender_var.get(), self.scouting_weight_var.get(), focus)
         self.scouting_status_var.set(("Search started: " if ok else "Cannot start search: ") + message)
         self.refresh_scouting_center()
         self.refresh_header()
@@ -9455,6 +9519,7 @@ class ViewMixin:
             self.ranking_filter.set("Division Rankings")
             mode = "Division Rankings"
         scope = self.ranking_scope.get() if hasattr(self, "ranking_scope") else "Worldwide"
+        summary = {"mode": mode, "scope": scope, "leader": "-", "champions": "-"}
         if mode == "Company Rankings":
             companies = [(self.player_company_name, self.player_region, self.player_reputation, self.company_pop, self.company_stability, self.cash, len(self.roster))]
             companies += [(p.name, p.region, p.reputation, p.reputation_score, p.stability, p.cash, len(p.roster)) for p in self.promotions]
@@ -9462,7 +9527,12 @@ class ViewMixin:
             for rank, (name, region, rep, score, stability, cash, roster_size) in enumerate(companies, 1):
                 roster = self.roster if name == self.player_company_name else next(p.roster for p in self.promotions if p.name == name)
                 combined = self.company_power_score(name, roster, score, stability, cash)
-                self.rankings_tree.insert("", "end", values=(rank, "-", "-", name, "-", region, rep, f"{roster_size} fighters", "-", "Company", "Promotion strength", combined, f"${cash:,}", "Active"))
+                item_id = self.rankings_tree.insert("", "end", values=(rank, "-", "-", name, "-", region, rep, f"{roster_size} fighters", "-", "Company", "Promotion strength", combined, f"${cash:,}", "Active"), tags=("company",))
+                if rank == 1:
+                    summary["leader"] = name
+                self.ranking_tree_fighters[item_id] = None
+            summary["champions"] = f"{len(companies)} promotions"
+            self.update_ranking_summary(summary)
             return
         rows = self.ranked_fighter_rows(scope)
         if mode == "Pound-for-Pound":
@@ -9473,8 +9543,12 @@ class ViewMixin:
             for _rank, (company, fighter) in enumerate(ranked, 1):
                 label = self.fighter_display_name(fighter)
                 fighter_key = self.fighter_identity_key(fighter)
-                item_id = self.rankings_tree.insert("", "end", values=(company_p4p_ranks.get((company, fighter_key), "-"), world_p4p_ranks.get(fighter_key, "-"), self.ranking_movement_label(fighter), label, fighter.gender[0], company, fighter.weight, fighter.record, fighter.overall, self.ranking_form_label(fighter), self.title_path_label(fighter), p4p_scores[id(fighter)], fighter.last_fight, fighter.status))
+                item_id = self.rankings_tree.insert("", "end", values=(company_p4p_ranks.get((company, fighter_key), "-"), world_p4p_ranks.get(fighter_key, "-"), self.ranking_movement_label(fighter), label, fighter.gender[0], company, fighter.weight, fighter.record, fighter.overall, self.ranking_form_label(fighter), self.title_path_label(fighter), p4p_scores[id(fighter)], fighter.last_fight, fighter.status), tags=self.ranking_row_tags(fighter))
                 self.ranking_tree_fighters[item_id] = fighter
+            if ranked:
+                summary["leader"] = self.fighter_display_name(ranked[0][1])
+            summary["champions"] = f"{sum(1 for _company, fighter in rows if fighter.champion)} champions shown"
+            self.update_ranking_summary(summary)
             return
         all_rows = self.unfiltered_ranked_fighter_rows()
         rank_scores = {id(fighter): self.rank_value(fighter) for _company, fighter in all_rows}
@@ -9488,8 +9562,32 @@ class ViewMixin:
         for company, fighter in division[:75]:
             label = self.fighter_display_name(fighter)
             fighter_key = self.fighter_identity_key(fighter)
-            item_id = self.rankings_tree.insert("", "end", values=(company_division_ranks.get((company, fighter_key), "-"), world_division_ranks.get(fighter_key, "-"), self.ranking_movement_label(fighter), label, fighter.gender[0], company, fighter.weight, fighter.record, fighter.overall, self.ranking_form_label(fighter), self.title_path_label(fighter), rank_scores[id(fighter)], fighter.last_fight, fighter.status))
+            item_id = self.rankings_tree.insert("", "end", values=(company_division_ranks.get((company, fighter_key), "-"), world_division_ranks.get(fighter_key, "-"), self.ranking_movement_label(fighter), label, fighter.gender[0], company, fighter.weight, fighter.record, fighter.overall, self.ranking_form_label(fighter), self.title_path_label(fighter), rank_scores[id(fighter)], fighter.last_fight, fighter.status), tags=self.ranking_row_tags(fighter))
             self.ranking_tree_fighters[item_id] = fighter
+        if division:
+            summary["leader"] = self.fighter_display_name(division[0][1])
+        summary["champions"] = f"{sum(1 for _company, fighter in division if fighter.champion)} champion(s)"
+        self.update_ranking_summary(summary)
+
+    def update_ranking_summary(self, summary):
+        vars_by_key = getattr(self, "ranking_summary_vars", None)
+        if not vars_by_key:
+            return
+        for key, value in summary.items():
+            if key in vars_by_key:
+                vars_by_key[key].set(str(value))
+
+    def ranking_row_tags(self, fighter):
+        tags = []
+        if getattr(fighter, "champion", False):
+            tags.append("champion")
+        elif getattr(fighter, "ranking_position", 0) and getattr(fighter, "ranking_position", 0) <= 5:
+            tags.append("top_contender")
+        if getattr(fighter, "career_win_streak", 0) >= 3 or getattr(fighter, "momentum", 0) >= 3:
+            tags.append("rising")
+        elif getattr(fighter, "momentum", 0) <= -3:
+            tags.append("sliding")
+        return tuple(tags)
 
     def ranking_movement_label(self, fighter):
         if fighter.champion:
@@ -9538,11 +9636,20 @@ class ViewMixin:
             if fighter:
                 current = "Champion" if fighter.champion else f"#{fighter.ranking_position or '-'}"
                 previous = "-" if fighter.champion else f"#{fighter.previous_ranking_position or '-'}"
-                self.ranking_detail.insert("end", f"{fighter.name}: rank is driven by ELO, record quality, overall ability, activity and current form. {self.title_path_label(fighter)}. Current: {current}; previous: {previous}; rationale: {fighter.ranking_reason or 'Merit ranking'}. Double-click to open profile.")
+                company = self.fighter_company_name(fighter)
+                movement = self.ranking_movement_label(fighter)
+                path = self.title_path_label(fighter)
+                self.ranking_detail.insert("end", f"{self.fighter_display_name(fighter)}", "headline")
+                self.ranking_detail.insert("end", f"  |  {fighter.gender} {fighter.weight}  |  {company}\n")
+                self.ranking_detail.insert("end", f"Rank: {current}  |  Previous: {previous}  |  Movement: {movement}  |  Score: {values[11] if len(values) > 11 else '-'}\n", "metric")
+                self.ranking_detail.insert("end", f"Record: {fighter.record}  |  OVR: {fighter.overall}  |  Form: {self.ranking_form_label(fighter)}  |  Status: {fighter.status}\n")
+                self.ranking_detail.insert("end", f"Title path: {path}. Rationale: {fighter.ranking_reason or 'Merit ranking'}. Last fight: {fighter.last_fight}.")
+                self.ranking_detail.tag_configure("headline", foreground=self.colors["gold"], font=("Tahoma", 10, "bold"))
+                self.ranking_detail.tag_configure("metric", foreground=self.colors["muted"], font=("Tahoma", 9, "bold"))
             else:
-                self.ranking_detail.insert("end", "Company rankings combine roster strength, reputation, stability, and financial power.")
+                self.ranking_detail.insert("end", "Company rankings combine roster strength, reputation, stability, and financial power. Use the company hub for belts, roster depth and finance detail.")
         else:
-            self.ranking_detail.insert("end", "Select a contender to see the ranking rationale and title path.")
+            self.ranking_detail.insert("end", "Select a contender to see rank movement, title path, form and rationale.")
         self.ranking_detail.config(state="disabled")
 
     def open_selected_ranking_profile(self, _event=None):
@@ -9982,16 +10089,17 @@ class ViewMixin:
                 key = (named[0].gender, named[0].weight)
                 booked_divisions[key] = booked_divisions.get(key, 0) + 1
         candidates = []
+        rank_map = self.player_division_rank_map()
         for index, a in enumerate(ready):
             for b in ready[index + 1:]:
                 if a.gender != b.gender or a.weight != b.weight:
                     continue
-                raw, reason = self.matchmaking_score(a, b)
-                build = self.match_build_score(a, b, {"title": False, "main": False})
+                raw, reason = self.matchmaking_score(a, b, rank_map=rank_map)
+                build = self.match_build_score(a, b, {"title": False, "main": False}, rank_map=rank_map)
                 division_uses = booked_divisions.get((a.gender, a.weight), 0)
                 variety = 9 if division_uses == 0 else -min(24, division_uses * 8)
                 activity_need = max(0, 72 - min(self.fighter_activity_rating(a), self.fighter_activity_rating(b))) * 0.12
-                should_title = self.assistant_title_recommendation(a, b)
+                should_title = self.assistant_title_recommendation(a, b, rank_map=rank_map)
                 score = raw + build * 0.22 + variety + activity_need + (16 if should_title else 0)
                 context = [reason, "adds card variety" if variety > 0 else f"division already has {division_uses} booked bout(s)"]
                 if activity_need >= 4:
@@ -10004,12 +10112,15 @@ class ViewMixin:
     def assistant_recommendation_display_score(self, raw_score):
         return max(1, min(99, round(10 + raw_score * 0.45)))
 
-    def assistant_title_recommendation(self, a, b):
+    def assistant_title_recommendation(self, a, b, rank_map=None):
         if not (a.champion or b.champion):
             return False
         champion = a if a.champion else b
         contender = b if champion is a else a
-        rank = self.division_rank_number(contender) or 99
+        rank = None
+        if rank_map is not None:
+            rank = rank_map.get(self.fighter_identity_key(contender))
+        rank = rank if rank is not None else (self.division_rank_number(contender) or 99)
         return bool(rank <= 5 or contender.owed_title_shot or contender.title_shot_clause)
 
     def normalize_card_order(self, fights=None):
@@ -10053,10 +10164,10 @@ class ViewMixin:
         self.refresh_card()
         self.card_tree.selection_set(str(index + 1))
 
-    def matchmaking_score(self, a, b):
+    def matchmaking_score(self, a, b, rank_map=None):
         if a is b or a.gender != b.gender or a.weight != b.weight:
             return -999, "invalid divisional pairing"
-        hype = self.fight_hype(a, b, {"title": False, "main": False})
+        hype = self.fight_hype(a, b, {"title": False, "main": False}, rank_map=rank_map)
         prospect_penalty = 0
         reason_bits = []
         if (a.record_l == 0 and a.age < 26 and b.overall - a.overall > 7) or (b.record_l == 0 and b.age < 26 and a.overall - b.overall > 7):
@@ -10067,7 +10178,8 @@ class ViewMixin:
             reason_bits.append("existing rivalry")
         if a.champion or b.champion:
             contender = b if a.champion else a
-            contender_rank = self.division_rank_number(contender) or 99
+            contender_rank = rank_map.get(self.fighter_identity_key(contender)) if rank_map is not None else None
+            contender_rank = contender_rank if contender_rank is not None else (self.division_rank_number(contender) or 99)
             if contender_rank <= 5:
                 hype += 24 - contender_rank * 2
                 reason_bits.append(f"credible #{contender_rank} title contender")
@@ -10078,7 +10190,10 @@ class ViewMixin:
                 hype -= 28
                 reason_bits.append("weak championship claim")
         style_gap = abs(a.overall - b.overall)
-        rank_a, rank_b = self.division_rank_number(a), self.division_rank_number(b)
+        rank_a = rank_map.get(self.fighter_identity_key(a)) if rank_map is not None else None
+        rank_b = rank_map.get(self.fighter_identity_key(b)) if rank_map is not None else None
+        rank_a = rank_a if rank_a is not None else self.division_rank_number(a)
+        rank_b = rank_b if rank_b is not None else self.division_rank_number(b)
         rank_alignment = max(0, 10 - abs((rank_a or 12) - (rank_b or 12)) * 1.4)
         form_alignment = max(0, 7 - abs(a.momentum - b.momentum)) * 1.5
         repeat_penalty = self.matchup_history_penalty(a, b)

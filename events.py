@@ -2524,15 +2524,16 @@ class EventMixin:
         ttk.Button(body, text="Submit Offer", style="Accent.TButton", command=submit_offer).pack(side="left", padx=12, pady=12)
         ttk.Button(body, text="Walk Away", command=window.destroy).pack(side="right", padx=12, pady=12)
 
-    def fight_hype(self, a, b, fight):
+    def fight_hype(self, a, b, fight, rank_map=None):
         title = 12 if fight.get("title") else 0
         main = 8 if fight.get("main") else 0
         tier_factor = {"Main Card": 1.0, "Prelims": 0.72, "Early Prelims": 0.48}.get(fight.get("tier", "Main Card"), 1.0)
         rivalry = abs(a.momentum - b.momentum) + self.rivalry_heat_between(a, b) * 0.28
-        media = self.match_build_score(a, b, fight) * 0.18
+        media = self.match_build_score(a, b, fight, rank_map=rank_map) * 0.18
         rank_bonus = 0
         for fighter in (a, b):
-            rank = self.division_rank_number(fighter)
+            rank = rank_map.get(self.fighter_identity_key(fighter)) if rank_map is not None else None
+            rank = rank if rank is not None else self.division_rank_number(fighter)
             if fighter.champion:
                 rank_bonus += 7
             elif rank and rank <= 5:
@@ -2604,13 +2605,15 @@ class EventMixin:
         finish_bonus = max(0, fighter.power + fighter.submissions - 130) * 0.12
         return max(1, min(99, round(fighter.popularity * 0.5 + fighter.star_quality * 0.22 + fighter.charisma * 0.12 + media + streak + rank_bonus + trait_bonus + finish_bonus)))
 
-    def match_build_score(self, a, b, fight):
+    def match_build_score(self, a, b, fight, rank_map=None):
         style_clash = 6 if a.style != b.style else 1
         rivalry = 10 + self.rivalry_heat_between(a, b) * 0.22 if a.rival == b.name or b.rival == a.name else 0
         stakes = (10 if fight.get("title") else 0) + (6 if fight.get("main") else 0)
         competitiveness = max(0, 18 - abs(a.overall - b.overall))
         matchmaker_lift = self.staff_effect("Matchmaker", 0.28)
-        return max(1, min(99, round((self.fight_build_score(a) + self.fight_build_score(b)) / 2 + style_clash + rivalry + stakes + competitiveness * 0.35 + matchmaker_lift)))
+        rank_a = rank_map.get(self.fighter_identity_key(a)) if rank_map is not None else None
+        rank_b = rank_map.get(self.fighter_identity_key(b)) if rank_map is not None else None
+        return max(1, min(99, round((self.fight_build_score(a, rank_a) + self.fight_build_score(b, rank_b)) / 2 + style_clash + rivalry + stakes + competitiveness * 0.35 + matchmaker_lift)))
 
     def run_event(self):
         if len(self.booked) < 1:

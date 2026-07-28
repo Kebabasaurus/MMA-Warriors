@@ -1,6 +1,0 @@
-Months: 12
-Ending free agents: 540
-Showcases: 50
-Bouts: 353
-Average bouts/card: 7.06
-Card sizes: [6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8]

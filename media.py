@@ -743,8 +743,9 @@ class MediaMixin:
         if not hasattr(self, "media_kpi_summary"):
             return
         finance = self.ensure_player_media_state()
-        if not finance["media_offers"]:
-            self.generate_media_offers(force=True)
+        # Offers are created by the monthly media cycle and by the negotiate
+        # action, never by drawing this dashboard. Generating them here made a
+        # screen redraw consume simulation RNG and change later outcomes.
         remaining = self.media_actions_remaining()
         active = self.active_media_contract()
         recent = finance.get("media_audience_history", [])[:1]

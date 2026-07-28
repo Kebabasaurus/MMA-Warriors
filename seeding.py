@@ -2,6 +2,7 @@ import json
 import random
 import sys
 import traceback
+from bisect import bisect
 from datetime import datetime
 import tkinter as tk
 from dataclasses import asdict, dataclass
@@ -11,6 +12,36 @@ from tkinter import messagebox, ttk
 from constants import *
 from models import Fighter, Gym, Promotion
 from real_sport_profiles import SPORT_PROFILE_VERSION, build_fallback_sport_profile, build_real_sport_profiles
+
+
+def weighted_choice_table(values, weights):
+    total = 0
+    cumulative = []
+    for weight in weights:
+        total += weight
+        cumulative.append(total)
+    return tuple(values), tuple(cumulative), total
+
+
+def weighted_table_pick(table):
+    values, cumulative, total = table
+    return values[bisect(cumulative, random.random() * total)]
+
+
+GENERATED_FIGHTER_AGE_TABLE = weighted_choice_table(
+    range(18, 34),
+    (11, 13, 15, 16, 16, 15, 13, 11, 9, 8, 7, 6, 5, 4, 3, 2),
+)
+GENERATED_STANCE_TABLE = weighted_choice_table(("Orthodox", "Southpaw", "Switch"), (58, 29, 13))
+NEGOTIATION_PERSONA_TABLE = weighted_choice_table(
+    ("Professional", "Hard Bargainer", "Loyalist", "Star Chaser", "Security First", "Competitive"),
+    (34, 17, 14, 12, 13, 10),
+)
+CAREER_ARCHETYPE_TABLE = weighted_choice_table(
+    ("Early Maturation", "Balanced Development", "Late Maturation", "Durable Career"),
+    (16, 53, 17, 14),
+)
+REGIONAL_FEEDER_AGE_TABLE = weighted_choice_table(range(17, 22), (5, 8, 10, 8, 5))
 
 
 class SeedMixin:
@@ -1191,12 +1222,12 @@ class SeedMixin:
             cultural_options = [region for region in REGIONAL_MIGRATION_LINKS.get(birth_region, []) if region in REGIONS and region not in connections]
             if cultural_options:
                 connections.append(random.choice(cultural_options))
-        popularity = {region: random.randint(1, 8) for region in REGIONS}
-        popularity[birth_region] = max(popularity[birth_region], min(78, random.randint(18, 34) + fighter.popularity // 3))
-        popularity[residence] = max(popularity[residence], min(74, random.randint(14, 30) + fighter.popularity // 3))
-        popularity[training_region] = max(popularity[training_region], min(55, random.randint(8, 22) + fighter.popularity // 5))
+        popularity = {}
+        popularity[birth_region] = min(78, random.randint(18, 34) + fighter.popularity // 3)
+        popularity[residence] = max(popularity.get(residence, 0), min(74, random.randint(14, 30) + fighter.popularity // 3))
+        popularity[training_region] = max(popularity.get(training_region, 0), min(55, random.randint(8, 22) + fighter.popularity // 5))
         for connection in connections[3:]:
-            popularity[connection] = max(popularity[connection], random.randint(9, 24))
+            popularity[connection] = max(popularity.get(connection, 0), random.randint(9, 24))
         if generated:
             birth_country, nationality, hometowns = self.generated_birth_identity(birth_region)
         else:
@@ -1239,7 +1270,7 @@ class SeedMixin:
     def update_regional_popularity(self, fighter, region, delta, note=""):
         if not fighter or region not in REGIONS:
             return
-        markets = getattr(fighter, "regional_popularity", None) or {market: 0 for market in REGIONS}
+        markets = getattr(fighter, "regional_popularity", None) or {}
         markets.setdefault(region, 0)
         markets[region] = max(0, min(100, markets[region] + delta))
         fighter.regional_popularity = markets
@@ -3366,18 +3397,14 @@ class SeedMixin:
         }.get(fighter.style, "Mixed martial arts")
         fighter.multi_sport_records = fighter.multi_sport_records or {"MMA": f"{fighter.record_w}-{fighter.record_l}-{fighter.record_d}"}
         fighter.crossover_history = fighter.crossover_history or []
-        fighter.stance = random.choices(["Orthodox", "Southpaw", "Switch"], weights=[58, 29, 13], k=1)[0]
+        fighter.stance = weighted_table_pick(GENERATED_STANCE_TABLE)
         fighter.trait = random.choice(TRAITS)
         fighter.behaviour = random.choice(BEHAVIOURS)
         fighter.camp = random.choice(CAMPS)
         fighter.exclusive = player_owned or random.random() < 0.55
         fighter.contract_type = "Exclusive" if fighter.exclusive else "Non-Exclusive"
         fighter.negotiation_heat = random.randint(0, 35)
-        fighter.negotiation_persona = random.choices(
-            ["Professional", "Hard Bargainer", "Loyalist", "Star Chaser", "Security First", "Competitive"],
-            weights=[34, 17, 14, 12, 13, 10],
-            k=1,
-        )[0]
+        fighter.negotiation_persona = weighted_table_pick(NEGOTIATION_PERSONA_TABLE)
         fighter.agent_name = random.choice(["Independent", "Apex Sports", "Northstar Management", "Forge Talent", "Summit Representation"])
         fighter.media_heat = random.randint(0, 25)
         fighter.star_quality = max(1, min(99, round(fighter.popularity * 0.55 + fighter.overall * 0.25 + random.randint(0, 28))))
@@ -3962,11 +3989,7 @@ class SeedMixin:
         durable_style = fighter.style in ("Wrestler", "Freestyle Wrestler", "Catch Wrestler", "BJJ", "Grappler", "Submission Grappler", "Sambo", "Judo")
         archetype = getattr(fighter, "career_archetype", "")
         if archetype not in ("Early Maturation", "Balanced Development", "Late Maturation", "Durable Career"):
-            archetype = random.choices(
-                ["Early Maturation", "Balanced Development", "Late Maturation", "Durable Career"],
-                weights=[16, 53, 17, 14],
-                k=1,
-            )[0]
+            archetype = weighted_table_pick(CAREER_ARCHETYPE_TABLE)
         fighter.career_archetype = archetype
         late_bonus = 2 if archetype in ("Late Maturation", "Durable Career") else 0
         early_penalty = 2 if archetype == "Early Maturation" else 0
@@ -4010,7 +4033,7 @@ class SeedMixin:
         fighter.detailed_skills = base_map
 
     def skill_noise(self, base):
-        return max(1, min(99, round(base + random.randint(-14, 14) + random.random())))
+        return max(1, min(99, base + random.randrange(-14, 15) + random.getrandbits(1)))
 
     def sync_broad_skills_from_details(self, fighter):
         skills = fighter.detailed_skills or {}
@@ -4180,7 +4203,7 @@ class SeedMixin:
         # New entrants are predominantly prospects. Established veterans should
         # emerge through records and regional careers, not every generated name.
         age = (max(18, min(45, int(age_override))) if age_override is not None else
-               random.choices(range(18, 34), weights=[11, 13, 15, 16, 16, 15, 13, 11, 9, 8, 7, 6, 5, 4, 3, 2], k=1)[0])
+               weighted_table_pick(GENERATED_FIGHTER_AGE_TABLE))
         age_skill_adjustment = 0
         if apply_entry_balance:
             if age <= 24:
@@ -4418,7 +4441,7 @@ class SeedMixin:
     def create_regional_feeder_fighter(self, region, used_names, gender, feeder_name=""):
         pre_universe = bool(getattr(self, "_seeding_universe", False))
         fighter = self.create_generated_fighter(2, 22, 40, 70, gender=gender, region=region, apply_entry_balance=False, pre_universe=pre_universe)
-        fighter.age = random.choices(range(17, 22), weights=[5, 8, 10, 8, 5], k=1)[0]
+        fighter.age = weighted_table_pick(REGIONAL_FEEDER_AGE_TABLE)
         fighter.record_w = random.randint(0, 6) if pre_universe else 0
         fighter.record_l = random.randint(0, min(4, fighter.record_w + 1)) if pre_universe else 0
         fighter.record_d = 0
@@ -5042,6 +5065,24 @@ class SeedMixin:
             {"name": "Reed Wallace", "role": "Doctor", "skill": 64, "salary": 7000, "morale": 70, "specialty": "Injury prevention", "reputation": 59},
             {"name": "Felix Park", "role": "Marketing", "skill": 60, "salary": 5800, "morale": 74, "specialty": "Regional campaigns", "reputation": 56},
         ]
+
+    def create_starting_scout(self, region=None, company_scale="Regional"):
+        base = {"Local": 56, "Regional": 64, "National": 72}.get(company_scale, 64)
+        skill = max(48, min(84, base + random.randint(-8, 8)))
+        name = f"{random.choice(FIRST_NAMES + FEMALE_FIRST_NAMES)} {random.choice(LAST_NAMES)}"
+        specialty = random.choice(["Prospect eye", "International network", "Women’s divisions"])
+        profile = {"name": name, "role": "Scout", "skill": skill, "salary": max(4200, round(skill * random.randint(78, 112) / 10) * 10), "morale": random.randint(66, 88), "specialty": specialty, "reputation": max(42, min(88, skill + random.randint(-6, 8))), "region": region or random.choice(REGIONS)}
+        profile.update({
+            "fighter_judging": max(30, min(95, skill + random.randint(-7, 8))),
+            "potential_judging": max(30, min(95, skill + random.randint(-8, 9) + (4 if specialty == "Prospect eye" else 0))),
+            "efficiency": max(30, min(95, skill + random.randint(-8, 8))),
+            "regional_knowledge": max(30, min(95, skill + random.randint(-6, 10) + (4 if profile["region"] == region else 0))),
+            "networking": max(30, min(95, skill + random.randint(-7, 10) + (5 if specialty == "International network" else 0))),
+            "reliability": max(30, min(95, skill + random.randint(-6, 8))),
+            "negotiation": max(25, min(92, skill + random.randint(-10, 5))),
+            "professionalism": max(30, min(95, skill + random.randint(-6, 8))),
+        })
+        return profile
 
     def create_staff_candidate(self):
         roles = ["Scout", "Doctor", "Marketing", "Matchmaker", "Drug Testing Officer", "Broadcast Producer", "Talent Relations"]

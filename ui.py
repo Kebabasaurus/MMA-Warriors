@@ -1595,6 +1595,7 @@ class UIMixin:
         self.scouting_region_var = tk.StringVar(value=self.player_region)
         self.scouting_gender_var = tk.StringVar(value="All")
         self.scouting_weight_var = tk.StringVar(value="All")
+        self.scouting_focus_var = tk.StringVar(value=self.rules.get("scouting_search_focus", "Free Agent Pool"))
         scouting_tabs = ttk.Notebook(self.scouting_tab)
         scouting_tabs.pack(fill="both", expand=True)
         target_page = ttk.Frame(scouting_tabs, style="Chrome.TFrame")
@@ -1611,6 +1612,7 @@ class UIMixin:
         self.scouting_target_gender = tk.StringVar(value="All")
         self.scouting_target_weight = tk.StringVar(value="All")
         self.scouting_target_status = tk.StringVar(value="All")
+        self.scouting_recommendation_mode_var = tk.StringVar(value=self.rules.get("scouting_recommendation_mode", "Balanced"))
         self.scouting_target_count_var = tk.StringVar(value="")
         self.scouting_target_page = 0
         self.scouting_target_page_size = 400
@@ -1626,19 +1628,24 @@ class UIMixin:
             ("Gender", self.scouting_target_gender, ("All", "Male", "Female"), 9),
             ("Division", self.scouting_target_weight, ("All", *WEIGHTS), 14),
             ("Intel", self.scouting_target_status, ("All", "Recommended Signings", "Monitor", "Pass", "Shortlisted", "Unscouted", "In Progress", "Scouted", "Stale", "Free Agents", "Rival Rosters"), 18),
+            ("Logic", self.scouting_recommendation_mode_var, SCOUTING_RECOMMENDATION_MODES, 15),
         )
         filter_help = {
             "Company": "Limit the board to free agents, independent fighters, or one promotion's roster.",
             "Gender": "Show male fighters, female fighters, or both.",
             "Division": "Limit results to one MMA weight class.",
             "Intel": "Filter by scouting state or recommendation. Monitor means the scout sees value, but price, uncertainty, or current division need makes an immediate offer hard to justify.",
+            "Logic": "Adjust how scouts turn completed reports into advice: balanced, aggressive, strict, prospect-led, value-led, or roster-need led.",
         }
         for label, variable, values, width in target_combos:
             label_widget = ttk.Label(target_filters, text=label, style="Inset.TLabel")
             label_widget.pack(side="left", padx=(3, 2))
             combo = ttk.Combobox(target_filters, textvariable=variable, values=values, state="readonly", width=width)
             combo.pack(side="left", padx=(0, 5))
-            combo.bind("<<ComboboxSelected>>", lambda _event: self.reset_scouting_target_page())
+            if label == "Logic":
+                combo.bind("<<ComboboxSelected>>", lambda _event: self.update_scouting_recommendation_mode())
+            else:
+                combo.bind("<<ComboboxSelected>>", lambda _event: self.reset_scouting_target_page())
             self.attach_tooltip(label_widget, filter_help[label])
             self.attach_tooltip(combo, filter_help[label])
             if label == "Company":
@@ -1743,6 +1750,7 @@ class UIMixin:
             ("Region", self.scouting_region_var, REGIONS, 16),
             ("Gender", self.scouting_gender_var, ("All", "Male", "Female"), 10),
             ("Division", self.scouting_weight_var, ("All", *WEIGHTS), 15),
+            ("Aim", self.scouting_focus_var, SCOUTING_SEARCH_FOCUSES, 17),
         ):
             label_widget = ttk.Label(scout_controls, text=label, style="Inset.TLabel")
             label_widget.pack(side="left", padx=(5, 2))
@@ -1753,6 +1761,7 @@ class UIMixin:
                 "Region": "The geographical market to search. Regional knowledge and scout specialties can improve the lead.",
                 "Gender": "Choose which fighter market the search should prioritize.",
                 "Division": "Choose a specific weight class or search across all divisions.",
+                "Aim": "Tell scouts what kind of lead to find: free agents, rival-roster targets, regional prospects, young prospects, or the broad market.",
             }[label]
             self.attach_tooltip(label_widget, search_help)
             self.attach_tooltip(combo, search_help)
@@ -2539,44 +2548,70 @@ class UIMixin:
 
     def build_rankings_tab(self):
         self.screen_header(self.rankings_tab, "RANKINGS", "Division rankings and pound-for-pound rankings")
-        controls = ttk.Frame(self.rankings_tab)
+        controls = tk.Frame(self.rankings_tab, bg=self.colors["panel_dark"], highlightthickness=1, highlightbackground=self.colors["line"])
         controls.pack(fill="x", pady=(0, 6))
-        ttk.Label(controls, text="Ranking list").pack(side="left")
+        ttk.Label(controls, text="Ranking list", style="Section.TLabel").pack(side="left", padx=(8, 4), pady=6)
         self.ranking_filter = tk.StringVar(value="Pound-for-Pound")
         ranking_box = ttk.Combobox(controls, values=["Pound-for-Pound", "Division Rankings", "Company Rankings"], textvariable=self.ranking_filter, state="readonly", width=20)
-        ranking_box.pack(side="left", padx=8)
+        ranking_box.pack(side="left", padx=6, pady=6)
         ranking_box.bind("<<ComboboxSelected>>", lambda _e: self.refresh_rankings())
-        ttk.Label(controls, text="Weight").pack(side="left", padx=(16, 0))
+        ttk.Label(controls, text="Weight", style="Section.TLabel").pack(side="left", padx=(14, 4), pady=6)
         ranking_weight = ttk.Combobox(controls, values=["All"] + WEIGHTS, textvariable=self.ranking_weight_filter, state="readonly", width=15)
-        ranking_weight.pack(side="left", padx=8)
+        ranking_weight.pack(side="left", padx=6, pady=6)
         ranking_weight.bind("<<ComboboxSelected>>", lambda _e: self.refresh_rankings())
-        ttk.Label(controls, text="Scope").pack(side="left", padx=(16, 0))
+        ttk.Label(controls, text="Scope", style="Section.TLabel").pack(side="left", padx=(14, 4), pady=6)
         self.ranking_scope = tk.StringVar(value="Worldwide")
         self.ranking_scope_box = ttk.Combobox(controls, textvariable=self.ranking_scope, state="readonly", width=30)
-        self.ranking_scope_box.pack(side="left", padx=8)
+        self.ranking_scope_box.pack(side="left", padx=6, pady=6)
         self.ranking_scope_box.bind("<<ComboboxSelected>>", lambda _e: self.refresh_rankings())
-        ttk.Label(controls, text="Gender").pack(side="left", padx=(16, 0))
+        ttk.Label(controls, text="Gender", style="Section.TLabel").pack(side="left", padx=(14, 4), pady=6)
         ranking_gender = ttk.Combobox(controls, values=["All", "Male", "Female"], textvariable=self.ranking_gender_filter, state="readonly", width=10)
-        ranking_gender.pack(side="left", padx=8)
+        ranking_gender.pack(side="left", padx=6, pady=6)
         ranking_gender.bind("<<ComboboxSelected>>", lambda _e: self.refresh_rankings())
+        ranking_board = tk.Frame(self.rankings_tab, bg=self.colors["chrome"])
+        ranking_board.pack(fill="x", pady=(0, 6))
+        self.ranking_summary_vars = {}
+        for key, title in (("mode", "BOARD"), ("scope", "SCOPE"), ("leader", "TOP RANKED"), ("champions", "CHAMPIONS")):
+            cell = tk.Frame(ranking_board, bg=self.colors["panel_dark"], highlightthickness=1, highlightbackground=self.colors["line"])
+            cell.pack(side="left", fill="x", expand=True, padx=(0, 6))
+            tk.Label(cell, text=title, bg=self.colors["panel_dark"], fg=self.colors["muted"], font=("Tahoma", 7, "bold"), anchor="w").pack(fill="x", padx=8, pady=(5, 0))
+            var = tk.StringVar(value="-")
+            self.ranking_summary_vars[key] = var
+            tk.Label(cell, textvariable=var, bg=self.colors["panel_dark"], fg=self.colors["gold"], font=("Tahoma", 10, "bold"), anchor="w").pack(fill="x", padx=8, pady=(0, 6))
         panel, inner = self.section(self.rankings_tab, "TOP CONTENDERS")
         panel.pack(fill="both", expand=True)
-        rankings_resize = self.create_vertical_resizer(inner, initial_fraction=0.78, min_top=220, min_bottom=95)
+        rankings_resize = self.create_vertical_resizer(inner, initial_fraction=0.76, min_top=250, min_bottom=118)
         rankings_resize.pack(fill="both", expand=True)
         ranking_table = ttk.Frame(rankings_resize, style="Inset.TFrame")
         rankings_resize.add(ranking_table, minsize=220)
         self.rankings_tree = ttk.Treeview(ranking_table, columns=("company_rank", "world_rank", "move", "name", "gender", "company", "weight", "record", "overall", "form", "path", "score", "last", "status"), show="headings")
-        for col, text, width in (("company_rank", "Co Rank", 62), ("world_rank", "World", 58), ("move", "Move", 60), ("name", "Fighter", 150), ("gender", "G", 38), ("company", "Company", 135), ("weight", "Division", 100), ("record", "Record", 70), ("overall", "OVR", 55), ("form", "Form", 90), ("path", "Title Path", 135), ("score", "Score", 65), ("last", "Last Fight", 120), ("status", "Status", 85)):
+        for col, text, width in (("company_rank", "Co", 54), ("world_rank", "World", 58), ("move", "Move", 58), ("name", "Fighter", 170), ("gender", "G", 34), ("company", "Company", 135), ("weight", "Division", 102), ("record", "Record", 76), ("overall", "OVR", 52), ("form", "Form", 96), ("path", "Title Path", 145), ("score", "Score", 66), ("last", "Last Fight", 155), ("status", "Status", 90)):
             self.rankings_tree.heading(col, text=text)
             self.rankings_tree.column(col, width=width, anchor="center")
         self.rankings_tree.column("name", anchor="w")
         self.rankings_tree.column("company", anchor="w")
         self.rankings_tree.column("last", anchor="w")
+        self.rankings_tree.tag_configure("champion", foreground=self.colors["gold"])
+        self.rankings_tree.tag_configure("top_contender", foreground=self.colors["text"])
+        self.rankings_tree.tag_configure("rising", foreground="#9dffb2")
+        self.rankings_tree.tag_configure("sliding", foreground="#ff9a9a")
+        self.rankings_tree.tag_configure("company", foreground=self.colors["gold"])
         self.make_tree_sortable(self.rankings_tree)
-        self.rankings_tree.pack(fill="both", expand=True)
+        ranking_y = ttk.Scrollbar(ranking_table, orient="vertical", command=self.rankings_tree.yview)
+        ranking_x = ttk.Scrollbar(ranking_table, orient="horizontal", command=self.rankings_tree.xview)
+        self.rankings_tree.configure(yscrollcommand=ranking_y.set, xscrollcommand=ranking_x.set)
+        self.rankings_tree.grid(row=0, column=0, sticky="nsew")
+        ranking_y.grid(row=0, column=1, sticky="ns")
+        ranking_x.grid(row=1, column=0, sticky="ew")
+        ranking_table.rowconfigure(0, weight=1)
+        ranking_table.columnconfigure(0, weight=1)
         ranking_detail_frame = ttk.Frame(rankings_resize, style="Inset.TFrame")
         rankings_resize.add(ranking_detail_frame, minsize=95)
-        self.ranking_detail = tk.Text(ranking_detail_frame, height=4, wrap="word", bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 9), padx=10, pady=8)
+        detail_header = tk.Frame(ranking_detail_frame, bg=self.colors["panel_dark"])
+        detail_header.pack(fill="x")
+        tk.Label(detail_header, text="RANKING READ", bg=self.colors["panel_dark"], fg=self.colors["gold"], font=("Impact", 11), anchor="w").pack(side="left", padx=10, pady=(7, 2))
+        tk.Label(detail_header, text="Double-click a fighter to open profile", bg=self.colors["panel_dark"], fg=self.colors["muted"], font=("Tahoma", 8), anchor="e").pack(side="right", padx=10, pady=(7, 2))
+        self.ranking_detail = tk.Text(ranking_detail_frame, height=5, wrap="word", bg=self.colors["panel_dark"], fg=self.colors["text"], insertbackground=self.colors["text"], font=("Tahoma", 9), padx=10, pady=8, bd=0)
         self.ranking_detail.pack(fill="both", expand=True); self.ranking_detail.config(state="disabled")
         self.rankings_tree.bind("<<TreeviewSelect>>", self.show_ranking_detail)
         self.rankings_tree.bind("<Double-1>", self.open_selected_ranking_profile)

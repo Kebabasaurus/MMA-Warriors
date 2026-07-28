@@ -1,38 +1,27 @@
 """Procedural, non-blocking audio cues for the live fight-night presentation.
 
-Everything here is synthesised on the fly with numpy so the game ships no audio
-assets and stays fully self-contained. The cues aim for an MMA broadcast feel:
-a metallic round bell, weighty punch impacts that vary shot to shot, crowd
-swells, a roar on a finish, and applause to close a card. Machines without
-numpy/sounddevice fall back to a single winsound beep, and any audio failure is
-swallowed so it can never interrupt an event.
+The cues are synthesised with Python's standard library, written to tiny
+temporary WAV files, and played through the Windows default output. Any audio
+failure is swallowed so it can never interrupt an event.
 """
 
 import math
+import os
 import queue
+import random
 import re
+import struct
+import tempfile
 import threading
 import time
+import wave
 
-np = None
-sd = None
-_audio_import_attempted = False
-
-
-def load_audio_modules():
-    """Delay heavy audio imports until the player opens or uses audio controls."""
-    global np, sd, _audio_import_attempted
-    if _audio_import_attempted:
-        return np is not None and sd is not None
-    _audio_import_attempted = True
-    try:
-        import numpy as numpy_module
-        import sounddevice as sounddevice_module
-    except Exception:  # The game remains playable on machines without audio support.
-        return False
-    np = numpy_module
-    sd = sounddevice_module
-    return True
+try:
+    import ctypes
+    from ctypes import wintypes
+except Exception:
+    ctypes = None
+    wintypes = None
 
 
 class FightNightAudioMixin:
@@ -40,19 +29,22 @@ class FightNightAudioMixin:
     _SAMPLE_RATE = 32000
 
     def available_fight_night_outputs(self):
-        """Return visible output choices without making audio hardware required."""
+        """Return visible output choices without requiring optional audio modules."""
         choices = [(self.AUDIO_DEFAULT, None)]
-        load_audio_modules()
-        if sd is None:
+        if ctypes is None:
             return choices
         try:
-            for index, device in enumerate(sd.query_devices()):
-                if int(device.get("max_output_channels", 0) or 0) <= 0:
-                    continue
-                name = str(device.get("name", "Output device")).strip() or "Output device"
-                choices.append((f"{name} [{index}]", index))
+            winmm = ctypes.WinDLL("winmm")
         except Exception:
-            pass
+            return choices
+        try:
+            count = int(winmm.waveOutGetNumDevs())
+        except Exception:
+            return choices
+        for index in range(count):
+            name = self._wave_output_device_name(winmm, index)
+            if name:
+                choices.append((f"{name} [{index}]", index))
         return choices
 
     def resolve_fight_night_output(self, label=None):
@@ -73,78 +65,94 @@ class FightNightAudioMixin:
         self.ensure_audio_defaults()
         if not self.rules.get("fight_night_audio_enabled", True):
             return "Off"
-        selected = self.rules.get("fight_night_audio_output", self.AUDIO_DEFAULT)
-        return str(selected)
+        return str(self.rules.get("fight_night_audio_output", self.AUDIO_DEFAULT))
 
     # ---- Synthesis primitives ---------------------------------------------
 
     def _env(self, frame_count, attack, release, sr):
         """Linear attack/release amplitude envelope."""
-        timeline = np.arange(frame_count, dtype=np.float32) / sr
         duration = frame_count / sr
         attack = max(1e-4, attack)
         release = max(1e-4, release)
-        rise = np.minimum(1.0, timeline / attack)
-        fall = np.minimum(1.0, np.maximum(0.0, duration - timeline) / release)
-        return (rise * fall).astype(np.float32)
+        return [
+            min(1.0, (i / sr) / attack) * min(1.0, max(0.0, duration - (i / sr)) / release)
+            for i in range(frame_count)
+        ]
 
     def _bell(self, freq, duration, gain, sr):
         """A struck round bell: inharmonic partials with an exponential ring-down."""
         frame_count = max(1, int(sr * duration))
-        timeline = np.arange(frame_count, dtype=np.float32) / sr
-        wave = np.zeros(frame_count, dtype=np.float32)
-        # Ratios and per-partial decay chosen to read as a metallic fight bell.
-        for ratio, amp, decay in ((1.0, 1.0, 4.5), (2.76, 0.6, 6.5), (5.4, 0.4, 9.0), (8.9, 0.22, 12.0)):
-            wave += amp * np.sin(2 * math.pi * freq * ratio * timeline) * np.exp(-timeline * decay)
-        # Tiny strike transient so the onset has a bit of "clack".
+        wave_data = [0.0] * frame_count
         strike = min(frame_count, int(sr * 0.004))
-        if strike:
-            wave[:strike] += (np.random.rand(strike).astype(np.float32) * 2 - 1) * 0.4
-        return (wave * gain).astype(np.float32)
+        partials = ((1.0, 1.0, 4.5), (2.76, 0.6, 6.5), (5.4, 0.4, 9.0), (8.9, 0.22, 12.0))
+        for i in range(frame_count):
+            t = i / sr
+            sample = 0.0
+            for ratio, amp, decay in partials:
+                sample += amp * math.sin(2 * math.pi * freq * ratio * t) * math.exp(-t * decay)
+            if i < strike:
+                sample += random.uniform(-0.4, 0.4)
+            wave_data[i] = sample * gain
+        return wave_data
+
+    def _smooth_noise(self, frame_count, kernel):
+        noise = [random.uniform(-1.0, 1.0) for _ in range(frame_count)]
+        kernel = max(2, int(kernel))
+        smoothed = [0.0] * frame_count
+        window = 0.0
+        for i, sample in enumerate(noise):
+            window += sample
+            if i >= kernel:
+                window -= noise[i - kernel]
+            smoothed[i] = window / min(i + 1, kernel)
+        return smoothed
 
     def _impact(self, duration, gain, sr, tone=150.0, sharpness=22.0):
         """A punch/kick impact: a pitch-dropping body plus a filtered noise slap."""
         frame_count = max(1, int(sr * duration))
-        timeline = np.arange(frame_count, dtype=np.float32) / sr
-        # Body: frequency sweeps down fast for a "thud".
-        instantaneous = tone * np.exp(-timeline * 16.0) + 48.0
-        body = np.sin(2 * math.pi * np.cumsum(instantaneous) / sr)
-        # Slap: white noise smoothed into a low thwack.
-        noise = np.random.rand(frame_count).astype(np.float32) * 2 - 1
-        kernel = max(2, int(sr * 0.0009))
-        slap = np.convolve(noise, np.ones(kernel, dtype=np.float32) / kernel, mode="same")
-        env = np.exp(-timeline * sharpness).astype(np.float32)
-        return ((body * 0.7 + slap * 0.55) * env * gain).astype(np.float32)
+        slap = self._smooth_noise(frame_count, max(2, int(sr * 0.0009)))
+        wave_data = [0.0] * frame_count
+        phase = 0.0
+        for i in range(frame_count):
+            t = i / sr
+            instantaneous = tone * math.exp(-t * 16.0) + 48.0
+            phase += 2 * math.pi * instantaneous / sr
+            body = math.sin(phase)
+            env = math.exp(-t * sharpness)
+            wave_data[i] = (body * 0.7 + slap[i] * 0.55) * env * gain
+        return wave_data
 
     def _crowd(self, duration, gain, sr, intensity=1.0, brightness=1.0, swell=0.4):
         """Filtered noise shaped into a crowd bed, roar, or applause wash."""
         frame_count = max(1, int(sr * duration))
-        noise = np.random.rand(frame_count).astype(np.float32) * 2 - 1
         kernel = max(2, int(sr * 0.006 / max(0.25, brightness)))
-        wash = np.convolve(noise, np.ones(kernel, dtype=np.float32) / kernel, mode="same")
-        wash -= wash.mean()
-        timeline = np.arange(frame_count, dtype=np.float32) / sr
+        wash = self._smooth_noise(frame_count, kernel)
+        mean = sum(wash) / len(wash)
         duration_s = frame_count / sr
-        rise = np.minimum(1.0, timeline / max(1e-3, duration_s * swell))
-        fall = np.minimum(1.0, np.maximum(0.0, duration_s - timeline) / max(1e-3, duration_s * 0.55))
-        # Slow tremolo to suggest a surging, breathing crowd.
-        tremolo = 1.0 + 0.25 * np.sin(2 * math.pi * (3.0 + 4.0 * intensity) * timeline)
-        return (wash * rise * fall * tremolo * gain * intensity).astype(np.float32)
+        wave_data = [0.0] * frame_count
+        for i, sample in enumerate(wash):
+            t = i / sr
+            rise = min(1.0, t / max(1e-3, duration_s * swell))
+            fall = min(1.0, max(0.0, duration_s - t) / max(1e-3, duration_s * 0.55))
+            tremolo = 1.0 + 0.25 * math.sin(2 * math.pi * (3.0 + 4.0 * intensity) * t)
+            wave_data[i] = (sample - mean) * rise * fall * tremolo * gain * intensity
+        return wave_data
 
     def _mix(self, layers, sr):
-        """Overlay (array, start_seconds) layers into one soft-limited buffer."""
+        """Overlay (samples, start_seconds) layers into one soft-limited buffer."""
         if not layers:
-            return np.zeros(1, dtype=np.float32)
+            return [0.0]
         total = max(int(start * sr) + len(buf) for buf, start in layers)
-        mix = np.zeros(total, dtype=np.float32)
+        mix = [0.0] * total
         for buf, start in layers:
             offset = int(start * sr)
-            mix[offset:offset + len(buf)] += buf
-        # Soft clip to keep dense finishes from distorting.
-        peak = float(np.max(np.abs(mix))) if len(mix) else 0.0
+            for i, sample in enumerate(buf):
+                mix[offset + i] += sample
+        peak = max((abs(sample) for sample in mix), default=0.0)
         if peak > 0.99:
-            mix = np.tanh(mix * (0.9 / peak)) * 0.95
-        return mix.astype(np.float32)
+            scale = 0.9 / peak
+            mix = [math.tanh(sample * scale) * 0.95 for sample in mix]
+        return mix
 
     def _render_cue(self, cue, sr):
         """Compose a full waveform for a fight-night cue."""
@@ -157,10 +165,9 @@ class FightNightAudioMixin:
         if cue == "round_start":
             return self._mix([(self._bell(820, 0.5, 0.6, sr), 0.0)], sr)
         if cue == "impact":
-            # Per-shot variation so a flurry never sounds like one repeated blip.
-            tone = float(np.random.uniform(120, 185))
-            gain = float(np.random.uniform(0.5, 0.72))
-            return self._impact(np.random.uniform(0.14, 0.2), gain, sr, tone=tone, sharpness=float(np.random.uniform(20, 27)))
+            tone = random.uniform(120, 185)
+            gain = random.uniform(0.5, 0.72)
+            return self._impact(random.uniform(0.14, 0.2), gain, sr, tone=tone, sharpness=random.uniform(20, 27))
         if cue == "knockdown":
             return self._mix([
                 (self._impact(0.26, 0.85, sr, tone=95.0, sharpness=13.0), 0.0),
@@ -187,16 +194,140 @@ class FightNightAudioMixin:
                 (self._bell(660, 0.28, 0.32, sr), 0.0),
                 (self._bell(880, 0.32, 0.28, sr), 0.14),
             ], sr)
-        # Fallback: a neutral impact.
         return self._impact(0.16, 0.5, sr)
 
     def _fight_night_fallback_tone(self, cue):
-        """Single (freq, ms) beep for machines without numpy/sounddevice."""
+        """Single (freq, ms) beep if WAV playback is unavailable."""
         return {
             "bout_start": (760, 150), "round_start": (820, 130), "impact": (150, 70),
             "knockdown": (95, 200), "finish": (700, 260), "decision": (560, 180),
             "card_complete": (620, 240), "preview": (740, 120),
         }.get(cue, (150, 90))
+
+    def _write_fight_night_wav(self, samples, volume):
+        audio_dir = os.path.join(tempfile.gettempdir(), "mma_warriors_audio")
+        os.makedirs(audio_dir, exist_ok=True)
+        handle = tempfile.NamedTemporaryFile(prefix="cue_", suffix=".wav", dir=audio_dir, delete=False)
+        path = handle.name
+        handle.close()
+        frames = bytearray()
+        for sample in samples:
+            clamped = max(-1.0, min(1.0, sample * volume))
+            frames.extend(struct.pack("<h", int(clamped * 32767)))
+        with wave.open(path, "wb") as wav_file:
+            wav_file.setnchannels(1)
+            wav_file.setsampwidth(2)
+            wav_file.setframerate(self._SAMPLE_RATE)
+            wav_file.writeframes(frames)
+        return path
+
+    def _play_fight_night_wav(self, path):
+        import winsound
+        winsound.PlaySound(path, winsound.SND_FILENAME)
+
+    def _wave_output_device_name(self, winmm, index):
+        if ctypes is None or wintypes is None:
+            return ""
+
+        class WAVEOUTCAPS(ctypes.Structure):
+            _fields_ = [
+                ("wMid", wintypes.WORD),
+                ("wPid", wintypes.WORD),
+                ("vDriverVersion", wintypes.UINT),
+                ("szPname", ctypes.c_wchar * 32),
+                ("dwFormats", wintypes.DWORD),
+                ("wChannels", wintypes.WORD),
+                ("wReserved1", wintypes.WORD),
+                ("dwSupport", wintypes.DWORD),
+            ]
+
+        caps = WAVEOUTCAPS()
+        try:
+            result = winmm.waveOutGetDevCapsW(index, ctypes.byref(caps), ctypes.sizeof(caps))
+        except Exception:
+            return ""
+        if result != 0:
+            return ""
+        return str(caps.szPname).strip()
+
+    def _play_fight_night_samples(self, samples, volume, device_index=None):
+        if ctypes is None or wintypes is None:
+            path = self._write_fight_night_wav(samples, volume)
+            try:
+                self._play_fight_night_wav(path)
+            finally:
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
+            return
+
+        winmm = ctypes.WinDLL("winmm")
+        CALLBACK_NULL = 0
+        WAVE_FORMAT_PCM = 1
+        WAVE_MAPPER = ctypes.c_uint(-1).value
+        WHDR_DONE = 0x00000001
+
+        class WAVEFORMATEX(ctypes.Structure):
+            _fields_ = [
+                ("wFormatTag", wintypes.WORD),
+                ("nChannels", wintypes.WORD),
+                ("nSamplesPerSec", wintypes.DWORD),
+                ("nAvgBytesPerSec", wintypes.DWORD),
+                ("nBlockAlign", wintypes.WORD),
+                ("wBitsPerSample", wintypes.WORD),
+                ("cbSize", wintypes.WORD),
+            ]
+
+        class WAVEHDR(ctypes.Structure):
+            _fields_ = [
+                ("lpData", wintypes.LPSTR),
+                ("dwBufferLength", wintypes.DWORD),
+                ("dwBytesRecorded", wintypes.DWORD),
+                ("dwUser", ctypes.c_size_t),
+                ("dwFlags", wintypes.DWORD),
+                ("dwLoops", wintypes.DWORD),
+                ("lpNext", ctypes.c_void_p),
+                ("reserved", ctypes.c_size_t),
+            ]
+
+        frames = bytearray()
+        for sample in samples:
+            clamped = max(-1.0, min(1.0, sample * volume))
+            frames.extend(struct.pack("<h", int(clamped * 32767)))
+        data = ctypes.create_string_buffer(bytes(frames))
+        fmt = WAVEFORMATEX(
+            WAVE_FORMAT_PCM,
+            1,
+            self._SAMPLE_RATE,
+            self._SAMPLE_RATE * 2,
+            2,
+            16,
+            0,
+        )
+        handle = wintypes.HANDLE()
+        device = WAVE_MAPPER if device_index is None else int(device_index)
+        if winmm.waveOutOpen(ctypes.byref(handle), device, ctypes.byref(fmt), 0, 0, CALLBACK_NULL) != 0:
+            raise RuntimeError("waveOutOpen failed")
+        header = WAVEHDR(ctypes.cast(data, wintypes.LPSTR), len(frames), 0, 0, 0, 0, None, 0)
+        prepared = False
+        try:
+            if winmm.waveOutPrepareHeader(handle, ctypes.byref(header), ctypes.sizeof(header)) != 0:
+                raise RuntimeError("waveOutPrepareHeader failed")
+            prepared = True
+            if winmm.waveOutWrite(handle, ctypes.byref(header), ctypes.sizeof(header)) != 0:
+                raise RuntimeError("waveOutWrite failed")
+            deadline = time.monotonic() + max(1.0, len(samples) / self._SAMPLE_RATE + 1.0)
+            while not (header.dwFlags & WHDR_DONE) and time.monotonic() < deadline:
+                time.sleep(0.01)
+            winmm.waveOutReset(handle)
+        finally:
+            if prepared:
+                try:
+                    winmm.waveOutUnprepareHeader(handle, ctypes.byref(header), ctypes.sizeof(header))
+                except Exception:
+                    pass
+            winmm.waveOutClose(handle)
 
     def play_fight_night_sound(self, cue):
         """Play a short cue without blocking commentary playback or simulation."""
@@ -210,7 +341,6 @@ class FightNightAudioMixin:
         volume = max(0, min(100, int(self.rules.get("fight_night_audio_volume", 55)))) / 100
         if volume <= 0:
             return False
-        load_audio_modules()
         if not hasattr(self, "_fight_night_audio_queue"):
             self._fight_night_audio_queue = queue.Queue(maxsize=6)
 
@@ -218,15 +348,15 @@ class FightNightAudioMixin:
                 while True:
                     queued_cue, queued_volume, device = self._fight_night_audio_queue.get()
                     try:
-                        if sd is None or np is None:
+                        samples = self._render_cue(queued_cue, self._SAMPLE_RATE)
+                        self._play_fight_night_samples(samples, queued_volume, device)
+                    except Exception:
+                        try:
                             import winsound
                             freq, ms = self._fight_night_fallback_tone(queued_cue)
                             winsound.Beep(max(37, int(freq)), max(40, int(ms)))
-                        else:
-                            audio = self._render_cue(queued_cue, self._SAMPLE_RATE) * queued_volume
-                            sd.play(audio, samplerate=self._SAMPLE_RATE, device=device, blocking=True)
-                    except Exception:
-                        pass
+                        except Exception:
+                            pass
                     finally:
                         self._fight_night_audio_queue.task_done()
 

@@ -667,18 +667,20 @@ class AwardsMixin:
         match = re.search(r"Month\s+(\d+)", str(date_value or ""))
         return int(match.group(1)) if match else None
 
-    def belt_history_date_label(self, entry):
-        """Render a title event's date, including the day once one was recorded.
+    @staticmethod
+    def _parse_belt_month_week(date_value):
+        """Pull the save-stable month/week index out of a 'Month N Week N' stamp."""
+        match = re.search(r"Month\s+(\d+)(?:\s+Week\s+(\d+))?", str(date_value or ""), re.IGNORECASE)
+        if not match:
+            return None, None
+        return int(match.group(1)), int(match.group(2) or 1)
 
-        Entries written before cards carried a weekday have no day, so they
-        keep their original month-and-week stamp rather than being given a
-        misleading one.
-        """
-        text = self.format_game_date_text((entry or {}).get("date", ""))
-        day = (entry or {}).get("day")
-        if day is None:
-            return text
-        return f"{text} ({self.day_name(day, short=False)})"
+    def belt_history_date_label(self, entry):
+        """Render title lineage dates as month/week/year, with no weekday."""
+        month, week = self._parse_belt_month_week((entry or {}).get("date"))
+        if month:
+            return self.format_game_date(month, week or 1, include_week=True)
+        return self.format_game_date_text((entry or {}).get("date", ""))
 
     def format_month_span(self, months):
         """Render a month count as a compact 'Ny Nmo' reign length."""
@@ -999,10 +1001,10 @@ class AwardsMixin:
             tk.Label(legend, text="■", bg=colors.get("chrome", "#0b0d10"), fg=swatch, font=("Tahoma", 9)).pack(side="left", padx=(6, 1))
             tk.Label(legend, text=label_text, bg=colors.get("chrome", "#0b0d10"), fg=text_color, font=("Tahoma", 8)).pack(side="left", padx=(0, 4))
 
-        detail_tree = ttk.Treeview(right, columns=("action", "fighter", "reign", "note"), show="headings")
+        detail_tree = ttk.Treeview(right, columns=("date", "action", "fighter", "reign", "note"), show="headings")
         for column, heading, width, anchor in (
-            ("action", "Event", 160, "w"), ("fighter", "Fighter", 185, "w"),
-            ("reign", "Reign", 95, "center"), ("note", "Context", 360, "w"),
+            ("date", "Date", 86, "center"), ("action", "Event", 150, "w"), ("fighter", "Fighter", 175, "w"),
+            ("reign", "Reign", 90, "center"), ("note", "Context", 320, "w"),
         ):
             detail_tree.heading(column, text=heading)
             detail_tree.column(column, width=width, anchor=anchor)
@@ -1078,7 +1080,7 @@ class AwardsMixin:
                 canvas.create_text(x + seg / 2, bar_bottom + 10, text=self.format_month_span(length),
                                    fill=muted, font=("Tahoma", 7))
                 x += seg
-            span_label = "Oldest recorded reign  -  present"
+            span_label = f"{self.belt_history_date_label({'date': reigns[0].get('start_date', '')})}  -  present"
             canvas.create_text(pad, 12, text=f"{len(reigns)} reign(s)   |   {span_label}", anchor="w",
                                fill=text_color, font=("Tahoma", 8, "bold"))
             canvas.configure(scrollregion=(0, 0, max(content_width, visible_width), height))
@@ -1115,7 +1117,7 @@ class AwardsMixin:
                         if end is None:
                             reign_label += " (current)"
                 detail_tree.insert("", "end", tags=(action_tag(action),), values=(
-                    action, entry.get("fighter", ""), reign_label, entry.get("note", ""),
+                    self.belt_history_date_label(entry), action, entry.get("fighter", ""), reign_label, entry.get("note", ""),
                 ))
 
         def refresh_lineage_list(*_args):
