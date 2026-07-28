@@ -13,8 +13,50 @@ from constants import *
 from models import Fighter, Gym, Promotion
 
 
+FIGHT_SKILL_BUNDLES = {
+    "boxing": ("punch_technique", "hand_speed", "footwork", "feints", "creative_punches"),
+    "power_boxing": ("punch_power", "punch_technique", "hand_speed", "killer_instinct"),
+    "kick_game": ("low_kick_technique", "low_kick_speed", "high_kick_technique", "high_kick_speed", "creative_kicks"),
+    "strike_defence": ("head_movement", "guard_defence", "footwork", "reflexes"),
+    "kick_defence": ("kick_defence", "mobility", "reflexes", "takedown_defence_detail"),
+    "shot": ("takedowns", "takedown_setup", "takedown_speed", "chain_wrestling"),
+    "anti_wrestling": ("takedown_defence_detail", "sprawl", "get_ups", "clinch_defence"),
+    "clinch_attack": ("clinch_control", "dirty_boxing", "elbows", "knees", "thai_plum", "cage_pressure"),
+    "clinch_defence": ("clinch_defence", "cage_wrestling", "strength", "balance"),
+    "top_game": ("top_control", "positional_ability", "ride_control", "transitions", "ground_striking"),
+    "bottom_game": ("guard_work", "bottom_control", "scrambles", "get_ups", "submission_defence_detail"),
+    "submission_game": ("submission_attack", "back_control", "leg_locks", "positional_ability", "killer_instinct"),
+    "submission_defence": ("submission_defence_detail", "guard_work", "composure", "flexibility"),
+    "athleticism": ("conditioning", "strength", "mobility", "flexibility", "reflexes"),
+    "durability": ("chin_strength", "resilience", "stun_recovery", "cut_immunity"),
+    "mental": ("composure", "consistency", "adaptability", "discipline", "confidence"),
+}
+
+
 class FightEngineMixin:
     def simulate_fight(self, a, b, fight):
+        previous_bundle_cache = getattr(self, "_fight_skill_bundle_cache", None)
+        previous_conversion_cache = getattr(self, "_fight_finish_conversion_cache", None)
+        self._fight_skill_bundle_cache = {}
+        self._fight_finish_conversion_cache = {}
+
+        def finish_result(result):
+            if previous_bundle_cache is None:
+                try:
+                    delattr(self, "_fight_skill_bundle_cache")
+                except AttributeError:
+                    pass
+            else:
+                self._fight_skill_bundle_cache = previous_bundle_cache
+            if previous_conversion_cache is None:
+                try:
+                    delattr(self, "_fight_finish_conversion_cache")
+                except AttributeError:
+                    pass
+            else:
+                self._fight_finish_conversion_cache = previous_conversion_cache
+            return result
+
         self.ensure_rule_defaults()
         max_rounds = self.rules["title_rounds"] if fight.get("main", False) or fight.get("title", False) else self.rules["rounds"]
         round_length_factor = self.rules["round_length"] / 5
@@ -149,7 +191,7 @@ class FightEngineMixin:
                     add_fight_line(f"  [{clock}] {detail}")
                     lines.extend(self.commentary_closing_context(a, b, winner, method, state))
                     self.attach_fight_stats(a, b, state, round_no, lines)
-                    return winner, loser, method, round_no, lines
+                    return finish_result((winner, loser, method, round_no, lines))
                 if len(lines) > 95:
                     lines = lines[:92] + ["  ...later exchanges are summarized by the judges and fight report."]
 
@@ -191,7 +233,7 @@ class FightEngineMixin:
                     lines.append(detail)
                     lines.extend(self.commentary_closing_context(a, b, winner, method, state))
                     self.attach_fight_stats(a, b, state, round_no, lines)
-                    return winner, loser, method, round_no, lines
+                    return finish_result((winner, loser, method, round_no, lines))
                 self.recover_between_rounds(a, b, state)
 
         lines.extend(self.final_scorecard_lines(a, b, state))
@@ -200,14 +242,14 @@ class FightEngineMixin:
             lines.append(self.fight_phrase("draw", a, b, score=decision["summary"]))
             lines.extend(self.commentary_closing_context(a, b, None, "Draw", state))
             self.attach_fight_stats(a, b, state, max_rounds, lines)
-            return a, b, "Draw", max_rounds, lines
+            return finish_result((a, b, "Draw", max_rounds, lines))
         winner = decision["winner"]
         loser = b if winner is a else a
         method = "Decision"
         lines.append(self.fight_phrase("decision", winner, loser, score=decision["summary"]))
         lines.extend(self.commentary_closing_context(a, b, winner, method, state))
         self.attach_fight_stats(a, b, state, max_rounds, lines)
-        return winner, loser, method, max_rounds, lines
+        return finish_result((winner, loser, method, max_rounds, lines))
 
     def commentary_head_to_head(self, a, b):
         """Read a compact, best-effort prior-meeting record from persistent career history."""
@@ -2093,25 +2135,11 @@ class FightEngineMixin:
         return round(sum(skills.get(key, fallback) for key in keys) / max(1, len(keys)))
 
     def skill_bundle(self, fighter, bundle):
-        bundles = {
-            "boxing": ("punch_technique", "hand_speed", "footwork", "feints", "creative_punches"),
-            "power_boxing": ("punch_power", "punch_technique", "hand_speed", "killer_instinct"),
-            "kick_game": ("low_kick_technique", "low_kick_speed", "high_kick_technique", "high_kick_speed", "creative_kicks"),
-            "strike_defence": ("head_movement", "guard_defence", "footwork", "reflexes"),
-            "kick_defence": ("kick_defence", "mobility", "reflexes", "takedown_defence_detail"),
-            "shot": ("takedowns", "takedown_setup", "takedown_speed", "chain_wrestling"),
-            "anti_wrestling": ("takedown_defence_detail", "sprawl", "get_ups", "clinch_defence"),
-            "clinch_attack": ("clinch_control", "dirty_boxing", "elbows", "knees", "thai_plum", "cage_pressure"),
-            "clinch_defence": ("clinch_defence", "cage_wrestling", "strength", "balance"),
-            "top_game": ("top_control", "positional_ability", "ride_control", "transitions", "ground_striking"),
-            "bottom_game": ("guard_work", "bottom_control", "scrambles", "get_ups", "submission_defence_detail"),
-            "submission_game": ("submission_attack", "back_control", "leg_locks", "positional_ability", "killer_instinct"),
-            "submission_defence": ("submission_defence_detail", "guard_work", "composure", "flexibility"),
-            "athleticism": ("conditioning", "strength", "mobility", "flexibility", "reflexes"),
-            "durability": ("chin_strength", "resilience", "stun_recovery", "cut_immunity"),
-            "mental": ("composure", "consistency", "adaptability", "discipline", "confidence"),
-        }
-        keys = bundles.get(bundle, ())
+        cache = getattr(self, "_fight_skill_bundle_cache", None)
+        cache_key = (id(fighter), bundle)
+        if cache is not None and cache_key in cache:
+            return cache[cache_key]
+        keys = FIGHT_SKILL_BUNDLES.get(bundle, ())
         if not keys:
             return fighter.overall
         skills = fighter.detailed_skills or {}
@@ -2120,7 +2148,10 @@ class FightEngineMixin:
         # receive exactly the same overall fallback as before.
         missing = any(key not in skills for key in keys)
         fallback = fighter.overall if missing else 50
-        return round(sum(skills.get(key, fallback) for key in keys) / len(keys))
+        value = round(sum(skills.get(key, fallback) for key in keys) / len(keys))
+        if cache is not None:
+            cache[cache_key] = value
+        return value
 
     def resolve_exchange(self, actor, defender, action, state, round_stats):
         position = state["position"]
@@ -2429,14 +2460,25 @@ class FightEngineMixin:
         make a clean opening less likely to become an immediate finish.  Clear
         matchmaking mismatches deliberately retain the full conversion rate.
         """
+        cache = getattr(self, "_fight_finish_conversion_cache", None)
+        cache_key = (id(actor), id(defender))
+        if cache is not None and cache_key in cache:
+            return cache[cache_key]
         if abs(actor.overall - defender.overall) > 6:
-            return 1.0
+            value = 1.0
+            if cache is not None:
+                cache[cache_key] = value
+            return value
         average_level = (actor.overall + defender.overall) / 2
         if average_level < 68:
-            return 1.0
-        if average_level < 80:
-            return 0.46
-        return 0.56
+            value = 1.0
+        elif average_level < 80:
+            value = 0.46
+        else:
+            value = 0.56
+        if cache is not None:
+            cache[cache_key] = value
+        return value
 
     def signature_technique(self, actor, action):
         """Pick a highlight-reel technique name; creative fighters unlock spinning /

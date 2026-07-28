@@ -28,6 +28,27 @@ def weighted_table_pick(table):
     return values[bisect(cumulative, random.random() * total)]
 
 
+DEFAULT_SIGNATURE_DETAILED_SKILLS = frozenset(("adaptability", "conditioning"))
+FIGHTER_SIGNATURE_DETAILED_SKILLS = {
+    "Boxer": frozenset(("punch_power", "punch_technique", "hand_speed", "head_movement")),
+    "Kickboxer": frozenset(("high_kick_power", "high_kick_technique", "low_kick_technique", "kick_defence")),
+    "Dutch Kickboxer": frozenset(("punch_technique", "low_kick_power", "low_kick_technique", "guard_defence")),
+    "Karate": frozenset(("footwork", "high_kick_speed", "creative_kicks", "head_movement")),
+    "Taekwondo": frozenset(("high_kick_technique", "high_kick_speed", "creative_kicks", "footwork")),
+    "Sanda": frozenset(("creative_kicks", "clinch_takedowns", "throws", "footwork")),
+    "Muay Thai": frozenset(("knees", "elbows", "thai_plum", "low_kick_power")),
+    "Wrestler": frozenset(("takedowns", "takedown_setup", "chain_wrestling", "sprawl")),
+    "Freestyle Wrestler": frozenset(("takedown_speed", "chain_wrestling", "scrambles", "sprawl")),
+    "Catch Wrestler": frozenset(("chain_wrestling", "ride_control", "submission_attack", "top_control")),
+    "BJJ": frozenset(("submission_attack", "submission_defence_detail", "guard_work", "back_control")),
+    "Submission Grappler": frozenset(("submission_attack", "transitions", "back_control", "leg_locks")),
+    "Sambo": frozenset(("takedowns", "throws", "submission_attack", "leg_locks")),
+    "Judo": frozenset(("throws", "clinch_takedowns", "top_control", "positional_ability")),
+    "Grappler": frozenset(("top_control", "submission_attack", "transitions", "scrambles")),
+    "Luta Livre": frozenset(("leg_locks", "submission_attack", "scrambles", "top_control")),
+}
+
+
 GENERATED_FIGHTER_AGE_TABLE = weighted_choice_table(
     range(18, 34),
     (11, 13, 15, 16, 16, 15, 13, 11, 9, 8, 7, 6, 5, 4, 3, 2),
@@ -4055,25 +4076,10 @@ class SeedMixin:
 
     def fighter_signature_detailed_skills(self, fighter):
         """Return the small set of techniques that define a fighter's style."""
-        signatures = {
-            "Boxer": ("punch_power", "punch_technique", "hand_speed", "head_movement"),
-            "Kickboxer": ("high_kick_power", "high_kick_technique", "low_kick_technique", "kick_defence"),
-            "Dutch Kickboxer": ("punch_technique", "low_kick_power", "low_kick_technique", "guard_defence"),
-            "Karate": ("footwork", "high_kick_speed", "creative_kicks", "head_movement"),
-            "Taekwondo": ("high_kick_technique", "high_kick_speed", "creative_kicks", "footwork"),
-            "Sanda": ("creative_kicks", "clinch_takedowns", "throws", "footwork"),
-            "Muay Thai": ("knees", "elbows", "thai_plum", "low_kick_power"),
-            "Wrestler": ("takedowns", "takedown_setup", "chain_wrestling", "sprawl"),
-            "Freestyle Wrestler": ("takedown_speed", "chain_wrestling", "scrambles", "sprawl"),
-            "Catch Wrestler": ("chain_wrestling", "ride_control", "submission_attack", "top_control"),
-            "BJJ": ("submission_attack", "submission_defence_detail", "guard_work", "back_control"),
-            "Submission Grappler": ("submission_attack", "transitions", "back_control", "leg_locks"),
-            "Sambo": ("takedowns", "throws", "submission_attack", "leg_locks"),
-            "Judo": ("throws", "clinch_takedowns", "top_control", "positional_ability"),
-            "Grappler": ("top_control", "submission_attack", "transitions", "scrambles"),
-            "Luta Livre": ("leg_locks", "submission_attack", "scrambles", "top_control"),
-        }
-        return set(signatures.get(getattr(fighter, "style", ""), ("adaptability", "conditioning")))
+        return FIGHTER_SIGNATURE_DETAILED_SKILLS.get(
+            getattr(fighter, "style", ""),
+            DEFAULT_SIGNATURE_DETAILED_SKILLS,
+        )
 
     @staticmethod
     def detailed_group_statistics(values):

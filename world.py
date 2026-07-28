@@ -7923,7 +7923,7 @@ class WorldMixin:
             fighter.detailed_skills[key] = max(1, min(99, fighter.detailed_skills.get(key, 50) + amount))
         self.sync_broad_skills_from_details(fighter)
 
-    def detailed_skill_growth_chance(self, fighter, key):
+    def detailed_skill_growth_chance(self, fighter, key, signature_keys=None):
         """Soft-cap one detailed skill without imposing an artificial hard ceiling."""
         value = fighter.detailed_skills.get(key, 50)
         if key in {"reach", "natural_size"} or value >= 99:
@@ -7938,7 +7938,9 @@ class WorldMixin:
             chance = 0.14
         else:
             chance = 0.03
-        if key in self.fighter_signature_detailed_skills(fighter):
+        if signature_keys is None:
+            signature_keys = self.fighter_signature_detailed_skills(fighter)
+        if key in signature_keys:
             chance *= 1.25
         if fighter.trait in ("Technical Learner", "Gym Rat"):
             chance *= 1.08
@@ -8001,10 +8003,14 @@ class WorldMixin:
         point_budget = {1: 15, 2: 25, 3: 34}.get(max(1, min(3, int(amount))), 15)
         improved_keys = set()
         attempts = 0
+        growth_chances = {
+            key: self.detailed_skill_growth_chance(fighter, key, signature)
+            for key in unique
+        }
         while unique and len(improved_keys) < point_budget and attempts < point_budget * 5:
-            weights = [max(0.01, self.detailed_skill_growth_chance(fighter, key)) * (2.2 if key in signature else 1.0) for key in unique]
+            weights = [max(0.01, growth_chances[key]) * (2.2 if key in signature else 1.0) for key in unique]
             key = random.choices(unique, weights=weights, k=1)[0]
-            if random.random() <= self.detailed_skill_growth_chance(fighter, key):
+            if random.random() <= growth_chances[key]:
                 fighter.detailed_skills[key] = min(99, fighter.detailed_skills.get(key, 50) + 1)
                 improved_keys.add(key)
             unique.remove(key)
@@ -11206,10 +11212,17 @@ class WorldMixin:
             # for a later expiry created hundreds of avoidable free agents.
             return False
 
+        value_cache = {}
+
         def cached_free_agent_value(promo, fighter):
             count = market_cache[id(promo)]["all_counts"].get((fighter.gender, fighter.weight), 0)
+            cache_key = (id(promo), id(fighter), count)
+            if cache_key in value_cache:
+                return value_cache[cache_key]
             division_need = self.ai_division_market_need(promo, fighter, count=count)
-            return self.ai_free_agent_value(promo, fighter, division_need=division_need)
+            value = self.ai_free_agent_value(promo, fighter, division_need=division_need)
+            value_cache[cache_key] = value
+            return value
 
         def create_offer(promo, fighter, premium=False):
             nonlocal offers_created

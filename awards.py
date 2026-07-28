@@ -31,7 +31,7 @@ class AwardsMixin:
         if not hasattr(self, "achievement_log") or self.achievement_log is None:
             self.achievement_log = []
 
-    def unlock_achievement(self, scope, target, company, achievement_id, title, description):
+    def unlock_achievement(self, scope, target, company, achievement_id, title, description, fighter=None):
         """Record an unlock once; achievement entries are a permanent world ledger."""
         self.ensure_season_containers()
         if any(entry.get("id") == achievement_id and entry.get("target") == target for entry in self.achievement_log):
@@ -43,7 +43,8 @@ class AwardsMixin:
         }
         self.achievement_log.insert(0, entry)
         self.achievement_log = self.achievement_log[:1000]
-        fighter = self.find_fighter_anywhere(target) if scope == "Fighter" and hasattr(self, "find_fighter_anywhere") else None
+        if fighter is None and scope == "Fighter" and hasattr(self, "find_fighter_anywhere"):
+            fighter = self.find_fighter_anywhere(target)
         if fighter:
             fighter.career_achievements = (getattr(fighter, "career_achievements", None) or [])
             fighter.career_achievements.append(title)
@@ -66,21 +67,21 @@ class AwardsMixin:
         """Evaluate objective career and fight milestones after a decisive result."""
         company = company or self.fighter_company_name(winner)
         if winner.record_w == 1:
-            self.unlock_achievement("Fighter", winner.name, company, "first_pro_win", "First Professional Win", "Earned their first recorded professional victory.")
+            self.unlock_achievement("Fighter", winner.name, company, "first_pro_win", "First Professional Win", "Earned their first recorded professional victory.", fighter=winner)
         if winner.record_w == 10:
-            self.unlock_achievement("Fighter", winner.name, company, "ten_career_wins", "Ten-Win Club", "Reached ten professional wins.")
+            self.unlock_achievement("Fighter", winner.name, company, "ten_career_wins", "Ten-Win Club", "Reached ten professional wins.", fighter=winner)
         if winner.record_w == 20:
-            self.unlock_achievement("Fighter", winner.name, company, "twenty_career_wins", "Twenty-Win Veteran", "Reached twenty professional wins.")
+            self.unlock_achievement("Fighter", winner.name, company, "twenty_career_wins", "Twenty-Win Veteran", "Reached twenty professional wins.", fighter=winner)
         if winner.overall + 8 <= loser.overall:
-            self.unlock_achievement("Fighter", winner.name, company, "giant_slayer", "Giant Slayer", f"Defeated the higher-rated {loser.name} by {method}.")
+            self.unlock_achievement("Fighter", winner.name, company, "giant_slayer", "Giant Slayer", f"Defeated the higher-rated {loser.name} by {method}.", fighter=winner)
         if fight.get("title") and winner.champion:
-            self.unlock_achievement("Fighter", winner.name, company, "world_title", "World Champion", f"Captured the {winner.gender} {winner.weight} title.")
+            self.unlock_achievement("Fighter", winner.name, company, "world_title", "World Champion", f"Captured the {winner.gender} {winner.weight} title.", fighter=winner)
         if getattr(winner, "title_defenses", 0) == 5:
-            self.unlock_achievement("Fighter", winner.name, company, "five_title_defenses", "Dynasty Builder", "Reached five successful title defenses.")
+            self.unlock_achievement("Fighter", winner.name, company, "five_title_defenses", "Dynasty Builder", "Reached five successful title defenses.", fighter=winner)
         if method not in ("Decision", "Draw") and winner.record_w >= 10:
             finishes = sum(1 for item in (winner.fight_history or []) if " by KO" in str(item) or " by TKO" in str(item) or " by Submission" in str(item))
             if finishes >= 10:
-                self.unlock_achievement("Fighter", winner.name, company, "ten_finishes", "Finishing Machine", "Recorded ten documented professional finishes.")
+                self.unlock_achievement("Fighter", winner.name, company, "ten_finishes", "Finishing Machine", "Recorded ten documented professional finishes.", fighter=winner)
 
     def evaluate_promotion_achievements(self, company, package):
         """Promotion milestones are checked after an event is committed to results."""
