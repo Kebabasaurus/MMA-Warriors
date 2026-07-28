@@ -2818,12 +2818,14 @@ class ViewMixin:
         except (ValueError, tk.TclError):
             return
 
-    def set_booking_date(self, month, week):
+    def set_booking_date(self, month, week, day=None):
         """Update both the visible calendar controls and internal event date."""
         month = max(1, int(month))
         week = max(1, min(4, int(week)))
         self.event_month.set(month)
         self.event_week.set(week)
+        if day is not None and hasattr(self, "event_day_choice"):
+            self.event_day_choice.set(CALENDAR_DAYS[self.normalize_day(day) - 1])
         if hasattr(self, "event_calendar_month") and hasattr(self, "event_year"):
             year, calendar_month, _week = self.calendar_parts(month, week)
             self.event_calendar_month.set(CALENDAR_MONTH_ABBREVIATIONS[calendar_month - 1])

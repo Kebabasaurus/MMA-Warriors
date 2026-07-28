@@ -42,9 +42,9 @@ class EventMixin:
             if not self.fighter_available_for_date(fighter, month, week, self.selected_booking_day()):
                 unavailable.append(f"{fighter.name} ({self.fighter_return_label(fighter)})")
         if unavailable:
-            earliest_month, earliest_week = self.earliest_booked_card_date()
-            target_label = self.format_game_date(month, week)
-            earliest_label = self.format_game_date(earliest_month, earliest_week)
+            earliest_month, earliest_week, earliest_day = self.earliest_booked_card_day()
+            target_label = self.format_game_date(month, week, day=self.selected_booking_day())
+            earliest_label = self.format_game_date(earliest_month, earliest_week, day=earliest_day)
             sample = ", ".join(unavailable[:4])
             remainder = f" and {len(unavailable) - 4} more" if len(unavailable) > 4 else ""
             message = (
@@ -361,16 +361,27 @@ class EventMixin:
             background, foreground = palette.get(level, palette["info"])
             label.configure(bg=background, fg=foreground)
 
-    def earliest_booked_card_date(self):
-        """Return the first week where every booked participant is out of recovery."""
-        earliest = self.calendar_week_index()
+    def earliest_booked_card_day(self):
+        """First date every booked participant is out of recovery, to the day.
+
+        Recovery now ends on a weekday, so the earliest legal card can sit part
+        way through a week. Returning only the week would offer a date that the
+        scheduler then rejects because the chosen day falls before a fighter's
+        return.
+        """
+        earliest = self.current_day_index()
         for fight in getattr(self, "booked", []):
             for name in self.event_fight_participants(fight):
                 if name == "TBA":
                     continue
                 fighter = self.get_fighter(name)
-                earliest = max(earliest, int(getattr(fighter, "available_week", 0) or 0))
-        return (earliest - 1) // 4 + 1, (earliest - 1) % 4 + 1
+                earliest = max(earliest, self.fighter_available_day_index(fighter))
+        return self.day_index_parts(earliest)
+
+    def earliest_booked_card_date(self):
+        """Return the first week where every booked participant is out of recovery."""
+        month, week, _day = self.earliest_booked_card_day()
+        return month, week
 
     def move_booking_to_earliest_card_date(self):
         if not self.booked:
@@ -387,10 +398,16 @@ class EventMixin:
                 "error",
             )
             return
-        month, week = self.earliest_booked_card_date()
-        self.set_booking_date(month, week)
+        month, week, day = self.earliest_booked_card_day()
+        # Keep the player's chosen weekday when it is already late enough in
+        # the week; only move it forward when recovery demands it.
+        day = max(day, self.selected_booking_day())
+        self.set_booking_date(month, week, day)
         self.refresh_available()
-        self.set_schedule_status(f"DATE UPDATED: The full card can be scheduled from {self.format_game_date(month, week)}.", "success")
+        self.set_schedule_status(
+            f"DATE UPDATED: The full card can be scheduled from {self.format_game_date(month, week, day=day)}.",
+            "success",
+        )
 
     def open_scheduled_card_editor(self, event):
         """Edit a future card directly without sending it back through the new-show form."""

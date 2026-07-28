@@ -418,12 +418,52 @@ class WorldMixin:
         return (max(1, month if month is not None else self.month) - 1) * 4 + max(1, week if week is not None else self.week)
 
     def fighter_available_for_date(self, fighter, month=None, week=None, day=None):
+        """Is a fighter clear to compete on this date?
+
+        available_week is the authority. Suspensions, injuries, medical holds
+        and every "clear this fighter now" path write it and know nothing about
+        days, so treating the finer value as the gate let a suspended fighter
+        through on a stale clearance. available_day only refines the boundary
+        week, deciding whether a card lands before or after their return inside
+        the week they become free.
+        """
         if fighter.injured:
             return False
-        available_day = int(getattr(fighter, "available_day", 0) or 0)
-        if available_day and day is not None:
-            return self.calendar_day_index(month, week, day) >= available_day
-        return self.calendar_week_index(month, week) >= getattr(fighter, "available_week", 0)
+        week_gate = int(getattr(fighter, "available_week", 0) or 0)
+        target_week = self.calendar_week_index(month, week)
+        if target_week != week_gate:
+            return target_week > week_gate
+        if day is None:
+            return True
+        day_gate = int(getattr(fighter, "available_day", 0) or 0)
+        week_start = (week_gate - 1) * DAYS_PER_WEEK + 1
+        if not week_start <= day_gate < week_start + DAYS_PER_WEEK:
+            # No day-level value that belongs to this week: the coarse gate has
+            # already cleared them, so do not invent a finer restriction.
+            return True
+        return self.calendar_day_index(month, week, day) >= day_gate
+
+    def day_index_parts(self, day_index):
+        """Turn a running day number back into (month, week, day)."""
+        zero_based = max(0, int(day_index) - 1)
+        week_index = zero_based // DAYS_PER_WEEK + 1
+        day = zero_based % DAYS_PER_WEEK + 1
+        month = (week_index - 1) // WEEKS_PER_MONTH + 1
+        week = (week_index - 1) % WEEKS_PER_MONTH + 1
+        return month, week, day
+
+    def fighter_available_day_index(self, fighter):
+        """The first day a fighter may compete, reconciling both gates.
+
+        Mirrors fighter_available_for_date: the week gate decides the week, and
+        the day gate only refines the position inside it when it belongs there.
+        """
+        week_gate = int(getattr(fighter, "available_week", 0) or 0)
+        week_start = (max(1, week_gate) - 1) * DAYS_PER_WEEK + 1
+        day_gate = int(getattr(fighter, "available_day", 0) or 0)
+        if week_start <= day_gate < week_start + DAYS_PER_WEEK:
+            return day_gate
+        return week_start
 
     def stamp_last_fight_date(self, *fighters):
         """Record when a fighter last competed, to the day of the card."""
@@ -6473,13 +6513,27 @@ class WorldMixin:
             used.update([fighter.name, opponent.name])
         return bouts
 
+    def combat_sport_card_day(self, sport, world, employer):
+        """The weekday a boxing, kickboxing, Muay Thai, wrestling or BJJ card runs.
+
+        Same intent as ai_card_day: a settled weekend slot per circuit rather
+        than a value that wanders across the week from card to card.
+        """
+        label = f"{sport}{(world or {}).get('promotion', '')}{employer or ''}"
+        seed = sum(ord(char) for char in str(label)) + self.month
+        return (6, 6, 5, 7, 6, 5, 6, 4)[seed % 8]
+
     def run_combat_sport_card(self, sport, world, employer, player_owned=False, target_bouts=6, bouts=None, event_name=""):
         division = getattr(self, "player_combat_divisions", {}).get(sport) if player_owned else None
         if player_owned and division and bouts is None:
             target_bouts = {"Prospect Builder": 6, "Star Showcase": 4, "Title Focus": 5}.get(division.get("strategy", "Balanced"), target_bouts)
         state = self.ensure_combat_sport_circuit_state(sport, world, employer, player_owned)
+        # Other-sport cards run on a weekday too, so their bouts are dated the
+        # same way MMA ones are instead of all landing on a Monday.
+        self._active_card_day = self.combat_sport_card_day(sport, world, employer)
         bouts = bouts if bouts is not None else self.build_combat_sport_card(sport, world, employer, player_owned=player_owned, target_bouts=target_bouts)
         if not bouts:
+            self._active_card_day = None
             return None
         event_no = world.get("events", 0) + 1
         world["events"] = event_no
@@ -6582,6 +6636,7 @@ class WorldMixin:
             "fight_logs": fight_logs,
             "finance": card.get("finance", {"ticket_revenue": 0, "total_revenue": 0, "total_expense": 0, "profit": 0}),
         })
+        self._active_card_day = None
         return card
 
     def process_player_combat_auto_card(self, sport, world):
