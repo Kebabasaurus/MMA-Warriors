@@ -935,6 +935,36 @@ class WorldMixin:
         self.rules["lineal_belt_history_version"] = 1
         return {"updated": updated, "rebuilt_entries": sum(primary_count(history) for history in rebuilt_by_company.values())}
 
+    def repair_future_belt_history_dates(self):
+        """Clamp impossible future title-history stamps created by older calendars."""
+        current_month = max(1, int(getattr(self, "month", 1) or 1))
+        current_week = max(1, min(4, int(getattr(self, "week", 1) or 1)))
+        fixed_entries = 0
+
+        def repair_history(history):
+            nonlocal fixed_entries
+            normalized = self.normalize_belt_history(history)
+            for division, entries in normalized.items():
+                for entry in entries or []:
+                    month, week = self.result_lineage_date_key(entry.get("date"))
+                    if month <= 0:
+                        entry["date"] = f"Month {current_month} Week {current_week}"
+                        entry.setdefault("division", division)
+                        fixed_entries += 1
+                    elif month > current_month or (month == current_month and week > current_week):
+                        entry["date"] = f"Month {current_month} Week {current_week}"
+                        entry.setdefault("division", division)
+                        fixed_entries += 1
+            return normalized
+
+        self.belt_history = repair_history(getattr(self, "belt_history", {}))
+        companies_fixed = 1 if fixed_entries else 0
+        for promo in getattr(self, "promotions", []) or []:
+            before = fixed_entries
+            promo.belt_history = repair_history(promo.belt_history or {})
+            companies_fixed += 1 if fixed_entries > before else 0
+        return {"entries": fixed_entries, "companies": companies_fixed}
+
     def resolve_rivalry_result(self, winner, loser, fight, method):
         """A rivalry can demand a rematch or be conclusively settled by a result."""
         heat = self.rivalry_heat_between(winner, loser)

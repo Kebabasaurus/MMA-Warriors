@@ -36,6 +36,18 @@ class UIMixin:
                 "gold": "#c3a45d", "text": "#111111", "muted": "#333333", "tree": "#eee9df",
                 "tree_head": "#777268", "button": "#c8c0b3", "button_text": "#111111",
             },
+            "Matrix": {
+                "chrome": "#020604", "chrome2": "#06140c", "paper": "#07100a", "panel": "#0b1b10",
+                "panel_dark": "#0f2b18", "line": "#1f6f3a", "cream": "#031007", "red": "#00b85a",
+                "gold": "#8cffb0", "text": "#d8ffe4", "muted": "#77c98f", "tree": "#020b05",
+                "tree_head": "#07551f", "button": "#0e2414", "button_text": "#c9ffd7",
+            },
+            "Champion": {
+                "chrome": "#080604", "chrome2": "#1a1309", "paper": "#12100c", "panel": "#241d12",
+                "panel_dark": "#3a2a12", "line": "#6f5426", "cream": "#21190f", "red": "#8f1616",
+                "gold": "#f3c45f", "text": "#fff3dc", "muted": "#cdb889", "tree": "#0d0a06",
+                "tree_head": "#7d5a20", "button": "#302312", "button_text": "#fff0cf",
+            },
             "UFC": {
                 "chrome": "#090909", "chrome2": "#171717", "paper": "#151515", "panel": "#222222",
                 "panel_dark": "#3a3a3a", "line": "#4b4b4b", "cream": "#262626", "red": "#d20a0a",

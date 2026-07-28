@@ -996,6 +996,15 @@ class PersistenceMixin:
             )
             self.change_journal.append({"date": self.format_game_date(), "type": "Migration", "summary": summary})
             self.change_journal = self.change_journal[-400:]
+        future_lineage_repair = self.repair_future_belt_history_dates()
+        if future_lineage_repair.get("entries"):
+            summary = (
+                f"Title lineage date repair corrected {future_lineage_repair['entries']} future-dated title "
+                f"history entr{'y' if future_lineage_repair['entries'] == 1 else 'ies'} across "
+                f"{future_lineage_repair.get('companies', 0)} promotion(s)."
+            )
+            self.change_journal.append({"date": self.format_game_date(), "type": "Migration", "summary": summary})
+            self.change_journal = self.change_journal[-400:]
         self.broadcasters = data.get("broadcasters", [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}])
         self.ensure_media_system()
         self.weight_classes = list(dict.fromkeys(

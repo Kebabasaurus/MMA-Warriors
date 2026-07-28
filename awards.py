@@ -999,10 +999,10 @@ class AwardsMixin:
             tk.Label(legend, text="■", bg=colors.get("chrome", "#0b0d10"), fg=swatch, font=("Tahoma", 9)).pack(side="left", padx=(6, 1))
             tk.Label(legend, text=label_text, bg=colors.get("chrome", "#0b0d10"), fg=text_color, font=("Tahoma", 8)).pack(side="left", padx=(0, 4))
 
-        detail_tree = ttk.Treeview(right, columns=("date", "action", "fighter", "reign", "note"), show="headings")
+        detail_tree = ttk.Treeview(right, columns=("action", "fighter", "reign", "note"), show="headings")
         for column, heading, width, anchor in (
-            ("date", "Date", 110, "center"), ("action", "Event", 150, "w"), ("fighter", "Fighter", 175, "w"),
-            ("reign", "Reign", 90, "center"), ("note", "Context", 320, "w"),
+            ("action", "Event", 160, "w"), ("fighter", "Fighter", 185, "w"),
+            ("reign", "Reign", 95, "center"), ("note", "Context", 360, "w"),
         ):
             detail_tree.heading(column, text=heading)
             detail_tree.column(column, width=width, anchor=anchor)
@@ -1078,7 +1078,7 @@ class AwardsMixin:
                 canvas.create_text(x + seg / 2, bar_bottom + 10, text=self.format_month_span(length),
                                    fill=muted, font=("Tahoma", 7))
                 x += seg
-            span_label = f"{self.format_game_date_text(reigns[0].get('start_date', ''))}  —  present"
+            span_label = "Oldest recorded reign  -  present"
             canvas.create_text(pad, 12, text=f"{len(reigns)} reign(s)   |   {span_label}", anchor="w",
                                fill=text_color, font=("Tahoma", 8, "bold"))
             canvas.configure(scrollregion=(0, 0, max(content_width, visible_width), height))
@@ -1115,8 +1115,7 @@ class AwardsMixin:
                         if end is None:
                             reign_label += " (current)"
                 detail_tree.insert("", "end", tags=(action_tag(action),), values=(
-                    self.belt_history_date_label(entry), action,
-                    entry.get("fighter", ""), reign_label, entry.get("note", ""),
+                    action, entry.get("fighter", ""), reign_label, entry.get("note", ""),
                 ))
 
         def refresh_lineage_list(*_args):

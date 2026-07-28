@@ -1456,6 +1456,24 @@ class EventMixin:
                 fight_list.delete(index)
                 fight_list.insert(index, f"{index + 1}. DONE - {result[:31]}")
             event_progress["value"] = index + 1
+            update_event_button_label()
+
+        def all_presented_fights_complete():
+            if not fight_logs:
+                return True
+            if state["finished"]:
+                return True
+            if state["fight"] < len(fight_logs) - 1:
+                return False
+            if state["fight"] < 0:
+                return False
+            return state["line"] >= len(fight_logs[state["fight"]].get("lines", []))
+
+        def update_event_button_label():
+            try:
+                skip_event_button.config(text="End Event" if all_presented_fights_complete() else "Skip Event")
+            except (NameError, tk.TclError):
+                pass
 
         def open_header_profile(side):
             if not (0 <= state["fight"] < len(fight_logs)):
@@ -1660,6 +1678,7 @@ class EventMixin:
             result_ribbon.pack(fill="x", padx=6, pady=(4, 5))
             status_label.config(text="Bout complete. Review the official result, scorecards, and metrics, then start the next fight.", fg=self.colors["muted"])
             append_line("\n[Fight complete. Press Start Next Fight.]")
+            update_event_button_label()
 
         def is_round_boundary(line):
             lowered = str(line).lower()
@@ -1910,7 +1929,9 @@ class EventMixin:
 
         ttk.Checkbutton(controls2, text="Follow live", variable=follow_var, command=toggle_follow).pack(side="left", padx=8)
 
-        ttk.Button(controls3, text="Skip Event", command=skip_to_end).pack(side="left", padx=4)
+        skip_event_button = ttk.Button(controls3, text="Skip Event", command=skip_to_end)
+        skip_event_button.pack(side="left", padx=4)
+        update_event_button_label()
         ttk.Button(controls3, text="Review Selected Bout", command=review_selected_bout).pack(side="left", padx=4)
         fight_list.bind("<Double-1>", review_selected_bout)
         if package.get("tournament_brackets"):
