@@ -8375,6 +8375,9 @@ class ViewMixin:
         self.rules.setdefault("fight_night_audio_volume", 55)
         self.rules["fight_night_audio_volume"] = max(0, min(100, int(self.rules.get("fight_night_audio_volume", 55))))
         self.rules.setdefault("opening_division_depth_seeded", False)
+        # Absent marker means the save predates the academy price rise, so it
+        # keeps the costs it was started under.
+        self.rules.setdefault("academy_upgrade_pricing_version", 1)
         self.rules.setdefault("autosave_enabled", True)
         self.rules.setdefault("autosave_interval_months", 2)
         # Version 1 shipped very large defaults (12/24/60). A mature world can

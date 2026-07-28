@@ -2417,21 +2417,42 @@ class WorldMixin:
         prospect["rating_history"] = history[-60:]
         return snapshot
 
+    # Original academy prices, kept for saves started before the rise. A career
+    # already part-way through its facility build-out should not have the
+    # remaining purchases repriced underneath it.
+    ACADEMY_UPGRADE_LEGACY_COSTS = {
+        "elite_coaches": 90_000, "conditioning_centre": 60_000, "analysis_lab": 50_000,
+        "medical_suite": 75_000, "recovery_nutrition": 45_000,
+    }
+
+    def academy_upgrade_pricing_version(self):
+        """Saves without the marker predate the price rise and keep the old costs."""
+        return int((getattr(self, "rules", None) or {}).get("academy_upgrade_pricing_version", 1) or 1)
+
     def academy_upgrade_catalog(self):
         """Purchasable academy facilities. Each is a one-off spend with a permanent
-        effect on how fast and safely prospects develop."""
-        return [
-            {"id": "elite_coaches", "name": "Elite Coaching Team", "cost": 90000,
+        effect on how fast and safely prospects develop.
+
+        Priced as a long-term ambition rather than an early purchase: a permanent
+        promotion-wide development bonus was reachable in the opening months at
+        the original cost, so the academy stopped being a real decision.
+        """
+        catalog = [
+            {"id": "elite_coaches", "name": "Elite Coaching Team", "cost": 1_800_000,
              "effect": "Faster skill development in every session (+9% growth).", "growth": 0.09},
-            {"id": "conditioning_centre", "name": "Strength & Conditioning Centre", "cost": 60000,
+            {"id": "conditioning_centre", "name": "Strength & Conditioning Centre", "cost": 1_200_000,
              "effect": "+5% growth and biases training toward cardio, power, and toughness.", "growth": 0.05, "emphasis": "physical"},
-            {"id": "analysis_lab", "name": "Video & Analysis Lab", "cost": 50000,
+            {"id": "analysis_lab", "name": "Video & Analysis Lab", "cost": 1_050_000,
              "effect": "+3% growth and sharper Fight IQ development.", "growth": 0.03, "emphasis": "mental"},
-            {"id": "medical_suite", "name": "Sports Medicine Suite", "cost": 75000,
+            {"id": "medical_suite", "name": "Sports Medicine Suite", "cost": 1_500_000,
              "effect": "Halves training-injury risk and heals injuries a week sooner.", "injury_mult": 0.5, "heal": 1},
-            {"id": "recovery_nutrition", "name": "Recovery & Nutrition Programme", "cost": 45000,
+            {"id": "recovery_nutrition", "name": "Recovery & Nutrition Programme", "cost": 1_000_000,
              "effect": "+4 weekly fatigue recovery so prospects train harder without burning out.", "recovery": 4},
         ]
+        if self.academy_upgrade_pricing_version() < 2:
+            for upgrade in catalog:
+                upgrade["cost"] = self.ACADEMY_UPGRADE_LEGACY_COSTS.get(upgrade["id"], upgrade["cost"])
+        return catalog
 
     def academy_facility_profile(self, academy=None):
         """Aggregate the effects of every installed academy facility upgrade."""
