@@ -242,15 +242,20 @@ class SeedMixin:
             return default
 
     def merge_default_fighter_database(self, fighters):
-        """Keep the shipped real-life pool additive as the default pack evolves."""
-        shipped = self.build_seed_fighter_database()
+        """Upgrade legacy shipped fighter databases without overriding flat edits."""
         changed = False
-        if fighters.get("all_fighters"):
+        if fighters.get("all_fighters") and int(fighters.get("schema", 1) or 1) >= MMA_FIGHTER_DATABASE_SCHEMA:
             normalized = self.normalize_seed_fighter_database(fighters)
-            for key in ("player_roster", "free_agents", "promotions"):
+            for key in ("player_roster", "free_agents", "promotions", "schema", "database_name", "notes"):
                 if fighters.get(key) != normalized.get(key):
                     fighters[key] = normalized.get(key)
                     changed = True
+            if not fighters.get("bamma_addins_embedded"):
+                fighters["bamma_addins_embedded"] = True
+                changed = True
+            return changed
+
+        shipped = self.build_seed_fighter_database()
         promotions = fighters.setdefault("promotions", {})
         for company, rows in shipped.get("promotions", {}).items():
             current = promotions.setdefault(company, [])
@@ -383,22 +388,18 @@ class SeedMixin:
         return changed
 
     def merge_default_combat_sport_database(self, combat_section):
-        """Add shipped combat-sport depth without replacing editor-owned rows.
-
-        The Default Universe is deliberately additive: a player can edit an
-        existing profile, but a later update may still contribute new real
-        athletes to a thin circuit. Per-sport de-duplication keeps a stale
-        editable database from producing cloned fighters.
-        """
+        """Upgrade legacy combat-sport databases without overriding flat edits."""
         if not isinstance(combat_section, dict):
             return False
         changed = False
-        if combat_section.get("all_athletes"):
+        if combat_section.get("all_athletes") and int(combat_section.get("schema", 1) or 1) >= COMBAT_SPORT_DATABASE_SCHEMA:
             normalized = self.normalize_combat_sport_database(combat_section)
-            for key in ("rosters", "prime_divisions", "profiles"):
+            for key in ("rosters", "prime_divisions", "profiles", "schema", "database_name", "notes"):
                 if combat_section.get(key) != normalized.get(key):
                     combat_section[key] = normalized.get(key)
                     changed = True
+            return changed
+
         shipped = self.builtin_combat_sport_real_roster_data()
         rosters = combat_section.setdefault("rosters", {})
         for sport, names in shipped.items():
