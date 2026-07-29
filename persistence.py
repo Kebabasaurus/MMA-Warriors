@@ -1540,6 +1540,19 @@ class PersistenceMixin:
         fighter.career_goal_history = getattr(fighter, "career_goal_history", None) or []
         fighter.career_win_streak = max(0, getattr(fighter, "career_win_streak", 0) or 0)
         fighter.career_goal_last_review = max(0, getattr(fighter, "career_goal_last_review", 0) or 0)
+        fighter.career_arc = getattr(fighter, "career_arc", None) or None
+        if not isinstance(fighter.career_arc, dict):
+            fighter.career_arc = None
+        fighter.career_arc_history = getattr(fighter, "career_arc_history", None) or []
+        fighter.career_arc_last_offer_month = max(0, getattr(fighter, "career_arc_last_offer_month", 0) or 0)
+        fighter.academy_graduate = bool(
+            getattr(fighter, "academy_graduate", False)
+            or "Fighting Academy" in str(getattr(fighter, "feeder_origin", ""))
+            or any("Promoted from the Fighting Academy" in str(entry) for entry in (getattr(fighter, "fight_history", None) or []))
+        )
+        fighter.academy_graduated_month = max(0, getattr(fighter, "academy_graduated_month", 0) or 0)
+        if fighter.academy_graduate and not fighter.academy_graduated_month:
+            fighter.academy_graduated_month = max(1, getattr(fighter, "camp_joined_month", 0) or self.month)
         fighter.ranking_position = max(0, getattr(fighter, "ranking_position", 0) or 0)
         fighter.previous_ranking_position = max(0, getattr(fighter, "previous_ranking_position", 0) or 0)
         fighter.ranking_reason = getattr(fighter, "ranking_reason", "") or ""

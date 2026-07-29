@@ -6,6 +6,7 @@ import tempfile
 import tkinter as tk
 from dataclasses import asdict
 from pathlib import Path
+from types import SimpleNamespace
 
 
 ROOT = Path(__file__).resolve().parent
@@ -41,6 +42,27 @@ def main():
         peak_round_trip = game.Fighter(**asdict(peak_probe))
         assert_true(peak_round_trip.career_peak_overall == 86,
                     "Retired fighter peak overall did not survive serialization")
+        arc_probe = game.Fighter("Career Arc Probe", "Lightweight", 20, 0, 0, 58, 58, 58, 58, 58, 10, 0, 70, 5000)
+        arc_probe.potential = 88
+        arc_probe.academy_graduate = True
+        app.roster.append(arc_probe)
+        assert_true(app.start_career_arc(arc_probe, "Homegrown Champion", "Smoke-test academy graduation"),
+                    "Academy graduate could not begin a homegrown career story")
+        accepted, _note, _follow_up = app.apply_career_arc_plan(arc_probe, "title_path")
+        assert_true(accepted and arc_probe.top_opponent_promise and arc_probe.promise_deadline_month >= app.month + 6,
+                    "Career-story contender plan did not create a real matchmaking promise")
+        arc_probe.champion = True
+        app.process_career_arcs()
+        assert_true(arc_probe.career_arc is None and any("Homegrown Champion" in note for note in arc_probe.career_achievements),
+                    "Homegrown story did not resolve after the fighter became champion")
+        weight_arc_probe = game.Fighter("Weight Arc Probe", "Lightweight", 25, 2, 1, 62, 62, 62, 62, 62, 10, 0, 70, 5000)
+        app.roster.append(weight_arc_probe)
+        assert_true(app.start_career_arc(weight_arc_probe, "Weight Management", "Smoke-test weigh-in"),
+                    "Weight-management career story could not begin")
+        app.record_career_arc_result((weight_arc_probe,), {})
+        app.record_career_arc_result((weight_arc_probe,), {})
+        assert_true(weight_arc_probe.career_arc is None and any("Weight-Cut Turnaround" in note for note in weight_arc_probe.career_achievements),
+                    "Weight-management story did not resolve after two made-weight appearances")
         company_override_probe = game.Promotion("Database Editor Company Probe", "USA", 50, 1000000, [])
         app.apply_authored_promotion_overrides(company_override_probe, {"stability": 83, "strategy": {"identity": "Editor Authored"}, "rules": {"rounds": 5}})
         assert_true(
@@ -150,6 +172,28 @@ def main():
         for screen_name in app.screen_builders:
             app.ensure_screen_built(screen_name)
         assert_true(set(app.screen_builders) == app.built_screens, "One or more lazy management screens failed to build")
+        app.open_career_goals_window()
+        root.update_idletasks()
+        journey_windows = [child for child in root.winfo_children() if isinstance(child, tk.Toplevel) and "Career Journeys" in child.title()]
+        assert_true(journey_windows, "Career-journey window failed to construct")
+        for child in journey_windows:
+            child.destroy()
+        arrow_canvas = tk.Canvas(root, width=40, height=40, scrollregion=(0, 0, 400, 800))
+        arrow_canvas.pack()
+        root.update_idletasks()
+        app._active_scroll_wheel = (arrow_canvas, None, None)
+        before_arrow_scroll = arrow_canvas.yview()
+        assert_true(app.scroll_active_page_with_arrow(SimpleNamespace(widget=arrow_canvas), "y", 1) == "break",
+                    "Page arrow handler did not claim the canvas scroll action")
+        assert_true(arrow_canvas.yview()[0] > before_arrow_scroll[0], "Down arrow did not scroll the active page canvas")
+        arrow_entry = tk.Entry(root)
+        before_entry_arrow = arrow_canvas.yview()
+        assert_true(app.scroll_active_page_with_arrow(SimpleNamespace(widget=arrow_entry), "y", 1) is None,
+                    "Page arrow handler claimed a native entry action")
+        assert_true(arrow_canvas.yview() == before_entry_arrow, "Arrow scrolling overrode native entry navigation")
+        arrow_entry.destroy()
+        arrow_canvas.destroy()
+        app._active_scroll_wheel = None
         champion_probe = next((fighter for fighter in app.roster if fighter.champion or fighter.interim_champion), None)
         if champion_probe is None:
             champion_probe = max(app.roster, key=app.champion_sort_value)

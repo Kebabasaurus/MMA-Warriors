@@ -219,6 +219,27 @@ class UIMixin:
         style.configure("Treeview", font=("Tahoma", 8), background=self.colors["tree"], fieldbackground=self.colors["tree"], foreground=self.colors["text"], rowheight=22, borderwidth=0)
         style.configure("Treeview.Heading", font=("Tahoma", 8, "bold"), background=self.colors["tree_head"], foreground="#ffffff", relief="flat")
 
+    def scroll_active_page_with_arrow(self, event, axis, direction):
+        """Scroll the hovered page without taking arrows from data-entry widgets."""
+        native_arrow_widgets = (
+            tk.Entry, tk.Text, tk.Listbox, tk.Spinbox, tk.Scale,
+            ttk.Entry, ttk.Combobox, ttk.Treeview, ttk.Spinbox,
+        )
+        if isinstance(event.widget, native_arrow_widgets):
+            return None
+        active = getattr(self, "_active_scroll_wheel", None)
+        if not active:
+            return None
+        canvas = active[0]
+        try:
+            if axis == "x":
+                canvas.xview_scroll(direction * 3, "units")
+            else:
+                canvas.yview_scroll(direction * 3, "units")
+        except tk.TclError:
+            return None
+        return "break"
+
     def create_scrollable_frame(self, parent, style="TFrame"):
         shell = ttk.Frame(parent, style=style)
         canvas = tk.Canvas(shell, bg=self.colors["paper"], highlightthickness=0, borderwidth=0)
@@ -290,6 +311,13 @@ class UIMixin:
             self.root.bind_all("<Button-4>", lambda event: dispatch_linux_wheel(event, -1), add="+")
             self.root.bind_all("<Button-5>", lambda event: dispatch_linux_wheel(event, 1), add="+")
             self._scroll_wheel_dispatch_installed = True
+
+        if not getattr(self, "_arrow_scroll_dispatch_installed", False):
+            self.root.bind_all("<Up>", lambda event: self.scroll_active_page_with_arrow(event, "y", -1), add="+")
+            self.root.bind_all("<Down>", lambda event: self.scroll_active_page_with_arrow(event, "y", 1), add="+")
+            self.root.bind_all("<Left>", lambda event: self.scroll_active_page_with_arrow(event, "x", -1), add="+")
+            self.root.bind_all("<Right>", lambda event: self.scroll_active_page_with_arrow(event, "x", 1), add="+")
+            self._arrow_scroll_dispatch_installed = True
 
         inner.bind("<Configure>", schedule_fit)
         canvas.bind("<Configure>", schedule_fit)

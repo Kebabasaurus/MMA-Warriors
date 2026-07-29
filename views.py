@@ -1954,6 +1954,7 @@ class ViewMixin:
             ("Sponsor", fighter.sponsor_appeal), ("Professionalism", fighter.professionalism), ("Injury Risk", fighter.injury_proneness),
             ("Major Injury", self.serious_injury_status(fighter)),
             ("Career Goal", f"{fighter.career_goal or 'Undeclared'} ({getattr(fighter, 'career_goal_progress', 0)}%)"),
+            ("Career Story", (lambda arc: f"{arc.get('title', arc.get('type'))} ({self.career_arc_state(fighter)[1]}%)" if arc else "No active story")(self.active_career_arc(fighter))),
             ("Walk Weight", f"{fighter.walk_weight or self.default_walk_weight(fighter)} lb"), ("Last Scale", f"{fighter.scale_weight or '-'} lb"), ("Cut Penalty", fighter.weight_cut_penalty),
             ("Division Fit", getattr(fighter, "division_size_note", "") or (f"Undersized penalty {getattr(fighter, 'division_size_penalty', 0)}/14" if getattr(fighter, "division_size_penalty", 0) else "Natural division fit")),
         ] if stats_visible else [
@@ -2237,6 +2238,13 @@ class ViewMixin:
             goal_log.pack(fill="x", padx=8, pady=(0, 8))
             goal_log.insert("end", "CAREER GOALS\nActive: " + (fighter.career_goal or "Undeclared") + f" ({getattr(fighter, 'career_goal_progress', 0)}%)\n" + "\n".join(self.format_game_date_text(item) for item in fighter.career_goal_history[-2:]))
             goal_log.config(state="disabled")
+        if getattr(fighter, "career_arc_history", None):
+            arc_log = tk.Text(history_frame, wrap="word", height=4, bg=self.colors["panel_dark"], fg=self.colors["gold"], font=("Tahoma", 9), padx=10, pady=8)
+            arc_log.pack(fill="x", padx=8, pady=(0, 8))
+            arc = self.active_career_arc(fighter)
+            active = f"Active: {arc.get('title', arc.get('type'))}\n" if arc else "No active career story.\n"
+            arc_log.insert("end", "CAREER STORY\n" + active + "\n".join(self.format_game_date_text(item) for item in fighter.career_arc_history[-4:]))
+            arc_log.config(state="disabled")
 
         footer = ttk.Frame(window, style="Chrome.TFrame")
         footer.pack(fill="x", padx=8, pady=(0, 8))
@@ -2254,6 +2262,9 @@ class ViewMixin:
                 command=lambda: self.open_contract_negotiation(fighter, existing=True, comeback=True),
             ).pack(side="left", padx=4)
         elif self.player_owns_fighter(fighter):
+            ttk.Button(
+                footer, text="Career Journey", command=lambda: self.open_career_goals_window(fighter),
+            ).pack(side="left", padx=4)
             ttk.Button(
                 footer,
                 text="Move To Active Division" if owned_closed_division else "Change Weight Class",
@@ -2310,35 +2321,104 @@ class ViewMixin:
             ttk.Label(window, text="Recent market moments: " + " | ".join(f"{self.format_game_date(item.get('month', self.month), 1, include_week=False)} {item.get('region', '')}: {item.get('note', '')}" for item in history[:3]), style="Inset.TLabel", wraplength=720).pack(fill="x", padx=10, pady=(0, 6))
         ttk.Button(window, text="Close", style="Accent.TButton", command=window.destroy).pack(anchor="e", padx=10, pady=(0, 10))
 
-    def open_career_goals_window(self):
+    def open_career_goals_window(self, selected_fighter=None):
+        self.offer_player_career_arc()
         window = tk.Toplevel(self.root)
-        window.title("Fighter Career Goals")
-        window.geometry("900x560")
+        window.title("Fighter Career Journeys")
+        window.geometry("1040x640")
+        window.minsize(860, 520)
         window.configure(bg=self.colors["chrome"])
         header = ttk.Frame(window, style="Header.TFrame"); header.pack(fill="x", padx=8, pady=(8, 0))
-        ttk.Label(header, text="FIGHTER CAREER GOALS", style="ScreenTitle.TLabel").pack(side="left", padx=10, pady=6)
-        ttk.Label(header, text="Ambitions influence morale, motivation, and retention", style="Chrome.TLabel").pack(side="right", padx=10)
-        tree = ttk.Treeview(window, columns=("fighter", "division", "persona", "goal", "progress", "trust", "morale"), show="headings")
-        for column, label, width in (("fighter", "Fighter", 165), ("division", "Division", 115), ("persona", "Persona", 115), ("goal", "Career Goal", 220), ("progress", "Progress", 90), ("trust", "Trust", 65), ("morale", "Morale", 65)):
+        ttk.Label(header, text="FIGHTER CAREER JOURNEYS", style="ScreenTitle.TLabel").pack(side="left", padx=10, pady=6)
+        ttk.Label(header, text="Long-term stories, career goals, and the choices that shape retention", style="Chrome.TLabel").pack(side="right", padx=10)
+        tree = ttk.Treeview(window, columns=("fighter", "division", "story", "progress", "plan", "review", "trust"), show="headings")
+        for column, label, width in (("fighter", "Fighter", 165), ("division", "Division", 110), ("story", "Career Story", 205), ("progress", "Progress", 85), ("plan", "Current Plan", 175), ("review", "Review Due", 110), ("trust", "Trust", 65)):
             tree.heading(column, text=label); tree.column(column, width=width, anchor="w")
         tree.pack(fill="both", expand=True, padx=8, pady=8)
-        detail = tk.Text(window, height=6, wrap="word", bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 9), padx=10, pady=8)
+        detail = tk.Text(window, height=9, wrap="word", bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 9), padx=10, pady=8)
         detail.pack(fill="x", padx=8, pady=(0, 8)); detail.config(state="disabled")
-        rows = sorted(self.roster, key=lambda fighter: (getattr(fighter, "career_goal_progress", 0), fighter.name))
+        actions = ttk.Frame(window, style="Chrome.TFrame")
+        actions.pack(fill="x", padx=8, pady=(0, 8))
+        action_buttons = []
+        rows = sorted(self.roster, key=lambda fighter: (not bool(self.active_career_arc(fighter)), getattr(fighter, "career_goal_progress", 0), fighter.name))
         for index, fighter in enumerate(rows):
-            tree.insert("", "end", iid=str(index), values=(fighter.name, fighter.weight, fighter.negotiation_persona, fighter.career_goal or "Undeclared", f"{fighter.career_goal_progress}%", fighter.relationship_trust, fighter.morale))
-        def select(_event=None):
-            selected = tree.selection(); detail.config(state="normal"); detail.delete("1.0", "end")
-            if selected:
-                fighter = rows[int(selected[0])]
-                history = "\n".join(fighter.career_goal_history[-4:]) if fighter.career_goal_history else "No completed career goals yet."
-                detail.insert("end", f"{fighter.name}\nGoal: {fighter.career_goal or 'Undeclared'} | Progress: {fighter.career_goal_progress}% | Target: {fighter.career_goal_target}\nPersona: {fighter.negotiation_persona} | Agent: {fighter.agent_name}\n\nGoal history:\n{history}")
-            detail.config(state="disabled")
-        def open_profile(_event=None):
+            arc = self.active_career_arc(fighter)
+            if arc:
+                _complete, progress, _summary = self.career_arc_state(fighter)
+                story = arc.get("title", arc.get("type", "Career Story"))
+                plan = arc.get("plan") or "Decision needed"
+                review = self.format_game_date(arc.get("deadline_month", self.month), 1)
+            else:
+                progress = getattr(fighter, "career_goal_progress", 0)
+                story = "No active story"
+                plan = fighter.career_goal or "Undeclared"
+                review = "-"
+            tree.insert("", "end", iid=str(index), values=(fighter.name, fighter.weight, story, f"{progress}%", plan, review, fighter.relationship_trust))
+
+        def current_fighter():
             selected = tree.selection()
-            if selected:
-                self.open_fighter_profile_window(rows[int(selected[0])])
+            return rows[int(selected[0])] if selected else None
+
+        def set_detail(fighter=None):
+            for button in action_buttons:
+                button.destroy()
+            action_buttons.clear()
+            detail.config(state="normal"); detail.delete("1.0", "end")
+            fighter = fighter or current_fighter()
+            if not fighter:
+                detail.insert("end", "Select a fighter to review their ambitions and any active long-term career story.")
+                detail.config(state="disabled")
+                return
+            arc = self.active_career_arc(fighter)
+            goal_history = "\n".join((getattr(fighter, "career_goal_history", None) or [])[-2:]) or "No completed short-term goals yet."
+            if arc:
+                complete, progress, summary = self.career_arc_state(fighter)
+                arc_history = "\n".join((getattr(fighter, "career_arc_history", None) or [])[-4:])
+                detail.insert("end", (
+                    f"{fighter.name} - {arc.get('title', arc.get('type'))}\n"
+                    f"Objective: {arc.get('objective')}\n"
+                    f"Progress: {progress}% | Review: {self.format_game_date(arc.get('deadline_month', self.month), 1)}\n"
+                    f"Current plan: {arc.get('plan') or 'No decision made'}\n"
+                    f"What matters next: {summary}\n\n"
+                    f"Story timeline:\n{arc_history}\n\n"
+                    f"Career goal: {fighter.career_goal or 'Undeclared'} ({fighter.career_goal_progress}%)\n{goal_history}"
+                ))
+                for key, label, _description in self.career_arc_options(fighter):
+                    button = ttk.Button(actions, text=label, command=lambda choice=key: act(choice))
+                    button.pack(side="left", padx=3)
+                    action_buttons.append(button)
+            else:
+                history = "\n".join((getattr(fighter, "career_arc_history", None) or [])[-4:]) or "No long-term career story has been triggered yet."
+                detail.insert("end", f"{fighter.name}\nCareer goal: {fighter.career_goal or 'Undeclared'} ({fighter.career_goal_progress}%)\nPersona: {fighter.negotiation_persona} | Agent: {fighter.agent_name}\n\nCareer-story history:\n{history}\n\nGoal history:\n{goal_history}")
+            detail.config(state="disabled")
+
+        def act(choice):
+            fighter = current_fighter()
+            if not fighter:
+                return
+            ok, note, follow_up = self.apply_career_arc_plan(fighter, choice)
+            if not ok:
+                messagebox.showwarning("Career Plan", note, parent=window)
+                return
+            if follow_up == "contract":
+                self.open_contract_negotiation(fighter, existing=True)
+            elif follow_up == "camp":
+                self.open_fighter_camp_plan(fighter, on_save=lambda: set_detail(fighter))
+            self.refresh_all()
+            set_detail(fighter)
+
+        def select(_event=None):
+            set_detail()
+        def open_profile(_event=None):
+            fighter = current_fighter()
+            if fighter:
+                self.open_fighter_profile_window(fighter)
         tree.bind("<<TreeviewSelect>>", select); tree.bind("<Double-1>", open_profile)
+        ttk.Button(actions, text="Open Fighter Profile", command=open_profile).pack(side="right", padx=3)
+        if selected_fighter in rows:
+            index = rows.index(selected_fighter)
+            tree.selection_set(str(index)); tree.focus(str(index)); tree.see(str(index))
+            set_detail(selected_fighter)
 
     def open_limited_scout_profile(self, fighter, report):
         window = tk.Toplevel(self.root); window.title(f"Scout Report - {fighter.name}"); window.geometry("520x360"); window.configure(bg=self.colors["chrome"])
@@ -5880,6 +5960,12 @@ class ViewMixin:
                 messages.append(("•", f"{len(idle_scouts)} scout(s) have no active assignment.", "scouting", "normal"))
             for fighter in medical_decisions[:3]:
                 messages.append(("!", f"Medical decision required for {fighter.name}: {self.serious_injury_status(fighter)}.", "inbox", "urgent"))
+            active_arcs = [(fighter, self.active_career_arc(fighter)) for fighter in self.roster]
+            active_arcs = [(fighter, arc) for fighter, arc in active_arcs if arc]
+            for fighter, arc in active_arcs[:4]:
+                _complete, progress, summary = self.career_arc_state(fighter)
+                urgency = "urgent" if arc.get("deadline_month", self.month + 99) <= self.month + 2 else "normal"
+                messages.append(("!" if urgency == "urgent" else "•", f"Career story: {fighter.name} - {arc.get('title', arc.get('type'))} ({progress}%). {summary}", "career", urgency))
             if runway < 4:
                 messages.append(("!", f"Only {runway:.1f} months of fixed-cost runway remain at the present balance.", "finance", "urgent"))
             if hasattr(self, "assistant_kpis"):
@@ -5945,7 +6031,10 @@ class ViewMixin:
             _priority, _message, action, _tag = self._assistant_messages[int(selected[0])]
         except (AttributeError, IndexError, ValueError):
             return
-        self.select_tab(action)
+        if action == "career":
+            self.open_career_goals_window()
+        else:
+            self.select_tab(action)
 
     def open_selected_region_hub(self, focus="Overview"):
         if not hasattr(self, "region_list") or not self.region_list.curselection():
@@ -10290,7 +10379,11 @@ class ViewMixin:
             ttk.Radiobutton(body, text=option, value=option, variable=choice).pack(anchor="w", padx=12, pady=3)
         def save():
             fighter.camp_focus = choice.get()
-            fighter.camp = gym_choice.get()
+            selected_gym = self.gym_by_name(gym_choice.get())
+            if selected_gym and selected_gym.name != fighter.camp:
+                self.move_fighter_to_gym(fighter, selected_gym, "Player-directed camp plan")
+            if selected_gym:
+                fighter.camp_quality = selected_gym.quality
             fighter.camp_intensity = intensity_choice.get()
             self.news.insert(0, f"Camp plan: {fighter.name} joins {fighter.camp} for a {fighter.camp_intensity.lower()} {fighter.camp_focus.lower()} camp.")
             self.refresh_all()

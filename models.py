@@ -216,6 +216,13 @@ class Fighter:
     career_goal_history: list = None
     career_win_streak: int = 0
     career_goal_last_review: int = 0
+    # A player-facing long-form story layered on top of the smaller career goal.
+    # It stays structured so a save can resume an unfinished journey precisely.
+    career_arc: dict = None
+    career_arc_history: list = None
+    career_arc_last_offer_month: int = 0
+    academy_graduate: bool = False
+    academy_graduated_month: int = 0
     ranking_position: int = 0
     previous_ranking_position: int = 0
     ranking_reason: str = ""
