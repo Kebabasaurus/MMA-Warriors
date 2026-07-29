@@ -33,6 +33,36 @@ def main():
         app = game.FightEmpireApp(root, startup_progress=lambda value, text: startup_updates.append((value, text)))
         assert_true(startup_updates and startup_updates[-1][0] == 100, "Startup progress did not reach its ready state")
         assert_true(all(a[0] <= b[0] for a, b in zip(startup_updates, startup_updates[1:])), "Startup progress moved backwards")
+        peak_probe = game.Fighter("Retired Peak Probe", "Lightweight", 36, 12, 5, 62, 62, 62, 62, 62, 25, 0, 60, 8000)
+        peak_probe.annual_overalls = {"2026": "74", "2027": 79}
+        peak_probe.bout_rating_history = [{"self_overall": 86}, {"self_overall": 81}]
+        assert_true(app.update_fighter_peak_overall(peak_probe) == 86 and peak_probe.career_peak_overall == 86,
+                    "Retired fighter peak overall did not retain the best known career rating")
+        peak_round_trip = game.Fighter(**asdict(peak_probe))
+        assert_true(peak_round_trip.career_peak_overall == 86,
+                    "Retired fighter peak overall did not survive serialization")
+        company_override_probe = game.Promotion("Database Editor Company Probe", "USA", 50, 1000000, [])
+        app.apply_authored_promotion_overrides(company_override_probe, {"stability": 83, "strategy": {"identity": "Editor Authored"}, "rules": {"rounds": 5}})
+        assert_true(
+            (company_override_probe.stability, company_override_probe.strategy, company_override_probe.rules) == (83, {"identity": "Editor Authored"}, {"rounds": 5}),
+            "Authored database company fields did not override generated promotion defaults",
+        )
+        override_probe = {
+            "database_type": "mma", "generated": False, "placement": "free_agents", "owner": "Free Agent",
+            "seed_org": "Free Agent", "name": "Database Editor Override Probe", "weight": "Lightweight",
+            "gender": "Male", "popularity": 20, "rating": 65, "age": 25, "record_w": 0, "record_l": 0,
+            "record_d": 0, "region": "USA", "nationality": "American", "style": "Well-Rounded",
+            "striking": 91, "fight_iq": 88, "contract_months": 19, "regional_popularity": {"USA": 76},
+        }
+        app._seed_fighter_database["all_fighters"].append(override_probe)
+        app.cache_seed_fighter_database(app._seed_fighter_database)
+        authored_probe = app.create_real_fighter("Database Editor Override Probe", "Lightweight", "Free Agent", 20, 65, 25, 0, 0, "USA", "Well-Rounded")
+        assert_true(
+            (authored_probe.striking, authored_probe.fight_iq, authored_probe.contract_months, authored_probe.regional_popularity) == (91, 88, 19, {"USA": 76}),
+            "Authored database fields did not override generated fighter defaults",
+        )
+        app._seed_fighter_database["all_fighters"].pop()
+        app.cache_seed_fighter_database(app._seed_fighter_database)
         app.start_company_choice.set("Spectator Mode")
         app.new_game()
         assert_true(app.spectator_mode, "Spectator Mode failed before lazy Log screen construction")
@@ -679,10 +709,20 @@ def main():
         )
         app.promotions.append(legacy_finance_probe)
         app.rebalance_ai_finance_model()
-        assert_true(legacy_finance_probe.strategy.get("finance_model_version") == 2, "Legacy AI finance migration was not recorded")
+        assert_true(legacy_finance_probe.strategy.get("finance_model_version") == 3, "Legacy AI finance migration was not recorded")
         assert_true(legacy_finance_probe.cash >= app.ai_financial_runway(legacy_finance_probe), "Legacy AI finance migration did not restore operating runway")
         assert_true(legacy_finance_probe.stability >= 28, "Legacy AI finance migration did not protect company stability")
         app.promotions.remove(legacy_finance_probe)
+        excess_cash_probe = game.Promotion(
+            "Excess Cash Migration Probe", "USA", 60, 90_000_000, [], stability=70,
+            strategy={"finance_model_version": 2},
+        )
+        app.promotions.append(excess_cash_probe)
+        app.rebalance_ai_finance_model()
+        excess_limit = app.ai_cash_ceiling(excess_cash_probe) + max(app.ai_financial_runway(excess_cash_probe) * 0.30, 1_000_000)
+        assert_true(excess_cash_probe.strategy.get("finance_model_version") == 3, "Excess-cash migration did not advance the finance model")
+        assert_true(excess_cash_probe.cash <= excess_limit, "Excess-cash migration left an implausible AI balance intact")
+        app.promotions.remove(excess_cash_probe)
         opening_depth_probe = game.Promotion(
             "Opening Depth Probe", "USA", 45, 1_500_000, [], weight_classes=["Flyweight"],
         )

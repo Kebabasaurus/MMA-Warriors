@@ -108,6 +108,10 @@ class Fighter:
     # Pre-bout ratings retained independently of the bounded card replay archive.
     bout_rating_history: list = None
     annual_overalls: dict = None
+    # Persistent high-water mark for profiles and retirement records. Annual
+    # snapshots remain useful for charts, but are not granular enough to be a
+    # fighter's definitive career peak.
+    career_peak_overall: int = 0
     sport_rating_history: dict = None
     sport_development_log: list = None
     # Compact, attributed MMA development history. Only meaningful rating

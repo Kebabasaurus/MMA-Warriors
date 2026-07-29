@@ -119,11 +119,11 @@ def main():
     root.withdraw()
     try:
         app = game.FightEmpireApp(root, startup_progress=lambda *_: None)
-        source = app.build_seed_fighter_database()
-        combat_source = app.build_combat_sport_database()
         universe = json.loads(DEFAULT_UNIVERSE.read_text(encoding="utf-8"))
         fighters = universe.get("sections", {}).get("fighters", {})
         combat_sports = universe.get("sections", {}).get("combat_sports", {})
+        source = app.normalize_seed_fighter_database(fighters)
+        combat_source = app.normalize_combat_sport_database(combat_sports)
         source_placements, source_names = grouped_keys(app, source)
         database_placements, database_names = grouped_keys(app, fighters)
         source_sport_keys, source_sport_names = combat_sport_keys(combat_source)

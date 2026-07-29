@@ -190,12 +190,17 @@ class UIMixin:
         input_bg = self.colors["cream"]
         input_fg = self.colors["text"]
         selected_bg = self.colors["red"]
+        input_chrome = self.colors["panel"]
         style.configure("TEntry", fieldbackground=input_bg, background=input_bg, foreground=input_fg, insertcolor=input_fg, bordercolor=self.colors["line"], lightcolor=self.colors["line"], darkcolor=self.colors["line"])
-        style.map("TEntry", fieldbackground=[("disabled", self.colors["panel"]), ("readonly", input_bg), ("focus", input_bg)], foreground=[("disabled", self.colors["muted"]), ("readonly", input_fg), ("focus", input_fg)])
-        style.configure("TSpinbox", fieldbackground=input_bg, background=input_bg, foreground=input_fg, insertcolor=input_fg, arrowcolor=input_fg, bordercolor=self.colors["line"], lightcolor=self.colors["line"], darkcolor=self.colors["line"])
-        style.map("TSpinbox", fieldbackground=[("disabled", self.colors["panel"]), ("readonly", input_bg), ("focus", input_bg)], foreground=[("disabled", self.colors["muted"]), ("readonly", input_fg), ("focus", input_fg)])
-        style.configure("TCombobox", fieldbackground=input_bg, background=input_bg, foreground=input_fg, arrowcolor=input_fg, selectbackground=selected_bg, selectforeground="#ffffff", bordercolor=self.colors["line"], lightcolor=self.colors["line"], darkcolor=self.colors["line"])
-        style.map("TCombobox", fieldbackground=[("disabled", self.colors["panel"]), ("readonly", input_bg), ("focus", input_bg)], background=[("readonly", input_bg), ("active", self.colors["panel_dark"])], foreground=[("disabled", self.colors["muted"]), ("readonly", input_fg), ("focus", input_fg)], selectbackground=[("readonly", selected_bg), ("focus", selected_bg)], selectforeground=[("readonly", "#ffffff"), ("focus", "#ffffff")])
+        style.map("TEntry", fieldbackground=[("disabled", input_chrome), ("readonly", input_bg), ("focus", input_bg)], background=[("disabled", input_chrome), ("readonly", input_bg)], foreground=[("disabled", self.colors["muted"]), ("readonly", input_fg), ("focus", input_fg)])
+        style.configure("TSpinbox", fieldbackground=input_bg, background=input_chrome, foreground=input_fg, insertcolor=input_fg, arrowcolor=input_fg, bordercolor=self.colors["line"], lightcolor=self.colors["line"], darkcolor=self.colors["line"])
+        style.map("TSpinbox", fieldbackground=[("disabled", input_chrome), ("readonly", input_bg), ("focus", input_bg)], background=[("disabled", input_chrome), ("readonly", input_chrome), ("active", self.colors["panel_dark"])], foreground=[("disabled", self.colors["muted"]), ("readonly", input_fg), ("focus", input_fg)])
+        style.configure("TCombobox", fieldbackground=input_bg, background=input_chrome, foreground=input_fg, arrowcolor=input_fg, selectbackground=selected_bg, selectforeground="#ffffff", bordercolor=self.colors["line"], lightcolor=self.colors["line"], darkcolor=self.colors["line"])
+        style.map("TCombobox", fieldbackground=[("disabled", input_chrome), ("readonly", input_bg), ("focus", input_bg)], background=[("disabled", input_chrome), ("readonly", input_chrome), ("active", self.colors["panel_dark"])], foreground=[("disabled", self.colors["muted"]), ("readonly", input_fg), ("focus", input_fg)], selectbackground=[("readonly", selected_bg), ("focus", selected_bg)], selectforeground=[("readonly", "#ffffff"), ("focus", "#ffffff")])
+        style.configure("TCheckbutton", background=self.colors["paper"], foreground=input_fg)
+        style.map("TCheckbutton", background=[("active", self.colors["panel"]), ("disabled", self.colors["paper"])], foreground=[("disabled", self.colors["muted"])])
+        style.configure("TRadiobutton", background=self.colors["paper"], foreground=input_fg)
+        style.map("TRadiobutton", background=[("active", self.colors["panel"]), ("disabled", self.colors["paper"])], foreground=[("disabled", self.colors["muted"])])
         self.root.option_add("*Entry.background", input_bg)
         self.root.option_add("*Entry.foreground", input_fg)
         self.root.option_add("*Entry.insertBackground", input_fg)
@@ -860,7 +865,7 @@ class UIMixin:
         for col, (text, command, style) in enumerate((
             ("Use Selected Universe", self.use_selected_universe_database, "Accent.TButton"),
             ("Clone Universe", self.clone_selected_universe_database, None),
-            ("Reset Default", self.reset_default_universe_database, None),
+            ("Validate Default", self.reset_default_universe_database, None),
             ("Open Folder", self.open_database_folder, None),
         )):
             button = ttk.Button(universe_row, text=text, command=command, style=style) if style else ttk.Button(universe_row, text=text, command=command)

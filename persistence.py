@@ -11,6 +11,7 @@ import sys
 import threading
 import traceback
 from collections import Counter
+from copy import deepcopy
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from uuid import uuid4
@@ -1502,6 +1503,7 @@ class PersistenceMixin:
         self.ensure_fighter_history_baseline(fighter)
         entry_year = max(2026, int(getattr(fighter, "universe_entry_year", 0) or 2026))
         fighter.annual_overalls = fighter.annual_overalls or {str(entry_year): fighter.overall}
+        self.update_fighter_peak_overall(fighter)
         fighter.motivation = getattr(fighter, "motivation", 65) or 65
         fighter.retirement_pending = bool(getattr(fighter, "retirement_pending", False))
         fighter.retirement_requested_month = max(0, getattr(fighter, "retirement_requested_month", 0) or 0)
@@ -1933,7 +1935,7 @@ class PersistenceMixin:
         if not show_history and self.event_log:
             show_history = list(self.event_log[:12])
         self.belts, self.interim_belts, self.belt_history = self.ensure_company_champions(self.roster, self.belts, self.player_company_name, self.player_region, self.company_pop, player_owned=True, interim_belts=self.interim_belts, belt_history=self.belt_history)
-        return Promotion(
+        promotion = Promotion(
             self.player_company_name,
             self.player_region,
             self.company_pop,
@@ -1966,6 +1968,20 @@ class PersistenceMixin:
             closed_divisions=sorted(getattr(self, "closed_divisions", set())),
             closed_division_policy_set=True,
         )
+        if hasattr(self, "apply_authored_promotion_overrides"):
+            # The active player company may be a custom start or a company
+            # taken over mid-career. Its live identity and roster always win;
+            # database defaults only supply the secondary company systems.
+            authored = dict(getattr(self, "_player_database_company_spec", {}) or {})
+            for key in (
+                "name", "region", "size", "cash", "roster", "reputation", "reputation_score", "stability",
+                "show_history", "event_counter", "belts", "interim_belts", "special_belts", "belt_history",
+                "scheduled_events", "finance", "staff", "scouting", "inbox", "owner_goals", "academy",
+                "closed_divisions", "closed_division_policy_set",
+            ):
+                authored.pop(key, None)
+            self.apply_authored_promotion_overrides(promotion, authored)
+        return promotion
 
     def enter_spectator_mode(self):
         """Turn the currently controlled promotion over to the AI and observe the full world."""
@@ -2144,16 +2160,14 @@ class PersistenceMixin:
         messagebox.showinfo("Universe Cloned", f"Created and selected:\n{target.name}")
 
     def reset_default_universe_database(self):
-        if not messagebox.askyesno("Reset Default Universe", "Rebuild the default real-life universe database from the game's built-in source data?\n\nYour cloned custom universes will not be changed."):
+        if not messagebox.askyesno("Validate Default Universe", "Normalize the one-file Default Universe database and select it for new games?\n\nYour cloned custom universes will not be changed."):
             return
         path = self.universe_database_path("Default Universe")
-        if path.exists():
-            backup = path.with_suffix(f".backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
-            shutil.copy2(path, backup)
-        atomic_write_json(path, self.build_universe_database_pack("Default Universe"))
+        pack = self.load_universe_database_pack(path)
+        atomic_write_json(path, pack)
         self.active_universe_marker().write_text(path.name, encoding="utf-8")
         self.refresh_game_menu()
-        messagebox.showinfo("Default Restored", f"Default universe rebuilt and selected:\n{path.name}")
+        messagebox.showinfo("Default Universe Ready", f"Default universe normalized and selected:\n{path.name}")
 
     def open_database_folder(self):
         DATABASE_DIR.mkdir(parents=True, exist_ok=True)
@@ -3138,12 +3152,13 @@ class PersistenceMixin:
             choice = PLAYER_PROMOTION_NAME
         company_section = self.universe_section("companies", {}) if hasattr(self, "universe_section") else {}
         player_spec = (company_section or {}).get("player_company", {})
+        self._player_database_company_spec = dict(player_spec) if isinstance(player_spec, dict) else {}
         self.player_company_name = player_spec.get("name", PLAYER_PROMOTION_NAME)
         self.spectator_mode = False
         self.player_region = player_spec.get("region", "USA")
         self.player_reputation = player_spec.get("reputation", "Regional Player Company")
-        self.company_show_personality = "Balanced"
-        self.cash = max(500_000, round(player_spec.get("cash", 275_000) * 1.5))
+        self.company_show_personality = player_spec.get("show_personality", player_spec.get("personality", "Balanced"))
+        self.cash = max(500_000, int(player_spec.get("cash", 275_000) or 275_000))
         self.company_pop = player_spec.get("popularity", 38)
         self.company_stability = player_spec.get("stability", 52)
         self.month = 1
@@ -3173,19 +3188,25 @@ class PersistenceMixin:
         self.independent_showcase_counter = 1
         self.retired_fighters = []
         self.finance = self.seed_finance()
+        if isinstance(player_spec.get("finance"), dict):
+            self.finance.update(deepcopy(player_spec["finance"]))
         self.engine_settings = self.seed_engine_settings()
         if hasattr(self, "engine_vars"):
             for key, var in self.engine_vars.items():
                 var.set(self.engine_settings.get(key, 1.0))
         self.staff = self.seed_staff()
+        if isinstance(player_spec.get("staff"), list):
+            self.staff = deepcopy(player_spec["staff"])
         self.staff_candidates = self.seed_staff_candidates()
         self.ensure_staff_profiles()
-        self.scouting = []
+        self.scouting = deepcopy(player_spec.get("scouting", [])) if isinstance(player_spec.get("scouting"), list) else []
         self.scouting_reports = {}
         self.scouting_searches = []
         self.scouting_shortlist = []
         self._scouting_state_migrated = True
         self.academy = self.academy_defaults() if hasattr(self, "academy_defaults") else {"owned": False, "level": 0, "capacity": 0, "prospects": [], "talent_pool": [], "weekly_cost": 0, "auto_train": True}
+        if isinstance(player_spec.get("academy"), dict):
+            self.academy.update(deepcopy(player_spec["academy"]))
         self.inbox = []
         self.owner_goals = self.seed_owner_goals()
         self.belts = self.blank_belts()
@@ -3195,14 +3216,16 @@ class PersistenceMixin:
         self.closed_divisions = self.bamma_initial_closed_divisions()
         self.player_managed_divisions = set()
         self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "allow_mixed_gender": False, "active_fighter_target": 1200, "ai_offer_market_target": 100, "global_result_replay_limit": 2000, "auto_renew_enabled": False, "scouting_mode": True, "fight_night_audio_enabled": True, "fight_night_audio_output": "System default", "fight_night_audio_volume": 55, "autosave_enabled": True, "autosave_interval_months": 2, "autosave_weekly_keep": 2, "autosave_monthly_keep": 2, "save_backup_keep": 2, "save_retention_version": 4, "detailed_skill_balance_version": 1, "academy_upgrade_pricing_version": 2}
+        if isinstance(player_spec.get("rules"), dict):
+            self.rules.update(deepcopy(player_spec["rules"]))
         media_section = self.universe_section("media", {}) if hasattr(self, "universe_section") else {}
-        self.broadcasters = media_section.get("player_broadcasters", self.default_player_media() if hasattr(self, "default_player_media") else [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}])
+        self.broadcasters = deepcopy(player_spec["broadcasters"]) if isinstance(player_spec.get("broadcasters"), list) else media_section.get("player_broadcasters", self.default_player_media() if hasattr(self, "default_player_media") else [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}])
         self.media_companies = []
         self.media_market_history = []
         self.media_market_last_month = 0
         self.ensure_media_system()
-        self.weight_classes = list(WEIGHTS)
-        self.post_show_bonuses = {"fight": 5000, "ko": 5000, "sub": 5000}
+        self.weight_classes = list(player_spec.get("weight_classes", WEIGHTS))
+        self.post_show_bonuses = deepcopy(player_spec.get("post_show_bonuses", {"fight": 5000, "ko": 5000, "sub": 5000}))
         self.news = ["A new game has started."]
         self.world_chronicle = []
         self.fanbase = {"core_support": 42, "casual_reach": 30, "identity": "Regional Fight Community", "home_region": self.player_region, "event_history": []}

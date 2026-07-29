@@ -3730,7 +3730,7 @@
             "UFC",
             86,
             88,
-            35,
+            31,
             31,
             7,
             "USA",
@@ -33156,7 +33156,7 @@
           "gender": "Male",
           "popularity": 86,
           "rating": 88,
-          "age": 35,
+          "age": 31,
           "record_w": 31,
           "record_l": 7,
           "record_d": 0,
@@ -91006,6 +91006,10 @@
         {
           "name": "British Fight League",
           "region": "UK"
+        },
+        {
+          "name": "Eurasian Fight Circuit",
+          "region": "Russia"
         }
       ],
       "roster_target_version": 2,

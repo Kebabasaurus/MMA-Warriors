@@ -270,13 +270,19 @@ class WorldMixin:
             monthly_cost = round((18_000 + promo.size * 650 + roster_size * 325) * operating_multiplier)
             promo.cash -= monthly_cost
             # Companies retain a genuine runway for cards and contract bidding.
-            # Very large cash piles still create modest quarterly owner drawdowns,
-            # but a healthy promotion is no longer stripped of its event profits.
+            # Surplus above the operating ceiling is returned to ownership and
+            # long-term infrastructure monthly. This is deliberately gentler
+            # than a hard cap, while preventing an AI with a hot quarter from
+            # compounding into nine-figure cash that no roster can use.
             target_reserve = self.ai_financial_runway(promo)
             strategy["target_reserve"] = target_reserve
-            cash_ceiling = target_reserve * 4
-            if self.month % 3 == 0 and promo.cash > cash_ceiling:
-                promo.cash -= int((promo.cash - cash_ceiling) * 0.08)
+            cash_ceiling = self.ai_cash_ceiling(promo)
+            strategy["cash_ceiling"] = cash_ceiling
+            if promo.cash > cash_ceiling:
+                surplus = promo.cash - cash_ceiling
+                distribution = round(surplus * (0.16 if promo.cash <= cash_ceiling * 1.4 else 0.24))
+                promo.cash -= distribution
+                strategy["capital_distributions"] = int(strategy.get("capital_distributions", 0) or 0) + distribution
             commercial_strength = strategy.get("commercial_strength", promo.reputation_score)
             stability_target = max(58, min(86, round(50 + commercial_strength * 0.38)))
             strategy["stability_target"] = stability_target
@@ -1132,6 +1138,7 @@ class WorldMixin:
             fighter.retirement_reason = "Retirement deferred until all already-scheduled fights are completed."
             return False
         was_player_fighter = fighter in getattr(self, "roster", [])
+        self.update_fighter_peak_overall(fighter)
         fighter.retirement_fight_completed = True
         fighter.retirement_pending = False
         fighter.retired = True
@@ -1331,8 +1338,39 @@ class WorldMixin:
             "record": str(getattr(fighter, "record", "0-0-0")),
         }
 
+    def fighter_peak_overall(self, fighter):
+        """Return the best rating retained by the live and archived career data."""
+        def score_value(value):
+            try:
+                numeric = float(value)
+            except (TypeError, ValueError):
+                return 0
+            return int(round(numeric)) if numeric == numeric else 0
+
+        current = score_value(getattr(fighter, "overall", 0))
+        stored_peak = score_value(getattr(fighter, "career_peak_overall", 0))
+        # Once the migration has persisted a peak, normal monthly and bout
+        # updates stay O(1). The more expensive archive scan is only needed to
+        # repair saves made before this dedicated field existed.
+        if stored_peak:
+            return max(1, min(99, max(current, stored_peak)))
+        scores = [current]
+        scores.extend((getattr(fighter, "annual_overalls", None) or {}).values())
+        for bout in getattr(fighter, "bout_rating_history", None) or []:
+            if isinstance(bout, dict):
+                scores.append(bout.get("self_overall", bout.get("overall", 0)))
+        valid_scores = [score_value(score) for score in scores]
+        return max(1, min(99, max(valid_scores, default=1)))
+
+    def update_fighter_peak_overall(self, fighter):
+        peak = self.fighter_peak_overall(fighter)
+        fighter.career_peak_overall = peak
+        return peak
+
     def record_bout_rating_history(self, a, b, a_result, b_result, fight=None):
         """Keep pre-bout ratings after card replays are trimmed from the archive."""
+        self.update_fighter_peak_overall(a)
+        self.update_fighter_peak_overall(b)
         date = f"Month {self.month} Week {self.week}"
         a_snapshot = self.bout_rating_snapshot(a)
         b_snapshot = self.bout_rating_snapshot(b)
@@ -3783,13 +3821,30 @@ class WorldMixin:
             return False
         old = fighter.camp or "Independent"
         history = getattr(fighter, "camp_history", None) or []
-        history.append({"month": self.month, "from": old, "to": gym.name, "reason": reason})
+        fit = round(self.gym_fit_score(fighter, gym, getattr(fighter, "region", "")))
+        history.append({"month": self.month, "from": old, "to": gym.name, "reason": reason, "fit": fit})
         fighter.camp_history = history[-20:]
         fighter.camp = gym.name
         fighter.camp_joined_month = self.month
         fighter.camp_quality = gym.quality
         fighter.training_location = gym.region
+        self.record_gym_story(gym, f"{fighter.name} joined the room", reason, fighter=fighter)
         return True
+
+    def record_gym_story(self, gym, event, detail="", fighter=None):
+        """Keep gym history as a career chronicle, not just quarterly telemetry."""
+        if not gym:
+            return
+        entry = {
+            "month": self.month, "event": event, "detail": detail,
+            "members": getattr(gym, "member_count", 0), "capacity": getattr(gym, "capacity", 0),
+            "effective": self.gym_effective_training(gym), "morale": getattr(gym, "morale", 0),
+            "momentum": getattr(gym, "momentum", 0),
+        }
+        if fighter:
+            entry["fighter"] = fighter.name
+            entry["overall"] = fighter.overall
+        gym.history = ([entry] + list(getattr(gym, "history", []) or []))[:60]
 
     def normalize_gym_assignments(self):
         """Place legacy promotion-camp labels into persistent world gyms once."""
@@ -3931,13 +3986,16 @@ class WorldMixin:
             old = gym.facilities
             gym.facilities = min(99, gym.facilities + random.randint(1, 2))
             self.news.insert(0, f"Week {self.week}: {gym.name} upgraded its facilities from {old} to {gym.facilities}.")
+            self.record_gym_story(gym, "Facility upgrade", f"Facilities improved from {old} to {gym.facilities}.")
         elif roll < 0.46:
             gym.scouting = min(99, gym.scouting + random.randint(1, 2))
             self.news.insert(0, f"Week {self.week}: {gym.name} expanded its regional scouting network.")
+            self.record_gym_story(gym, "Scouting expansion", "The gym widened its regional talent network.")
         elif roll < 0.66:
             change = random.choice([-2, -1, 1, 2])
             gym.morale = max(25, min(95, gym.morale + change))
             self.news.insert(0, f"Week {self.week}: The room atmosphere at {gym.name} {'improved' if change > 0 else 'became strained'}.")
+            self.record_gym_story(gym, "Room atmosphere", f"Morale {'improved' if change > 0 else 'dipped'} to {gym.morale}.")
         else:
             region = self.regions.get(gym.region)
             if region:
@@ -3994,11 +4052,11 @@ class WorldMixin:
                 gym.capacity += growth
                 gym.capacity_growth += growth
                 gym.last_review_month = self.month
-                gym.history = (gym.history or []) + [{"month": self.month, "event": f"Expanded capacity by {growth}", "members": gym.member_count, "capacity": gym.capacity}]
+                self.record_gym_story(gym, f"Expanded capacity by {growth}", "Demand and facilities supported a larger coaching room.")
             elif not gym.last_review_month:
                 gym.last_review_month = self.month
             if self.month % 3 == 0:
-                gym.history = ((gym.history or []) + [{"month": self.month, "event": "Quarterly room review", "members": gym.member_count, "capacity": gym.capacity, "morale": gym.morale, "momentum": gym.momentum, "effective": self.gym_effective_training(gym)}])[-40:]
+                self.record_gym_story(gym, "Quarterly room review", "Coaches reviewed room health, development output, and capacity.")
 
         moves = 0
         for gym in sorted(self.gyms, key=lambda item: item.member_count / max(1, item.capacity), reverse=True):
@@ -6427,6 +6485,7 @@ class WorldMixin:
     def retire_combat_sport_after_final_fight(self, sport, world, fighter, state):
         if not fighter.retirement_pending or fighter.retired:
             return False
+        self.update_fighter_peak_overall(fighter)
         fighter.retirement_fight_completed = True
         fighter.retirement_pending = False
         fighter.retired = True
@@ -6870,6 +6929,7 @@ class WorldMixin:
                 self.adjust_combat_sport_skill_bundle(fighter, sport, amount, "Age, mileage and recovery decline", decline=True)
             fighter.annual_overalls = fighter.annual_overalls or {}
             fighter.annual_overalls[year] = max(fighter.annual_overalls.get(year, 0), fighter.overall)
+            self.update_fighter_peak_overall(fighter)
             self.record_combat_sport_rating_snapshot(fighter, sport)
             fighter.rank_score = self.rank_value(fighter)
 
@@ -7554,8 +7614,16 @@ class WorldMixin:
                     "reason": "; ".join(f"{label} {value:+.1f}" for label, value in key_factors),
                 })
                 fighter.development_log = fighter.development_log[:10]
+                gym = self.gym_by_name(getattr(fighter, "camp", ""))
+                if gym and abs(fighter.overall - before) >= 2:
+                    direction_word = "breakthrough" if fighter.overall > before else "career-wear setback"
+                    self.record_gym_story(
+                        gym, f"{fighter.name}: {direction_word}",
+                        f"OVR {before} -> {fighter.overall}. {fighter.development_log[0]['reason']}", fighter=fighter,
+                    )
             fighter.annual_overalls = fighter.annual_overalls or {}
             fighter.annual_overalls[year] = max(fighter.annual_overalls.get(year, 0), fighter.overall)
+            self.update_fighter_peak_overall(fighter)
             fighter.rank_score = self.rank_value(fighter)
             if fighter.contract_months > 0:
                 fighter.contract_months -= 1
@@ -7612,6 +7680,7 @@ class WorldMixin:
                     self.apply_combat_sport_annual_age_curve(fighter, sport)
                 fighter.annual_overalls = fighter.annual_overalls or {}
                 fighter.annual_overalls[str(self.current_year())] = max(fighter.annual_overalls.get(str(self.current_year()), 0), fighter.overall)
+                self.update_fighter_peak_overall(fighter)
         self.news.insert(0, f"A new year begins across the MMA world; every fighter is now a year older.")
         for fighter in broke_out[:3]:
             self.news.insert(0, f"Breakout prospect: {fighter.name} ({fighter.age}) has developed into a genuine talent at overall {fighter.overall}.")
@@ -8263,8 +8332,58 @@ class WorldMixin:
         slot instead of drifting across the week at random.
         """
         seed = sum(ord(char) for char in str(getattr(promo, "name", ""))) + self.month
-        # Mostly Saturday, sometimes Friday or Sunday, occasionally midweek.
-        return (6, 6, 6, 5, 7, 6, 5, 3)[seed % 8]
+        preferred = (6, 6, 6, 5, 7, 6, 5, 3)[seed % 8]
+        # Late-week cards buy marginally more recovery, but only when that
+        # changes who can credibly appear. Each promotion still has a stable
+        # default broadcast rhythm instead of drifting randomly.
+        candidates = (preferred,) if preferred not in (5, 6, 7) else tuple(dict.fromkeys((preferred, 5, 6, 7)))
+        limit = self.ai_fatigue_limit(promo)
+        def readiness(day):
+            ready = [fighter for fighter in promo.roster if not fighter.retired and self.fighter_available_for_date(fighter, day=day) and fighter.fatigue < limit]
+            priority = sum(1 for fighter in ready if fighter.champion or getattr(fighter, "owed_title_shot", False) or getattr(fighter, "ranking_position", 99) <= 2)
+            return len(ready) + priority * 2
+        return max(candidates, key=lambda day: (readiness(day), -abs(day - preferred)))
+
+    def ai_contender_booking_note(self, promo, fighter, day=None):
+        """Explain the real scheduling constraint behind a title-picture athlete."""
+        day = self.normalize_day(day if day is not None else self.ai_card_day(promo), LEGACY_EVENT_DAY)
+        if not fighter or fighter.injured:
+            return "medical recovery"
+        if not self.fighter_available_for_date(fighter, day=day):
+            return f"available {self.fighter_return_label(fighter)}"
+        rest_days = self.fighter_rest_days(fighter, day=day)
+        if fighter.fatigue >= self.ai_fatigue_limit(promo):
+            return f"recovery priority ({self.fighter_fatigue_label(fighter)})"
+        if rest_days is not None and rest_days < 42:
+            return f"short turnaround ({rest_days} days since last fight)"
+        return "ready for booking"
+
+    def update_ai_title_roadmap(self, promo, day=None):
+        """Persist a compact contender queue so title inactivity is visible and managed."""
+        strategy = self.promotion_strategy(promo)
+        roadmap = []
+        for weight in WEIGHTS:
+            for gender in ("Male", "Female"):
+                if not self.promotion_division_open(promo, gender, weight):
+                    continue
+                holder_name = self.ai_primary_title_holder_name(promo, gender, weight)
+                contenders = sorted(
+                    (fighter for fighter in promo.roster if not fighter.retired and fighter.gender == gender and fighter.weight == weight and fighter.name != holder_name),
+                    key=lambda fighter: (not getattr(fighter, "owed_title_shot", False), getattr(fighter, "ranking_position", 999), -fighter.rank_score),
+                )
+                if not contenders:
+                    continue
+                leader = contenders[0]
+                urgency = self.ai_title_contender_pressure(promo, gender, weight)
+                if urgency >= 2 or getattr(leader, "owed_title_shot", False):
+                    champion = next((fighter for fighter in promo.roster if fighter.name == holder_name), None)
+                    roadmap.append({
+                        "division": f"{gender} {weight}", "champion": holder_name or "Vacant", "contender": leader.name,
+                        "status": self.ai_contender_booking_note(promo, champion, day) if champion else "vacant title resolution",
+                        "urgency": urgency, "month": self.month,
+                    })
+        strategy["title_roadmap"] = sorted(roadmap, key=lambda row: (-row["urgency"], row["division"]))[:16]
+        return strategy["title_roadmap"]
 
     def apply_ai_camp(self, fighter, promo):
         if not self.gym_by_name(fighter.camp):
@@ -8618,13 +8737,15 @@ class WorldMixin:
                 contenders = [fighter for fighter in pool if fighter.name != champ.name
                               and not self.ai_matchup_is_stale(champ, fighter, title=True)]
                 contender = min(
-                    enumerate(contenders),
-                    key=lambda item: (
-                        -40 if getattr(item[1], "owed_title_shot", False) else 0,
-                        item[0] * 7 + self.matchup_history_penalty(champ, item[1]),
+                    contenders,
+                    key=lambda fighter: (
+                        0 if getattr(fighter, "owed_title_shot", False) else 1,
+                        getattr(fighter, "ranking_position", 999),
+                        -getattr(fighter, "career_win_streak", 0),
+                        self.matchup_history_penalty(champ, fighter),
                     ),
-                    default=(0, None),
-                )[1]
+                    default=None,
+                )
                 if contender:
                     used.update({champ.name, contender.name})
                     fights.append({"a": champ, "b": contender, "title": True, "main": False,
@@ -8843,7 +8964,9 @@ class WorldMixin:
         self.ensure_ai_media_state(promo)
         self.review_ai_media_deals(promo)
         commercial_strength, market_volatility, market_momentum = self.update_ai_financial_market(promo)
-        ready = [f for f in promo.roster if self.fighter_available_for_date(f, day=self.ai_card_day(promo)) and f.fatigue < self.ai_fatigue_limit(promo)]
+        card_day = self.ai_card_day(promo)
+        self.update_ai_title_roadmap(promo, card_day)
+        ready = [f for f in promo.roster if self.fighter_available_for_date(f, day=card_day) and f.fatigue < self.ai_fatigue_limit(promo)]
         if len(ready) < self.ai_min_ready_fighters(promo):
             if random.random() < 0.45:
                 open_divisions = [
@@ -8894,7 +9017,7 @@ class WorldMixin:
         fight_target = min(16, fight_target)
         # Pick the card's day before matchmaking, so camps and the fighters'
         # availability for it are both measured against the same date.
-        self._active_card_day = self.ai_card_day(promo)
+        self._active_card_day = card_day
         fights = self.build_ai_card(promo, ready, fight_target)
         minimum_card = 5 if strategy.get("current_mode") == "Financial Recovery" else 6
         if len(fights) < minimum_card:
@@ -9036,28 +9159,29 @@ class WorldMixin:
         promo.reputation = "Global" if promo.reputation_score >= 68 else ("National" if promo.reputation_score >= 45 else "Regional")
         promo.momentum = max(-10, min(10, promo.momentum + random.choice([-1, 0, 1])))
         regional_pull = self.regional_market_score(promo.region)
-        # Event revenue has a lower, more realistic baseline than the old
-        # universal windfall and is shaped by a company's persistent market
-        # health. A weak brand can have a good year, but it also has real lean
-        # stretches; established companies remain more dependable.
-        # Smaller brands must sell a much larger share of the room to break
-        # even. Market momentum therefore has a meaningful effect on a fragile
-        # company, while an established broadcaster still gives major brands a
-        # dependable commercial floor.
-        commercial_factor = 0.42 + commercial_strength / 170 + market_momentum / 95
-        event_noise = random.uniform(-market_volatility / 170, market_volatility / 170)
-        revenue_factor = max(0.32, commercial_factor + event_noise)
-        revenue = round(event_hype * promo.size * regional_pull * random.randint(70, 175) * revenue_factor)
+        # Card income is anchored to the actual card cost. The earlier formula
+        # multiplied hype, promotion size, regional pull, a large random value,
+        # distribution and a second gate multiplier, so one normal show could
+        # create tens of millions in cash. Brand strength and card quality now
+        # determine a realistic operating margin around the cost of staging the
+        # show; a weak company can lose money while a healthy major makes a
+        # modest surplus that supports its deep roster.
+        card_quality = max(0.0, min(1.0, event_hype / max(1, len(fights) * 180)))
+        quality_margin = (card_quality - 0.48) * 0.16
+        commercial_margin = -0.17 + commercial_strength / 285
+        momentum_margin = market_momentum / 320
+        regional_margin = (regional_pull - 1.0) * 0.12
+        event_noise = random.uniform(-market_volatility / 360, market_volatility / 360)
+        revenue_factor = max(0.70, min(1.28, 1 + commercial_margin + quality_margin + momentum_margin + regional_margin + event_noise))
         # Attendance, distribution and sponsor demand are not certain. Most
-        # cards land near forecast, while a minority underperform or break out;
-        # this creates genuine loss-making shows without predetermining them.
+        # cards land near forecast, while a minority underperform or break out.
         commercial_roll = random.random()
         downside_chance = max(0.08, min(0.18, 0.23 - commercial_strength / 850))
         if commercial_roll < downside_chance:
-            revenue = round(revenue * random.uniform(0.52, 0.74))
+            revenue_factor *= random.uniform(0.72, 0.88)
             projected_cost = round(projected_cost * random.uniform(1.04, 1.16))
         elif commercial_roll > 0.93:
-            revenue = round(revenue * random.uniform(1.15, 1.35))
+            revenue_factor *= random.uniform(1.08, 1.18)
         ai_event = {
             "name": event_name, "event_name": event_name, "region": promo.region, "city": event_city,
             "broadcaster": (promo.broadcasters or [{"name": "Local Production"}])[0].get("name", "Local Production"),
@@ -9068,16 +9192,11 @@ class WorldMixin:
             "fight_count": len(fights), "average_excitement": max(35, min(90, quality * 48)),
             "average_build": media_build, "finance": {"build_score": media_build},
         }, promotion=promo)
-        # Distribution changes commercial reach within a narrow band; fight
-        # quality and company strength still drive the bulk of event revenue.
+        # Distribution changes the margin within a narrow band; media income
+        # itself is then added once, through the actual rights deal.
         distribution_factor = max(0.90, min(1.16, 0.90 + ai_media.get("reach", 0) / 350))
-        revenue = round(revenue * distribution_factor) + int(ai_media.get("rights_income", 0))
-        # AI cards model a broader commercial package than the player-facing
-        # gate calculator: venue partnerships, local sponsors, and bundled
-        # distribution all sit behind the reported gate. This keeps simulated
-        # promotion rosters viable without altering player finances.
-        ai_gate_multiplier = 1.30 + commercial_strength / 260
-        revenue = round(revenue * ai_gate_multiplier)
+        revenue_factor = max(0.68, min(1.34, revenue_factor + (distribution_factor - 1) * 0.28))
+        revenue = round(projected_cost * revenue_factor) + int(ai_media.get("rights_income", 0))
         provisional_profit = revenue - projected_cost
         negative_streak = max(0, int(strategy.get("negative_event_streak", 0) or 0))
         if provisional_profit < 0:
@@ -9101,6 +9220,10 @@ class WorldMixin:
         strategic_reinvestment = round(max(0, revenue - projected_cost) * reinvestment_rate)
         event_profit = revenue - projected_cost - strategic_reinvestment
         promo.cash += event_profit
+        strategy["last_event_finance"] = {
+            "month": self.month, "revenue": revenue, "cost": projected_cost,
+            "profit": event_profit, "margin": round(event_profit / max(1, projected_cost), 3),
+        }
         margin = event_profit / max(1, projected_cost)
         stability_target = strategy.get("stability_target", max(58, min(86, round(50 + commercial_strength * 0.38))))
         if margin >= 0.18 and promo.stability < stability_target:
@@ -10993,6 +11116,16 @@ class WorldMixin:
         target = self.ai_roster_target(promo)
         return max(650_000, target * 24_000, promo.size * 35_000)
 
+    def ai_cash_ceiling(self, promo):
+        """Maximum useful liquidity before capital is put back into the business.
+
+        It is a soft operating ceiling, not a bankruptcy threshold: promotions
+        retain several complete card-and-roster runways, then pay out the excess
+        gradually through the normal monthly finance pass.
+        """
+        runway = self.ai_financial_runway(promo)
+        return max(2_500_000, round(runway * 3.5), promo.size * 140_000)
+
     def ai_contract_reserve(self, promo):
         """Liquidity that remains protected when an AI company makes an offer."""
         # Signings spend cash immediately while fighter purses arrive only when a
@@ -11016,6 +11149,22 @@ class WorldMixin:
                     refinanced.append((promo.name, refinancing))
                 strategy["finance_model_version"] = 2
                 strategy["target_reserve"] = runway
+            # Version 3 corrects the old multiplicative card-revenue model.
+            # Existing careers keep a healthy liquidity buffer rather than
+            # losing all accumulated cash in one migration.
+            if int(strategy.get("finance_model_version", 0) or 0) < 3:
+                cash_ceiling = self.ai_cash_ceiling(promo)
+                if promo.cash > cash_ceiling:
+                    retained_buffer = max(runway * 0.30, 1_000_000)
+                    correction = max(0, promo.cash - (cash_ceiling + retained_buffer))
+                    if correction:
+                        promo.cash -= correction
+                        strategy["finance_correction_total"] = int(strategy.get("finance_correction_total", 0) or 0) + correction
+                        promo.show_history = list(promo.show_history or [])
+                        promo.show_history.insert(0, f"Finance normalization: ${correction:,} redirected from excess retained cash into owner distributions and infrastructure.")
+                        promo.show_history = promo.show_history[:12]
+                strategy["finance_model_version"] = 3
+                strategy["cash_ceiling"] = cash_ceiling
             # Versioned repair for saves where viable companies were pushed to
             # single-digit stability by the old per-card margin penalties.
             if int(strategy.get("stability_model_version", 0) or 0) < 2:

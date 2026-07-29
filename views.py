@@ -1992,12 +1992,20 @@ class ViewMixin:
             factor_tree.pack(fill="both", expand=True, padx=8, pady=4)
             dev_log = tk.Text(development_frame, wrap="word", height=7, bg=self.colors["panel_dark"], fg=self.colors["text"], padx=10, pady=8)
             dev_log.pack(fill="x", padx=8, pady=(4, 8))
+            camp_moves = list(getattr(fighter, "camp_history", None) or [])[:6]
+            if camp_moves:
+                dev_log.insert("end", "CAMP CHRONICLE\n", "headline")
+                for move in camp_moves:
+                    fit = move.get("fit")
+                    fit_text = f" | fit {fit}" if fit is not None else ""
+                    dev_log.insert("end", f"{self.format_game_date(move.get('month', 1), 1)}  |  {move.get('from', 'Independent')} -> {move.get('to', '-')} {fit_text}\n{move.get('reason', 'Career move')}\n\n")
             history = getattr(fighter, "development_log", None) or []
             if history:
                 for entry in history:
                     dev_log.insert("end", f"{entry.get('date', '')}  |  OVR {entry.get('before', '?')} -> {entry.get('after', '?')}  |  {entry.get('type', 'Development')}\n{entry.get('reason', '')}\n\n")
             else:
                 dev_log.insert("end", "No recorded overall change yet. The factors above are the exact inputs to the next monthly development opportunity.")
+            dev_log.tag_configure("headline", foreground=self.colors["gold"], font=("Tahoma", 9, "bold"))
             dev_log.config(state="disabled")
 
         history_controls = ttk.Frame(history_frame, style="Inset.TFrame"); history_controls.pack(fill="x", padx=8, pady=(8, 0))
@@ -5250,6 +5258,8 @@ class ViewMixin:
         avg_overall = round(sum(f.overall for _co, f in members) / max(1, len(members)), 1)
         prospects = sum(1 for _co, f in members if f.age < f.prime_start)
         elites = sum(1 for _co, f in members if f.overall >= 82)
+        changes = [entry for _co, fighter in members for entry in (getattr(fighter, "development_log", None) or []) if entry.get("type") == "Development"]
+        breakthroughs = sum(1 for entry in changes if int(entry.get("after", 0) or 0) - int(entry.get("before", 0) or 0) >= 2)
         load = gym.member_count / max(1, gym.capacity)
         attention = round(self.gym_attention_multiplier(gym) * 100)
         crowd_text = "Excellent coaching access" if load < 0.7 else "Healthy coaching access" if load <= 1 else "Busy room; individual attention is reduced"
@@ -5262,6 +5272,7 @@ class ViewMixin:
             f"Room morale: {gym.morale} | Gym momentum: {gym.momentum:+d} | Lifetime capacity growth: +{gym.capacity_growth}\n"
             f"Specialties: {', '.join(gym.specialties)}\n\n"
             f"Tracked members: {len(members)} | Prospects: {prospects} | Elite fighters: {elites} | Average overall: {avg_overall}\n"
+            f"Recorded development steps: {len(changes)} | Documented breakthroughs: {breakthroughs}\n"
             f"Effective training combines coaching quality, facilities, morale, development history and available attention. Style fit then adds a fighter-specific edge.\n\n"
             f"{gym.notes}"
         )
@@ -5361,8 +5372,8 @@ class ViewMixin:
 
         development_panel, development_inner = self.section(development_tab, "PIPELINE AND RESULTS")
         development_panel.pack(fill="both", expand=True)
-        development_tree = ttk.Treeview(development_inner, columns=("name", "age", "ovr", "potential", "growth", "company", "fit"), show="headings")
-        for col, label, width in (("name", "Fighter", 190), ("age", "Age", 55), ("ovr", "OVR", 60), ("potential", "Potential", 70), ("growth", "12m Growth", 85), ("company", "Company", 190), ("fit", "Gym Fit", 70)):
+        development_tree = ttk.Treeview(development_inner, columns=("name", "age", "ovr", "potential", "growth", "company", "fit", "latest"), show="headings")
+        for col, label, width in (("name", "Fighter", 175), ("age", "Age", 55), ("ovr", "OVR", 60), ("potential", "Potential", 70), ("growth", "12m Growth", 85), ("company", "Company", 150), ("fit", "Gym Fit", 70), ("latest", "Latest Development", 255)):
             development_tree.heading(col, text=label)
             development_tree.column(col, width=width, anchor="center")
         development_tree.column("name", anchor="w")
@@ -5373,7 +5384,9 @@ class ViewMixin:
         for company, fighter in sorted(members, key=lambda row: (row[1].age >= row[1].prime_start, -(row[1].potential - row[1].overall), -row[1].overall)):
             prior = (fighter.annual_overalls or {}).get(prior_year, fighter.overall)
             growth = fighter.overall - prior
-            development_tree.insert("", "end", values=(fighter.name, fighter.age, fighter.overall, fighter.potential, f"{growth:+d}", company, self.gym_effective_training(gym, fighter)))
+            latest = (getattr(fighter, "development_log", None) or [{}])[0]
+            latest_text = f"{latest.get('date', '')}: {latest.get('before', '?')}->{latest.get('after', '?')}" if latest else "No recorded change"
+            development_tree.insert("", "end", values=(fighter.name, fighter.age, fighter.overall, fighter.potential, f"{growth:+d}", company, self.gym_effective_training(gym, fighter), latest_text))
         development_tree.bind("<Double-1>", lambda _e: self.open_tree_fighter_profile(development_tree, "name"))
 
         history_panel, history_inner = self.section(history_tab, "GYM TIMELINE")
@@ -5384,8 +5397,10 @@ class ViewMixin:
             history_tree.column(col, width=width, anchor="center")
         history_tree.column("event", anchor="w")
         history_tree.pack(fill="both", expand=True)
-        for entry in reversed(gym.history or []):
-            history_tree.insert("", "end", values=(self.format_game_date(entry.get("month", 1), 1), entry.get("event", "Room review"), entry.get("members", "-"), entry.get("capacity", "-"), entry.get("effective", "-"), entry.get("morale", "-"), entry.get("momentum", "-")))
+        for entry in sorted(gym.history or [], key=lambda row: int(row.get("month", 0) or 0), reverse=True):
+            detail = entry.get("detail", "")
+            event = entry.get("event", "Room review") + (f" - {detail}" if detail else "")
+            history_tree.insert("", "end", values=(self.format_game_date(entry.get("month", 1), 1), event, entry.get("members", "-"), entry.get("capacity", "-"), entry.get("effective", "-"), entry.get("morale", "-"), entry.get("momentum", "-")))
 
         controls = ttk.Frame(window, style="Header.TFrame")
         controls.pack(fill="x")
@@ -7199,13 +7214,15 @@ class ViewMixin:
             star_count = sum(1 for fighter in roster if fighter.popularity >= 55 or fighter.overall >= 82)
             pressure = "High" if promo.cash < 150_000 or promo.stability < 35 else "Medium" if promo.cash < 500_000 or promo.stability < 55 else "Low"
             booking_why = f"Recent cards are likely driven by {strategy.get('current_mode', 'balanced booking').lower()}, cash pressure {pressure.lower()}, and a roster mix of {prospect_count} prospects / {star_count} stars."
+            roadmap = strategy.get("title_roadmap", []) or []
+            roadmap_text = "\n".join(f"- {row.get('division')}: {row.get('champion')} vs {row.get('contender')} ({row.get('status')})" for row in roadmap[:5]) or "- No urgent contender queue."
             text = header + (
                 f"\n{promo.reputation}\n\nEXECUTIVE: {executive.get('name', 'Unknown')} ({executive.get('archetype', 'Operator')})\n"
                 f"Board Security: {executive.get('job_security', 0)}% | Company Legacy: {getattr(promo, 'legacy_score', 0)}\n"
                 f"Board mandate: {executive.get('board_mandate', 'None')} - {executive.get('mandate_progress', 0)}% (target {executive.get('mandate_target', 0):,}, deadline {self.format_game_date(executive.get('mandate_deadline', self.month), 1, include_week=False)})\n\n"
                 f"AI STRATEGY READ\nIdentity: {strategy.get('identity', 'Balanced Growth')}\nDirection: {strategy.get('current_mode', 'Balanced')}\n"
                 f"Media voice: {strategy.get('media_voice', 'Reliable fights')}\nFinancial pressure: {pressure}\n"
-                f"Roster tilt: {prospect_count} prospects / {star_count} stars\nWhy they book/sign this way: {booking_why}\n"
+                f"Roster tilt: {prospect_count} prospects / {star_count} stars\nWhy they book/sign this way: {booking_why}\n\nTITLE ROADMAP\n{roadmap_text}\n"
             )
         else:
             world = (getattr(self, "combat_sport_worlds", {}) or {}).get(sport, {})
@@ -7479,6 +7496,9 @@ class ViewMixin:
         overview.insert("end", f"{data['reputation']}\n\nRegion: {data['region']}\nCash reserve: ${data['cash']:,}\nRoster: {len(data['roster'])} fighters\nChampions: {', '.join(champs) if champs else 'None'}\n\n")
         if strategy:
             overview.insert("end", f"Identity: {strategy.get('identity', 'Balanced Growth')}\nCurrent direction: {strategy.get('current_mode', 'Balanced')}\nMedia voice: {strategy.get('media_voice', 'Reliable fights')}\n\n")
+            roadmap = strategy.get("title_roadmap", []) or []
+            if roadmap:
+                overview.insert("end", "TITLE ROADMAP\n" + "\n".join(f"- {row.get('division')}: {row.get('champion')} vs {row.get('contender')} ({row.get('status')})" for row in roadmap[:6]) + "\n\n")
         if executive:
             overview.insert("end", f"Executive: {executive.get('name', 'Unknown')} ({executive.get('archetype', 'Operator')})\nBoard security: {executive.get('job_security', 0)}%\n\n")
         overview.insert("end", "TOP FIGHTERS\n" + "\n".join(f"- {fighter.name} | {fighter.weight} | {fighter.record} | OVR {fighter.overall}" for fighter in top))
@@ -7839,8 +7859,7 @@ class ViewMixin:
                                   fighter.region, fighter.style, fighter.trait, fighter.record)).lower()
             if retired_query and retired_query not in haystack:
                 continue
-            peaks = [int(value) for value in (fighter.annual_overalls or {}).values() if str(value).lstrip("-").isdigit()]
-            peak_overall = max(peaks + [fighter.overall])
+            peak_overall = self.update_fighter_peak_overall(fighter)
             self.retired_tree.insert("", "end", iid=str(index), values=(fighter.name, fighter.gender[0], fighter.weight, fighter.record, fighter.age, peak_overall, fighter.motivation))
         self.results_text.config(state="normal")
         self.results_text.delete("1.0", "end")
@@ -9639,11 +9658,20 @@ class ViewMixin:
                 company = self.fighter_company_name(fighter)
                 movement = self.ranking_movement_label(fighter)
                 path = self.title_path_label(fighter)
+                readiness = self.fighter_booking_status(fighter)
+                next_step = "Keep building a credible run"
+                if fighter.champion:
+                    next_step = "Defend when recovered; leading contenders are tracked by the promotion"
+                elif getattr(fighter, "owed_title_shot", False):
+                    next_step = "Title opportunity is owed once the champion and contender are clear"
+                elif getattr(fighter, "ranking_position", 99) <= 2:
+                    next_step = "Stay available for a title eliminator or championship call"
                 self.ranking_detail.insert("end", f"{self.fighter_display_name(fighter)}", "headline")
                 self.ranking_detail.insert("end", f"  |  {fighter.gender} {fighter.weight}  |  {company}\n")
                 self.ranking_detail.insert("end", f"Rank: {current}  |  Previous: {previous}  |  Movement: {movement}  |  Score: {values[11] if len(values) > 11 else '-'}\n", "metric")
                 self.ranking_detail.insert("end", f"Record: {fighter.record}  |  OVR: {fighter.overall}  |  Form: {self.ranking_form_label(fighter)}  |  Status: {fighter.status}\n")
-                self.ranking_detail.insert("end", f"Title path: {path}. Rationale: {fighter.ranking_reason or 'Merit ranking'}. Last fight: {fighter.last_fight}.")
+                self.ranking_detail.insert("end", f"Title path: {path}. Rationale: {fighter.ranking_reason or 'Merit ranking'}.\n")
+                self.ranking_detail.insert("end", f"Booking read: {readiness}. Next step: {next_step}. Last fight: {fighter.last_fight}.")
                 self.ranking_detail.tag_configure("headline", foreground=self.colors["gold"], font=("Tahoma", 10, "bold"))
                 self.ranking_detail.tag_configure("metric", foreground=self.colors["muted"], font=("Tahoma", 9, "bold"))
             else:

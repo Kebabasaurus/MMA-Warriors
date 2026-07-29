@@ -1516,6 +1516,22 @@ class EventMixin:
             return (f"{stakes}: {a.style} from {a.camp or 'independent camp'} meets {b.style} from {b.camp or 'independent camp'}. "
                     f"Recent form {a.name}: {form_text(a)} | {b.name}: {form_text(b)}. Odds {self.matchup_odds(a, b)}.{rivalry_copy}")
 
+        def broadcast_rundown(index, log):
+            """Give each bout a concise place in the event broadcast."""
+            remaining = max(0, len(fight_logs) - index - 1)
+            position = str(log.get("card_position") or log.get("tier") or "Fight Night")
+            a_name, b_name = log.get("a", "Red corner"), log.get("b", "Blue corner")
+            stakes = "a championship" if log.get("divisional_title") or log.get("title") else "a featured contest"
+            if "Main Event" in position:
+                lead = f"Broadcast desk: the main event is here. {a_name} and {b_name} close the card with {stakes} at stake."
+            elif "Co-Main" in position:
+                lead = f"Broadcast desk: co-main time. {a_name} and {b_name} set the stage for the headline bout."
+            elif index == 0:
+                lead = f"Broadcast desk: the card is underway. {a_name} and {b_name} set the first impression for the arena."
+            else:
+                lead = f"Broadcast desk: {position}. {a_name} and {b_name} take over with {stakes} at stake."
+            return lead + (" This is the final fight of the broadcast." if not remaining else f" {remaining} bout{'s' if remaining != 1 else ''} remain on the card.")
+
         def reset_result_ribbon():
             result_winner_label.config(text="")
             result_detail_label.config(text="")
@@ -1610,6 +1626,7 @@ class EventMixin:
             text.config(state="disabled")
             append_line(log["heading"])
             append_line("-" * 72)
+            append_line(broadcast_rundown(state["fight"], log))
             lines = log.get("lines", [])
             if lines and str(lines[0]).strip() == str(heading).strip():
                 state["line"] = 1
@@ -1678,6 +1695,9 @@ class EventMixin:
             result_ribbon.pack(fill="x", padx=6, pady=(4, 5))
             status_label.config(text="Bout complete. Review the official result, scorecards, and metrics, then start the next fight.", fg=self.colors["muted"])
             append_line("\n[Fight complete. Press Start Next Fight.]")
+            if state["fight"] + 1 < len(fight_logs):
+                next_log = fight_logs[state["fight"] + 1]
+                append_line(f"Broadcast desk: next up, {next_log.get('heading', 'the next bout')}. The card moves on after the official result.")
             update_event_button_label()
 
         def is_round_boundary(line):

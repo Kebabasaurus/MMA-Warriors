@@ -3,6 +3,7 @@ import random
 import sys
 import traceback
 from bisect import bisect
+from copy import deepcopy
 from datetime import datetime
 import tkinter as tk
 from dataclasses import asdict, dataclass
@@ -70,8 +71,13 @@ COMBAT_SPORT_NAMES = ("Boxing", "Kickboxing", "Muay Thai", "Lethwei", "Wrestling
 
 class SeedMixin:
     def active_universe_marker(self):
-        DATABASE_DIR.mkdir(parents=True, exist_ok=True)
-        return DATABASE_DIR / "active_universe.txt"
+        """Store selection metadata beside, not inside, the universe database folder."""
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        marker = DATA_DIR / "active_universe.txt"
+        legacy = DATABASE_DIR / "active_universe.txt"
+        if not marker.exists() and legacy.exists():
+            marker.write_text(legacy.read_text(encoding="utf-8"), encoding="utf-8")
+        return marker
 
     def universe_database_path(self, name="Default Universe"):
         return self.seed_database_file(f"{self.safe_filename(name) if hasattr(self, 'safe_filename') else str(name).replace(' ', '_')}.universe.json")
@@ -109,39 +115,19 @@ class SeedMixin:
         ]
 
     def build_universe_database_pack(self, name="Default Universe"):
-        fighter_db = self.build_seed_fighter_database()
-        combat_db = self.build_combat_sport_database()
-        return {
-            "schema": 3,
-            "type": "universe_database",
-            "database_name": name,
-            "notes": "Editable universe database pack. Clone this file for real-life, fake, fantasy, or historic universes. Sections are intentionally enclosed so companies, fighters, combat sports, media, and regions can evolve independently.",
-            "sections": {
-                "fighters": fighter_db,
-                "combat_sports": combat_db,
-                "companies": {
-                    "player_company": {"name": PLAYER_PROMOTION_NAME, "region": "UK", "reputation": "Regional Player Company", "popularity": 38, "stability": 52, "cash": 275000},
-                    "promotions": self.default_promotion_specs(fighter_db),
-                    "regional_feeders": [
-                        {"name": "Japan Fight Circuit", "region": "Japan"},
-                        {"name": "UK Regional MMA", "region": "UK"},
-                        {"name": "North American Fighting League", "region": "USA"},
-                        {"name": "European Challenge MMA", "region": "Europe"},
-                        {"name": "Asia Rising Championship", "region": "Asia"},
-                    ],
-                },
-                "media": {
-                    "player_broadcasters": self.default_player_media(),
-                    "rights_packages": self.default_media_rights_packages(),
-                },
-                "regions": self.seed_regions(),
-            },
-        }
+        path = self.universe_database_path("Default Universe")
+        if not path.exists():
+            raise RuntimeError("The required Default Universe.universe.json starting database is missing. Restore the packaged database file before starting a new game.")
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if data.get("type") != "universe_database" or not data.get("sections"):
+            raise RuntimeError("Default Universe.universe.json is not a valid universe database pack.")
+        data["database_name"] = name
+        return data
 
     def ensure_default_universe_database(self):
         path = self.universe_database_path("Default Universe")
         if not path.exists():
-            self.write_seed_database_file(path, self.build_universe_database_pack("Default Universe"))
+            raise RuntimeError("The required Default Universe.universe.json starting database is missing. Restore the packaged database file before starting a new game.")
         if not self.active_universe_marker().exists():
             self.active_universe_marker().write_text(path.name, encoding="utf-8")
         return path
@@ -223,6 +209,11 @@ class SeedMixin:
             self._universe_database_cache = {"path": path, "signature": signature, "data": data}
             return data
         except Exception as exc:
+            default_path = self.universe_database_path("Default Universe")
+            if path.resolve() == default_path.resolve():
+                raise RuntimeError(
+                    "Default Universe.universe.json could not be read. Restore the packaged starting database file before starting a new game."
+                ) from exc
             backup = Path(path).with_suffix(f".broken_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
             try:
                 Path(path).replace(backup)
@@ -230,7 +221,6 @@ class SeedMixin:
                 pass
             default = self.build_universe_database_pack("Default Universe")
             default["repair_note"] = f"Pack was regenerated after load failure: {type(exc).__name__}: {exc}"
-            default_path = self.universe_database_path("Default Universe")
             self.write_seed_database_file(default_path, default)
             self.active_universe_marker().write_text(default_path.name, encoding="utf-8")
             try:
@@ -609,40 +599,19 @@ class SeedMixin:
         return data
 
     def build_seed_fighter_database(self):
-        path = self.seed_database_file("core_fighter_database.json")
-        if not path.exists():
-            raise RuntimeError("The required core_fighter_database.json starting database is missing")
+        path = self.universe_database_path("Default Universe")
         data = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(data, dict) or not data.get("all_fighters"):
-            raise RuntimeError("The core MMA fighter database has no fighter records")
-        return self.normalize_seed_fighter_database(data)
+        fighters = data.get("sections", {}).get("fighters", {})
+        if not isinstance(fighters, dict) or not fighters.get("all_fighters"):
+            raise RuntimeError("Default Universe.universe.json has no MMA fighter records")
+        return self.normalize_seed_fighter_database(fighters)
 
     def load_seed_fighter_database(self):
         section = self.universe_section("fighters", None)
         if section:
             normalized = self.normalize_seed_fighter_database(section)
             return self.cache_seed_fighter_database(normalized)
-        path = self.seed_database_file("core_fighter_database.json")
-        if not path.exists():
-            self.write_seed_database_file(path, self.build_seed_fighter_database())
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-            if not isinstance(data, dict) or "promotions" not in data:
-                raise ValueError("core fighter database is missing promotions")
-            normalized = self.normalize_seed_fighter_database(data)
-            if normalized != data:
-                self.write_seed_database_file(path, normalized)
-            return self.cache_seed_fighter_database(normalized)
-        except Exception as exc:
-            backup = path.with_suffix(f".broken_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
-            try:
-                path.replace(backup)
-            except Exception:
-                pass
-            data = self.build_seed_fighter_database()
-            data["repair_note"] = f"Database was regenerated after load failure: {type(exc).__name__}: {exc}"
-            self.write_seed_database_file(path, data)
-            return self.cache_seed_fighter_database(data)
+        raise RuntimeError("The active universe database is missing its fighters section.")
 
     def build_combat_sport_database(self):
         rosters = self.builtin_combat_sport_real_roster_data()
@@ -800,37 +769,7 @@ class SeedMixin:
                 self.combat_sport_seed_divisions = section.get("prime_divisions", {}) if isinstance(section, dict) else {}
                 self.combat_sport_seed_profiles = section.get("profiles", {})
                 return rosters
-        path = self.seed_database_file("combat_sport_database.json")
-        if not path.exists():
-            self.write_seed_database_file(path, self.build_combat_sport_database())
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-            data = self.normalize_combat_sport_database(data)
-            rosters = data.get("rosters", data)
-            if not isinstance(rosters, dict) or "Boxing" not in rosters:
-                raise ValueError("combat sport database is missing rosters")
-            if self.merge_default_combat_sport_database(data):
-                rosters = data["rosters"]
-                self.write_seed_database_file(path, data)
-            self.combat_sport_seed_divisions = data.get("prime_divisions", {})
-            if not self.combat_sport_seed_divisions or data.get("schema", 1) < COMBAT_SPORT_DATABASE_SCHEMA:
-                data = self.normalize_combat_sport_database(data)
-                self.write_seed_database_file(path, data)
-                self.combat_sport_seed_divisions = data.get("prime_divisions", {})
-            self.combat_sport_seed_profiles = data.get("profiles", {})
-            return rosters
-        except Exception as exc:
-            backup = path.with_suffix(f".broken_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
-            try:
-                path.replace(backup)
-            except Exception:
-                pass
-            data = self.build_combat_sport_database()
-            data["repair_note"] = f"Database was regenerated after load failure: {type(exc).__name__}: {exc}"
-            self.write_seed_database_file(path, data)
-            self.combat_sport_seed_divisions = data["prime_divisions"]
-            self.combat_sport_seed_profiles = data["profiles"]
-            return data["rosters"]
+        raise RuntimeError("The active universe database is missing its combat_sports section.")
 
     def seed_roster(self):
         seed_db = self.load_seed_fighter_database()
@@ -968,6 +907,37 @@ class SeedMixin:
             kwargs["hometown"] = row[15]
         return self.create_real_fighter(*row[:10], **kwargs)
 
+    def apply_authored_fighter_overrides(self, fighter, record):
+        """Apply explicit universe-database values after generated profile defaults.
+
+        Curated records still use their rating/profile helpers for a useful
+        baseline, but a database author must be able to pin any persisted
+        Fighter field without a later seed step silently replacing it.
+        """
+        if not isinstance(record, dict):
+            return fighter
+        for key in Fighter.__dataclass_fields__:
+            if key in record:
+                value = record[key]
+                # Older authored records use empty strings for optional
+                # numeric values such as potential. Treat those as unset so
+                # they retain their generated/profile baseline.
+                if value in ("", None) and isinstance(getattr(fighter, key), (bool, int, float)):
+                    continue
+                setattr(fighter, key, deepcopy(value))
+        fighter.weight = self.game_weight_class(fighter.weight)
+        # Only synchronize broad ratings when the author supplied a detailed
+        # sheet. Existing generated detail values must not overwrite an
+        # explicitly authored broad skill such as striking or fight_iq.
+        if "detailed_skills" in record and isinstance(fighter.detailed_skills, dict):
+            fighter.detailed_skills = {
+                key: max(1, min(99, int(value)))
+                for key, value in fighter.detailed_skills.items()
+                if isinstance(value, (int, float))
+            }
+            self.sync_broad_skills_from_details(fighter)
+        return fighter
+
     def create_real_fighter(self, name, weight, org, popularity, skill, age, wins, losses, region, style, player_owned=False, source_url="", gender="", potential=None, nationality="", birth_country="", hometown=""):
         record = self.seed_fighter_record_for(name)
         weight = self.game_weight_class(weight)
@@ -1042,6 +1012,9 @@ class SeedMixin:
         fighter.exclusive = player_owned
         fighter.contract_type = "Exclusive" if player_owned else "Non-Exclusive"
         fighter.rank_score = self.rank_value(fighter)
+        self.apply_authored_fighter_overrides(fighter, record)
+        if "rank_score" not in record:
+            fighter.rank_score = self.rank_value(fighter)
         return fighter
 
     def initial_real_fighter_replacements(self, destination):
@@ -2502,6 +2475,18 @@ class SeedMixin:
         gender = gender or ("Female" if first in FEMALE_FIRST_NAMES else "Male")
         return self.generate_clean_unique_name(gender, set(self.name_counts))
 
+    def apply_authored_promotion_overrides(self, promotion, spec):
+        """Apply every authored Promotion field after the usable seed baseline."""
+        if not isinstance(spec, dict):
+            return promotion
+        for key in Promotion.__dataclass_fields__:
+            if key in spec:
+                value = spec[key]
+                if value in ("", None) and isinstance(getattr(promotion, key), (bool, int, float)):
+                    continue
+                setattr(promotion, key, deepcopy(value))
+        return promotion
+
     def seed_promotions(self):
         fighter_db = self.load_seed_fighter_database()
         data = fighter_db.get("promotions") or self.expanded_real_fighter_data()
@@ -2522,12 +2507,6 @@ class SeedMixin:
                 personality = spec.get("personality", spec.get("show_personality", "Balanced"))
             else:
                 name, region, size, cash, reputation, fighters, target_roster_size, personality = spec
-            # A deeper launch roster needs enough runway to sign, recover from
-            # early cards, and build divisions before financial pressure takes
-            # over. Feeders intentionally remain at zero because they do not
-            # use the commercial finance model.
-            if cash > 0:
-                cash = round(cash * 1.5)
             fighters = self.unique_fighter_rows(fighters)
             roster = []
             for row in fighters:
@@ -2571,7 +2550,7 @@ class SeedMixin:
                 "allow_mixed_gender": False,
                 "active_fighter_target": 1200,
             }
-            promotions.append(Promotion(
+            promotion = Promotion(
                 name,
                 region,
                 size,
@@ -2591,7 +2570,9 @@ class SeedMixin:
                 strategy=self.seed_promotion_strategy(name, personality),
                 executive=self.seed_promotion_executive(name),
                 era_history=[],
-            ))
+            )
+            self.apply_authored_promotion_overrides(promotion, spec if isinstance(spec, dict) else {})
+            promotions.append(promotion)
         promotions.extend(self.seed_regional_feeder_promotions(global_names))
         return promotions
 
@@ -2769,10 +2750,33 @@ class SeedMixin:
             (EURASIAN_FIGHT_CIRCUIT_NAME, "Russia"),
         ]
 
+    def regional_feeder_company_specs(self, company_section=None):
+        """Return editable feeder specs while retaining a complete fallback set."""
+        company_section = company_section if isinstance(company_section, dict) else self.universe_section("companies", {})
+        supplied = company_section.get("regional_feeders", []) if isinstance(company_section, dict) else []
+        by_name = {
+            row.get("name"): dict(row)
+            for row in supplied
+            if isinstance(row, dict) and row.get("name")
+        }
+        specs = []
+        for name, region in self.regional_feeder_specs():
+            spec = by_name.pop(name, {"name": name, "region": region})
+            spec.setdefault("region", region)
+            specs.append(spec)
+        specs.extend(by_name.values())
+        return specs
+
     def seed_regional_feeder_promotions(self, global_names, specs=None):
-        specs = list(specs or self.regional_feeder_specs())
+        specs = list(specs or self.regional_feeder_company_specs())
         promotions = []
-        for name, region in specs:
+        for feeder_spec in specs:
+            if isinstance(feeder_spec, dict):
+                name = feeder_spec.get("name", "Regional MMA")
+                region = feeder_spec.get("region", "USA")
+            else:
+                name, region = feeder_spec
+                feeder_spec = {}
             roster = []
             male_only = name == EURASIAN_FIGHT_CIRCUIT_NAME
             for weight in WEIGHTS:
@@ -2799,7 +2803,7 @@ class SeedMixin:
                         global_names.add(fighter.name)
             if male_only:
                 self.install_eurasian_headliner(roster, global_names, name, region)
-            promotions.append(Promotion(
+            promotion = Promotion(
                 name=name, region=region, size=24, cash=0, roster=roster,
                 reputation=EURASIAN_FIGHT_CIRCUIT_DESCRIPTION if male_only else "Regional Feeder",
                 reputation_score=24, stability=70,
@@ -2809,7 +2813,10 @@ class SeedMixin:
                 strategy=self.seed_promotion_strategy(name, "Regional Development"),
                 executive=self.seed_promotion_executive(name),
                 era_history=[],
-            ))
+            )
+            self.apply_authored_promotion_overrides(promotion, feeder_spec)
+            promotion.is_regional_feeder = True
+            promotions.append(promotion)
         return promotions
 
     def seed_promotion_executive(self, company_name):
@@ -2882,7 +2889,7 @@ class SeedMixin:
             "market_volatility": market_volatility,
             "market_momentum": 0.0,
             "market_review_month": 0,
-            "finance_model_version": 2,
+            "finance_model_version": 3,
             "growth_ceiling": {
                 "Ultimate Fighting Championship": 100, "Professional Fighters League": 88, "ONE Championship": 92,
                 "RIZIN Fighting Federation": 88, "KSW": 84, "Cage Warriors": 78, "Legacy Fighting Alliance": 74,
