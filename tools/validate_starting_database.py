@@ -8,6 +8,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 MAIN = ROOT / "main.py"
 DEFAULT_UNIVERSE = ROOT / "Databases" / "Default Universe.universe.json"
+MMA_PROFILE_KEYS = {
+    "profile_rating", "profile_style", "trait", "behaviour", "skill_mods",
+    "stance", "signature_skills", "special_profile", "record_d",
+}
 
 
 def load_game_module():
@@ -48,6 +52,36 @@ def incomplete_mma_records(database):
         if missing:
             incomplete.append(f"{record.get('placement', '?')}: {record.get('name', '?')} missing {', '.join(missing)}")
     return incomplete
+
+
+def record_key(app, record):
+    return (
+        str(record.get("placement", "")),
+        str(record.get("owner", "")),
+        app.fighter_name_key(record.get("name", "")),
+    )
+
+
+def profile_payload(record):
+    return {key: record.get(key) for key in MMA_PROFILE_KEYS if key in record}
+
+
+def profile_payload_mismatches(app, source, database):
+    source_records = {
+        record_key(app, record): profile_payload(record)
+        for record in source.get("all_fighters", [])
+        if isinstance(record, dict)
+    }
+    database_records = {
+        record_key(app, record): profile_payload(record)
+        for record in database.get("all_fighters", [])
+        if isinstance(record, dict)
+    }
+    mismatches = []
+    for key, payload in source_records.items():
+        if payload and database_records.get(key) != payload:
+            mismatches.append(key)
+    return mismatches
 
 
 def combat_sport_keys(database):
@@ -98,9 +132,12 @@ def main():
         extra_names = sorted(database_names - source_names)
         missing_placements = sorted(source_placements - database_placements)
         incomplete_mma = incomplete_mma_records(fighters)
+        profile_mismatches = profile_payload_mismatches(app, source, fighters)
         missing_sport_keys = sorted(source_sport_keys - database_sport_keys)
         missing_sport_names = sorted(source_sport_names - database_sport_names)
         incomplete_sports = incomplete_combat_records(combat_sports)
+        mma_records = fighters.get("all_fighters", [])
+        profiled_mma = sum(1 for record in mma_records if isinstance(record, dict) and any(key in record for key in MMA_PROFILE_KEYS - {"record_d"}))
         print(f"Default Universe schema: {fighters.get('schema')}")
         print(f"Flat fighter records: {len(fighters.get('all_fighters', []))}")
         print(f"Source unique names: {len(source_names)}")
@@ -109,6 +146,8 @@ def main():
         print(f"Extra unique names: {len(extra_names)}")
         print(f"Missing source placements: {len(missing_placements)}")
         print(f"Incomplete MMA records: {len(incomplete_mma)}")
+        print(f"Profiled MMA records: {profiled_mma}")
+        print(f"MMA profile payload mismatches: {len(profile_mismatches)}")
         print(f"Combat-sport schema: {combat_sports.get('schema')}")
         print(f"Flat combat-sport records: {len(combat_sports.get('all_athletes', []))}")
         print(f"Combat-sport source placements: {len(source_sport_keys)}")
@@ -128,6 +167,10 @@ def main():
             print("Incomplete MMA records sample:")
             for line in incomplete_mma[:50]:
                 print(f"  {line}")
+        if profile_mismatches:
+            print("MMA profile payload mismatch sample:")
+            for placement, owner, name in profile_mismatches[:50]:
+                print(f"  {placement}: {owner}: {name}")
         if missing_sport_names:
             print("Missing combat-sport names:")
             for name in missing_sport_names[:50]:
@@ -140,7 +183,7 @@ def main():
             print("Incomplete combat-sport records sample:")
             for line in incomplete_sports[:50]:
                 print(f"  {line}")
-        if missing_names or missing_placements or incomplete_mma or missing_sport_names or missing_sport_keys or incomplete_sports:
+        if missing_names or missing_placements or incomplete_mma or profile_mismatches or missing_sport_names or missing_sport_keys or incomplete_sports:
             raise SystemExit(1)
     finally:
         root.destroy()

@@ -1358,16 +1358,18 @@ class PersistenceMixin:
 
     def migrate_real_fighter_profiles(self, fighters):
         """One-time migration for saves made before deterministic real-fighter profiles."""
-        real_names = {row[0] for rows in self.expanded_real_fighter_data().values() for row in rows}
-        real_names.update(row[0] for row in self.cage_empire_fighter_data())
-        real_names.update(row[0] for row in self.independent_fighter_data())
-        real_names.update(row[0] for row in self.legend_fighter_data())
-        profiles = self.real_fighter_profiles()
+        seed_db = self.load_seed_fighter_database()
+        records = {
+            self.fighter_name_key(record.get("name", "")): record
+            for record in seed_db.get("all_fighters", [])
+            if isinstance(record, dict) and record.get("name")
+        }
         recalibrated = 0
         for fighter in fighters:
-            if fighter.name not in real_names or getattr(fighter, "rating_profile_version", 0) >= 3:
+            record = records.get(self.fighter_name_key(fighter.name))
+            if not record or getattr(fighter, "rating_profile_version", 0) >= 3:
                 continue
-            baseline = profiles.get(fighter.name, {}).get("rating", fighter.overall)
+            baseline = int(record.get("profile_rating", record.get("rating", fighter.overall)) or fighter.overall)
             self.apply_real_fighter_profile(fighter, baseline)
             recalibrated += 1
         return recalibrated
@@ -1396,11 +1398,30 @@ class PersistenceMixin:
             if id(fighter) in seen or getattr(fighter, "generated", False):
                 continue
             seen.add(id(fighter))
-            identity = self.real_fighter_identity_data(fighter.name)
+            record = self.seed_fighter_record_for(fighter.name)
+            identity = {}
+            if record:
+                identity = {
+                    "city": record.get("hometown", ""),
+                    "birth_country": record.get("birth_country", ""),
+                    "citizenship": record.get("birth_country", ""),
+                    "nationality": record.get("nationality", ""),
+                }
+            if not any(identity.values()):
+                identity = self.real_fighter_identity_data(fighter.name)
             if not identity:
                 continue
             if getattr(fighter, "real_identity_version", 0) < 2:
-                self.apply_real_fighter_birthplace(fighter, fighter.region)
+                if record:
+                    if record.get("nationality"):
+                        fighter.nationality = record["nationality"]
+                    if record.get("birth_country"):
+                        fighter.birth_country = record["birth_country"]
+                        fighter.birth_region = COUNTRY_TO_REGION.get(fighter.birth_country, getattr(fighter, "birth_region", "") or fighter.region)
+                    if record.get("hometown"):
+                        fighter.hometown = record["hometown"]
+                else:
+                    self.apply_real_fighter_birthplace(fighter, fighter.region)
                 fighter.real_identity_version = 2
                 identity_updates += 1
             if getattr(fighter, "real_record_baseline_version", 0) < 2:

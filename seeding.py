@@ -63,7 +63,7 @@ CAREER_ARCHETYPE_TABLE = weighted_choice_table(
     (16, 53, 17, 14),
 )
 REGIONAL_FEEDER_AGE_TABLE = weighted_choice_table(range(17, 22), (5, 8, 10, 8, 5))
-MMA_FIGHTER_DATABASE_SCHEMA = 2
+MMA_FIGHTER_DATABASE_SCHEMA = 3
 COMBAT_SPORT_DATABASE_SCHEMA = 5
 COMBAT_SPORT_NAMES = ("Boxing", "Kickboxing", "Muay Thai", "Lethwei", "Wrestling", "Brazilian Jiu-Jitsu")
 
@@ -243,9 +243,9 @@ class SeedMixin:
     def merge_default_fighter_database(self, fighters):
         """Upgrade legacy shipped fighter databases without overriding flat edits."""
         changed = False
-        if fighters.get("all_fighters") and int(fighters.get("schema", 1) or 1) >= MMA_FIGHTER_DATABASE_SCHEMA:
+        if fighters.get("all_fighters"):
             normalized = self.normalize_seed_fighter_database(fighters)
-            for key in ("player_roster", "free_agents", "promotions", "schema", "database_name", "notes"):
+            for key in ("all_fighters", "player_roster", "free_agents", "promotions", "schema", "database_name", "notes"):
                 if fighters.get(key) != normalized.get(key):
                     fighters[key] = normalized.get(key)
                     changed = True
@@ -468,12 +468,16 @@ class SeedMixin:
         if len(row) < 10:
             raise ValueError(f"Fighter database row for {row[0] if row else 'unknown'} is incomplete")
         identity = self.real_fighter_identity_data(row[0]) or {}
+        profile = self.real_fighter_profiles().get(row[0], {})
+        signature_skills = self.signature_real_fighter_detailed_profiles().get(row[0], {})
+        special_profile = self.special_real_fighter_profiles().get(row[0], {})
+        stance = self.real_fighter_stances().get(row[0], "")
         birth_country = str(row[14] if len(row) > 14 else identity.get("birth_country", "") or identity.get("citizenship", "") or "").strip()
         citizenship = str(identity.get("citizenship", "") or birth_country).strip()
         nationality = str(row[13] if len(row) > 13 else "").strip()
         if not nationality:
             nationality = COUNTRY_NATIONALITIES.get(citizenship, citizenship or self.infer_nationality(row[0], row[8]))
-        return {
+        record = {
             "database_type": "mma",
             "generated": False,
             "placement": placement,
@@ -496,6 +500,63 @@ class SeedMixin:
             "source_url": row[10] if len(row) > 10 else "",
             "potential": row[12] if len(row) > 12 else "",
         }
+        if profile:
+            record["profile_rating"] = profile.get("rating", row[4])
+            record["profile_style"] = profile.get("style", row[9])
+            if profile.get("trait"):
+                record["trait"] = profile["trait"]
+            if profile.get("behaviour"):
+                record["behaviour"] = profile["behaviour"]
+            if profile.get("skills"):
+                record["skill_mods"] = dict(profile["skills"])
+        if stance:
+            record["stance"] = stance
+        if signature_skills:
+            record["signature_skills"] = dict(signature_skills)
+        if special_profile:
+            record["special_profile"] = special_profile
+        return record
+
+    def enrich_seed_fighter_record(self, record):
+        if not isinstance(record, dict):
+            return record
+        row = self.seed_fighter_row_from_record(record)
+        enriched = self.seed_fighter_record_from_row(
+            row,
+            record.get("placement", "promotion"),
+            owner=record.get("owner"),
+            gender=record.get("gender"),
+        )
+        for key in (
+            "database_type", "generated", "seed_org", "record_d", "nationality", "birth_country",
+            "hometown", "profile_rating", "profile_style", "trait", "behaviour", "skill_mods",
+            "stance", "signature_skills", "special_profile",
+        ):
+            if key in enriched and key not in record:
+                record[key] = enriched[key]
+        return record
+
+    def cache_seed_fighter_database(self, data):
+        self._seed_fighter_database = data
+        lookup = {}
+        for record in (data or {}).get("all_fighters", []):
+            if not isinstance(record, dict):
+                continue
+            name = record.get("name")
+            if not name:
+                continue
+            lookup.setdefault(self.fighter_name_key(name), record)
+        self._seed_fighter_record_lookup = lookup
+        self.opening_replacements_embedded = bool((data or {}).get("opening_replacements_embedded"))
+        return data
+
+    def seed_fighter_record_for(self, name):
+        lookup = getattr(self, "_seed_fighter_record_lookup", None)
+        if lookup is None:
+            data = getattr(self, "_seed_fighter_database", {}) or {}
+            self.cache_seed_fighter_database(data)
+            lookup = getattr(self, "_seed_fighter_record_lookup", {})
+        return lookup.get(self.fighter_name_key(name), {})
 
     def seed_fighter_row_from_record(self, record):
         if isinstance(record, (list, tuple)):
@@ -560,6 +621,13 @@ class SeedMixin:
         data = dict(data or {})
         records = data.get("all_fighters")
         if isinstance(records, list) and records:
+            needs_enrichment = int(data.get("schema", 1) or 1) < MMA_FIGHTER_DATABASE_SCHEMA
+            records = [
+                self.enrich_seed_fighter_record(dict(record)) if needs_enrichment else dict(record)
+                for record in records
+                if isinstance(record, dict)
+            ]
+            data["all_fighters"] = records
             player_roster, free_agents, promotions = [], [], {}
             for record in records:
                 if not isinstance(record, dict):
@@ -636,9 +704,7 @@ class SeedMixin:
         section = self.universe_section("fighters", None)
         if section:
             normalized = self.normalize_seed_fighter_database(section)
-            self._seed_fighter_database = normalized
-            self.opening_replacements_embedded = bool(normalized.get("opening_replacements_embedded"))
-            return normalized
+            return self.cache_seed_fighter_database(normalized)
         path = self.seed_database_file("core_fighter_database.json")
         if not path.exists():
             self.write_seed_database_file(path, self.build_seed_fighter_database())
@@ -649,9 +715,7 @@ class SeedMixin:
             normalized = self.normalize_seed_fighter_database(data)
             if normalized != data:
                 self.write_seed_database_file(path, normalized)
-            self._seed_fighter_database = normalized
-            self.opening_replacements_embedded = bool(normalized.get("opening_replacements_embedded"))
-            return normalized
+            return self.cache_seed_fighter_database(normalized)
         except Exception as exc:
             backup = path.with_suffix(f".broken_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
             try:
@@ -661,9 +725,7 @@ class SeedMixin:
             data = self.build_seed_fighter_database()
             data["repair_note"] = f"Database was regenerated after load failure: {type(exc).__name__}: {exc}"
             self.write_seed_database_file(path, data)
-            self._seed_fighter_database = data
-            self.opening_replacements_embedded = bool(data.get("opening_replacements_embedded"))
-            return data
+            return self.cache_seed_fighter_database(data)
 
     def build_combat_sport_database(self):
         rosters = self.builtin_combat_sport_real_roster_data()
@@ -1214,6 +1276,7 @@ class SeedMixin:
             fighter.hometown = hometown
         fighter.detailed_skills = None
         self.apply_real_fighter_profile(fighter, skill)
+        self.apply_special_real_fighter_profile(fighter)
         if fighter.name == "Conor McGregor":
             fighter.prime_rating_profile_version = 1
         prime_age = self.historic_prime_age_overrides().get(fighter.name)
@@ -1224,72 +1287,8 @@ class SeedMixin:
             fighter.prime_start = max(24, prime_age - 3)
             fighter.prime_end = max(fighter.prime_start + 5, prime_age + 6)
             fighter.prime_legend_age_override_version = 1
-        if fighter.name == "Matthew Green":
-            # A McGregor-style southpaw striker whose signature is devastating
-            # power kicks — low kicks above all: the hardest, most technical
-            # weapon in his arsenal.
-            fighter.height = "5'10"
-            fighter.stance = "Southpaw"
-            fighter.trait = "Prospect Mindset"
-            fighter.behaviour = "Dynamic Attacker"
-            fighter.walk_weight = 185
-            fighter.detailed_skills.update({
-                "low_kick_power": 98, "low_kick_technique": 96, "low_kick_speed": 94,
-                "high_kick_power": 90, "high_kick_technique": 88, "high_kick_speed": 88,
-                "creative_kicks": 94, "kick_defence": 88,
-                "punch_power": 95, "punch_technique": 92, "hand_speed": 92, "creative_punches": 92,
-                "footwork": 92, "feints": 92, "head_movement": 90,
-            })
-            for key in MENTAL_SKILLS:
-                fighter.detailed_skills[key] = max(fighter.detailed_skills.get(key, 50), 92)
-            for key in PHYSICAL_SKILLS:
-                fighter.detailed_skills[key] = max(fighter.detailed_skills.get(key, 50), 90)
-            fighter.detailed_skills["killer_instinct"] = 95
-            fighter.detailed_skills["confidence"] = 96
-            self.sync_broad_skills_from_details(fighter)
-            # Lock the headline ratings so he debuts as a true 90 with a 96 ceiling.
-            fighter.striking = 95
-            fighter.wrestling = 86
-            fighter.grappling = 85
-            fighter.cardio = 91
-            fighter.chin = 90
-            fighter.power = 95
-            fighter.star_quality = max(fighter.star_quality, 82)
-            fighter.charisma = max(fighter.charisma, 85)
-        if fighter.name == "Mikey Musumeci":
-            fighter.height = "5'4"
-            fighter.stance = "Orthodox"
-            fighter.style = "BJJ"
-            fighter.trait = "Submission Ace"
-            fighter.behaviour = "Submission Hunter"
-            fighter.walk_weight = 135
-            # World-class submission grappling; striking is a clear work in progress.
-            elite_ground = (
-                "submission_attack", "guard_work", "back_control", "leg_locks", "transitions",
-                "positional_ability", "scrambles", "bottom_control", "mount_control", "submission_defence_detail",
-            )
-            for key in elite_ground:
-                fighter.detailed_skills[key] = max(fighter.detailed_skills.get(key, 50), random.randint(94, 98))
-            fighter.detailed_skills["ground_striking"] = max(fighter.detailed_skills.get("ground_striking", 50), 74)
-            fighter.detailed_skills["top_control"] = max(fighter.detailed_skills.get("top_control", 50), 88)
-            for key in ("flexibility", "composure", "consistency", "discipline", "dedication", "conditioning"):
-                fighter.detailed_skills[key] = max(fighter.detailed_skills.get(key, 50), random.randint(86, 93))
-            # Grappling entries: strong at getting it to the mat, modest wrestling power.
-            for key in ("takedowns", "takedown_setup", "chain_wrestling", "clinch_takedowns"):
-                fighter.detailed_skills[key] = max(fighter.detailed_skills.get(key, 50), 72)
-            # Striking is his weakness relative to his ground game.
-            for key in ("punch_power", "high_kick_power", "hand_speed", "creative_punches"):
-                fighter.detailed_skills[key] = min(fighter.detailed_skills.get(key, 50), random.randint(58, 66))
-            self.sync_broad_skills_from_details(fighter)
-            fighter.grappling = max(fighter.grappling, 96)
-            fighter.submissions = max(getattr(fighter, "submissions", 65), 97)
-            fighter.submission_defence = max(getattr(fighter, "submission_defence", 65), 93)
-            fighter.ground_control = max(fighter.ground_control, 90)
-            fighter.chin = max(fighter.chin, 76)
-            fighter.power = min(getattr(fighter, "power", 65), 60)
-            fighter.finishing_instinct = max(fighter.finishing_instinct, 90)
-            fighter.potential = 95
-        profile_rating = self.real_fighter_profiles().get(fighter.name, {}).get("rating", skill)
+        record = self.seed_fighter_record_for(fighter.name)
+        profile_rating = int(record.get("profile_rating", record.get("rating", skill)) or skill)
         fighter.potential = max(fighter.overall, min(98, profile_rating + 6))
         if potential not in ("", None):
             try:
@@ -1299,7 +1298,7 @@ class SeedMixin:
         # Authored records are history that predates this save. Store that
         # baseline explicitly instead of waiting for a later profile refresh to
         # infer it from the current record.
-        fighter.record_d = self.real_fighter_draws().get(fighter.name, fighter.record_d)
+        fighter.record_d = int(record.get("record_d", fighter.record_d) or 0)
         fighter.record_history_baseline_w = fighter.record_w
         fighter.record_history_baseline_l = fighter.record_l
         fighter.record_history_baseline_d = fighter.record_d
@@ -1783,8 +1782,62 @@ class SeedMixin:
             }
         return profiles
 
+    def special_real_fighter_profiles(self):
+        return {
+            "Matthew Green": {
+                "height": "5'10",
+                "stance": "Southpaw",
+                "trait": "Prospect Mindset",
+                "behaviour": "Dynamic Attacker",
+                "walk_weight": 185,
+                "potential": 96,
+                "skill_minimums": {
+                    "low_kick_power": 98, "low_kick_technique": 96, "low_kick_speed": 94,
+                    "high_kick_power": 90, "high_kick_technique": 88, "high_kick_speed": 88,
+                    "creative_kicks": 94, "kick_defence": 88,
+                    "punch_power": 95, "punch_technique": 92, "hand_speed": 92, "creative_punches": 92,
+                    "footwork": 92, "feints": 92, "head_movement": 90,
+                },
+                "skill_values": {"killer_instinct": 95, "confidence": 96},
+                "group_minimums": {"Mental": 92, "Physical": 90},
+                "broad_values": {"striking": 95, "wrestling": 86, "grappling": 85, "cardio": 91, "chin": 90, "power": 95},
+                "broad_minimums": {"star_quality": 82, "charisma": 85},
+            },
+            "Mikey Musumeci": {
+                "height": "5'4",
+                "stance": "Orthodox",
+                "style": "BJJ",
+                "trait": "Submission Ace",
+                "behaviour": "Submission Hunter",
+                "walk_weight": 135,
+                "potential": 95,
+                "skill_random_minimums": {
+                    "submission_attack": [94, 98], "guard_work": [94, 98], "back_control": [94, 98],
+                    "leg_locks": [94, 98], "transitions": [94, 98], "positional_ability": [94, 98],
+                    "scrambles": [94, 98], "bottom_control": [94, 98], "mount_control": [94, 98],
+                    "submission_defence_detail": [94, 98],
+                    "flexibility": [86, 93], "composure": [86, 93], "consistency": [86, 93],
+                    "discipline": [86, 93], "dedication": [86, 93], "conditioning": [86, 93],
+                },
+                "skill_minimums": {
+                    "ground_striking": 74, "top_control": 88,
+                    "takedowns": 72, "takedown_setup": 72, "chain_wrestling": 72, "clinch_takedowns": 72,
+                },
+                "skill_random_maximums": {
+                    "punch_power": [58, 66], "high_kick_power": [58, 66],
+                    "hand_speed": [58, 66], "creative_punches": [58, 66],
+                },
+                "broad_minimums": {
+                    "grappling": 96, "submissions": 97, "submission_defence": 93,
+                    "ground_control": 90, "chin": 76, "finishing_instinct": 90,
+                },
+                "broad_maximums": {"power": 60},
+            },
+        }
+
     def apply_signature_real_fighter_profile(self, fighter, preserve_career=False):
-        targets = self.signature_real_fighter_detailed_profiles().get(fighter.name)
+        record = self.seed_fighter_record_for(fighter.name)
+        targets = record.get("signature_skills") if record else self.signature_real_fighter_detailed_profiles().get(fighter.name)
         if not targets:
             return False
         before_overall = fighter.overall
@@ -1798,6 +1851,53 @@ class SeedMixin:
                         fighter.detailed_skills[key] = max(25, min(99, fighter.detailed_skills[key] + delta))
                 self.sync_broad_skills_from_details(fighter)
         fighter.realism_profile_version = 1
+        return True
+
+    def apply_special_real_fighter_profile(self, fighter):
+        record = self.seed_fighter_record_for(fighter.name)
+        profile = record.get("special_profile") if record else self.special_real_fighter_profiles().get(fighter.name)
+        if not isinstance(profile, dict) or not profile:
+            return False
+        if profile.get("height"):
+            fighter.height = profile["height"]
+        if profile.get("stance"):
+            fighter.stance = profile["stance"]
+        if profile.get("style") in STYLES:
+            fighter.style = profile["style"]
+        if profile.get("trait"):
+            fighter.trait = profile["trait"]
+        if profile.get("behaviour"):
+            fighter.behaviour = profile["behaviour"]
+        if profile.get("walk_weight") not in ("", None):
+            fighter.walk_weight = int(profile["walk_weight"])
+        details = dict(getattr(fighter, "detailed_skills", None) or {})
+        for key, value in (profile.get("skill_minimums") or {}).items():
+            details[key] = max(details.get(key, 50), int(value))
+        for key, value in (profile.get("skill_values") or {}).items():
+            details[key] = int(value)
+        for group, value in (profile.get("group_minimums") or {}).items():
+            for key in DETAILED_SKILL_GROUPS.get(group, ()):
+                details[key] = max(details.get(key, 50), int(value))
+        for key, bounds in (profile.get("skill_random_minimums") or {}).items():
+            low, high = [int(item) for item in bounds]
+            details[key] = max(details.get(key, 50), random.randint(low, high))
+        for key, bounds in (profile.get("skill_random_maximums") or {}).items():
+            low, high = [int(item) for item in bounds]
+            details[key] = min(details.get(key, 50), random.randint(low, high))
+        if details:
+            fighter.detailed_skills = details
+            self.sync_broad_skills_from_details(fighter)
+        for key, value in (profile.get("broad_values") or {}).items():
+            if hasattr(fighter, key):
+                setattr(fighter, key, int(value))
+        for key, value in (profile.get("broad_minimums") or {}).items():
+            if hasattr(fighter, key):
+                setattr(fighter, key, max(getattr(fighter, key), int(value)))
+        for key, value in (profile.get("broad_maximums") or {}).items():
+            if hasattr(fighter, key):
+                setattr(fighter, key, min(getattr(fighter, key), int(value)))
+        if profile.get("potential") not in ("", None):
+            fighter.potential = max(fighter.overall, int(profile["potential"]))
         return True
 
     def real_fighter_stances(self):
@@ -1825,7 +1925,21 @@ class SeedMixin:
         }
 
     def apply_real_fighter_profile(self, fighter, base_skill):
-        profile = self.real_fighter_profiles().get(fighter.name, {})
+        record = self.seed_fighter_record_for(fighter.name)
+        if record:
+            profile = {
+                "rating": record.get("profile_rating", record.get("rating", base_skill)),
+                "style": record.get("profile_style", record.get("style", fighter.style)),
+                "stance": record.get("stance", ""),
+            }
+            if record.get("trait"):
+                profile["trait"] = record["trait"]
+            if record.get("behaviour"):
+                profile["behaviour"] = record["behaviour"]
+            if isinstance(record.get("skill_mods"), dict):
+                profile["skills"] = record["skill_mods"]
+        else:
+            profile = dict(self.real_fighter_profiles().get(fighter.name, {}))
         rating = int(profile.get("rating", base_skill))
         fighter.style = profile.get("style", fighter.style if fighter.style in STYLES else "Well-Rounded")
         trait_by_style = {
@@ -1840,7 +1954,7 @@ class SeedMixin:
         }
         fighter.trait = profile.get("trait", trait_by_style.get(fighter.style, "Gym Rat"))
         fighter.behaviour = profile.get("behaviour", behaviour_by_style.get(fighter.style, "Dynamic Attacker"))
-        default_stance = self.real_fighter_stances().get(fighter.name)
+        default_stance = record.get("stance", "") if record else self.real_fighter_stances().get(fighter.name)
         if not default_stance:
             stance_roll = sum((index + 1) * ord(char) for index, char in enumerate(fighter.name)) % 100
             default_stance = "Orthodox" if stance_roll < 64 else "Southpaw" if stance_roll < 91 else "Switch"
@@ -1911,7 +2025,7 @@ class SeedMixin:
         fighter.media_presence = max(1, min(99, round(fighter.popularity * 0.62 + fighter.charisma * 0.28)))
         fighter.sponsor_appeal = max(1, min(99, round(fighter.star_quality * 0.42 + fighter.charisma * 0.24 + fighter.professionalism * 0.20 + fighter.popularity * 0.14)))
         fighter.motivation = max(35, min(99, 72 + business_seed % 18 - max(0, fighter.age - 36)))
-        fighter.record_d = self.real_fighter_draws().get(fighter.name, fighter.record_d)
+        fighter.record_d = int(record.get("record_d", fighter.record_d) if record else self.real_fighter_draws().get(fighter.name, fighter.record_d) or 0)
         fighter.multi_sport_records = dict(fighter.multi_sport_records or {})
         fighter.multi_sport_records["MMA"] = f"{fighter.record_w}-{fighter.record_l}-{fighter.record_d}"
         fighter.rating_profile_version = 4
