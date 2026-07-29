@@ -64,6 +64,8 @@ CAREER_ARCHETYPE_TABLE = weighted_choice_table(
 )
 REGIONAL_FEEDER_AGE_TABLE = weighted_choice_table(range(17, 22), (5, 8, 10, 8, 5))
 MMA_FIGHTER_DATABASE_SCHEMA = 2
+COMBAT_SPORT_DATABASE_SCHEMA = 5
+COMBAT_SPORT_NAMES = ("Boxing", "Kickboxing", "Muay Thai", "Lethwei", "Wrestling", "Brazilian Jiu-Jitsu")
 
 
 class SeedMixin:
@@ -391,6 +393,12 @@ class SeedMixin:
         if not isinstance(combat_section, dict):
             return False
         changed = False
+        if combat_section.get("all_athletes"):
+            normalized = self.normalize_combat_sport_database(combat_section)
+            for key in ("rosters", "prime_divisions", "profiles"):
+                if combat_section.get(key) != normalized.get(key):
+                    combat_section[key] = normalized.get(key)
+                    changed = True
         shipped = self.builtin_combat_sport_real_roster_data()
         rosters = combat_section.setdefault("rosters", {})
         for sport, names in shipped.items():
@@ -429,8 +437,12 @@ class SeedMixin:
         if profiles != combat_section.get("profiles", {}):
             combat_section["profiles"] = profiles
             changed = True
-        if int(combat_section.get("schema", 1) or 1) < 4:
-            combat_section["schema"] = 4
+        rebuilt_records = self.combat_sport_records_from_views(rosters, profiles, divisions)
+        if combat_section.get("all_athletes") != rebuilt_records:
+            combat_section["all_athletes"] = rebuilt_records
+            changed = True
+        if int(combat_section.get("schema", 1) or 1) < COMBAT_SPORT_DATABASE_SCHEMA:
+            combat_section["schema"] = COMBAT_SPORT_DATABASE_SCHEMA
             changed = True
         return changed
 
@@ -599,13 +611,129 @@ class SeedMixin:
 
     def build_combat_sport_database(self):
         rosters = self.builtin_combat_sport_real_roster_data()
+        profiles = build_real_sport_profiles(rosters)
         return {
-            "schema": 3,
-            "notes": "Canonical combat-sport seed database. Edit rosters, profiles, and prime_divisions to change new-game athletes. Muay Thai also imports the Lethwei list as a linked striking roster.",
+            "schema": COMBAT_SPORT_DATABASE_SCHEMA,
+            "database_name": "Combat Sport Fighter Database",
+            "notes": "Canonical combat-sport seed database. Edit all_athletes to change named starting rosters; rosters, profiles, and prime_divisions are compatibility views.",
             "rosters": rosters,
             "prime_divisions": COMBAT_SPORT_REAL_DIVISIONS,
-            "profiles": build_real_sport_profiles(rosters),
+            "profiles": profiles,
+            "all_athletes": self.combat_sport_records_from_views(rosters, profiles, COMBAT_SPORT_REAL_DIVISIONS),
         }
+
+    def combat_sport_seed_women(self):
+        return {
+            "Jorina Baars", "Lucia Rijker", "Denise Kielholtz", "Jemyma Betrian", "Anissa Meksen",
+            "Christine Ferea", "Britain Hart", "Souris Manfredi", "Julija Stoliarenko", "Maisha Katz", "Shwe Sin Min",
+            "Saori Yoshida", "Kaori Icho", "Helen Maroulis", "Adeline Gray", "Tamyra Mensah-Stock",
+            "Iryna Merleni", "Gabi Garcia", "Beatriz Mesquita", "Somratsamee Manopgym",
+        }
+
+    def combat_sport_record_from_view(self, sport, name, index, profile, divisions):
+        profile = dict(profile or {})
+        region = profile.get("region") or self.combat_sport_region_for_name(name, sport)
+        weight_class = profile.get("weight_class") or (divisions.get(sport, {}) if isinstance(divisions, dict) else {}).get(name, "")
+        record = {
+            "database_type": "combat_sport",
+            "generated": False,
+            "sport": sport,
+            "name": name,
+            "gender": profile.get("gender") or ("Female" if name in self.combat_sport_seed_women() else "Male"),
+            "region": region,
+            "nationality": profile.get("nationality") or self.infer_nationality(name, region),
+            "weight_class": weight_class,
+            "roster_index": index,
+        }
+        for key, value in profile.items():
+            if key not in record:
+                record[key] = value
+        return record
+
+    def combat_sport_profile_from_record(self, record):
+        profile = {}
+        for key, value in (record or {}).items():
+            if key in {"database_type", "generated", "sport", "name", "roster_index"}:
+                continue
+            profile[key] = value
+        return profile
+
+    def combat_sport_records_from_views(self, rosters, profiles, divisions):
+        records = []
+        seen = set()
+        profiles = profiles if isinstance(profiles, dict) else {}
+        divisions = divisions if isinstance(divisions, dict) else {}
+        for sport, names in (rosters or {}).items():
+            if sport not in COMBAT_SPORT_NAMES or not isinstance(names, list):
+                continue
+            for index, name in enumerate(names):
+                name = str(name).strip()
+                if not name:
+                    continue
+                key = (sport, name)
+                if key in seen:
+                    continue
+                seen.add(key)
+                profile = (profiles.get(sport, {}) if isinstance(profiles.get(sport, {}), dict) else {}).get(name, {})
+                records.append(self.combat_sport_record_from_view(sport, name, index, profile, divisions))
+        return records
+
+    def normalize_combat_sport_database(self, data):
+        data = dict(data or {})
+        records = data.get("all_athletes")
+        if isinstance(records, list) and records:
+            rosters, profiles, divisions = {}, {}, {}
+            seen = set()
+            for index, record in enumerate(records):
+                if not isinstance(record, dict):
+                    continue
+                sport = record.get("sport")
+                name = str(record.get("name", "")).strip()
+                if sport not in COMBAT_SPORT_NAMES or not name:
+                    continue
+                key = (sport, name)
+                if key in seen:
+                    continue
+                seen.add(key)
+                rosters.setdefault(sport, []).append(name)
+                profile = self.combat_sport_profile_from_record(record)
+                profile.setdefault("version", SPORT_PROFILE_VERSION)
+                profile.setdefault("rating", max(55, 82 - index // 8))
+                profile.setdefault("prime_age", 27 + index % 5)
+                profile.setdefault("record_w", 0)
+                profile.setdefault("record_l", 0)
+                profile.setdefault("record_d", 0)
+                profile.setdefault("style", "Boxer" if sport == "Boxing" else "Wrestler" if sport == "Wrestling" else "BJJ" if sport == "Brazilian Jiu-Jitsu" else "Kickboxer")
+                profile.setdefault("trait", "Technical Learner")
+                profile.setdefault("behaviour", "Dynamic Attacker")
+                profile.setdefault("stance", "Orthodox")
+                profile.setdefault("gender", "Female" if name in self.combat_sport_seed_women() else "Male")
+                region = profile.get("region") or self.combat_sport_region_for_name(name, sport)
+                profile["region"] = region
+                profile.setdefault("nationality", self.infer_nationality(name, region))
+                weight_class = profile.get("weight_class") or record.get("weight_class") or COMBAT_SPORT_REAL_DIVISIONS.get(sport, {}).get(name, "")
+                if weight_class:
+                    profile["weight_class"] = weight_class
+                    divisions.setdefault(sport, {})[name] = weight_class
+                profiles.setdefault(sport, {})[name] = profile
+            data["rosters"] = rosters
+            data["profiles"] = profiles
+            data["prime_divisions"] = divisions
+        else:
+            rosters = data.get("rosters", data if "Boxing" in data else {})
+            profiles = self.normalized_combat_sport_profiles(rosters, data.get("profiles", {}))
+            divisions = data.get("prime_divisions") or COMBAT_SPORT_REAL_DIVISIONS
+            data["rosters"] = rosters
+            data["profiles"] = profiles
+            data["prime_divisions"] = divisions
+            data["all_athletes"] = self.combat_sport_records_from_views(rosters, profiles, divisions)
+        data["schema"] = max(COMBAT_SPORT_DATABASE_SCHEMA, int(data.get("schema", 1) or 1))
+        data.setdefault("database_name", "Combat Sport Fighter Database")
+        data.setdefault(
+            "notes",
+            "Canonical combat-sport seed database. Edit all_athletes to change named starting rosters; rosters, profiles, and prime_divisions are compatibility views.",
+        )
+        return data
 
     def normalized_combat_sport_profiles(self, rosters, supplied_profiles=None):
         """Fill profile gaps without overwriting edits in a custom universe."""
@@ -631,16 +759,18 @@ class SeedMixin:
     def load_combat_sport_database(self):
         section = self.universe_section("combat_sports", None)
         if section:
+            section = self.normalize_combat_sport_database(section)
             rosters = section.get("rosters", section)
             if isinstance(rosters, dict) and "Boxing" in rosters:
                 self.combat_sport_seed_divisions = section.get("prime_divisions", {}) if isinstance(section, dict) else {}
-                self.combat_sport_seed_profiles = self.normalized_combat_sport_profiles(rosters, section.get("profiles", {}))
+                self.combat_sport_seed_profiles = section.get("profiles", {})
                 return rosters
         path = self.seed_database_file("combat_sport_database.json")
         if not path.exists():
             self.write_seed_database_file(path, self.build_combat_sport_database())
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
+            data = self.normalize_combat_sport_database(data)
             rosters = data.get("rosters", data)
             if not isinstance(rosters, dict) or "Boxing" not in rosters:
                 raise ValueError("combat sport database is missing rosters")
@@ -648,14 +778,11 @@ class SeedMixin:
                 rosters = data["rosters"]
                 self.write_seed_database_file(path, data)
             self.combat_sport_seed_divisions = data.get("prime_divisions", {})
-            profiles = self.normalized_combat_sport_profiles(rosters, data.get("profiles", {}))
-            if not self.combat_sport_seed_divisions or profiles != data.get("profiles") or data.get("schema", 1) < 4:
-                data = {"schema": 4, "notes": self.build_combat_sport_database()["notes"],
-                        "rosters": rosters, "prime_divisions": self.combat_sport_seed_divisions or COMBAT_SPORT_REAL_DIVISIONS,
-                        "profiles": profiles}
+            if not self.combat_sport_seed_divisions or data.get("schema", 1) < COMBAT_SPORT_DATABASE_SCHEMA:
+                data = self.normalize_combat_sport_database(data)
                 self.write_seed_database_file(path, data)
-                self.combat_sport_seed_divisions = data["prime_divisions"]
-            self.combat_sport_seed_profiles = profiles
+                self.combat_sport_seed_divisions = data.get("prime_divisions", {})
+            self.combat_sport_seed_profiles = data.get("profiles", {})
             return rosters
         except Exception as exc:
             backup = path.with_suffix(f".broken_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
@@ -3916,12 +4043,6 @@ class SeedMixin:
         return fighter
 
     def create_real_combat_sport_athlete(self, name, sport, promotion, index):
-        women = {
-            "Jorina Baars", "Lucia Rijker", "Denise Kielholtz", "Jemyma Betrian", "Anissa Meksen",
-            "Christine Ferea", "Britain Hart", "Souris Manfredi", "Julija Stoliarenko", "Maisha Katz", "Shwe Sin Min",
-            "Saori Yoshida", "Kaori Icho", "Helen Maroulis", "Adeline Gray", "Tamyra Mensah-Stock",
-            "Iryna Merleni", "Gabi Garcia", "Beatriz Mesquita", "Somratsamee Manopgym",
-        }
         style_by_sport = {
             "Boxing": "Boxer",
             "Kickboxing": "Kickboxer",
@@ -3936,7 +4057,9 @@ class SeedMixin:
         wins = int(profile.get("record_w", 0))
         losses = int(profile.get("record_l", 0))
         draws = int(profile.get("record_d", 0))
-        region = self.combat_sport_region_for_name(name, sport)
+        region = profile.get("region") or self.combat_sport_region_for_name(name, sport)
+        gender = profile.get("gender") or ("Female" if name in self.combat_sport_seed_women() else "Male")
+        nationality = profile.get("nationality") or self.infer_nationality(name, region)
         striking = rating
         wrestling = max(55, rating - 13)
         grappling = max(55, rating - 13)
@@ -3966,9 +4089,9 @@ class SeedMixin:
             momentum=2,
             morale=78,
             purse=max(4000, (rating - 45) * 1800),
-            gender="Female" if name in women else "Male",
+            gender=gender,
             region=region,
-            nationality=self.infer_nationality(name, region),
+            nationality=nationality,
             style=style_by_sport.get(sport, "Well-Rounded"),
             trait=profile.get("trait", "Technical Learner"),
             behaviour=profile.get("behaviour", "Dynamic Attacker"),
@@ -3994,7 +4117,7 @@ class SeedMixin:
             fighter.power = min(99, rating + 5)
             fighter.toughness = min(99, rating + 7)
             fighter.multi_sport_records["Muay Thai"] = "0-0-0"
-        self.assign_combat_sport_weight(sport, fighter, reset_walk_weight=True)
+        self.assign_combat_sport_weight(sport, fighter, profile.get("weight_class", ""), reset_walk_weight=True)
         fighter.portrait_bg, fighter.portrait_accent = self.generate_portrait_palette(fighter.name)
         fighter.fight_history = []
         fighter.annual_overalls = {}

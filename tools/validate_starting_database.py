@@ -34,6 +34,35 @@ def grouped_keys(app, database):
     return placements, names
 
 
+def combat_sport_keys(database):
+    keys = set()
+    names = set()
+    for sport, roster in (database.get("rosters") or {}).items():
+        if not isinstance(roster, list):
+            continue
+        for name in roster:
+            keys.add((sport, name))
+            names.add(name)
+    return keys, names
+
+
+def incomplete_combat_records(database):
+    required = {
+        "sport", "name", "gender", "region", "nationality", "weight_class",
+        "rating", "prime_age", "record_w", "record_l", "record_d",
+        "style", "trait", "behaviour", "stance",
+    }
+    incomplete = []
+    for record in database.get("all_athletes", []):
+        if not isinstance(record, dict):
+            incomplete.append("<non-dict record>")
+            continue
+        missing = sorted(key for key in required if record.get(key) in ("", None))
+        if missing:
+            incomplete.append(f"{record.get('sport', '?')}: {record.get('name', '?')} missing {', '.join(missing)}")
+    return incomplete
+
+
 def main():
     game = load_game_module()
     root = tk.Tk()
@@ -41,13 +70,20 @@ def main():
     try:
         app = game.FightEmpireApp(root, startup_progress=lambda *_: None)
         source = app.build_seed_fighter_database()
+        combat_source = app.build_combat_sport_database()
         universe = json.loads(DEFAULT_UNIVERSE.read_text(encoding="utf-8"))
         fighters = universe.get("sections", {}).get("fighters", {})
+        combat_sports = universe.get("sections", {}).get("combat_sports", {})
         source_placements, source_names = grouped_keys(app, source)
         database_placements, database_names = grouped_keys(app, fighters)
+        source_sport_keys, source_sport_names = combat_sport_keys(combat_source)
+        database_sport_keys, database_sport_names = combat_sport_keys(combat_sports)
         missing_names = sorted(source_names - database_names)
         extra_names = sorted(database_names - source_names)
         missing_placements = sorted(source_placements - database_placements)
+        missing_sport_keys = sorted(source_sport_keys - database_sport_keys)
+        missing_sport_names = sorted(source_sport_names - database_sport_names)
+        incomplete_sports = incomplete_combat_records(combat_sports)
         print(f"Default Universe schema: {fighters.get('schema')}")
         print(f"Flat fighter records: {len(fighters.get('all_fighters', []))}")
         print(f"Source unique names: {len(source_names)}")
@@ -55,6 +91,13 @@ def main():
         print(f"Missing unique names: {len(missing_names)}")
         print(f"Extra unique names: {len(extra_names)}")
         print(f"Missing source placements: {len(missing_placements)}")
+        print(f"Combat-sport schema: {combat_sports.get('schema')}")
+        print(f"Flat combat-sport records: {len(combat_sports.get('all_athletes', []))}")
+        print(f"Combat-sport source placements: {len(source_sport_keys)}")
+        print(f"Combat-sport database placements: {len(database_sport_keys)}")
+        print(f"Missing combat-sport names: {len(missing_sport_names)}")
+        print(f"Missing combat-sport placements: {len(missing_sport_keys)}")
+        print(f"Incomplete combat-sport records: {len(incomplete_sports)}")
         if missing_names:
             print("Missing names:")
             for name in missing_names[:50]:
@@ -63,7 +106,19 @@ def main():
             print("Missing placements sample:")
             for placement, name in missing_placements[:50]:
                 print(f"  {placement}: {name}")
-        if missing_names:
+        if missing_sport_names:
+            print("Missing combat-sport names:")
+            for name in missing_sport_names[:50]:
+                print(f"  {name}")
+        if missing_sport_keys:
+            print("Missing combat-sport placements sample:")
+            for sport, name in missing_sport_keys[:50]:
+                print(f"  {sport}: {name}")
+        if incomplete_sports:
+            print("Incomplete combat-sport records sample:")
+            for line in incomplete_sports[:50]:
+                print(f"  {line}")
+        if missing_names or missing_sport_names or missing_sport_keys or incomplete_sports:
             raise SystemExit(1)
     finally:
         root.destroy()
