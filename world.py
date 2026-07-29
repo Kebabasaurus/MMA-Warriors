@@ -625,6 +625,343 @@ class WorldMixin:
                     fighter.career_goal_last_review = self.month
                     self.inbox.append({"subject": f"Career Goal Stalling — {fighter.name}", "body": f"{fighter.name}'s goal ({fighter.career_goal}) is only {progress}% complete. Their camp wants a clearer path.", "type": "Talent Relations", "fighter": fighter.name, "resolved": False})
 
+    def is_player_academy_graduate(self, fighter):
+        return bool(
+            getattr(fighter, "academy_graduate", False)
+            or "Fighting Academy" in str(getattr(fighter, "feeder_origin", ""))
+        )
+
+    def career_arc_note(self, fighter, note):
+        fighter.career_arc_history = (getattr(fighter, "career_arc_history", None) or [])[-29:] + [
+            f"Month {self.month}: {note}"
+        ]
+
+    def career_arc_definition(self, arc_type):
+        definitions = {
+            "Homegrown Champion": {
+                "title": "Homegrown Champion",
+                "objective": "Build an academy graduate into the promotion's first homegrown champion.",
+                "deadline": 60,
+            },
+            "Veteran Final Run": {
+                "title": "One Last Title Run",
+                "objective": "Give a proven veteran a credible route to one final championship opportunity.",
+                "deadline": 9,
+            },
+            "Professional Reset": {
+                "title": "Professional Reset",
+                "objective": "Turn raw talent into reliable habits before poor discipline limits the prospect.",
+                "deadline": 8,
+            },
+            "Weight Management": {
+                "title": "Weight-Cut Turnaround",
+                "objective": "Stabilise a difficult cut and make weight for two consecutive appearances.",
+                "deadline": 12,
+            },
+            "Camp Fit": {
+                "title": "Find The Right Room",
+                "objective": "Move a stalled fighter into a camp that suits their development.",
+                "deadline": 9,
+            },
+            "Champion Ambition": {
+                "title": "Keep The Champion",
+                "objective": "Give the champion opponents, visibility, and a contract future worth defending.",
+                "deadline": 6,
+            },
+        }
+        return definitions.get(arc_type, {"title": arc_type, "objective": "Guide this fighter through the next stage of their career.", "deadline": 8})
+
+    def active_career_arc(self, fighter):
+        arc = getattr(fighter, "career_arc", None)
+        return arc if isinstance(arc, dict) and arc.get("status", "active") == "active" else None
+
+    def start_career_arc(self, fighter, arc_type, source="Career review"):
+        if not fighter or self.active_career_arc(fighter):
+            return False
+        definition = self.career_arc_definition(arc_type)
+        arc = {
+            "type": arc_type,
+            "title": definition["title"],
+            "objective": definition["objective"],
+            "status": "active",
+            "started_month": self.month,
+            "deadline_month": self.month + definition["deadline"],
+            "plan": "",
+            "last_review_month": self.month,
+            "source": source,
+            "baseline_title_shots": getattr(fighter, "title_shots", 0),
+            "baseline_defenses": getattr(fighter, "title_defenses", 0),
+            "baseline_fit": round(self.gym_fit_score(fighter, self.gym_by_name(fighter.camp), fighter.region)) if self.gym_by_name(fighter.camp) else 0,
+            "weight_successes": 0,
+        }
+        fighter.career_arc = arc
+        fighter.career_arc_last_offer_month = self.month
+        self.career_arc_note(fighter, f"{definition['title']} began. {definition['objective']}")
+        gym = self.gym_by_name(getattr(fighter, "camp", ""))
+        if gym:
+            self.record_gym_story(gym, f"Career story: {definition['title']}", definition["objective"], fighter=fighter)
+        if fighter in getattr(self, "roster", []) and not getattr(self, "spectator_mode", False):
+            self.inbox.append({
+                "subject": f"Career Story - {fighter.name}",
+                "body": f"{definition['title']}: {definition['objective']} Open Fighter Career Goals to choose how to support the plan.",
+                "type": "Talent Relations", "fighter": fighter.name, "resolved": False,
+            })
+        return True
+
+    def career_arc_state(self, fighter):
+        arc = self.active_career_arc(fighter)
+        if not arc:
+            return False, 0, "No active career story."
+        arc_type = arc.get("type", "")
+        elapsed = max(0, self.month - arc.get("started_month", self.month))
+        plan = arc.get("plan", "")
+        if arc_type == "Homegrown Champion":
+            if fighter.champion:
+                return True, 100, "The academy graduate reached the summit."
+            rank = getattr(fighter, "ranking_position", 0)
+            ranking_progress = 70 if rank and rank <= 3 else 52 if rank and rank <= 6 else 35 if rank and rank <= 10 else 12
+            progress = min(92, ranking_progress + min(20, getattr(fighter, "career_win_streak", 0) * 5) + min(10, fighter.record_w * 2))
+            return False, progress, "Build ranking momentum, then earn a legitimate title fight."
+        if arc_type == "Veteran Final Run":
+            if fighter.champion or getattr(fighter, "title_shots", 0) > arc.get("baseline_title_shots", 0):
+                return True, 100, "The veteran received the promised championship opportunity."
+            rank = getattr(fighter, "ranking_position", 0)
+            progress = 18 + (42 if getattr(fighter, "top_opponent_promise", False) else 0) + (20 if getattr(fighter, "main_event_promise", False) else 0)
+            if rank and rank <= 5:
+                progress += 20
+            return False, min(90, progress), "Book a ranked opponent or title fight; the result remains up to the fight engine."
+        if arc_type == "Professional Reset":
+            professionalism = getattr(fighter, "professionalism", 50)
+            progress = min(100, max(0, (professionalism - 35) * 2) + min(24, elapsed * 4))
+            return professionalism >= 65 and elapsed >= 4, progress, "Structured training needs time, reliable habits, and active competition."
+        if arc_type == "Weight Management":
+            successes = int(arc.get("weight_successes", 0) or 0)
+            return successes >= 2, min(100, successes * 50), f"Made weight appearances: {successes}/2."
+        if arc_type == "Camp Fit":
+            gym = self.gym_by_name(getattr(fighter, "camp", ""))
+            current_fit = round(self.gym_fit_score(fighter, gym, fighter.region)) if gym else 0
+            improved = current_fit - arc.get("baseline_fit", current_fit)
+            complete = bool(plan) and improved >= 8 and elapsed >= 2
+            progress = min(100, max(8, 35 + improved * 5 + elapsed * 4 if plan else 8))
+            return complete, progress, f"Current camp fit {current_fit:+d}; a meaningful improvement needs time in the new room."
+        if arc_type == "Champion Ambition":
+            defense_gain = max(0, getattr(fighter, "title_defenses", 0) - arc.get("baseline_defenses", 0))
+            if not fighter.champion:
+                return True, 100, "The title changed hands; the champion's current chapter is complete."
+            secure_deal = fighter.contract_months >= 8
+            spotlight = plan in ("Showcase campaign", "Renew the deal")
+            complete = defense_gain >= 1 and secure_deal and bool(plan)
+            progress = min(95, defense_gain * 45 + (25 if secure_deal else 0) + (20 if spotlight else 0) + (10 if getattr(fighter, "top_opponent_promise", False) else 0))
+            return complete, progress, "Keep a real opponent path and a credible future on the champion's contract."
+        return False, 0, arc.get("objective", "")
+
+    def career_arc_options(self, fighter):
+        arc = self.active_career_arc(fighter)
+        if not arc:
+            return []
+        options = {
+            "Homegrown Champion": [
+                ("title_path", "Build contender path", "Promise a ranked opponent within six months; this does not guarantee a title shot."),
+                ("development", "Fund structured development", "Invest $6,000 in coaching, habits, and a focused development block."),
+                ("camp", "Review camp fit", "Choose a gym and camp plan suited to the fighter's long-term development."),
+            ],
+            "Veteran Final Run": [
+                ("title_path", "Back the final run", "Commit to a ranked opponent and featured opportunity within six months."),
+                ("showcase", "Build a farewell showcase", "Spend $25,000 on a media push and feature the fighter when a suitable bout is booked."),
+                ("decline", "Set honest expectations", "Decline the title-run request; trust and morale will fall, but no promise is made."),
+            ],
+            "Professional Reset": [
+                ("development", "Fund structured development", "Invest $6,000 in coaching, habits, and a focused development block."),
+                ("camp", "Review camp fit", "Put the fighter in a more accountable room and set a clear workload."),
+            ],
+            "Weight Management": [
+                ("nutrition", "Fund nutrition support", "Spend $8,000 on a targeted weight-management programme and set the next camp focus."),
+                ("camp", "Review division and camp", "Choose a camp plan now; a division move remains available from the fighter profile."),
+            ],
+            "Camp Fit": [
+                ("camp", "Find the right room", "Choose a new gym, focus, and workload; the fit must improve over time."),
+                ("development", "Fund structured development", "Invest $6,000 in coaching while you decide whether a move is needed."),
+            ],
+            "Champion Ambition": [
+                ("showcase", "Build a showcase campaign", "Spend $25,000 on visibility and commit to a meaningful featured defence."),
+                ("title_path", "Promise elite opposition", "Commit to a ranked challenger within six months."),
+                ("contract", "Renew the deal", "Open contract negotiations to secure the champion's long-term future."),
+            ],
+        }
+        return options.get(arc.get("type"), [])
+
+    def apply_career_arc_plan(self, fighter, action):
+        arc = self.active_career_arc(fighter)
+        if not arc:
+            return False, "This fighter has no active career story.", ""
+        costs = {"development": 6000, "nutrition": 8000, "showcase": 25000}
+        cost = costs.get(action, 0)
+        if cost and self.cash < cost:
+            return False, f"${cost:,} is required for this plan, but the company cannot fund it today.", ""
+        if action == "contract":
+            arc["plan"] = "Renew the deal"
+            self.career_arc_note(fighter, "The promotion opened contract talks to secure the next chapter.")
+            return True, "Open the contract offer and agree terms that match the champion's ambition.", "contract"
+        if action == "camp":
+            arc["plan"] = "Camp review"
+            self.career_arc_note(fighter, "The promotion ordered a camp and workload review.")
+            return True, "Choose the gym, focus, and workload for the next camp.", "camp"
+        if action == "decline":
+            arc["plan"] = "Expectations managed"
+            fighter.relationship_trust = max(1, fighter.relationship_trust - 8)
+            fighter.morale = max(15, fighter.morale - 6)
+            self.career_arc_note(fighter, "The promotion declined the requested title run and set honest expectations.")
+            return True, "The request was declined. The veteran remains under contract, but trust and morale fell.", ""
+        if cost:
+            self.cash -= cost
+            self.finance["other"] = self.finance.get("other", 0) - cost
+        if action == "development":
+            arc["plan"] = "Structured development"
+            fighter.professionalism = min(99, fighter.professionalism + 4)
+            fighter.motivation = min(99, fighter.motivation + 5)
+            self.ensure_detailed_skills(fighter)
+            fighter.detailed_skills["dedication"] = min(99, fighter.detailed_skills.get("dedication", fighter.professionalism) + 3)
+            fighter.camp_focus = "Game Plan" if fighter.camp_focus == "Balanced" else fighter.camp_focus
+            note = f"Invested ${cost:,} in a structured development programme."
+        elif action == "nutrition":
+            arc["plan"] = "Nutrition programme"
+            fighter.camp_focus = "Weight Management"
+            fighter.camp_intensity = "Standard"
+            fighter.walk_weight = max(WEIGHT_LIMITS.get(fighter.weight, fighter.walk_weight) + 3, (fighter.walk_weight or self.default_walk_weight(fighter)) - 2)
+            fighter.weight_cut_penalty = max(0, fighter.weight_cut_penalty - 3)
+            self.ensure_detailed_skills(fighter)
+            fighter.detailed_skills["weight_cutting"] = min(99, fighter.detailed_skills.get("weight_cutting", fighter.cardio) + 3)
+            note = f"Invested ${cost:,} in nutrition and weight-cut support."
+        elif action == "showcase":
+            arc["plan"] = "Showcase campaign"
+            fighter.popularity = min(100, fighter.popularity + 3)
+            fighter.media_heat = min(100, fighter.media_heat + 8)
+            fighter.main_event_promise = True
+            fighter.top_opponent_promise = True
+            fighter.promise_deadline_month = max(fighter.promise_deadline_month, self.month + 6)
+            note = f"Invested ${cost:,} in a showcase campaign and meaningful opponent path."
+        elif action == "title_path":
+            arc["plan"] = "Contender path"
+            fighter.top_opponent_promise = True
+            if arc.get("type") in ("Veteran Final Run", "Champion Ambition"):
+                fighter.main_event_promise = True
+            fighter.promise_deadline_month = max(fighter.promise_deadline_month, self.month + 6)
+            fighter.motivation = min(99, fighter.motivation + 4)
+            note = "Committed to a ranked-opponent path within six months."
+        else:
+            return False, "That career-plan action is not available.", ""
+        self.career_arc_note(fighter, note)
+        gym = self.gym_by_name(getattr(fighter, "camp", ""))
+        if gym:
+            self.record_gym_story(gym, f"Career plan: {arc.get('title', arc.get('type'))}", note, fighter=fighter)
+        return True, note, ""
+
+    def complete_career_arc(self, fighter, conclusion):
+        arc = self.active_career_arc(fighter)
+        if not arc:
+            return
+        title = arc.get("title", arc.get("type", "Career Story"))
+        fighter.career_achievements = (fighter.career_achievements or [])[-39:] + [f"{title}: {conclusion}"]
+        self.career_arc_note(fighter, f"Completed {title}. {conclusion}")
+        fighter.morale = min(100, fighter.morale + 8)
+        fighter.motivation = min(99, fighter.motivation + 6)
+        fighter.relationship_trust = min(100, fighter.relationship_trust + 6)
+        if arc.get("type") == "Homegrown Champion":
+            academy = self.repair_academy(getattr(self, "academy", {}))
+            academy["reputation"] = min(100, academy.get("reputation", 10) + 8)
+            academy["alumni"] = [
+                {**row, "title_wins": max(1, row.get("title_wins", 0))} if row.get("name") == fighter.name else row
+                for row in academy.get("alumni", [])
+            ]
+        gym = self.gym_by_name(getattr(fighter, "camp", ""))
+        if gym:
+            self.record_gym_story(gym, f"Career story completed: {title}", conclusion, fighter=fighter)
+        if fighter in self.roster:
+            self.inbox.append({"subject": f"Career Story Completed - {fighter.name}", "body": f"{title}: {conclusion}", "type": "Talent Relations", "fighter": fighter.name, "resolved": False})
+        fighter.career_arc = None
+
+    def fail_career_arc(self, fighter, conclusion):
+        arc = self.active_career_arc(fighter)
+        if not arc:
+            return
+        title = arc.get("title", arc.get("type", "Career Story"))
+        if arc.get("type") == "Champion Ambition":
+            fighter.negotiation_heat = min(100, getattr(fighter, "negotiation_heat", 0) + 12)
+            conclusion += " Their camp is now actively testing the market."
+        self.career_arc_note(fighter, f"{title} stalled. {conclusion}")
+        fighter.relationship_trust = max(1, fighter.relationship_trust - 7)
+        fighter.morale = max(15, fighter.morale - 5)
+        if fighter in self.roster:
+            self.inbox.append({"subject": f"Career Story Stalled - {fighter.name}", "body": f"{title}: {conclusion}", "type": "Talent Relations", "fighter": fighter.name, "resolved": False})
+        fighter.career_arc = None
+
+    def record_career_arc_result(self, fighters, fight):
+        for fighter in fighters:
+            arc = self.active_career_arc(fighter)
+            if not arc:
+                continue
+            if arc.get("type") == "Weight Management":
+                if not getattr(fighter, "missed_weight", False):
+                    arc["weight_successes"] = min(2, int(arc.get("weight_successes", 0) or 0) + 1)
+                    self.career_arc_note(fighter, f"Made weight successfully ({arc['weight_successes']}/2).")
+                else:
+                    arc["weight_successes"] = 0
+                    self.career_arc_note(fighter, "Missed weight; the turnaround count resets.")
+            complete, _progress, conclusion = self.career_arc_state(fighter)
+            if complete:
+                self.complete_career_arc(fighter, conclusion)
+
+    def offer_player_career_arc(self):
+        if getattr(self, "spectator_mode", False) or self.rules.get("career_arc_last_generation_month") == self.month:
+            return False
+        candidates = []
+        for fighter in self.roster:
+            if fighter.retired or self.active_career_arc(fighter):
+                continue
+            seen = " ".join(getattr(fighter, "career_arc_history", None) or [])
+            if self.is_player_academy_graduate(fighter) and "Homegrown Champion began" not in seen:
+                candidates.append((0, fighter.potential * 2 + max(0, 28 - fighter.age), fighter, "Homegrown Champion", "Academy promotion"))
+            if fighter.champion and fighter.contract_months <= 10 and "Keep The Champion began" not in seen:
+                candidates.append((1, fighter.popularity + fighter.title_defenses * 8, fighter, "Champion Ambition", "Champion contract review"))
+            if fighter.age >= 34 and fighter.record_w + fighter.record_l >= 16 and fighter.popularity >= 28 and "One Last Title Run began" not in seen:
+                candidates.append((2, fighter.popularity + fighter.record_w + max(0, 39 - fighter.age), fighter, "Veteran Final Run", "Veteran career review"))
+            if fighter.age <= 27 and fighter.potential - fighter.overall >= 8 and fighter.professionalism <= 48 and "Professional Reset began" not in seen:
+                candidates.append((3, fighter.potential - fighter.professionalism, fighter, "Professional Reset", "Prospect development review"))
+            if (fighter.missed_weight or fighter.weight_cut_penalty >= 8) and "Weight-Cut Turnaround began" not in seen:
+                candidates.append((4, fighter.weight_cut_penalty + (12 if fighter.missed_weight else 0), fighter, "Weight Management", "Medical and performance review"))
+            gym = self.gym_by_name(getattr(fighter, "camp", ""))
+            fit = self.gym_fit_score(fighter, gym, fighter.region) if gym else 0
+            if fighter.age <= fighter.prime_end and fighter.potential - fighter.overall >= 6 and fit < 48 and "Find The Right Room began" not in seen:
+                candidates.append((5, 55 - fit + fighter.potential - fighter.overall, fighter, "Camp Fit", "Camp development review"))
+        if not candidates:
+            return False
+        _priority, _score, fighter, arc_type, source = sorted(candidates, key=lambda row: (row[0], -row[1], row[2].name, row[3]))[0]
+        if self.start_career_arc(fighter, arc_type, source):
+            self.rules["career_arc_last_generation_month"] = self.month
+            return True
+        return False
+
+    def process_career_arcs(self):
+        """Advance player-controlled long-form stories alongside ordinary career goals."""
+        self.offer_player_career_arc()
+        for fighter in list(self.roster):
+            arc = self.active_career_arc(fighter)
+            if not arc:
+                continue
+            complete, _progress, conclusion = self.career_arc_state(fighter)
+            if complete:
+                self.complete_career_arc(fighter, conclusion)
+                continue
+            if self.month > arc.get("deadline_month", self.month):
+                if arc.get("type") == "Homegrown Champion":
+                    arc["deadline_month"] = self.month + 24
+                    self.career_arc_note(fighter, "The homegrown project continues; development takes the time it takes.")
+                elif arc.get("type") == "Champion Ambition" and fighter.champion and fighter.contract_months > 1:
+                    arc["deadline_month"] = self.month + 4
+                    self.career_arc_note(fighter, "Champion review extended briefly; a concrete contract or opponent decision is still needed.")
+                else:
+                    self.fail_career_arc(fighter, "The promised path did not materialise before the review deadline.")
+
     def refresh_promotion_rankings(self, track=True, company=None, roster=None):
         """Maintain a transparent current/previous rank for the player and every AI promotion."""
         if roster is not None:
@@ -1458,6 +1795,9 @@ class WorldMixin:
                 self.root.after(0, lambda: self.prompt_comeback_completion(fighter))
 
     def apply_result(self, winner, loser, fight, method="Decision"):
+        # Weigh-in state is cleared later in this method, so career arcs that
+        # track weight management must see the result before preparation resets.
+        self.record_career_arc_result((winner, loser), fight)
         self.record_bout_rating_history(winner, loser, "W", "L", fight)
         self.complete_fight_observation(winner)
         self.complete_fight_observation(loser)
@@ -1553,6 +1893,12 @@ class WorldMixin:
                     participant.owed_title_shot = False
                     participant.title_shot_clause = False
                     self.resolve_title_shot_inbox(participant)
+                arc = self.active_career_arc(participant)
+                if arc and arc.get("type") == "Veteran Final Run":
+                    self.complete_career_arc(participant, "They received a final championship opportunity on merit.")
+            winner_arc = self.active_career_arc(winner)
+            if winner_arc and winner_arc.get("type") == "Homegrown Champion" and winner.champion:
+                self.complete_career_arc(winner, "The academy graduate became the promotion's first homegrown champion.")
         # Title-shot clause: a win in a NON-title fight earns a guaranteed future shot.
         elif getattr(winner, "title_shot_clause", False) and winner in self.roster and not winner.champion:
             if not getattr(winner, "owed_title_shot", False) and not self.has_unresolved_title_shot_inbox(winner):
@@ -1568,6 +1914,7 @@ class WorldMixin:
             self.retire_after_final_fight_if_due(loser, self.fighter_company_name(loser))
 
     def apply_draw_result(self, a, b, fight):
+        self.record_career_arc_result((a, b), fight)
         self.record_bout_rating_history(a, b, "D", "D", fight)
         self.complete_fight_observation(a)
         self.complete_fight_observation(b)
@@ -2837,6 +3184,8 @@ class WorldMixin:
         fighter.record_history_baseline_d = 0
         fighter.contract_months = 24
         fighter.feeder_origin = f"{self.player_company_name} Fighting Academy"
+        fighter.academy_graduate = True
+        fighter.academy_graduated_month = self.month
         fighter.motivation = max(35, min(99, prospect.get("dedication", fighter.motivation)))
         fighter.professionalism = max(30, min(99, round((prospect.get("dedication", 55) + prospect.get("coachability", 55)) / 2)))
         fighter.career_achievements = list(fighter.career_achievements or []) + [
@@ -2859,6 +3208,8 @@ class WorldMixin:
         academy["reputation"] = min(100, academy.get("reputation", 10) + 1 + int(prospect.get("rating", 40) >= 65))
         prospect["milestones"] = ([f"M{self.month}: Graduated to {destination} at rating {prospect.get('rating', fighter.overall)}."] + prospect.get("milestones", []))[:20]
         self.record_world_story("Academy Graduate", f"{fighter.name} graduates from {self.player_company_name}'s academy.", f"Destination {destination}; amateur record {entry['amateur_record']}; potential {fighter.potential}.", [self.player_company_name], [fighter.name], 2)
+        if destination == "MMA" and fighter in self.roster:
+            self.start_career_arc(fighter, "Homegrown Champion", "Academy graduation")
 
     def academy_alumnus_fighter(self, name):
         fighter = self.find_fighter_anywhere(name) if hasattr(self, "find_fighter_anywhere") else None
@@ -4245,6 +4596,7 @@ class WorldMixin:
         worlds = getattr(self, "combat_sport_worlds", {}) or self.seed_combat_sport_worlds()
         self.combat_sport_worlds = worlds
         steps.append(("Career goals", self.process_career_goals))
+        steps.append(("Career stories", self.process_career_arcs))
         for sport, world in list(worlds.items()):
             steps.append((
                 f"{sport} circuit",
@@ -7621,6 +7973,26 @@ class WorldMixin:
                         gym, f"{fighter.name}: {direction_word}",
                         f"OVR {before} -> {fighter.overall}. {fighter.development_log[0]['reason']}", fighter=fighter,
                     )
+            elif player_roster:
+                arc = self.active_career_arc(fighter)
+                tracked_types = {"Homegrown Champion", "Professional Reset", "Camp Fit"}
+                if arc and arc.get("type") in tracked_types and self.month - arc.get("last_gym_story_month", 0) >= 3:
+                    explanation = self.fighter_development_explanation(fighter)
+                    brakes = explanation["negative"][:2]
+                    reason = "; ".join(f"{label} {value:+.1f}" for label, value in brakes)
+                    if not reason:
+                        reason = f"Development score {explanation['score']:.1f} did not clear this month's growth opportunity."
+                    gym = self.gym_by_name(getattr(fighter, "camp", ""))
+                    if gym:
+                        self.record_gym_story(
+                            gym, f"{fighter.name}: development plateau", reason, fighter=fighter,
+                        )
+                    fighter.development_log = (fighter.development_log or [])[:9]
+                    fighter.development_log.insert(0, {
+                        "date": self.format_game_date(), "before": before, "after": fighter.overall,
+                        "type": "Plateau", "score": round(explanation["score"], 1), "reason": reason,
+                    })
+                    arc["last_gym_story_month"] = self.month
             fighter.annual_overalls = fighter.annual_overalls or {}
             fighter.annual_overalls[year] = max(fighter.annual_overalls.get(year, 0), fighter.overall)
             self.update_fighter_peak_overall(fighter)
@@ -7714,6 +8086,16 @@ class WorldMixin:
             if step > 0:
                 pressure = max(0, walk - current_limit - 12) * 1.4 + max(0, fighter.age - 30) * 2.2
                 pressure += max(0, fighter.weight_cut_penalty - 2) * 3 + (8 if fighter.missed_weight else 0) + max(0, natural_size - 58) * 0.45
+                # A thin division next door and a lucky roll could clear the
+                # threshold between them with no bodily reason at all, which
+                # moved fighters who fit their class perfectly well: a
+                # lightweight walking eight pounds over the limit -- a smaller
+                # cut than his division's median -- was relocated to
+                # welterweight for "natural frame growth" and ended up seven
+                # pounds under his new limit. Opportunity may tip a decision
+                # that the body already supports; it cannot make one on its own.
+                if pressure < 6:
+                    continue
                 score = pressure + opportunity + random.uniform(-7, 7)
                 reason = "a healthier fit at a higher weight after difficult cuts" if fighter.missed_weight or fighter.weight_cut_penalty >= 4 else "natural frame growth and a clearer divisional opportunity"
             else:
