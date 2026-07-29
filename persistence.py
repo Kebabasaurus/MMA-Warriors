@@ -1185,6 +1185,16 @@ class PersistenceMixin:
             self.inbox.append({"subject": "Detailed Skill Balance Repair", "body": summary, "type": "Rules", "resolved": False})
             self.change_journal.append({"date": self.format_game_date(), "type": "Migration", "summary": summary})
             self.change_journal = self.change_journal[-400:]
+        frame_repair = self.migrate_division_frame_mismatch(loaded_fighters)
+        if frame_repair.get("repaired", 0) or frame_repair.get("reflagged", 0):
+            summary = (
+                f"Division frame repair reset {frame_repair['repaired']:,} fighter frame(s) that sat far below the "
+                f"division they compete in (worst {frame_repair['worst']} pound(s) under natural size) and "
+                f"refreshed the division-fit rating on {frame_repair.get('reflagged', 0):,} profile(s)."
+            )
+            self.inbox.append({"subject": "Division Frame Repair", "body": summary, "type": "Rules", "resolved": False})
+            self.change_journal.append({"date": self.format_game_date(), "type": "Migration", "summary": summary})
+            self.change_journal = self.change_journal[-400:]
         realism_updates = self.migrate_signature_real_fighter_profiles(loaded_fighters)
         if realism_updates:
             names = ", ".join(realism_updates)
@@ -1308,6 +1318,53 @@ class PersistenceMixin:
             promo.roster = [fighter for fighter in promo.roster if fighter not in released]
             released_total += len(released)
         return released_total
+
+    def migrate_division_frame_mismatch(self, fighters):
+        """One-time repair for frames left far below the division they compete in.
+
+        The size-fit model measured a natural frame about twenty-five pounds
+        lighter than the generator built, so nothing was ever flagged as
+        undersized and nothing grew. Saves accumulated fighters whose frame had
+        no relation to their class at all -- a 131lb light heavyweight. Growing
+        eighty pounds is not something the monthly acclimatisation can
+        plausibly do, so clearly broken frames are reset into their division's
+        natural band once. Mild mismatches are left alone: those are a real
+        part of the game and acclimatisation now handles them.
+        """
+        version = int(getattr(self, "rules", {}).get("division_frame_repair_version", 0) or 0)
+        if version >= 1:
+            return {"repaired": 0, "worst": 0}
+        repaired = 0
+        reflagged = 0
+        worst = 0
+        seen = set()
+        for fighter in fighters:
+            if id(fighter) in seen or getattr(fighter, "weight", "") not in WEIGHT_LIMITS:
+                continue
+            seen.add(id(fighter))
+            walk = int(getattr(fighter, "walk_weight", 0) or 0)
+            if not walk:
+                continue
+            natural = self.natural_walk_weight_for(fighter, fighter.weight)
+            shortfall = natural - walk
+            if shortfall > 20:
+                worst = max(worst, shortfall)
+                fighter.walk_weight = self.default_walk_weight(fighter)
+                repaired += 1
+            # Every stored penalty was written by the old model and reads zero.
+            # Refresh it from the real frame, or a mild mismatch stays invisible
+            # forever: monthly acclimatisation only runs on a fighter who is
+            # already carrying a penalty, so it would never grow them in.
+            current = self.division_size_penalty_for(fighter, fighter.weight)
+            if current != int(getattr(fighter, "division_size_penalty", 0) or 0):
+                fighter.division_size_penalty = current
+                fighter.division_size_note = (
+                    f"Undersized for {fighter.weight}: division-fit penalty {current}/14."
+                    if current else "Natural division fit."
+                )
+                reflagged += 1
+        self.rules["division_frame_repair_version"] = 1
+        return {"repaired": repaired, "reflagged": reflagged, "worst": worst}
 
     def migrate_detailed_skill_balance(self, fighters):
         """One-time repair for saves created by group-wide detailed growth."""

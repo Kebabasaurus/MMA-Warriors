@@ -3048,18 +3048,39 @@ class EventMixin:
         return True, (f"Undersized move accepted: {walk} lb walk weight is light for {target_weight}. "
                       f"This creates a {severity} permanent division-fit disadvantage ({penalty}/14) in physical exchanges, initiative, starting condition, and odds.")
 
+    def natural_walk_weight_for(self, fighter, weight):
+        """The frame a fighter needs to be a natural fit in a division.
+
+        Has to agree with default_walk_weight, which builds fighters at their
+        limit plus four pounds or more: a fighter walks above their class and
+        cuts down to it. These two had drifted about twenty-five pounds apart --
+        the fit model believed a natural welterweight walked 154lb while the
+        generator was making them 174-185lb. Nothing was ever measured as
+        undersized as a result, and a fighter "growing into" a division stopped
+        growing sixteen pounds below its limit. Kept in one place so the two
+        cannot separate again.
+        """
+        limit = WEIGHT_LIMITS.get(weight, 170)
+        if weight == "Heavyweight":
+            # The heavyweight limit is a cap rather than a target: nobody cuts
+            # to 265, so a natural heavyweight sits well under it.
+            return limit - 25
+        spread = 10 if limit <= 135 else 15 if limit <= 170 else 22
+        if getattr(fighter, "gender", "Male") == "Female":
+            spread = max(8, spread - 4)
+        return limit + max(4, spread // 3)
+
     def division_size_penalty_for(self, fighter, target_weight):
-        """Return the durable cost of voluntarily competing above natural size."""
-        try:
-            current_limit = WEIGHT_LIMITS[fighter.weight]
-            target_limit = WEIGHT_LIMITS[target_weight]
-        except KeyError:
-            return 0
-        if target_limit <= current_limit:
+        """Return the durable cost of competing below the division's natural size."""
+        if fighter.weight not in WEIGHT_LIMITS or target_weight not in WEIGHT_LIMITS:
             return 0
         walk = fighter.walk_weight or self.default_walk_weight(fighter)
         natural_size = self.ds(fighter, "natural_size", 50)
-        expected_walk = target_limit - (25 if target_weight == "Heavyweight" else 16)
+        # Measured against the division being entered rather than the direction
+        # of travel. A fighter who drops down from heavyweight carrying a
+        # lightweight's frame is exactly as undersized as one who climbed up to
+        # it, and previously came away with no penalty at all.
+        expected_walk = self.natural_walk_weight_for(fighter, target_weight)
         size_gap = max(0, expected_walk - walk)
         frame_gap = max(0, 55 - natural_size)
         return max(0, min(14, round(size_gap / 4.5 + frame_gap / 16)))
@@ -3085,8 +3106,7 @@ class EventMixin:
         chance += (natural_size - 50) * 0.002 + max(0, conditioning - 55) * 0.001
         if random.random() > max(0.03, min(0.5, chance)):
             return
-        target_limit = WEIGHT_LIMITS[weight]
-        expected_walk = target_limit - (25 if weight == "Heavyweight" else 16)
+        expected_walk = self.natural_walk_weight_for(fighter, weight)
         walk = fighter.walk_weight or self.default_walk_weight(fighter)
         if walk < expected_walk:
             walk = min(expected_walk, walk + random.randint(2, 5))
