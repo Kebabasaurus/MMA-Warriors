@@ -5,9 +5,9 @@
   "notes": "Editable universe database pack. Clone this file for real-life, fake, fantasy, or historic universes. Sections are intentionally enclosed so companies, fighters, combat sports, media, and regions can evolve independently.",
   "sections": {
     "fighters": {
-      "schema": 3,
+      "schema": 4,
       "database_name": "Core MMA Fighter Database",
-      "notes": "Canonical new-game MMA fighter seed database. Edit all_fighters to change named starting rosters; grouped sections are compatibility views.",
+      "notes": "Canonical new-game MMA fighter seed database. Every named MMA fighter, profile, placement, legacy prime-age override, prospect tag, and feeder headliner is editable here; grouped sections are compatibility views.",
       "bamma_addins_embedded": true,
       "opening_replacements_embedded": true,
       "player_roster": [
@@ -27618,6 +27618,26 @@
             "",
             ""
           ]
+        ],
+        "Eurasian Fight Circuit": [
+          [
+            "Magomed Zaynukov",
+            "Lightweight",
+            "Eurasian Fight Circuit",
+            58,
+            82,
+            27,
+            13,
+            2,
+            "Russia",
+            "Muay Thai",
+            "",
+            "Male",
+            90,
+            "Russian",
+            "Russia",
+            "Makhachkala"
+          ]
         ]
       },
       "all_fighters": [
@@ -27781,7 +27801,8 @@
           "hometown": "Ferguson",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -27804,7 +27825,8 @@
           "hometown": "Pinar del R\u00edo",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -27827,7 +27849,8 @@
           "hometown": "Santa Cruz",
           "style": "Kickboxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -27851,7 +27874,8 @@
           "style": "Kickboxer",
           "source_url": "",
           "potential": "",
-          "stance": "Orthodox"
+          "stance": "Orthodox",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -27897,7 +27921,8 @@
           "hometown": "Philadelphia",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -28147,7 +28172,8 @@
           "hometown": "Matanzas",
           "style": "Judo",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -28170,7 +28196,8 @@
           "hometown": "Dores do Indai\u00e1",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 27
         },
         {
           "database_type": "mma",
@@ -28216,7 +28243,8 @@
           "hometown": "Tacoma",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -28239,7 +28267,8 @@
           "hometown": "Broomfield",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -28423,7 +28452,8 @@
           "hometown": "Myitkyina",
           "style": "Kickboxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -28607,7 +28637,8 @@
           "hometown": "St Mary's Hospital",
           "style": "Karate",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -30584,7 +30615,8 @@
           "hometown": "Stockton",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -30617,7 +30649,8 @@
             "footwork": 8,
             "conditioning": 9,
             "stun_recovery": 8
-          }
+          },
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -30686,7 +30719,8 @@
           "hometown": "Albuquerque",
           "style": "Kickboxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -30755,7 +30789,8 @@
           "hometown": "",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -30801,7 +30836,8 @@
           "hometown": "West Linn",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -30893,7 +30929,8 @@
           "hometown": "Seattle",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -30916,7 +30953,8 @@
           "hometown": "Hounslow",
           "style": "Kickboxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -30939,7 +30977,8 @@
           "hometown": "",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -30962,7 +31001,8 @@
           "hometown": "",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -31111,7 +31151,8 @@
             "adaptability": 9,
             "discipline": 7
           },
-          "stance": "Orthodox"
+          "stance": "Orthodox",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -31146,7 +31187,8 @@
             "clinch_control": 6,
             "composure": 9
           },
-          "stance": "Southpaw"
+          "stance": "Southpaw",
+          "prime_age": 33
         },
         {
           "database_type": "mma",
@@ -31180,7 +31222,8 @@
             "clinch_control": 8,
             "adaptability": 7
           },
-          "stance": "Orthodox"
+          "stance": "Orthodox",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -31215,7 +31258,8 @@
             "back_control": 8,
             "conditioning": 9
           },
-          "stance": "Orthodox"
+          "stance": "Orthodox",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -31249,7 +31293,8 @@
             "takedown_defence_detail": 9,
             "punch_power": 7
           },
-          "stance": "Orthodox"
+          "stance": "Orthodox",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -31352,7 +31397,8 @@
             "stun_recovery": 98,
             "weight_cutting": 96,
             "natural_size": 92
-          }
+          },
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -31386,7 +31432,8 @@
             "dirty_boxing": 8,
             "conditioning": 8
           },
-          "stance": "Orthodox"
+          "stance": "Orthodox",
+          "prime_age": 35
         },
         {
           "database_type": "mma",
@@ -31421,7 +31468,8 @@
             "submission_attack": 8,
             "composure": 9
           },
-          "stance": "Orthodox"
+          "stance": "Orthodox",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -31455,7 +31503,8 @@
             "submission_attack": 10,
             "killer_instinct": 9
           },
-          "stance": "Orthodox"
+          "stance": "Orthodox",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -31490,7 +31539,8 @@
             "ground_striking": 8,
             "killer_instinct": 9
           },
-          "stance": "Orthodox"
+          "stance": "Orthodox",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -31525,7 +31575,8 @@
             "chin_strength": 9,
             "submission_attack": 8
           },
-          "stance": "Southpaw"
+          "stance": "Southpaw",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -31558,7 +31609,8 @@
             "guard_work": 9,
             "back_control": 9,
             "punch_technique": 7
-          }
+          },
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -31624,7 +31676,8 @@
             "back_control": 8,
             "submission_attack": 8,
             "conditioning": 8
-          }
+          },
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -31658,7 +31711,8 @@
             "head_movement": 8,
             "composure": 9
           },
-          "stance": "Southpaw"
+          "stance": "Southpaw",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -31691,7 +31745,8 @@
             "punch_power": 9,
             "ground_striking": 8,
             "killer_instinct": 8
-          }
+          },
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -31724,7 +31779,8 @@
             "strength": 9,
             "takedown_defence_detail": 7,
             "chin_strength": 8
-          }
+          },
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -31758,7 +31814,8 @@
             "takedown_defence_detail": 8,
             "punch_power": 8
           },
-          "stance": "Southpaw"
+          "stance": "Southpaw",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -31791,7 +31848,8 @@
             "knees": 9,
             "thai_plum": 8,
             "killer_instinct": 9
-          }
+          },
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -31824,7 +31882,8 @@
             "ride_control": 9,
             "top_control": 9,
             "strength": 9
-          }
+          },
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -31858,7 +31917,8 @@
             "chin_strength": 9,
             "killer_instinct": 8
           },
-          "stance": "Southpaw"
+          "stance": "Southpaw",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -31892,7 +31952,8 @@
             "transitions": 9,
             "takedown_setup": 7
           },
-          "stance": "Southpaw"
+          "stance": "Southpaw",
+          "prime_age": 32
         },
         {
           "database_type": "mma",
@@ -31926,7 +31987,8 @@
             "conditioning": 10,
             "takedown_defence_detail": 8
           },
-          "stance": "Orthodox"
+          "stance": "Orthodox",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -31949,7 +32011,8 @@
           "hometown": "Dallas",
           "style": "Muay Thai",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 27
         },
         {
           "database_type": "mma",
@@ -32501,7 +32564,14 @@
           "hometown": "Ontario",
           "style": "Wrestler",
           "source_url": "",
-          "potential": 87
+          "potential": 87,
+          "legacy_opening_skill_adjustments": {
+            "low_kick_power": -14,
+            "low_kick_technique": -14,
+            "low_kick_speed": -14,
+            "mobility": -14,
+            "resilience": -14
+          }
         },
         {
           "database_type": "mma",
@@ -32524,7 +32594,10 @@
           "hometown": "Arkansas",
           "style": "Kickboxer",
           "source_url": "",
-          "potential": 86
+          "potential": 86,
+          "legacy_opening_skill_adjustments": {
+            "conditioning": -15
+          }
         },
         {
           "database_type": "mma",
@@ -32826,7 +32899,8 @@
             "back_control": 6,
             "scrambles": 6
           },
-          "stance": "Southpaw"
+          "stance": "Southpaw",
+          "nexgen_prospect": true
         },
         {
           "database_type": "mma",
@@ -34392,7 +34466,8 @@
           "hometown": "",
           "style": "Karate",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -37766,7 +37841,9 @@
             "stun_recovery": 94,
             "weight_cutting": 90,
             "natural_size": 89
-          }
+          },
+          "prime_age": 27,
+          "prime_rating_profile_version": 1
         },
         {
           "database_type": "mma",
@@ -38007,7 +38084,8 @@
           "hometown": "Albuquerque",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -38283,7 +38361,8 @@
           "hometown": "Simpsonville",
           "style": "Karate",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -42280,7 +42359,8 @@
           "hometown": "Harrisburg",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -42910,7 +42990,8 @@
           "hometown": "Fortaleza",
           "style": "Muay Thai",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 26
         },
         {
           "database_type": "mma",
@@ -42933,7 +43014,8 @@
           "hometown": "Waynesburg",
           "style": "Freestyle Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -42956,7 +43038,8 @@
           "hometown": "Fort Wayne",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -42979,7 +43062,8 @@
           "hometown": "Houston",
           "style": "Kickboxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -43002,7 +43086,8 @@
           "hometown": "Aarhus",
           "style": "Kickboxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -43025,7 +43110,8 @@
           "hometown": "Dublin",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -43048,7 +43134,8 @@
           "hometown": "Ada",
           "style": "Freestyle Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -43071,7 +43158,8 @@
           "hometown": "Newport News",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -43094,7 +43182,8 @@
           "hometown": "Cape Town",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -45023,7 +45112,8 @@
           "hometown": "",
           "style": "Karate",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "nexgen_prospect": true
         },
         {
           "database_type": "mma",
@@ -45046,7 +45136,8 @@
           "hometown": "",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "nexgen_prospect": true
         },
         {
           "database_type": "mma",
@@ -45069,7 +45160,8 @@
           "hometown": "",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "nexgen_prospect": true
         },
         {
           "database_type": "mma",
@@ -45092,7 +45184,8 @@
           "hometown": "",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "nexgen_prospect": true
         },
         {
           "database_type": "mma",
@@ -45115,7 +45208,8 @@
           "hometown": "",
           "style": "Kickboxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "nexgen_prospect": true
         },
         {
           "database_type": "mma",
@@ -45138,7 +45232,8 @@
           "hometown": "",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "nexgen_prospect": true
         },
         {
           "database_type": "mma",
@@ -45161,7 +45256,8 @@
           "hometown": "",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "nexgen_prospect": true
         },
         {
           "database_type": "mma",
@@ -45184,7 +45280,8 @@
           "hometown": "",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "nexgen_prospect": true
         },
         {
           "database_type": "mma",
@@ -45207,7 +45304,8 @@
           "hometown": "Henley-on-Thames",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "nexgen_prospect": true
         },
         {
           "database_type": "mma",
@@ -45230,7 +45328,8 @@
           "hometown": "",
           "style": "Kickboxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "nexgen_prospect": true
         },
         {
           "database_type": "mma",
@@ -45253,7 +45352,8 @@
           "hometown": "",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "nexgen_prospect": true
         },
         {
           "database_type": "mma",
@@ -45276,7 +45376,8 @@
           "hometown": "",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "nexgen_prospect": true
         },
         {
           "database_type": "mma",
@@ -45299,7 +45400,8 @@
           "hometown": "",
           "style": "Kickboxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "nexgen_prospect": true
         },
         {
           "database_type": "mma",
@@ -45322,7 +45424,8 @@
           "hometown": "",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "nexgen_prospect": true
         },
         {
           "database_type": "mma",
@@ -45345,7 +45448,8 @@
           "hometown": "",
           "style": "Kickboxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "nexgen_prospect": true
         },
         {
           "database_type": "mma",
@@ -45368,7 +45472,8 @@
           "hometown": "",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "nexgen_prospect": true
         },
         {
           "database_type": "mma",
@@ -45391,7 +45496,8 @@
           "hometown": "",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "nexgen_prospect": true
         },
         {
           "database_type": "mma",
@@ -45414,7 +45520,8 @@
           "hometown": "",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "nexgen_prospect": true
         },
         {
           "database_type": "mma",
@@ -45700,7 +45807,8 @@
           "hometown": "Lafayette",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -45723,7 +45831,8 @@
           "hometown": "Sparta",
           "style": "Grappler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -45746,7 +45855,8 @@
           "hometown": "Rio de Janeiro",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -45815,7 +45925,8 @@
           "hometown": "Oslo",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 27
         },
         {
           "database_type": "mma",
@@ -47963,7 +48074,8 @@
           "hometown": "South Los Angeles",
           "style": "Freestyle Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -47986,7 +48098,8 @@
           "hometown": "Nova Friburgo",
           "style": "Muay Thai",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -48124,7 +48237,8 @@
           "hometown": "Rio de Janeiro",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -48331,7 +48445,8 @@
           "hometown": "Manaus",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -48354,7 +48469,8 @@
           "hometown": "",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -50148,7 +50264,8 @@
           "hometown": "Yokosuka",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 27
         },
         {
           "database_type": "mma",
@@ -50171,7 +50288,8 @@
           "hometown": "Odawara",
           "style": "Submission Grappler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 26
         },
         {
           "database_type": "mma",
@@ -50194,7 +50312,8 @@
           "hometown": "Kawasaki",
           "style": "Freestyle Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -50217,7 +50336,8 @@
           "hometown": "Kyoto",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -50240,7 +50360,8 @@
           "hometown": "Fujisawa",
           "style": "Judo",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -50263,7 +50384,8 @@
           "hometown": "Ikuno-ku",
           "style": "Judo",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -50286,7 +50408,8 @@
           "hometown": "Gifu",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -50309,7 +50432,8 @@
           "hometown": "Ibaraki Prefecture",
           "style": "Judo",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -50332,7 +50456,8 @@
           "hometown": "Nagoya",
           "style": "Grappler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -50355,7 +50480,8 @@
           "hometown": "Yokohama",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -50378,7 +50504,8 @@
           "hometown": "Handa",
           "style": "Grappler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -50447,7 +50574,8 @@
           "hometown": "Fujinomiya",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -50470,7 +50598,8 @@
           "hometown": "Kanagawa Prefecture",
           "style": "Submission Grappler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -50493,7 +50622,8 @@
           "hometown": "Yokohama",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -50516,7 +50646,8 @@
           "hometown": "Takamatsu",
           "style": "Kickboxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 27
         },
         {
           "database_type": "mma",
@@ -50539,7 +50670,8 @@
           "hometown": "Narashino",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -50562,7 +50694,8 @@
           "hometown": "",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -50585,7 +50718,8 @@
           "hometown": "",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -50608,7 +50742,8 @@
           "hometown": "Japan",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -50631,7 +50766,8 @@
           "hometown": "Hy\u014dgo Prefecture",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -50654,7 +50790,8 @@
           "hometown": "",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -50677,7 +50814,8 @@
           "hometown": "Kawasaki",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -50700,7 +50838,8 @@
           "hometown": "Tokyo",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -50723,7 +50862,8 @@
           "hometown": "",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -50746,7 +50886,8 @@
           "hometown": "",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -50769,7 +50910,8 @@
           "hometown": "Osaka Prefecture",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -50792,7 +50934,8 @@
           "hometown": "Japan",
           "style": "Kickboxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -50815,7 +50958,8 @@
           "hometown": "Higashine",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -50838,7 +50982,8 @@
           "hometown": "",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -50861,7 +51006,8 @@
           "hometown": "",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -50884,7 +51030,8 @@
           "hometown": "Osaka",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -51007,7 +51154,8 @@
           "skill_mods": {
             "creative_kicks": 6,
             "submission_attack": 5
-          }
+          },
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -53637,7 +53785,8 @@
           "hometown": "Rio de Janeiro",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -53660,7 +53809,8 @@
           "hometown": "Rio de Janeiro",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -53683,7 +53833,8 @@
           "hometown": "Rio de Janeiro",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -53706,7 +53857,8 @@
           "hometown": "Rio de Janeiro",
           "style": "Luta Livre",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -53729,7 +53881,8 @@
           "hometown": "Sarov",
           "style": "Sambo",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -53752,7 +53905,8 @@
           "hometown": "Coldwater",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 33
         },
         {
           "database_type": "mma",
@@ -53775,7 +53929,8 @@
           "hometown": "Palo Alto",
           "style": "Freestyle Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 32
         },
         {
           "database_type": "mma",
@@ -53798,7 +53953,8 @@
           "hometown": "Huntington Beach",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -53821,7 +53977,8 @@
           "hometown": "Napa",
           "style": "Catch Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 26
         },
         {
           "database_type": "mma",
@@ -53844,7 +54001,8 @@
           "hometown": "Sunnyvale",
           "style": "Grappler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -53867,7 +54025,8 @@
           "hometown": "Rochester",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -53890,7 +54049,8 @@
           "hometown": "Oregon City",
           "style": "Freestyle Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -53913,7 +54073,8 @@
           "hometown": "New York City",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -53936,7 +54097,8 @@
           "hometown": "Chamberlain",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -53959,7 +54121,8 @@
           "hometown": "",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -53982,7 +54145,8 @@
           "hometown": "Jonesboro",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -54005,7 +54169,8 @@
           "hometown": "Island Lake",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 27
         },
         {
           "database_type": "mma",
@@ -54028,7 +54193,8 @@
           "hometown": "Rio de Janeiro",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 26
         },
         {
           "database_type": "mma",
@@ -54051,7 +54217,8 @@
           "hometown": "",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -54074,7 +54241,8 @@
           "hometown": "Natal",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -55546,7 +55714,8 @@
           "hometown": "Tilburg",
           "style": "Kickboxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -55569,7 +55738,8 @@
           "hometown": "Seattle",
           "style": "Kickboxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -55592,7 +55762,8 @@
           "hometown": "Las Vegas",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -55615,7 +55786,8 @@
           "hometown": "Ellsworth",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -55638,7 +55810,8 @@
           "hometown": "San Jose",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 27
         },
         {
           "database_type": "mma",
@@ -55661,7 +55834,8 @@
           "hometown": "Rio de Janeiro",
           "style": "Muay Thai",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -55684,7 +55858,8 @@
           "hometown": "Rechytsa",
           "style": "Freestyle Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -55707,7 +55882,8 @@
           "hometown": "Greeley",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 32
         },
         {
           "database_type": "mma",
@@ -55730,7 +55906,8 @@
           "hometown": "Las Vegas Valley",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -55753,7 +55930,8 @@
           "hometown": "Paris",
           "style": "Kickboxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -55776,7 +55954,8 @@
           "hometown": "Rio de Janeiro",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -55799,7 +55978,8 @@
           "hometown": "",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -55822,7 +56002,8 @@
           "hometown": "Omaha",
           "style": "Catch Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -55845,7 +56026,8 @@
           "hometown": "Anguilla",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 26
         },
         {
           "database_type": "mma",
@@ -55868,7 +56050,8 @@
           "hometown": "Davenport",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -55891,7 +56074,8 @@
           "hometown": "Minneapolis",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -57018,7 +57202,8 @@
           "hometown": "East Meadow",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -57041,7 +57226,8 @@
           "hometown": "St. Francis",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -57064,7 +57250,8 @@
           "hometown": "Westwood",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -57087,7 +57274,8 @@
           "hometown": "Brockton",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 27
         },
         {
           "database_type": "mma",
@@ -57110,7 +57298,8 @@
           "hometown": "Phoenix",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -57133,7 +57322,8 @@
           "hometown": "Round Lake",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -57156,7 +57346,8 @@
           "hometown": "New Orleans",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -57179,7 +57370,8 @@
           "hometown": "Wilmington",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -57202,7 +57394,8 @@
           "hometown": "Nassau",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -57225,7 +57418,8 @@
           "hometown": "Denver",
           "style": "Kickboxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -57248,7 +57442,8 @@
           "hometown": "Indianapolis",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -57271,7 +57466,8 @@
           "hometown": "",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -57294,7 +57490,8 @@
           "hometown": "Rio de Janeiro",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 27
         },
         {
           "database_type": "mma",
@@ -57317,7 +57514,8 @@
           "hometown": "Rio de Janeiro",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -57340,7 +57538,8 @@
           "hometown": "Rio de Janeiro",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -58812,7 +59011,8 @@
           "hometown": "Rio de Janeiro",
           "style": "Muay Thai",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -58858,7 +59058,8 @@
           "hometown": "Sobr\u00e1lia",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 32
         },
         {
           "database_type": "mma",
@@ -59042,7 +59243,8 @@
           "hometown": "Kamysh-Kutan",
           "style": "Sambo",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -59065,7 +59267,8 @@
           "hometown": "Kizlyar",
           "style": "Sambo",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -59594,7 +59797,8 @@
           "hometown": "Katagami",
           "style": "Catch Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -59617,7 +59821,8 @@
           "hometown": "Kanagawa Prefecture",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -59640,7 +59845,8 @@
           "hometown": "Zolochiv",
           "style": "Kickboxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -59663,7 +59869,8 @@
           "hometown": "Toledo",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -59686,7 +59893,8 @@
           "hometown": "Sandusky",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -59709,7 +59917,8 @@
           "hometown": "Sierra Vista",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 32
         },
         {
           "database_type": "mma",
@@ -60797,7 +61006,8 @@
           "hometown": "Santa Barbara",
           "style": "Kickboxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -60820,7 +61030,8 @@
           "hometown": "Everett",
           "style": "Freestyle Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 34
         },
         {
           "database_type": "mma",
@@ -60843,7 +61054,8 @@
           "hometown": "Huntington Beach",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 27
         },
         {
           "database_type": "mma",
@@ -60866,7 +61078,8 @@
           "hometown": "Cincinnati",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -60889,7 +61102,8 @@
           "hometown": "Columbus",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -60912,7 +61126,8 @@
           "hometown": "Niagara Falls",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -60935,7 +61150,8 @@
           "hometown": "Akrotiri and Dhekelia",
           "style": "Kickboxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -60981,7 +61197,8 @@
           "hometown": "Nassau",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 32
         },
         {
           "database_type": "mma",
@@ -61004,7 +61221,8 @@
           "hometown": "Ho Chi Minh City",
           "style": "Sanda",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -61027,7 +61245,8 @@
           "hometown": "San Francisco",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -61050,7 +61269,8 @@
           "hometown": "Santa Ana",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -61989,7 +62209,8 @@
           "hometown": "Salinas",
           "style": "Freestyle Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -62012,7 +62233,8 @@
           "hometown": "Euclid",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 32
         },
         {
           "database_type": "mma",
@@ -62035,7 +62257,8 @@
           "hometown": "Bati\u00e9",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -62058,7 +62281,8 @@
           "hometown": "Babruysk",
           "style": "Sambo",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 27
         },
         {
           "database_type": "mma",
@@ -62150,7 +62374,8 @@
           "hometown": "Baldwin",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -62173,7 +62398,8 @@
           "hometown": "Oahu",
           "style": "Kickboxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -62196,7 +62422,8 @@
           "hometown": "Yerevan",
           "style": "Judo",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 26
         },
         {
           "database_type": "mma",
@@ -62219,7 +62446,8 @@
           "hometown": "Omaha",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -62242,7 +62470,8 @@
           "hometown": "Ottumwa",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -62679,7 +62908,8 @@
           "hometown": "East Chicago",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -62771,7 +63001,8 @@
           "hometown": "Sunnyside",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 31
         },
         {
           "database_type": "mma",
@@ -62978,7 +63209,8 @@
           "hometown": "San Antonio",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 27
         },
         {
           "database_type": "mma",
@@ -63828,7 +64060,8 @@
           "hometown": "Sonora",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -63851,7 +64084,8 @@
           "hometown": "",
           "style": "Muay Thai",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 27
         },
         {
           "database_type": "mma",
@@ -63874,7 +64108,8 @@
           "hometown": "Uhrichsville",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 25
         },
         {
           "database_type": "mma",
@@ -63897,7 +64132,8 @@
           "hometown": "Brooklyn",
           "style": "Boxer",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -63920,7 +64156,8 @@
           "hometown": "",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -63943,7 +64180,8 @@
           "hometown": "S\u00e3o Paulo",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -63966,7 +64204,8 @@
           "hometown": "Chicago",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -63989,7 +64228,8 @@
           "hometown": "Crystal Lake",
           "style": "BJJ",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -64012,7 +64252,8 @@
           "hometown": "Costa Mesa",
           "style": "Well-Rounded",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -64035,7 +64276,8 @@
           "hometown": "Atlanta",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 28
         },
         {
           "database_type": "mma",
@@ -64058,7 +64300,8 @@
           "hometown": "Phoenix",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -64081,7 +64324,8 @@
           "hometown": "Las Vegas Valley",
           "style": "Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 29
         },
         {
           "database_type": "mma",
@@ -64104,7 +64348,8 @@
           "hometown": "Villa Clara Province",
           "style": "Freestyle Wrestler",
           "source_url": "",
-          "potential": ""
+          "potential": "",
+          "prime_age": 30
         },
         {
           "database_type": "mma",
@@ -64381,6 +64626,46 @@
           "style": "Well-Rounded",
           "source_url": "",
           "potential": ""
+        },
+        {
+          "database_type": "mma",
+          "generated": false,
+          "placement": "regional_feeder",
+          "owner": "Eurasian Fight Circuit",
+          "seed_org": "Eurasian Fight Circuit",
+          "name": "Magomed Zaynukov",
+          "weight": "Lightweight",
+          "gender": "Male",
+          "popularity": 58,
+          "rating": 82,
+          "age": 27,
+          "record_w": 13,
+          "record_l": 2,
+          "record_d": 0,
+          "region": "Russia",
+          "nationality": "Russian",
+          "birth_country": "Russia",
+          "hometown": "Makhachkala",
+          "style": "Muay Thai",
+          "source_url": "",
+          "potential": 90,
+          "trait": "Late Bloomer",
+          "skill_mods": {
+            "punch_technique": 86,
+            "punch_power": 84,
+            "knees": 90,
+            "elbows": 88,
+            "thai_plum": 90,
+            "clinch_control": 87,
+            "low_kick_technique": 87,
+            "low_kick_power": 86,
+            "high_kick_technique": 84,
+            "kick_defence": 84,
+            "conditioning": 82,
+            "composure": 82,
+            "dedication": 84
+          },
+          "regional_feeder_headliner": true
         }
       ]
     },

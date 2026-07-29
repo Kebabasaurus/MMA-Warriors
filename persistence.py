@@ -708,14 +708,6 @@ class PersistenceMixin:
             fighter_groups.extend(promo.roster for promo in self.promotions)
             for group in fighter_groups:
                 for fighter in group:
-                    # Conor's old profile was incorrectly calibrated as a
-                    # late-career 82 despite this universe starting him at 27.
-                    # Only opening-world saves receive this correction; later
-                    # development remains part of that save's own history.
-                    if fighter.name == "Conor McGregor" and getattr(fighter, "prime_rating_profile_version", 0) < 1:
-                        self.apply_real_fighter_profile(fighter, 92)
-                        fighter.prime_rating_profile_version = 1
-                        fighter.potential = max(fighter.potential, 98)
                     target_age = prime_ages.get(fighter.name)
                     if target_age is None or getattr(fighter, "prime_legend_age_override_version", 0) >= 1:
                         continue
