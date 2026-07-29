@@ -92,7 +92,6 @@ class SeedMixin:
         ]
 
     def default_promotion_specs(self, fighter_db=None):
-        data = (fighter_db or self.build_seed_fighter_database()).get("promotions", self.expanded_real_fighter_data())
         return [
             {"name": "Ultimate Fighting Championship", "region": "USA", "size": 96, "cash": 30_000_000, "reputation": "Global", "roster_key": "UFC", "target_roster_size": 400, "personality": "Super Shows"},
             {"name": "Professional Fighters League", "region": "USA", "size": 76, "cash": 8_500_000, "reputation": "Global", "roster_key": "PFL", "target_roster_size": 320, "personality": "Seasonal"},
@@ -468,6 +467,12 @@ class SeedMixin:
         row = list(row)
         if len(row) < 10:
             raise ValueError(f"Fighter database row for {row[0] if row else 'unknown'} is incomplete")
+        identity = self.real_fighter_identity_data(row[0]) or {}
+        birth_country = str(row[14] if len(row) > 14 else identity.get("birth_country", "") or identity.get("citizenship", "") or "").strip()
+        citizenship = str(identity.get("citizenship", "") or birth_country).strip()
+        nationality = str(row[13] if len(row) > 13 else "").strip()
+        if not nationality:
+            nationality = COUNTRY_NATIONALITIES.get(citizenship, citizenship or self.infer_nationality(row[0], row[8]))
         return {
             "database_type": "mma",
             "generated": False,
@@ -476,7 +481,7 @@ class SeedMixin:
             "seed_org": row[2],
             "name": row[0],
             "weight": row[1],
-            "gender": gender or self.infer_gender(row[0]),
+            "gender": gender or (row[11] if len(row) > 11 else "") or self.infer_gender(row[0]),
             "popularity": row[3],
             "rating": row[4],
             "age": row[5],
@@ -484,8 +489,12 @@ class SeedMixin:
             "record_l": row[7],
             "record_d": self.real_fighter_draws().get(row[0], 0),
             "region": row[8],
+            "nationality": nationality,
+            "birth_country": birth_country,
+            "hometown": str(row[15] if len(row) > 15 else identity.get("city", "") or "").strip(),
             "style": row[9],
             "source_url": row[10] if len(row) > 10 else "",
+            "potential": row[12] if len(row) > 12 else "",
         }
 
     def seed_fighter_row_from_record(self, record):
@@ -493,7 +502,7 @@ class SeedMixin:
             return list(record)
         owner = record.get("owner") or record.get("company") or record.get("promotion") or "Free Agent"
         seed_org = record.get("seed_org") or owner
-        return [
+        row = [
             record.get("name", "Unnamed Fighter"),
             record.get("weight", "Lightweight"),
             seed_org,
@@ -504,7 +513,24 @@ class SeedMixin:
             int(record.get("record_l", record.get("losses", 0)) or 0),
             record.get("region", "USA"),
             record.get("style", "Well-Rounded"),
-        ] + ([record.get("source_url", "")] if record.get("source_url") else [])
+        ]
+        extra_values = (
+            record.get("source_url", ""),
+            record.get("gender", ""),
+            record.get("potential", ""),
+            record.get("nationality", ""),
+            record.get("birth_country", ""),
+            record.get("hometown", ""),
+        )
+        extras = []
+        if any(value not in ("", None) for value in extra_values):
+            extras.append(record.get("source_url", ""))
+        if any(value not in ("", None) for value in extra_values[1:]):
+            extras.append(record.get("gender", ""))
+        for value in extra_values[2:]:
+            if extras or value not in ("", None):
+                extras.append(value)
+        return row + extras
 
     def fighter_database_records_from_groups(self, player_roster, free_agents, promotions):
         records = []
@@ -572,14 +598,36 @@ class SeedMixin:
             if self.fighter_name_key(row[0]) not in known:
                 player_roster.append(row)
                 known.add(self.fighter_name_key(row[0]))
+        promotions = self.expanded_real_fighter_data()
+        free_agents = self.independent_fighter_data() + self.legend_fighter_data()
+        for destination, owner in (
+            ("Professional Fighters League", "PFL"),
+            ("Cage Warriors", "Cage Warriors"),
+        ):
+            rows = promotions.setdefault(owner, [])
+            known = {self.fighter_name_key(row[0]) for row in rows}
+            for row in self.initial_real_fighter_replacements(destination):
+                name, weight, popularity, skill, age, wins, losses, region, style, potential, source_url, *gender_value = row
+                if self.fighter_name_key(name) in known:
+                    continue
+                rows.append([name, weight, owner, popularity, skill, age, wins, losses, region, style, source_url, gender_value[0] if gender_value else "", potential])
+                known.add(self.fighter_name_key(name))
+        free_agent_known = {self.fighter_name_key(row[0]) for row in free_agents}
+        for row in self.initial_real_fighter_replacements("Free Agents"):
+            name, weight, popularity, skill, age, wins, losses, region, style, potential, source_url, *gender_value = row
+            if self.fighter_name_key(name) in free_agent_known:
+                continue
+            free_agents.append([name, weight, "Free Agent", popularity, skill, age, wins, losses, region, style, source_url, gender_value[0] if gender_value else "", potential])
+            free_agent_known.add(self.fighter_name_key(name))
         data = {
             "schema": MMA_FIGHTER_DATABASE_SCHEMA,
             "database_name": "Core MMA Fighter Database",
             "notes": "Canonical new-game MMA fighter seed database. Edit all_fighters to change named starting rosters; grouped sections are compatibility views.",
             "bamma_addins_embedded": True,
+            "opening_replacements_embedded": True,
             "player_roster": player_roster,
-            "free_agents": self.independent_fighter_data() + self.legend_fighter_data(),
-            "promotions": self.expanded_real_fighter_data(),
+            "free_agents": free_agents,
+            "promotions": promotions,
         }
         data["all_fighters"] = self.fighter_database_records_from_groups(data["player_roster"], data["free_agents"], data["promotions"])
         return data
@@ -587,7 +635,10 @@ class SeedMixin:
     def load_seed_fighter_database(self):
         section = self.universe_section("fighters", None)
         if section:
-            return self.normalize_seed_fighter_database(section)
+            normalized = self.normalize_seed_fighter_database(section)
+            self._seed_fighter_database = normalized
+            self.opening_replacements_embedded = bool(normalized.get("opening_replacements_embedded"))
+            return normalized
         path = self.seed_database_file("core_fighter_database.json")
         if not path.exists():
             self.write_seed_database_file(path, self.build_seed_fighter_database())
@@ -598,6 +649,8 @@ class SeedMixin:
             normalized = self.normalize_seed_fighter_database(data)
             if normalized != data:
                 self.write_seed_database_file(path, normalized)
+            self._seed_fighter_database = normalized
+            self.opening_replacements_embedded = bool(normalized.get("opening_replacements_embedded"))
             return normalized
         except Exception as exc:
             backup = path.with_suffix(f".broken_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
@@ -608,6 +661,8 @@ class SeedMixin:
             data = self.build_seed_fighter_database()
             data["repair_note"] = f"Database was regenerated after load failure: {type(exc).__name__}: {exc}"
             self.write_seed_database_file(path, data)
+            self._seed_fighter_database = data
+            self.opening_replacements_embedded = bool(data.get("opening_replacements_embedded"))
             return data
 
     def build_combat_sport_database(self):
@@ -802,13 +857,13 @@ class SeedMixin:
         seed_db = self.load_seed_fighter_database()
         featured = seed_db.get("player_roster") or self.cage_empire_fighter_data()
         featured = self.unique_fighter_rows(featured)
-        roster = [self.create_real_fighter(*row, player_owned=True) for row in featured]
+        roster = [self.create_real_fighter_from_seed_row(row, player_owned=True) for row in featured]
         existing_featured = {self.fighter_name_key(fighter.name) for fighter in roster}
         if not seed_db.get("bamma_addins_embedded"):
             for row, gender in self.bamma_initial_addin_data():
                 if self.fighter_name_key(row[0]) in existing_featured:
                     continue
-                fighter = self.create_real_fighter(*row, player_owned=True)
+                fighter = self.create_real_fighter_from_seed_row(row, player_owned=True)
                 fighter.gender = gender
                 roster.append(fighter)
                 existing_featured.add(self.fighter_name_key(fighter.name))
@@ -969,7 +1024,7 @@ class SeedMixin:
         free_agent_rows = seed_db.get("free_agents") or (self.independent_fighter_data() + self.legend_fighter_data())
         names = [row for row in free_agent_rows if row[0] not in company_names and row[0] not in reserved_names]
         names = self.unique_fighter_rows(names)
-        fighters = [self.create_real_fighter(*row, player_owned=False) for row in names]
+        fighters = [self.create_real_fighter_from_seed_row(row, player_owned=False) for row in names]
         existing_names = {fighter.name for fighter in fighters} | company_names | reserved_names
         for fighter in fighters:
             fighter.exclusive = False
@@ -1105,7 +1160,24 @@ class SeedMixin:
         """Map real-world classes onto MMA Warriors' eight supported divisions."""
         return {"Atomweight": "Flyweight", "Strawweight": "Flyweight"}.get(weight, weight if weight in WEIGHTS else "Lightweight")
 
-    def create_real_fighter(self, name, weight, org, popularity, skill, age, wins, losses, region, style, player_owned=False, source_url=""):
+    def create_real_fighter_from_seed_row(self, row, player_owned=False):
+        row = list(row)
+        kwargs = {"player_owned": player_owned}
+        if len(row) > 10:
+            kwargs["source_url"] = row[10]
+        if len(row) > 11:
+            kwargs["gender"] = row[11]
+        if len(row) > 12:
+            kwargs["potential"] = row[12]
+        if len(row) > 13:
+            kwargs["nationality"] = row[13]
+        if len(row) > 14:
+            kwargs["birth_country"] = row[14]
+        if len(row) > 15:
+            kwargs["hometown"] = row[15]
+        return self.create_real_fighter(*row[:10], **kwargs)
+
+    def create_real_fighter(self, name, weight, org, popularity, skill, age, wins, losses, region, style, player_owned=False, source_url="", gender="", potential=None, nationality="", birth_country="", hometown=""):
         weight = self.game_weight_class(weight)
         spread = lambda amount=8: random.randint(-amount, amount)
         fighter = Fighter(
@@ -1123,7 +1195,7 @@ class SeedMixin:
             momentum=random.randint(-1, 5),
             morale=random.randint(55, 92),
             purse=max(6000, round((popularity * 700 + skill * 550) * (1.6 if org == "UFC" else 1.0))),
-            gender=self.infer_gender(name),
+            gender=gender or self.infer_gender(name),
         )
         self.enrich_fighter(fighter, player_owned=player_owned)
         fighter.region = region
@@ -1133,6 +1205,13 @@ class SeedMixin:
         fighter.source_url = source_url
         self.assign_regional_identity(fighter, region, birth_region=region, force=True)
         self.apply_real_fighter_birthplace(fighter, region)
+        if nationality:
+            fighter.nationality = nationality
+        if birth_country:
+            fighter.birth_country = birth_country
+            fighter.birth_region = COUNTRY_TO_REGION.get(birth_country, fighter.birth_region or region)
+        if hometown:
+            fighter.hometown = hometown
         fighter.detailed_skills = None
         self.apply_real_fighter_profile(fighter, skill)
         if fighter.name == "Conor McGregor":
@@ -1212,6 +1291,11 @@ class SeedMixin:
             fighter.potential = 95
         profile_rating = self.real_fighter_profiles().get(fighter.name, {}).get("rating", skill)
         fighter.potential = max(fighter.overall, min(98, profile_rating + 6))
+        if potential not in ("", None):
+            try:
+                fighter.potential = max(fighter.overall, int(potential))
+            except (TypeError, ValueError):
+                pass
         # Authored records are history that predates this save. Store that
         # baseline explicitly instead of waiting for a later profile refresh to
         # infer it from the current record.
@@ -1279,6 +1363,8 @@ class SeedMixin:
 
     def replace_generated_opening_slots(self, roster, destination, global_names=None):
         """Replace same-division generated opening slots with curated athletes."""
+        if getattr(self, "opening_replacements_embedded", False):
+            return []
         global_names = global_names if global_names is not None else set()
         known = {self.fighter_name_key(name) for name in global_names if isinstance(name, str)}
         known.update(self.fighter_name_key(fighter.name) for fighter in roster)
@@ -3579,6 +3665,20 @@ class SeedMixin:
         ]
 
     def prime_legend_ages(self):
+        seed_db = getattr(self, "_seed_fighter_database", {}) or {}
+        records = seed_db.get("all_fighters", [])
+        ages = {}
+        if isinstance(records, list):
+            for record in records:
+                if not isinstance(record, dict):
+                    continue
+                if record.get("seed_org") == "Legend" or record.get("owner") == "Legend":
+                    try:
+                        ages[record["name"]] = int(record.get("age", 0) or 0)
+                    except (KeyError, TypeError, ValueError):
+                        continue
+        if ages:
+            return ages
         return {row[0]: row[5] for row in self.legend_fighter_data()}
 
     REAL_FIGHTER_AGE_CAP = 37
@@ -4645,7 +4745,7 @@ class SeedMixin:
             for row in fighters:
                 if row[0] in global_names:
                     continue
-                fighter = self.create_real_fighter(*row, player_owned=False)
+                fighter = self.create_real_fighter_from_seed_row(row, player_owned=False)
                 roster.append(fighter)
                 global_names.add(fighter.name)
                 global_names.add(self.fighter_name_key(fighter.name))

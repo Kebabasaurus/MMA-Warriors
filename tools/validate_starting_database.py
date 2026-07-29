@@ -34,6 +34,22 @@ def grouped_keys(app, database):
     return placements, names
 
 
+def incomplete_mma_records(database):
+    required = {
+        "placement", "owner", "name", "gender", "weight", "region", "nationality",
+        "popularity", "rating", "age", "record_w", "record_l", "record_d", "style",
+    }
+    incomplete = []
+    for record in database.get("all_fighters", []):
+        if not isinstance(record, dict):
+            incomplete.append("<non-dict record>")
+            continue
+        missing = sorted(key for key in required if record.get(key) in ("", None))
+        if missing:
+            incomplete.append(f"{record.get('placement', '?')}: {record.get('name', '?')} missing {', '.join(missing)}")
+    return incomplete
+
+
 def combat_sport_keys(database):
     keys = set()
     names = set()
@@ -81,6 +97,7 @@ def main():
         missing_names = sorted(source_names - database_names)
         extra_names = sorted(database_names - source_names)
         missing_placements = sorted(source_placements - database_placements)
+        incomplete_mma = incomplete_mma_records(fighters)
         missing_sport_keys = sorted(source_sport_keys - database_sport_keys)
         missing_sport_names = sorted(source_sport_names - database_sport_names)
         incomplete_sports = incomplete_combat_records(combat_sports)
@@ -91,6 +108,7 @@ def main():
         print(f"Missing unique names: {len(missing_names)}")
         print(f"Extra unique names: {len(extra_names)}")
         print(f"Missing source placements: {len(missing_placements)}")
+        print(f"Incomplete MMA records: {len(incomplete_mma)}")
         print(f"Combat-sport schema: {combat_sports.get('schema')}")
         print(f"Flat combat-sport records: {len(combat_sports.get('all_athletes', []))}")
         print(f"Combat-sport source placements: {len(source_sport_keys)}")
@@ -106,6 +124,10 @@ def main():
             print("Missing placements sample:")
             for placement, name in missing_placements[:50]:
                 print(f"  {placement}: {name}")
+        if incomplete_mma:
+            print("Incomplete MMA records sample:")
+            for line in incomplete_mma[:50]:
+                print(f"  {line}")
         if missing_sport_names:
             print("Missing combat-sport names:")
             for name in missing_sport_names[:50]:
@@ -118,7 +140,7 @@ def main():
             print("Incomplete combat-sport records sample:")
             for line in incomplete_sports[:50]:
                 print(f"  {line}")
-        if missing_names or missing_sport_names or missing_sport_keys or incomplete_sports:
+        if missing_names or missing_placements or incomplete_mma or missing_sport_names or missing_sport_keys or incomplete_sports:
             raise SystemExit(1)
     finally:
         root.destroy()
