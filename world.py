@@ -8518,14 +8518,27 @@ class WorldMixin:
             -self.ai_title_contender_pressure(promo, *division),
         ))
 
+        def overdue_tier(fighter):
+            """How badly a fighter is owed a booking, in six-month steps.
+
+            Every booking mode orders by quality of one kind or another, so a
+            fighter who sits just below the cut is never reached again: real
+            saves had ranked, healthy, unfatigued fighters idle for six years
+            while the same names were rebooked. The inactivity figure was
+            already being measured here and then ignored. Capped so a long
+            wait moves someone up the queue without letting seniority override
+            merit permanently.
+            """
+            return min(3, inactive.get(fighter.name, 0) // 6)
+
         def pool_for(gender, weight):
             pool = [f for f in ready if f.gender == gender and f.weight == weight and f.name not in used]
             if mode == "Star Chasing":
-                pool.sort(key=lambda f: (f.popularity + f.star_quality, f.overall, getattr(f, "rank_score", 0)), reverse=True)
+                pool.sort(key=lambda f: (overdue_tier(f), f.popularity + f.star_quality, f.overall, getattr(f, "rank_score", 0)), reverse=True)
             elif mode == "Prospect Rebuild":
-                pool.sort(key=lambda f: (f.potential - f.overall, -f.age, f.momentum, f.overall), reverse=True)
+                pool.sort(key=lambda f: (overdue_tier(f), f.potential - f.overall, -f.age, f.momentum, f.overall), reverse=True)
             else:
-                pool.sort(key=lambda f: (0 if f.champion else 1, getattr(f, "ranking_position", 999), -getattr(f, "rank_score", 0), -f.overall))
+                pool.sort(key=lambda f: (0 if f.champion else 1, -overdue_tier(f), getattr(f, "ranking_position", 999), -getattr(f, "rank_score", 0), -f.overall))
             return pool
 
         # 0) Retirement fights: aging fighters who have declared retirement get
