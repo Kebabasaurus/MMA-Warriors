@@ -8713,15 +8713,26 @@ class WorldMixin:
                         rebuild_b = self.fighter_needs_matchmaking_rebuild(b_option)
                         if self.ai_matchup_is_stale(a_option, b_option):
                             continue
+                        # A fighter can end up with nobody inside the normal
+                        # gaps at all: the only opponent within range is the
+                        # champion, who is held back for title fights, and the
+                        # rest of the division sits too far below. Nothing
+                        # relaxed, so they simply never fought again -- real
+                        # saves stranded a top-ranked contender for five years
+                        # this way. Widen both gaps as the layoff grows, so a
+                        # stranded fighter takes a step down in opposition
+                        # rather than waiting for a bout that cannot exist.
+                        # Untouched for anyone fighting at a normal cadence.
+                        stranded = min(12, max(0, max(inactive.get(a_option.name, 0), inactive.get(b_option.name, 0)) - 6) // 2)
                         # A struggling fighter gets a fresh, sensible reset
                         # matchup rather than another punitive rematch. The
                         # allowance is deliberately small: it may avoid an
                         # exact top-contender draw, but it cannot manufacture a
                         # "get-well" mismatch or a presumed win.
-                        if rating_gap > (9 if rebuild_a or rebuild_b else 6):
+                        if rating_gap > (9 if rebuild_a or rebuild_b else 6) + stranded:
                             continue
                         rank_gap = abs(getattr(b_option, "ranking_position", 999) - getattr(a_option, "ranking_position", 999))
-                        if rank_gap > self.ai_matchmaking_rank_gap_limit(a_option, b_option):
+                        if rank_gap > self.ai_matchmaking_rank_gap_limit(a_option, b_option) + stranded:
                             continue
                         form_gap = abs(getattr(b_option, "momentum", 0) - getattr(a_option, "momentum", 0))
                         protect_a = mode == "Prospect Rebuild" and a_option.age <= 26 and a_option.potential - a_option.overall >= 7
