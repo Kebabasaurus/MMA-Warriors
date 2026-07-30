@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.0.1 - 2026-07-30
+
+### Hotfixes
+
+- Fixed the shipped Universe Database Editor failing at startup because its window title referenced an undefined `GAME_TITLE` constant.
+
 ## 3.0.0 - 2026-07-30
 
 ### Highlights
