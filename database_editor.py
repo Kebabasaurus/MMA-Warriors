@@ -210,7 +210,7 @@ def validate_universe_pack(pack):
 class UniverseDatabaseEditor:
     def __init__(self, root):
         self.root = root
-        self.root.title("MMA Warriors Database Editor")
+        self.root.title(f"{GAME_TITLE} Database Editor")
         self.root.geometry("1480x900")
         self.root.minsize(1120, 700)
         self.database_dir = DATABASE_DIR

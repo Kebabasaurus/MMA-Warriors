@@ -43,7 +43,7 @@ class StartupSplash:
         body = tk.Frame(border, bg="#111111")
         body.pack(fill="both", expand=True)
         tk.Label(
-            body, text=GAME_NAME.upper(), bg="#111111", fg="#f3f3f3",
+            body, text=GAME_TITLE.upper(), bg="#111111", fg="#f3f3f3",
             font=("Arial", 23, "bold"), anchor="w",
         ).pack(fill="x", padx=24, pady=(24, 2))
         tk.Label(
@@ -99,7 +99,7 @@ class FightEmpireApp(
         self.report_startup_progress(5, "Preparing the application...")
         self.root.report_callback_exception = self.handle_uncaught_exception
         register_crash_app(self)
-        self.root.title(GAME_NAME)
+        self.root.title(GAME_TITLE)
         self.app_icon_image = None
         try:
             if APP_ICON_ICO.exists():
