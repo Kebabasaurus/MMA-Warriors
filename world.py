@@ -10063,20 +10063,78 @@ class WorldMixin:
         for fighters in by_division.values():
             random.shuffle(fighters)
             fighters.sort(key=match_rating, reverse=True)
-        # A champion should only ever fight for the belt, never get quietly
-        # bumped into a throwaway development bout the same month a division
-        # is deep enough to produce a second pairing. Major promotions already
-        # protect a reigning champion this way (see `protected_champions` in
-        # build_ai_card); guarantee the same here by making the belt holder
-        # first in the queue, so they land in that division's very first bout
-        # of the month and are used up before any second pass can reach them.
+        # Regional champions follow the same rule as a major-promotion title
+        # holder: they only appear when the belt is on the line. Previously we
+        # moved the champion to the front of their division's generic queue,
+        # then marked that bout as a title fight only every four months. That
+        # quietly produced a stream of ordinary wins between defenses.
+        #
+        # Reserve a due defense before building the development slate. If there
+        # is no ready challenger, the champion sits out; a promotion cannot use
+        # its titleholder as a development opponent just to fill a card.
+        def regional_contender_rank(fighter):
+            """Standing in the division, for deciding who is owed a title shot.
+
+            Championship bouts are ranked on merit rather than on how neatly two
+            fighters match up. pick_opponent_index deliberately looks for the
+            closest contest, which is right for a development bout and wrong for
+            a belt: it handed vacant titles to whichever pair happened to be
+            drawn first rather than to the division's leading contenders.
+            """
+            bouts = fighter.record_w + fighter.record_l + fighter.record_d
+            return (
+                fighter.overall * 1.6
+                + (fighter.record_w - fighter.record_l) * 2.4
+                + min(12, bouts) * 0.6
+                + max(0, fighter.momentum) * 1.5
+            )
+
+        reserved_title_fights = []
+        reserved_title_keys = set()
         for (gender, weight), fighters in by_division.items():
-            champ_name = (promo.belts or {}).get(self.belt_key(gender, weight))
-            if not champ_name:
+            key = self.belt_key(gender, weight)
+            champion_name = self.ai_primary_title_holder_name(promo, gender, weight)
+            history = (promo.belt_history or {}).get(key) or []
+            last_title_month = max(
+                (self.result_lineage_date_key(entry.get("date", ""))[0] for entry in history),
+                default=0,
+            )
+            title_due = not last_title_month or self.month - last_title_month >= 4
+            if champion_name:
+                holder_index = next((index for index, fighter in enumerate(fighters) if fighter.name == champion_name), None)
+                if holder_index is None:
+                    # The holder is injured, fatigued, or otherwise unavailable.
+                    # They were not present in ``ready``, so generic booking cannot
+                    # accidentally use them in this card.
+                    continue
+                champion = fighters.pop(holder_index)
+                if not title_due or not fighters:
+                    continue
+                # The belt goes to the leading contender available, not to
+                # whoever happens to stylistically suit the champion.
+                challenger = max(fighters, key=regional_contender_rank)
+                fighters.remove(challenger)
+                reserved_title_fights.append((champion, challenger))
+                reserved_title_keys.add(key)
                 continue
-            holder_index = next((i for i, fighter in enumerate(fighters) if fighter.name == champ_name), None)
-            if holder_index is not None and holder_index != 0:
-                fighters.insert(0, fighters.pop(holder_index))
+            # An empty belt is settled by the division's two leading contenders,
+            # and settled promptly: a vacancy does not wait on the defense
+            # cadence. A title that has never existed still needs both fighters
+            # to have built a real record first.
+            eligible = list(fighters)
+            if not history:
+                eligible = [
+                    fighter for fighter in eligible
+                    if fighter.record_w + fighter.record_l + fighter.record_d >= 4
+                ]
+            if len(eligible) < 2:
+                continue
+            eligible.sort(key=regional_contender_rank, reverse=True)
+            first, second = eligible[0], eligible[1]
+            fighters.remove(first)
+            fighters.remove(second)
+            reserved_title_fights.append((first, second))
+            reserved_title_keys.add(key)
 
         # A shared bout budget used to drain itself on whichever divisions
         # happened to appear first in roster order, starving every division
@@ -10106,8 +10164,8 @@ class WorldMixin:
                 random.random(),
             ),
         )
-        fights = []
-        divisions_booked = set()
+        fights = list(reserved_title_fights)
+        divisions_booked = {(fighter.gender, fighter.weight) for fighter, _challenger in reserved_title_fights}
         progress = True
         while progress and len(fights) < max_card_bouts:
             progress = False
@@ -10132,25 +10190,11 @@ class WorldMixin:
         # A regional title starts only when two fighters have built enough of a
         # record to contest it. Existing champions defend at a measured cadence;
         # state repair must never create an appointed feeder champion.
-        title_flags = [False] * len(fights)
-        title_keys_used = set()
-        for index, (a, b) in enumerate(fights):
-            key = self.belt_key(a.gender, a.weight)
-            if key in title_keys_used:
-                continue
-            champ_name = (promo.belts or {}).get(key)
-            history = (promo.belt_history or {}).get(key) or []
-            last_title_month = max((self.result_lineage_date_key(entry.get("date", ""))[0] for entry in history), default=0)
-            title_due = not last_title_month or self.month - last_title_month >= 4
-            bouts_a = a.record_w + a.record_l + a.record_d
-            bouts_b = b.record_w + b.record_l + b.record_d
-            inaugural_contested = not champ_name and not history and min(bouts_a, bouts_b) >= 4
-            vacant_contested = not champ_name and bool(history)
-            # A vacancy is resolved on the next suitable pairing. The measured
-            # cadence applies to defenses and inaugural crowns, not an empty belt.
-            if vacant_contested or (title_due and (champ_name in (a.name, b.name) or inaugural_contested)):
-                title_flags[index] = True
-                title_keys_used.add(key)
+        # Every championship bout is now chosen above, where the contenders can
+        # be ranked before the development slate is built. Flagging one here as
+        # well re-opened the door to an ordinary pairing being promoted into a
+        # title fight simply because it was drawn first.
+        title_flags = [self.belt_key(a.gender, a.weight) in reserved_title_keys for a, _b in fights]
 
         # Development cards run on a weekday like any other, so their bouts are
         # dated and count toward a prospect's turnaround the same way.
@@ -10177,7 +10221,8 @@ class WorldMixin:
                 fight_logs.append({"heading": f"{a.name} vs {b.name}", "label": label,
                                    "a": a.name, "b": b.name, "a_id": a.fighter_id, "b_id": b.fighter_id,
                                    "a_record": a_rating["record"], "b_record": b_rating["record"], "a_rating": a_rating, "b_rating": b_rating,
-                                   "weight": a.weight, "result": result_line, "scorecards": bout["_scorecards"], "lines": [result_line]})
+                                   "weight": a.weight, "title": is_title, "interim": False,
+                                   "result": result_line, "scorecards": bout["_scorecards"], "lines": [result_line]})
                 continue
             self.record_bout_rating_history(a, b, "W" if winner is a else "L", "L" if winner is a else "W", bout)
             self.update_elo(winner, loser, bout, method)
@@ -10221,7 +10266,8 @@ class WorldMixin:
             fight_logs.append({"heading": f"{a.name} vs {b.name}", "label": label,
                                "a": a.name, "b": b.name, "a_id": a.fighter_id, "b_id": b.fighter_id,
                                "a_record": a_rating["record"], "b_record": b_rating["record"], "a_rating": a_rating, "b_rating": b_rating,
-                               "weight": a.weight, "result": result_line, "scorecards": bout["_scorecards"], "lines": [result_line]})
+                               "weight": a.weight, "title": is_title, "interim": False,
+                               "result": result_line, "scorecards": bout["_scorecards"], "lines": [result_line]})
             self.retire_after_final_fight_if_due(winner, promo.name)
             self.retire_after_final_fight_if_due(loser, promo.name)
         promo.show_history.insert(0, f"{event_name}: {len(fights)} developmental bouts, main result {results[0]}.")
