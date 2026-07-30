@@ -1,8 +1,8 @@
 # MMA Warriors
 
-## Version 3.0.2
+## Version 3.0.4
 
-This release expands the living-world simulation, improves watched fight-night presentation and commentary variety, adds career journeys and directed scouting, introduces the shipped Universe Database Editor, and strengthens UI scaling, AI scheduling, finance stability, and release packaging. Version 3.0.2 makes the editor's starting data deterministic: authored detailed skills, career archetypes, and prime windows now match every newly created game. See [CHANGELOG.md](CHANGELOG.md) for the 3.0 release notes and hotfixes.
+This release expands the living-world simulation, improves watched fight-night presentation and commentary variety, adds career journeys and directed scouting, introduces the shipped Universe Database Editor, and strengthens UI scaling, AI scheduling, finance stability, and release packaging. Version 3.0.4 keeps regional championships credible by ensuring champions only make title defenses, makes late-career decline taper toward a realistic veteran level, and introduces peak-aware retirement reviews. See [CHANGELOG.md](CHANGELOG.md) for the 3.0 release notes and hotfixes.
 
 MMA Warriors is a deep Windows desktop promotion-management simulation. Choose any real-world-inspired promotion, take control of an existing company, or create a new one from scratch. Build a roster, negotiate contracts and transfer deals, book cards, develop prospects, manage finances and media, and try to turn a regional operation into the sport's defining brand.
 
