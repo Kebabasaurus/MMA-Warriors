@@ -8677,6 +8677,16 @@ class WorldMixin:
         # major rosters below two fights and created a permanent backlog.
         if len(getattr(promo, "roster", [])) >= 280 and mode != "Financial Recovery":
             show_chance = max(show_chance, 0.72)
+        # That floor was a cliff, so a company carrying fewer than 280 fighters
+        # dropped back to its personality rate however many people it had signed.
+        # A seasonal, cost-controlled promotion with 230 fighters ran seven cards
+        # a year -- around half a fight each -- and left 65 of them idle for
+        # years, several for over eight. The requirement scales with the roster
+        # actually carried: the divisor reproduces the 280-fighter floor above
+        # and extends the same standard downward instead of falling off a step.
+        active_roster = sum(1 for member in getattr(promo, "roster", []) if not getattr(member, "retired", False))
+        if active_roster >= 120 and mode != "Financial Recovery":
+            show_chance = max(show_chance, min(0.72, active_roster / 446))
         # The 400-fighter flagship needs roughly 36 full cards per year to
         # maintain the same activity target at its larger roster scale.
         if promo.name == "Ultimate Fighting Championship" and mode != "Financial Recovery":
