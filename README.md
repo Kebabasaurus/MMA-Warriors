@@ -42,24 +42,6 @@ Run Smoke Tests.bat
 
 The test launcher runs `smoke_test.py`, `stability_test.py`, and `media_system_test.py`. The smoke test checks startup, core promotions, roster sizes, gyms, save/load serialization, and fight simulation. The stability playtest additionally completes normal and retirement events, verifies two-year retirement-card thresholds, popularity ordering, weight-safe matchmaking, weekly card caps and contract-expiry releases, opens every major UI viewer, exercises academy scouting, all-eligible showcase matchmaking, cooldowns, structured amateur history, adult-weight graduation, and child-sport pathways, round-trips a progressed world through JSON, and advances several independent worlds while watching for Tk callback errors. The media test covers editable outlets, player and AI offers/contracts, campaign limits, audience reporting, old-save migration, and a save/load round trip.
 
-For a reproducible 500-fight commentary, metrics, and finish-distribution report, run:
-
-```text
-python fight_text_audit.py
-```
-
-It writes `fight_text_500_audit_latest.txt` beside the game without changing saves or careers.
-
-For deterministic generation/fight/world balance reports that never touch a save, run:
-
-```text
-python tools\generated_fighter_balance_audit.py
-python tools\fight_matchmaking_balance_audit.py
-python tools\twenty_year_world_audit.py --years 30 --seed 20260720
-```
-
-World reports include annual population and free-agent circulation, AI event economics, financial distress/buyouts, academy and child-sport activity, division depth, starting-cohort survival, best active fighters/prospects, and retired legends. Reports are written to `audits`.
-
 The current development model is documented in `FIGHTER_DEVELOPMENT_GUIDE.md`; current clinch, cage, ground, and damage mechanics are documented in `FIGHT_DAMAGE_AND_CLINCH_AUDIT.md`.
 
 ## Build A Portable Windows Version

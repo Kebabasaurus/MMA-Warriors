@@ -32,6 +32,6 @@ The engine tracks `clinch_controller`, `top`, and `bottom` explicitly.
 
 ## Audit Procedure
 
-Run `fight_text_audit.py` after any engine change. It generates 500 same-division, near-rating fights and reports method mix, metrics, empty scale fields, old stand-up phrases, repetition, and sample commentary.
+After an engine change, run the smoke and stability suites, then inspect a varied set of watched cards for commentary, metrics, and finish variety.
 
 For deeper tuning, compare competitive fights by tier and style rather than using a random mismatch pool. Finishes should come from action selection, skill margins, fatigue, damage, and position, never from a post-fight result override.
