@@ -8161,8 +8161,15 @@ class WorldMixin:
                     motivation_pressure = max(0, 55 - fighter.motivation) / 240
                     form_pressure = max(0, -fighter.momentum) * 0.025 + max(0, fighter.record_l - fighter.record_w * 0.65) / 180
                     health_pressure = fighter.injury_proneness / 900 + max(0, fighter.fatigue - 55) / 500
+                    # Losing a step is its own reason to stop. Retirement read
+                    # only the calendar, so a former champion could shed thirty
+                    # rating points and still be waiting on an age roll years
+                    # later. A fighter who can no longer do what made them
+                    # elite walks away rather than fading to nothing.
+                    peak = max(int(getattr(fighter, "career_peak_overall", 0) or 0), fighter.overall)
+                    decline_pressure = max(0, peak - fighter.overall) / 55
                     legacy_buffer = 0.10 if fighter.champion or fighter.popularity >= 75 or fighter.motivation >= 82 else 0
-                    retirement_chance = max(0.01, min(0.82, age_pressure + motivation_pressure + form_pressure + health_pressure - legacy_buffer))
+                    retirement_chance = max(0.01, min(0.82, age_pressure + motivation_pressure + form_pressure + health_pressure + decline_pressure - legacy_buffer))
                     should_retire = fighter.age >= 46 or random.random() < retirement_chance
                 if should_retire:
                     player_booked = player_owned and fighter.name in self.scheduled_fighter_names(include_booked=True)
@@ -8626,12 +8633,23 @@ class WorldMixin:
         gym = self.gym_by_name(fighter.camp)
         camp_buffer = self.gym_quality(fighter.camp) * 0.16 + (gym.facilities if gym else 45) * 0.08
         elite_drag = max(0, fighter.overall - 92) * max(0, years_past_prime - 1) * 1.4
+        # Decline decelerates as a fighter settles at the level they can still
+        # compete at. The age terms grow without bound, so past about forty the
+        # score cleared the roll every single month and never stopped: a
+        # 97-rated champion lost roughly four points a year for a decade and
+        # retired rated 47. The fall from peak is unchanged -- the taper is
+        # zero until they have actually lost ground -- it just cannot continue
+        # indefinitely toward the floor.
+        peak = max(int(getattr(fighter, "career_peak_overall", 0) or 0), fighter.overall)
+        lost_from_peak = max(0, peak - fighter.overall)
+        age_taper = 1.0 - min(0.85, lost_from_peak / 20 * 0.85)
         # Buffers slow decline but cannot cancel hard age; only a fraction of the
         # late-30s erosion can be resisted by professionalism, camp and form.
         resistible = professionalism_buffer + camp_buffer + form_buffer + veteran_buffer
         if fighter.age >= 38:
             resistible = min(resistible, hard_age * 0.4)
-        return age_drag + hard_age + losing + losses + morale_drag + injury_drag + elite_drag - resistible
+        aging = (age_drag + hard_age + elite_drag) * age_taper
+        return aging + losing + losses + morale_drag + injury_drag - resistible
 
     def veteran_resurgence_chance(self, fighter):
         """Rare late-career growth: form and durability can beat the calendar for a while."""

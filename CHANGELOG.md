@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.0.4 - 2026-07-30
+
+### Championship Integrity
+
+- Fixed regional champions being booked in ordinary development bouts between title defenses. Regional titleholders now only compete when the belt is on the line; if no suitable challenger is ready, they sit out.
+- Added a regression scenario covering the regional title-defense cadence and title-history flags.
+- Reworked late-career decline so it tapers after meaningful losses from a fighter's peak rather than reducing long-serving veterans into implausibly low-rated active fighters.
+- Retirement reviews now account for the ability a fighter has lost from their career peak, while a hard review at age 46 prevents indefinitely active veterans.
+
 ## 3.0.2 - 2026-07-30
 
 ### Database Editor And Universe Data
