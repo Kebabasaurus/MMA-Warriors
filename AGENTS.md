@@ -58,7 +58,6 @@ save-path anchoring is unchanged.
 - `README.md` - Player/build instructions.
 - `savegame.json`, `Saves/`, `Databases/` - Runtime data. Do not delete user saves unless explicitly asked.
 - `Logs/mma_warriors.log` - Rotating runtime log. `Logs/Crashes/` stores one timestamped report per unhandled error; crash autosaves are stored in the active slot's `Crash Recovery` folder.
-- `fight_sim_500_audit*.txt` - Historical fight balance audit logs.
 
 ## Required Commands
 

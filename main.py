@@ -228,6 +228,7 @@ class FightEmpireApp(
         self.card_tier = tk.StringVar(value="Main Card")
         self.event_month = tk.IntVar(value=1)
         self.event_week = tk.IntVar(value=1)
+        self.event_day_choice = tk.StringVar(value=CALENDAR_DAYS[DEFAULT_EVENT_DAY - 1])
         self.event_calendar_month = tk.StringVar(value=CALENDAR_MONTH_ABBREVIATIONS[0])
         self.event_year = tk.IntVar(value=GAME_START_YEAR)
         self.title_fight = tk.BooleanVar(value=False)

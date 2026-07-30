@@ -31,7 +31,7 @@ class AwardsMixin:
         if not hasattr(self, "achievement_log") or self.achievement_log is None:
             self.achievement_log = []
 
-    def unlock_achievement(self, scope, target, company, achievement_id, title, description):
+    def unlock_achievement(self, scope, target, company, achievement_id, title, description, fighter=None):
         """Record an unlock once; achievement entries are a permanent world ledger."""
         self.ensure_season_containers()
         if any(entry.get("id") == achievement_id and entry.get("target") == target for entry in self.achievement_log):
@@ -43,7 +43,8 @@ class AwardsMixin:
         }
         self.achievement_log.insert(0, entry)
         self.achievement_log = self.achievement_log[:1000]
-        fighter = self.find_fighter_anywhere(target) if scope == "Fighter" and hasattr(self, "find_fighter_anywhere") else None
+        if fighter is None and scope == "Fighter" and hasattr(self, "find_fighter_anywhere"):
+            fighter = self.find_fighter_anywhere(target)
         if fighter:
             fighter.career_achievements = (getattr(fighter, "career_achievements", None) or [])
             fighter.career_achievements.append(title)
@@ -66,21 +67,21 @@ class AwardsMixin:
         """Evaluate objective career and fight milestones after a decisive result."""
         company = company or self.fighter_company_name(winner)
         if winner.record_w == 1:
-            self.unlock_achievement("Fighter", winner.name, company, "first_pro_win", "First Professional Win", "Earned their first recorded professional victory.")
+            self.unlock_achievement("Fighter", winner.name, company, "first_pro_win", "First Professional Win", "Earned their first recorded professional victory.", fighter=winner)
         if winner.record_w == 10:
-            self.unlock_achievement("Fighter", winner.name, company, "ten_career_wins", "Ten-Win Club", "Reached ten professional wins.")
+            self.unlock_achievement("Fighter", winner.name, company, "ten_career_wins", "Ten-Win Club", "Reached ten professional wins.", fighter=winner)
         if winner.record_w == 20:
-            self.unlock_achievement("Fighter", winner.name, company, "twenty_career_wins", "Twenty-Win Veteran", "Reached twenty professional wins.")
+            self.unlock_achievement("Fighter", winner.name, company, "twenty_career_wins", "Twenty-Win Veteran", "Reached twenty professional wins.", fighter=winner)
         if winner.overall + 8 <= loser.overall:
-            self.unlock_achievement("Fighter", winner.name, company, "giant_slayer", "Giant Slayer", f"Defeated the higher-rated {loser.name} by {method}.")
+            self.unlock_achievement("Fighter", winner.name, company, "giant_slayer", "Giant Slayer", f"Defeated the higher-rated {loser.name} by {method}.", fighter=winner)
         if fight.get("title") and winner.champion:
-            self.unlock_achievement("Fighter", winner.name, company, "world_title", "World Champion", f"Captured the {winner.gender} {winner.weight} title.")
+            self.unlock_achievement("Fighter", winner.name, company, "world_title", "World Champion", f"Captured the {winner.gender} {winner.weight} title.", fighter=winner)
         if getattr(winner, "title_defenses", 0) == 5:
-            self.unlock_achievement("Fighter", winner.name, company, "five_title_defenses", "Dynasty Builder", "Reached five successful title defenses.")
+            self.unlock_achievement("Fighter", winner.name, company, "five_title_defenses", "Dynasty Builder", "Reached five successful title defenses.", fighter=winner)
         if method not in ("Decision", "Draw") and winner.record_w >= 10:
             finishes = sum(1 for item in (winner.fight_history or []) if " by KO" in str(item) or " by TKO" in str(item) or " by Submission" in str(item))
             if finishes >= 10:
-                self.unlock_achievement("Fighter", winner.name, company, "ten_finishes", "Finishing Machine", "Recorded ten documented professional finishes.")
+                self.unlock_achievement("Fighter", winner.name, company, "ten_finishes", "Finishing Machine", "Recorded ten documented professional finishes.", fighter=winner)
 
     def evaluate_promotion_achievements(self, company, package):
         """Promotion milestones are checked after an event is committed to results."""
@@ -667,6 +668,21 @@ class AwardsMixin:
         match = re.search(r"Month\s+(\d+)", str(date_value or ""))
         return int(match.group(1)) if match else None
 
+    @staticmethod
+    def _parse_belt_month_week(date_value):
+        """Pull the save-stable month/week index out of a 'Month N Week N' stamp."""
+        match = re.search(r"Month\s+(\d+)(?:\s+Week\s+(\d+))?", str(date_value or ""), re.IGNORECASE)
+        if not match:
+            return None, None
+        return int(match.group(1)), int(match.group(2) or 1)
+
+    def belt_history_date_label(self, entry):
+        """Render title lineage dates as month/week/year, with no weekday."""
+        month, week = self._parse_belt_month_week((entry or {}).get("date"))
+        if month:
+            return self.format_game_date(month, week or 1, include_week=True)
+        return self.format_game_date_text((entry or {}).get("date", ""))
+
     def format_month_span(self, months):
         """Render a month count as a compact 'Ny Nmo' reign length."""
         if months is None:
@@ -988,7 +1004,7 @@ class AwardsMixin:
 
         detail_tree = ttk.Treeview(right, columns=("date", "action", "fighter", "reign", "note"), show="headings")
         for column, heading, width, anchor in (
-            ("date", "Date", 110, "center"), ("action", "Event", 150, "w"), ("fighter", "Fighter", 175, "w"),
+            ("date", "Date", 86, "center"), ("action", "Event", 150, "w"), ("fighter", "Fighter", 175, "w"),
             ("reign", "Reign", 90, "center"), ("note", "Context", 320, "w"),
         ):
             detail_tree.heading(column, text=heading)
@@ -1065,7 +1081,7 @@ class AwardsMixin:
                 canvas.create_text(x + seg / 2, bar_bottom + 10, text=self.format_month_span(length),
                                    fill=muted, font=("Tahoma", 7))
                 x += seg
-            span_label = f"{self.format_game_date_text(reigns[0].get('start_date', ''))}  —  present"
+            span_label = f"{self.belt_history_date_label({'date': reigns[0].get('start_date', '')})}  -  present"
             canvas.create_text(pad, 12, text=f"{len(reigns)} reign(s)   |   {span_label}", anchor="w",
                                fill=text_color, font=("Tahoma", 8, "bold"))
             canvas.configure(scrollregion=(0, 0, max(content_width, visible_width), height))
@@ -1102,8 +1118,7 @@ class AwardsMixin:
                         if end is None:
                             reign_label += " (current)"
                 detail_tree.insert("", "end", tags=(action_tag(action),), values=(
-                    self.format_game_date_text(entry.get("date", "")), action,
-                    entry.get("fighter", ""), reign_label, entry.get("note", ""),
+                    self.belt_history_date_label(entry), action, entry.get("fighter", ""), reign_label, entry.get("note", ""),
                 ))
 
         def refresh_lineage_list(*_args):

@@ -19,6 +19,21 @@ CALENDAR_MONTH_ABBREVIATIONS = (
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 )
+# The simulation clock runs in months of four weeks. Cards are booked on a
+# named day inside their week, which is what decides how long a camp actually
+# runs and how much recovery a fighter carries into their next booking: a
+# Saturday card is six more days of both than a Monday one.
+CALENDAR_DAYS = (
+    "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
+)
+CALENDAR_DAY_ABBREVIATIONS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+DAYS_PER_WEEK = 7
+WEEKS_PER_MONTH = 4
+# Saves written before cards carried a day treat every booking as landing on
+# the first day of its week, so their camp lengths are unchanged.
+LEGACY_EVENT_DAY = 1
+# Real cards run at the weekend, so that is where a new booking starts.
+DEFAULT_EVENT_DAY = 6
 
 
 def _select_data_dir():
@@ -51,6 +66,8 @@ ROLLING_SAVE_SLOT_COUNT = 2
 RESULT_INDEX_LIMIT = 100000
 GLOBAL_RESULT_REPLAY_LIMIT = 2000
 WEIGHTS = ["Flyweight", "Bantamweight", "Featherweight", "Lightweight", "Welterweight", "Middleweight", "Light Heavyweight", "Heavyweight"]
+SCOUTING_SEARCH_FOCUSES = ("Free Agent Pool", "Rival Rosters", "Regional Prospects", "Young Prospects", "Any Market")
+SCOUTING_RECOMMENDATION_MODES = ("Balanced", "Aggressive", "Strict", "Prospect Focus", "Value Focus", "Roster Need")
 WEIGHT_LIMITS = {
     "Flyweight": 125,
     "Bantamweight": 135,

@@ -36,6 +36,18 @@ class UIMixin:
                 "gold": "#c3a45d", "text": "#111111", "muted": "#333333", "tree": "#eee9df",
                 "tree_head": "#777268", "button": "#c8c0b3", "button_text": "#111111",
             },
+            "Matrix": {
+                "chrome": "#020604", "chrome2": "#06140c", "paper": "#07100a", "panel": "#0b1b10",
+                "panel_dark": "#0f2b18", "line": "#1f6f3a", "cream": "#031007", "red": "#00b85a",
+                "gold": "#8cffb0", "text": "#d8ffe4", "muted": "#77c98f", "tree": "#020b05",
+                "tree_head": "#07551f", "button": "#0e2414", "button_text": "#c9ffd7",
+            },
+            "Champion": {
+                "chrome": "#080604", "chrome2": "#1a1309", "paper": "#12100c", "panel": "#241d12",
+                "panel_dark": "#3a2a12", "line": "#6f5426", "cream": "#21190f", "red": "#8f1616",
+                "gold": "#f3c45f", "text": "#fff3dc", "muted": "#cdb889", "tree": "#0d0a06",
+                "tree_head": "#7d5a20", "button": "#302312", "button_text": "#fff0cf",
+            },
             "UFC": {
                 "chrome": "#090909", "chrome2": "#171717", "paper": "#151515", "panel": "#222222",
                 "panel_dark": "#3a3a3a", "line": "#4b4b4b", "cream": "#262626", "red": "#d20a0a",
@@ -178,12 +190,17 @@ class UIMixin:
         input_bg = self.colors["cream"]
         input_fg = self.colors["text"]
         selected_bg = self.colors["red"]
+        input_chrome = self.colors["panel"]
         style.configure("TEntry", fieldbackground=input_bg, background=input_bg, foreground=input_fg, insertcolor=input_fg, bordercolor=self.colors["line"], lightcolor=self.colors["line"], darkcolor=self.colors["line"])
-        style.map("TEntry", fieldbackground=[("disabled", self.colors["panel"]), ("readonly", input_bg), ("focus", input_bg)], foreground=[("disabled", self.colors["muted"]), ("readonly", input_fg), ("focus", input_fg)])
-        style.configure("TSpinbox", fieldbackground=input_bg, background=input_bg, foreground=input_fg, insertcolor=input_fg, arrowcolor=input_fg, bordercolor=self.colors["line"], lightcolor=self.colors["line"], darkcolor=self.colors["line"])
-        style.map("TSpinbox", fieldbackground=[("disabled", self.colors["panel"]), ("readonly", input_bg), ("focus", input_bg)], foreground=[("disabled", self.colors["muted"]), ("readonly", input_fg), ("focus", input_fg)])
-        style.configure("TCombobox", fieldbackground=input_bg, background=input_bg, foreground=input_fg, arrowcolor=input_fg, selectbackground=selected_bg, selectforeground="#ffffff", bordercolor=self.colors["line"], lightcolor=self.colors["line"], darkcolor=self.colors["line"])
-        style.map("TCombobox", fieldbackground=[("disabled", self.colors["panel"]), ("readonly", input_bg), ("focus", input_bg)], background=[("readonly", input_bg), ("active", self.colors["panel_dark"])], foreground=[("disabled", self.colors["muted"]), ("readonly", input_fg), ("focus", input_fg)], selectbackground=[("readonly", selected_bg), ("focus", selected_bg)], selectforeground=[("readonly", "#ffffff"), ("focus", "#ffffff")])
+        style.map("TEntry", fieldbackground=[("disabled", input_chrome), ("readonly", input_bg), ("focus", input_bg)], background=[("disabled", input_chrome), ("readonly", input_bg)], foreground=[("disabled", self.colors["muted"]), ("readonly", input_fg), ("focus", input_fg)])
+        style.configure("TSpinbox", fieldbackground=input_bg, background=input_chrome, foreground=input_fg, insertcolor=input_fg, arrowcolor=input_fg, bordercolor=self.colors["line"], lightcolor=self.colors["line"], darkcolor=self.colors["line"])
+        style.map("TSpinbox", fieldbackground=[("disabled", input_chrome), ("readonly", input_bg), ("focus", input_bg)], background=[("disabled", input_chrome), ("readonly", input_chrome), ("active", self.colors["panel_dark"])], foreground=[("disabled", self.colors["muted"]), ("readonly", input_fg), ("focus", input_fg)])
+        style.configure("TCombobox", fieldbackground=input_bg, background=input_chrome, foreground=input_fg, arrowcolor=input_fg, selectbackground=selected_bg, selectforeground="#ffffff", bordercolor=self.colors["line"], lightcolor=self.colors["line"], darkcolor=self.colors["line"])
+        style.map("TCombobox", fieldbackground=[("disabled", input_chrome), ("readonly", input_bg), ("focus", input_bg)], background=[("disabled", input_chrome), ("readonly", input_chrome), ("active", self.colors["panel_dark"])], foreground=[("disabled", self.colors["muted"]), ("readonly", input_fg), ("focus", input_fg)], selectbackground=[("readonly", selected_bg), ("focus", selected_bg)], selectforeground=[("readonly", "#ffffff"), ("focus", "#ffffff")])
+        style.configure("TCheckbutton", background=self.colors["paper"], foreground=input_fg)
+        style.map("TCheckbutton", background=[("active", self.colors["panel"]), ("disabled", self.colors["paper"])], foreground=[("disabled", self.colors["muted"])])
+        style.configure("TRadiobutton", background=self.colors["paper"], foreground=input_fg)
+        style.map("TRadiobutton", background=[("active", self.colors["panel"]), ("disabled", self.colors["paper"])], foreground=[("disabled", self.colors["muted"])])
         self.root.option_add("*Entry.background", input_bg)
         self.root.option_add("*Entry.foreground", input_fg)
         self.root.option_add("*Entry.insertBackground", input_fg)
@@ -201,6 +218,27 @@ class UIMixin:
         style.layout("Hidden.TNotebook.Tab", [])
         style.configure("Treeview", font=("Tahoma", 8), background=self.colors["tree"], fieldbackground=self.colors["tree"], foreground=self.colors["text"], rowheight=22, borderwidth=0)
         style.configure("Treeview.Heading", font=("Tahoma", 8, "bold"), background=self.colors["tree_head"], foreground="#ffffff", relief="flat")
+
+    def scroll_active_page_with_arrow(self, event, axis, direction):
+        """Scroll the hovered page without taking arrows from data-entry widgets."""
+        native_arrow_widgets = (
+            tk.Entry, tk.Text, tk.Listbox, tk.Spinbox, tk.Scale,
+            ttk.Entry, ttk.Combobox, ttk.Treeview, ttk.Spinbox,
+        )
+        if isinstance(event.widget, native_arrow_widgets):
+            return None
+        active = getattr(self, "_active_scroll_wheel", None)
+        if not active:
+            return None
+        canvas = active[0]
+        try:
+            if axis == "x":
+                canvas.xview_scroll(direction * 3, "units")
+            else:
+                canvas.yview_scroll(direction * 3, "units")
+        except tk.TclError:
+            return None
+        return "break"
 
     def create_scrollable_frame(self, parent, style="TFrame"):
         shell = ttk.Frame(parent, style=style)
@@ -273,6 +311,13 @@ class UIMixin:
             self.root.bind_all("<Button-4>", lambda event: dispatch_linux_wheel(event, -1), add="+")
             self.root.bind_all("<Button-5>", lambda event: dispatch_linux_wheel(event, 1), add="+")
             self._scroll_wheel_dispatch_installed = True
+
+        if not getattr(self, "_arrow_scroll_dispatch_installed", False):
+            self.root.bind_all("<Up>", lambda event: self.scroll_active_page_with_arrow(event, "y", -1), add="+")
+            self.root.bind_all("<Down>", lambda event: self.scroll_active_page_with_arrow(event, "y", 1), add="+")
+            self.root.bind_all("<Left>", lambda event: self.scroll_active_page_with_arrow(event, "x", -1), add="+")
+            self.root.bind_all("<Right>", lambda event: self.scroll_active_page_with_arrow(event, "x", 1), add="+")
+            self._arrow_scroll_dispatch_installed = True
 
         inner.bind("<Configure>", schedule_fit)
         canvas.bind("<Configure>", schedule_fit)
@@ -848,7 +893,7 @@ class UIMixin:
         for col, (text, command, style) in enumerate((
             ("Use Selected Universe", self.use_selected_universe_database, "Accent.TButton"),
             ("Clone Universe", self.clone_selected_universe_database, None),
-            ("Reset Default", self.reset_default_universe_database, None),
+            ("Validate Default", self.reset_default_universe_database, None),
             ("Open Folder", self.open_database_folder, None),
         )):
             button = ttk.Button(universe_row, text=text, command=command, style=style) if style else ttk.Button(universe_row, text=text, command=command)
@@ -1583,6 +1628,7 @@ class UIMixin:
         self.scouting_region_var = tk.StringVar(value=self.player_region)
         self.scouting_gender_var = tk.StringVar(value="All")
         self.scouting_weight_var = tk.StringVar(value="All")
+        self.scouting_focus_var = tk.StringVar(value=self.rules.get("scouting_search_focus", "Free Agent Pool"))
         scouting_tabs = ttk.Notebook(self.scouting_tab)
         scouting_tabs.pack(fill="both", expand=True)
         target_page = ttk.Frame(scouting_tabs, style="Chrome.TFrame")
@@ -1599,6 +1645,7 @@ class UIMixin:
         self.scouting_target_gender = tk.StringVar(value="All")
         self.scouting_target_weight = tk.StringVar(value="All")
         self.scouting_target_status = tk.StringVar(value="All")
+        self.scouting_recommendation_mode_var = tk.StringVar(value=self.rules.get("scouting_recommendation_mode", "Balanced"))
         self.scouting_target_count_var = tk.StringVar(value="")
         self.scouting_target_page = 0
         self.scouting_target_page_size = 400
@@ -1614,19 +1661,24 @@ class UIMixin:
             ("Gender", self.scouting_target_gender, ("All", "Male", "Female"), 9),
             ("Division", self.scouting_target_weight, ("All", *WEIGHTS), 14),
             ("Intel", self.scouting_target_status, ("All", "Recommended Signings", "Monitor", "Pass", "Shortlisted", "Unscouted", "In Progress", "Scouted", "Stale", "Free Agents", "Rival Rosters"), 18),
+            ("Logic", self.scouting_recommendation_mode_var, SCOUTING_RECOMMENDATION_MODES, 15),
         )
         filter_help = {
             "Company": "Limit the board to free agents, independent fighters, or one promotion's roster.",
             "Gender": "Show male fighters, female fighters, or both.",
             "Division": "Limit results to one MMA weight class.",
             "Intel": "Filter by scouting state or recommendation. Monitor means the scout sees value, but price, uncertainty, or current division need makes an immediate offer hard to justify.",
+            "Logic": "Adjust how scouts turn completed reports into advice: balanced, aggressive, strict, prospect-led, value-led, or roster-need led.",
         }
         for label, variable, values, width in target_combos:
             label_widget = ttk.Label(target_filters, text=label, style="Inset.TLabel")
             label_widget.pack(side="left", padx=(3, 2))
             combo = ttk.Combobox(target_filters, textvariable=variable, values=values, state="readonly", width=width)
             combo.pack(side="left", padx=(0, 5))
-            combo.bind("<<ComboboxSelected>>", lambda _event: self.reset_scouting_target_page())
+            if label == "Logic":
+                combo.bind("<<ComboboxSelected>>", lambda _event: self.update_scouting_recommendation_mode())
+            else:
+                combo.bind("<<ComboboxSelected>>", lambda _event: self.reset_scouting_target_page())
             self.attach_tooltip(label_widget, filter_help[label])
             self.attach_tooltip(combo, filter_help[label])
             if label == "Company":
@@ -1731,6 +1783,7 @@ class UIMixin:
             ("Region", self.scouting_region_var, REGIONS, 16),
             ("Gender", self.scouting_gender_var, ("All", "Male", "Female"), 10),
             ("Division", self.scouting_weight_var, ("All", *WEIGHTS), 15),
+            ("Aim", self.scouting_focus_var, SCOUTING_SEARCH_FOCUSES, 17),
         ):
             label_widget = ttk.Label(scout_controls, text=label, style="Inset.TLabel")
             label_widget.pack(side="left", padx=(5, 2))
@@ -1741,6 +1794,7 @@ class UIMixin:
                 "Region": "The geographical market to search. Regional knowledge and scout specialties can improve the lead.",
                 "Gender": "Choose which fighter market the search should prioritize.",
                 "Division": "Choose a specific weight class or search across all divisions.",
+                "Aim": "Tell scouts what kind of lead to find: free agents, rival-roster targets, regional prospects, young prospects, or the broad market.",
             }[label]
             self.attach_tooltip(label_widget, search_help)
             self.attach_tooltip(combo, search_help)
@@ -2018,6 +2072,11 @@ class UIMixin:
         event_week_box = ttk.Combobox(line2, textvariable=self.event_week, values=(1, 2, 3, 4), state="readonly", width=4)
         event_week_box.pack(side="left", padx=(4, 12))
         event_week_box.bind("<<ComboboxSelected>>", lambda _e: (self.sync_booking_internal_date(), self.refresh_available()))
+        ttk.Label(line2, text="Day", style="Inset.TLabel", width=4).pack(side="left")
+        event_day_box = ttk.Combobox(line2, textvariable=self.event_day_choice, values=CALENDAR_DAYS, state="readonly", width=10)
+        event_day_box.pack(side="left", padx=(4, 12))
+        event_day_box.bind("<<ComboboxSelected>>", lambda _e: self.refresh_available())
+        self.attach_tooltip(event_day_box, "The day of the week the card runs. A later day in the week means a longer camp and more recovery since the last fight; an earlier one means a shorter turnaround.")
         ttk.Label(line2, text="Provider", style="Inset.TLabel", width=7).pack(side="left")
         self.event_broadcaster_box = ttk.Combobox(line2, textvariable=self.event_broadcaster, values=["No Coverage"] + [item["name"] for item in self.broadcasters], state="readonly", width=23)
         self.event_broadcaster_box.pack(side="left", padx=(4, 0))
@@ -2522,44 +2581,70 @@ class UIMixin:
 
     def build_rankings_tab(self):
         self.screen_header(self.rankings_tab, "RANKINGS", "Division rankings and pound-for-pound rankings")
-        controls = ttk.Frame(self.rankings_tab)
+        controls = tk.Frame(self.rankings_tab, bg=self.colors["panel_dark"], highlightthickness=1, highlightbackground=self.colors["line"])
         controls.pack(fill="x", pady=(0, 6))
-        ttk.Label(controls, text="Ranking list").pack(side="left")
+        ttk.Label(controls, text="Ranking list", style="Section.TLabel").pack(side="left", padx=(8, 4), pady=6)
         self.ranking_filter = tk.StringVar(value="Pound-for-Pound")
         ranking_box = ttk.Combobox(controls, values=["Pound-for-Pound", "Division Rankings", "Company Rankings"], textvariable=self.ranking_filter, state="readonly", width=20)
-        ranking_box.pack(side="left", padx=8)
+        ranking_box.pack(side="left", padx=6, pady=6)
         ranking_box.bind("<<ComboboxSelected>>", lambda _e: self.refresh_rankings())
-        ttk.Label(controls, text="Weight").pack(side="left", padx=(16, 0))
+        ttk.Label(controls, text="Weight", style="Section.TLabel").pack(side="left", padx=(14, 4), pady=6)
         ranking_weight = ttk.Combobox(controls, values=["All"] + WEIGHTS, textvariable=self.ranking_weight_filter, state="readonly", width=15)
-        ranking_weight.pack(side="left", padx=8)
+        ranking_weight.pack(side="left", padx=6, pady=6)
         ranking_weight.bind("<<ComboboxSelected>>", lambda _e: self.refresh_rankings())
-        ttk.Label(controls, text="Scope").pack(side="left", padx=(16, 0))
+        ttk.Label(controls, text="Scope", style="Section.TLabel").pack(side="left", padx=(14, 4), pady=6)
         self.ranking_scope = tk.StringVar(value="Worldwide")
         self.ranking_scope_box = ttk.Combobox(controls, textvariable=self.ranking_scope, state="readonly", width=30)
-        self.ranking_scope_box.pack(side="left", padx=8)
+        self.ranking_scope_box.pack(side="left", padx=6, pady=6)
         self.ranking_scope_box.bind("<<ComboboxSelected>>", lambda _e: self.refresh_rankings())
-        ttk.Label(controls, text="Gender").pack(side="left", padx=(16, 0))
+        ttk.Label(controls, text="Gender", style="Section.TLabel").pack(side="left", padx=(14, 4), pady=6)
         ranking_gender = ttk.Combobox(controls, values=["All", "Male", "Female"], textvariable=self.ranking_gender_filter, state="readonly", width=10)
-        ranking_gender.pack(side="left", padx=8)
+        ranking_gender.pack(side="left", padx=6, pady=6)
         ranking_gender.bind("<<ComboboxSelected>>", lambda _e: self.refresh_rankings())
+        ranking_board = tk.Frame(self.rankings_tab, bg=self.colors["chrome"])
+        ranking_board.pack(fill="x", pady=(0, 6))
+        self.ranking_summary_vars = {}
+        for key, title in (("mode", "BOARD"), ("scope", "SCOPE"), ("leader", "TOP RANKED"), ("champions", "CHAMPIONS")):
+            cell = tk.Frame(ranking_board, bg=self.colors["panel_dark"], highlightthickness=1, highlightbackground=self.colors["line"])
+            cell.pack(side="left", fill="x", expand=True, padx=(0, 6))
+            tk.Label(cell, text=title, bg=self.colors["panel_dark"], fg=self.colors["muted"], font=("Tahoma", 7, "bold"), anchor="w").pack(fill="x", padx=8, pady=(5, 0))
+            var = tk.StringVar(value="-")
+            self.ranking_summary_vars[key] = var
+            tk.Label(cell, textvariable=var, bg=self.colors["panel_dark"], fg=self.colors["gold"], font=("Tahoma", 10, "bold"), anchor="w").pack(fill="x", padx=8, pady=(0, 6))
         panel, inner = self.section(self.rankings_tab, "TOP CONTENDERS")
         panel.pack(fill="both", expand=True)
-        rankings_resize = self.create_vertical_resizer(inner, initial_fraction=0.78, min_top=220, min_bottom=95)
+        rankings_resize = self.create_vertical_resizer(inner, initial_fraction=0.76, min_top=250, min_bottom=118)
         rankings_resize.pack(fill="both", expand=True)
         ranking_table = ttk.Frame(rankings_resize, style="Inset.TFrame")
         rankings_resize.add(ranking_table, minsize=220)
         self.rankings_tree = ttk.Treeview(ranking_table, columns=("company_rank", "world_rank", "move", "name", "gender", "company", "weight", "record", "overall", "form", "path", "score", "last", "status"), show="headings")
-        for col, text, width in (("company_rank", "Co Rank", 62), ("world_rank", "World", 58), ("move", "Move", 60), ("name", "Fighter", 150), ("gender", "G", 38), ("company", "Company", 135), ("weight", "Division", 100), ("record", "Record", 70), ("overall", "OVR", 55), ("form", "Form", 90), ("path", "Title Path", 135), ("score", "Score", 65), ("last", "Last Fight", 120), ("status", "Status", 85)):
+        for col, text, width in (("company_rank", "Co", 54), ("world_rank", "World", 58), ("move", "Move", 58), ("name", "Fighter", 170), ("gender", "G", 34), ("company", "Company", 135), ("weight", "Division", 102), ("record", "Record", 76), ("overall", "OVR", 52), ("form", "Form", 96), ("path", "Title Path", 145), ("score", "Score", 66), ("last", "Last Fight", 155), ("status", "Status", 90)):
             self.rankings_tree.heading(col, text=text)
             self.rankings_tree.column(col, width=width, anchor="center")
         self.rankings_tree.column("name", anchor="w")
         self.rankings_tree.column("company", anchor="w")
         self.rankings_tree.column("last", anchor="w")
+        self.rankings_tree.tag_configure("champion", foreground=self.colors["gold"])
+        self.rankings_tree.tag_configure("top_contender", foreground=self.colors["text"])
+        self.rankings_tree.tag_configure("rising", foreground="#9dffb2")
+        self.rankings_tree.tag_configure("sliding", foreground="#ff9a9a")
+        self.rankings_tree.tag_configure("company", foreground=self.colors["gold"])
         self.make_tree_sortable(self.rankings_tree)
-        self.rankings_tree.pack(fill="both", expand=True)
+        ranking_y = ttk.Scrollbar(ranking_table, orient="vertical", command=self.rankings_tree.yview)
+        ranking_x = ttk.Scrollbar(ranking_table, orient="horizontal", command=self.rankings_tree.xview)
+        self.rankings_tree.configure(yscrollcommand=ranking_y.set, xscrollcommand=ranking_x.set)
+        self.rankings_tree.grid(row=0, column=0, sticky="nsew")
+        ranking_y.grid(row=0, column=1, sticky="ns")
+        ranking_x.grid(row=1, column=0, sticky="ew")
+        ranking_table.rowconfigure(0, weight=1)
+        ranking_table.columnconfigure(0, weight=1)
         ranking_detail_frame = ttk.Frame(rankings_resize, style="Inset.TFrame")
         rankings_resize.add(ranking_detail_frame, minsize=95)
-        self.ranking_detail = tk.Text(ranking_detail_frame, height=4, wrap="word", bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 9), padx=10, pady=8)
+        detail_header = tk.Frame(ranking_detail_frame, bg=self.colors["panel_dark"])
+        detail_header.pack(fill="x")
+        tk.Label(detail_header, text="RANKING READ", bg=self.colors["panel_dark"], fg=self.colors["gold"], font=("Impact", 11), anchor="w").pack(side="left", padx=10, pady=(7, 2))
+        tk.Label(detail_header, text="Double-click a fighter to open profile", bg=self.colors["panel_dark"], fg=self.colors["muted"], font=("Tahoma", 8), anchor="e").pack(side="right", padx=10, pady=(7, 2))
+        self.ranking_detail = tk.Text(ranking_detail_frame, height=5, wrap="word", bg=self.colors["panel_dark"], fg=self.colors["text"], insertbackground=self.colors["text"], font=("Tahoma", 9), padx=10, pady=8, bd=0)
         self.ranking_detail.pack(fill="both", expand=True); self.ranking_detail.config(state="disabled")
         self.rankings_tree.bind("<<TreeviewSelect>>", self.show_ranking_detail)
         self.rankings_tree.bind("<Double-1>", self.open_selected_ranking_profile)

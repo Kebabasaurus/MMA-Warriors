@@ -39,12 +39,12 @@ class EventMixin:
         unavailable = []
         for name in names:
             fighter = self.get_fighter(name)
-            if not self.fighter_available_for_date(fighter, month, week):
+            if not self.fighter_available_for_date(fighter, month, week, self.selected_booking_day()):
                 unavailable.append(f"{fighter.name} ({self.fighter_return_label(fighter)})")
         if unavailable:
-            earliest_month, earliest_week = self.earliest_booked_card_date()
-            target_label = self.format_game_date(month, week)
-            earliest_label = self.format_game_date(earliest_month, earliest_week)
+            earliest_month, earliest_week, earliest_day = self.earliest_booked_card_day()
+            target_label = self.format_game_date(month, week, day=self.selected_booking_day())
+            earliest_label = self.format_game_date(earliest_month, earliest_week, day=earliest_day)
             sample = ", ".join(unavailable[:4])
             remainder = f" and {len(unavailable) - 4} more" if len(unavailable) > 4 else ""
             message = (
@@ -90,6 +90,7 @@ class EventMixin:
             "city": self.event_city.get(),
             "month": month,
             "week": week,
+            "day": self.selected_booking_day(),
             "broadcaster": self.event_broadcaster.get(),
             "fights": scheduled_fights,
         }
@@ -155,8 +156,21 @@ class EventMixin:
         fighter = self.get_fighter(name)
         return fighter.gender if fighter else "Male"
 
+    def event_camp_days(self, event):
+        """Days from now until a card runs, which is the real length of its camp."""
+        days = self.calendar_day_index(
+            event.get("month", self.month), event.get("week", 1), self.event_day(event)
+        ) - self.current_day_index()
+        return max(1, days)
+
     def assign_event_camps(self, event):
-        weeks_out = max(1, (event["month"] - self.month) * 4 + (event.get("week", 1) - self.week))
+        # Camp is measured in days, so a card booked on the Saturday of a week
+        # is nearly a full extra week of preparation over the same card on the
+        # Monday. The fractional length drives the boost; camp_weeks stays a
+        # whole number because it is a display value.
+        camp_days = self.event_camp_days(event)
+        camp_length_weeks = camp_days / DAYS_PER_WEEK
+        weeks_out = max(1, round(camp_length_weeks))
         for fight in event["fights"]:
             for name in self.event_fight_participants(fight):
                 if name == "TBA":
@@ -171,7 +185,7 @@ class EventMixin:
                 intensity = getattr(fighter, "camp_intensity", "Standard")
                 intensity_bonus = {"Light": -1, "Standard": 0, "Hard": 4}.get(intensity, 0)
                 attention = self.gym_attention_multiplier(gym)
-                base_boost = round(weeks_out * (quality + specialty + focus_bonus + intensity_bonus) / 112 * (0.55 + professionalism * 0.3 + motivation * 0.25) / 2.8 * attention)
+                base_boost = round(camp_length_weeks * (quality + specialty + focus_bonus + intensity_bonus) / 112 * (0.55 + professionalism * 0.3 + motivation * 0.25) / 2.8 * attention)
                 camp_boost = min(12, max(0, base_boost + self.camp_form_variance(fighter, gym)))
                 fighter.camp_quality = quality
                 fighter.camp_weeks = weeks_out
@@ -347,16 +361,27 @@ class EventMixin:
             background, foreground = palette.get(level, palette["info"])
             label.configure(bg=background, fg=foreground)
 
-    def earliest_booked_card_date(self):
-        """Return the first week where every booked participant is out of recovery."""
-        earliest = self.calendar_week_index()
+    def earliest_booked_card_day(self):
+        """First date every booked participant is out of recovery, to the day.
+
+        Recovery now ends on a weekday, so the earliest legal card can sit part
+        way through a week. Returning only the week would offer a date that the
+        scheduler then rejects because the chosen day falls before a fighter's
+        return.
+        """
+        earliest = self.current_day_index()
         for fight in getattr(self, "booked", []):
             for name in self.event_fight_participants(fight):
                 if name == "TBA":
                     continue
                 fighter = self.get_fighter(name)
-                earliest = max(earliest, int(getattr(fighter, "available_week", 0) or 0))
-        return (earliest - 1) // 4 + 1, (earliest - 1) % 4 + 1
+                earliest = max(earliest, self.fighter_available_day_index(fighter))
+        return self.day_index_parts(earliest)
+
+    def earliest_booked_card_date(self):
+        """Return the first week where every booked participant is out of recovery."""
+        month, week, _day = self.earliest_booked_card_day()
+        return month, week
 
     def move_booking_to_earliest_card_date(self):
         if not self.booked:
@@ -373,10 +398,16 @@ class EventMixin:
                 "error",
             )
             return
-        month, week = self.earliest_booked_card_date()
-        self.set_booking_date(month, week)
+        month, week, day = self.earliest_booked_card_day()
+        # Keep the player's chosen weekday when it is already late enough in
+        # the week; only move it forward when recovery demands it.
+        day = max(day, self.selected_booking_day())
+        self.set_booking_date(month, week, day)
         self.refresh_available()
-        self.set_schedule_status(f"DATE UPDATED: The full card can be scheduled from {self.format_game_date(month, week)}.", "success")
+        self.set_schedule_status(
+            f"DATE UPDATED: The full card can be scheduled from {self.format_game_date(month, week, day=day)}.",
+            "success",
+        )
 
     def open_scheduled_card_editor(self, event):
         """Edit a future card directly without sending it back through the new-show form."""
@@ -1425,6 +1456,24 @@ class EventMixin:
                 fight_list.delete(index)
                 fight_list.insert(index, f"{index + 1}. DONE - {result[:31]}")
             event_progress["value"] = index + 1
+            update_event_button_label()
+
+        def all_presented_fights_complete():
+            if not fight_logs:
+                return True
+            if state["finished"]:
+                return True
+            if state["fight"] < len(fight_logs) - 1:
+                return False
+            if state["fight"] < 0:
+                return False
+            return state["line"] >= len(fight_logs[state["fight"]].get("lines", []))
+
+        def update_event_button_label():
+            try:
+                skip_event_button.config(text="End Event" if all_presented_fights_complete() else "Skip Event")
+            except (NameError, tk.TclError):
+                pass
 
         def open_header_profile(side):
             if not (0 <= state["fight"] < len(fight_logs)):
@@ -1466,6 +1515,22 @@ class EventMixin:
             rivalry_copy = f" Rivalry heat {rivalry}/100." if rivalry else ""
             return (f"{stakes}: {a.style} from {a.camp or 'independent camp'} meets {b.style} from {b.camp or 'independent camp'}. "
                     f"Recent form {a.name}: {form_text(a)} | {b.name}: {form_text(b)}. Odds {self.matchup_odds(a, b)}.{rivalry_copy}")
+
+        def broadcast_rundown(index, log):
+            """Give each bout a concise place in the event broadcast."""
+            remaining = max(0, len(fight_logs) - index - 1)
+            position = str(log.get("card_position") or log.get("tier") or "Fight Night")
+            a_name, b_name = log.get("a", "Red corner"), log.get("b", "Blue corner")
+            stakes = "a championship" if log.get("divisional_title") or log.get("title") else "a featured contest"
+            if "Main Event" in position:
+                lead = f"Broadcast desk: the main event is here. {a_name} and {b_name} close the card with {stakes} at stake."
+            elif "Co-Main" in position:
+                lead = f"Broadcast desk: co-main time. {a_name} and {b_name} set the stage for the headline bout."
+            elif index == 0:
+                lead = f"Broadcast desk: the card is underway. {a_name} and {b_name} set the first impression for the arena."
+            else:
+                lead = f"Broadcast desk: {position}. {a_name} and {b_name} take over with {stakes} at stake."
+            return lead + (" This is the final fight of the broadcast." if not remaining else f" {remaining} bout{'s' if remaining != 1 else ''} remain on the card.")
 
         def reset_result_ribbon():
             result_winner_label.config(text="")
@@ -1561,6 +1626,7 @@ class EventMixin:
             text.config(state="disabled")
             append_line(log["heading"])
             append_line("-" * 72)
+            append_line(broadcast_rundown(state["fight"], log))
             lines = log.get("lines", [])
             if lines and str(lines[0]).strip() == str(heading).strip():
                 state["line"] = 1
@@ -1629,6 +1695,10 @@ class EventMixin:
             result_ribbon.pack(fill="x", padx=6, pady=(4, 5))
             status_label.config(text="Bout complete. Review the official result, scorecards, and metrics, then start the next fight.", fg=self.colors["muted"])
             append_line("\n[Fight complete. Press Start Next Fight.]")
+            if state["fight"] + 1 < len(fight_logs):
+                next_log = fight_logs[state["fight"] + 1]
+                append_line(f"Broadcast desk: next up, {next_log.get('heading', 'the next bout')}. The card moves on after the official result.")
+            update_event_button_label()
 
         def is_round_boundary(line):
             lowered = str(line).lower()
@@ -1879,7 +1949,9 @@ class EventMixin:
 
         ttk.Checkbutton(controls2, text="Follow live", variable=follow_var, command=toggle_follow).pack(side="left", padx=8)
 
-        ttk.Button(controls3, text="Skip Event", command=skip_to_end).pack(side="left", padx=4)
+        skip_event_button = ttk.Button(controls3, text="Skip Event", command=skip_to_end)
+        skip_event_button.pack(side="left", padx=4)
+        update_event_button_label()
         ttk.Button(controls3, text="Review Selected Bout", command=review_selected_bout).pack(side="left", padx=4)
         fight_list.bind("<Double-1>", review_selected_bout)
         if package.get("tournament_brackets"):
@@ -2472,15 +2544,16 @@ class EventMixin:
         ttk.Button(body, text="Submit Offer", style="Accent.TButton", command=submit_offer).pack(side="left", padx=12, pady=12)
         ttk.Button(body, text="Walk Away", command=window.destroy).pack(side="right", padx=12, pady=12)
 
-    def fight_hype(self, a, b, fight):
+    def fight_hype(self, a, b, fight, rank_map=None):
         title = 12 if fight.get("title") else 0
         main = 8 if fight.get("main") else 0
         tier_factor = {"Main Card": 1.0, "Prelims": 0.72, "Early Prelims": 0.48}.get(fight.get("tier", "Main Card"), 1.0)
         rivalry = abs(a.momentum - b.momentum) + self.rivalry_heat_between(a, b) * 0.28
-        media = self.match_build_score(a, b, fight) * 0.18
+        media = self.match_build_score(a, b, fight, rank_map=rank_map) * 0.18
         rank_bonus = 0
         for fighter in (a, b):
-            rank = self.division_rank_number(fighter)
+            rank = rank_map.get(self.fighter_identity_key(fighter)) if rank_map is not None else None
+            rank = rank if rank is not None else self.division_rank_number(fighter)
             if fighter.champion:
                 rank_bonus += 7
             elif rank and rank <= 5:
@@ -2552,13 +2625,15 @@ class EventMixin:
         finish_bonus = max(0, fighter.power + fighter.submissions - 130) * 0.12
         return max(1, min(99, round(fighter.popularity * 0.5 + fighter.star_quality * 0.22 + fighter.charisma * 0.12 + media + streak + rank_bonus + trait_bonus + finish_bonus)))
 
-    def match_build_score(self, a, b, fight):
+    def match_build_score(self, a, b, fight, rank_map=None):
         style_clash = 6 if a.style != b.style else 1
         rivalry = 10 + self.rivalry_heat_between(a, b) * 0.22 if a.rival == b.name or b.rival == a.name else 0
         stakes = (10 if fight.get("title") else 0) + (6 if fight.get("main") else 0)
         competitiveness = max(0, 18 - abs(a.overall - b.overall))
         matchmaker_lift = self.staff_effect("Matchmaker", 0.28)
-        return max(1, min(99, round((self.fight_build_score(a) + self.fight_build_score(b)) / 2 + style_clash + rivalry + stakes + competitiveness * 0.35 + matchmaker_lift)))
+        rank_a = rank_map.get(self.fighter_identity_key(a)) if rank_map is not None else None
+        rank_b = rank_map.get(self.fighter_identity_key(b)) if rank_map is not None else None
+        return max(1, min(99, round((self.fight_build_score(a, rank_a) + self.fight_build_score(b, rank_b)) / 2 + style_clash + rivalry + stakes + competitiveness * 0.35 + matchmaker_lift)))
 
     def run_event(self):
         if len(self.booked) < 1:
@@ -2700,6 +2775,8 @@ class EventMixin:
     def prepare_event_result(self, event):
         # A player-arranged card is not re-sorted on fight night. The top row
         # is the main event, and therefore the name and watch order source.
+        # Title changes decided tonight are dated to the day this card runs.
+        self._active_card_day = self.event_day(event)
         self.normalize_card_order(event.get("fights", []))
         self.refresh_scheduled_event_auto_name(event)
         log = [f"{event['name']} - {event['venue']} ({self.event_date_label(event)})", "=" * 72]
@@ -2868,7 +2945,7 @@ class EventMixin:
         log.append(f"Company popularity will move from {self.company_pop} to {projected_pop}. Stability will move from {self.company_stability} to {projected_stability}.")
         tournament_note = f", {len(tournament_brackets)} tournament(s)" if tournament_brackets else ""
         summary = f"{event['name']} ({event['venue']}, {self.event_date_label(event)}): {len(results)} fights{tournament_note}, excitement {round(avg_excitement)}, gate ${gate:,}, profit ${profit:,}, popularity {projected_pop}%, stability {projected_stability}%"
-        return {
+        package = {
             "log": log,
             "results": results,
             "gate": gate,
@@ -2892,9 +2969,12 @@ class EventMixin:
             "city": event.get("city", ""),
             "month": event["month"],
             "week": event.get("week", 1),
+            "day": self.event_day(event),
             "summary": summary,
             "media_outcome": media_outcome,
         }
+        self._active_card_day = None
+        return package
 
     def card_mismatch_penalty(self, results):
         penalty = 0
@@ -2968,18 +3048,39 @@ class EventMixin:
         return True, (f"Undersized move accepted: {walk} lb walk weight is light for {target_weight}. "
                       f"This creates a {severity} permanent division-fit disadvantage ({penalty}/14) in physical exchanges, initiative, starting condition, and odds.")
 
+    def natural_walk_weight_for(self, fighter, weight):
+        """The frame a fighter needs to be a natural fit in a division.
+
+        Has to agree with default_walk_weight, which builds fighters at their
+        limit plus four pounds or more: a fighter walks above their class and
+        cuts down to it. These two had drifted about twenty-five pounds apart --
+        the fit model believed a natural welterweight walked 154lb while the
+        generator was making them 174-185lb. Nothing was ever measured as
+        undersized as a result, and a fighter "growing into" a division stopped
+        growing sixteen pounds below its limit. Kept in one place so the two
+        cannot separate again.
+        """
+        limit = WEIGHT_LIMITS.get(weight, 170)
+        if weight == "Heavyweight":
+            # The heavyweight limit is a cap rather than a target: nobody cuts
+            # to 265, so a natural heavyweight sits well under it.
+            return limit - 25
+        spread = 10 if limit <= 135 else 15 if limit <= 170 else 22
+        if getattr(fighter, "gender", "Male") == "Female":
+            spread = max(8, spread - 4)
+        return limit + max(4, spread // 3)
+
     def division_size_penalty_for(self, fighter, target_weight):
-        """Return the durable cost of voluntarily competing above natural size."""
-        try:
-            current_limit = WEIGHT_LIMITS[fighter.weight]
-            target_limit = WEIGHT_LIMITS[target_weight]
-        except KeyError:
-            return 0
-        if target_limit <= current_limit:
+        """Return the durable cost of competing below the division's natural size."""
+        if fighter.weight not in WEIGHT_LIMITS or target_weight not in WEIGHT_LIMITS:
             return 0
         walk = fighter.walk_weight or self.default_walk_weight(fighter)
         natural_size = self.ds(fighter, "natural_size", 50)
-        expected_walk = target_limit - (25 if target_weight == "Heavyweight" else 16)
+        # Measured against the division being entered rather than the direction
+        # of travel. A fighter who drops down from heavyweight carrying a
+        # lightweight's frame is exactly as undersized as one who climbed up to
+        # it, and previously came away with no penalty at all.
+        expected_walk = self.natural_walk_weight_for(fighter, target_weight)
         size_gap = max(0, expected_walk - walk)
         frame_gap = max(0, 55 - natural_size)
         return max(0, min(14, round(size_gap / 4.5 + frame_gap / 16)))
@@ -3005,8 +3106,7 @@ class EventMixin:
         chance += (natural_size - 50) * 0.002 + max(0, conditioning - 55) * 0.001
         if random.random() > max(0.03, min(0.5, chance)):
             return
-        target_limit = WEIGHT_LIMITS[weight]
-        expected_walk = target_limit - (25 if weight == "Heavyweight" else 16)
+        expected_walk = self.natural_walk_weight_for(fighter, weight)
         walk = fighter.walk_weight or self.default_walk_weight(fighter)
         if walk < expected_walk:
             walk = min(expected_walk, walk + random.randint(2, 5))

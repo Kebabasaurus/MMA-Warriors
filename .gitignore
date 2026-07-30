@@ -8,11 +8,13 @@ build/
 dist/
 dist_*/
 *.spec
+!MMA Warriors Database Editor.spec
 
 # Runtime data
 Saves/
 savegame.json
 Logs/
+active_universe.txt
 
 # Manual/project backups
 Backups/

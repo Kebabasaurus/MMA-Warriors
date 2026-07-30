@@ -20,6 +20,10 @@ python main.py
 
 The packaged EXE has no Python requirement. Keep the whole `MMA Warriors` folder together and run it from a normal local folder, not from inside a ZIP archive. The game stores quick saves, save slots, databases, and logs beside the app when that folder is writable. If it is installed in a protected folder such as `Program Files`, it automatically uses `%LOCALAPPDATA%\MMA Warriors` instead.
 
+The shipped starting universe is one editable file: `Databases\Default Universe.universe.json`. It contains MMA fighters, combat-sport athletes, companies, media, and regions. Cloned custom universes are separate files created only when the player makes one.
+
+`MMA Warriors Database Editor.exe` ships beside the game EXE. It is a developer-facing editor for universe files, with a database selector, browse/copy-current/save/save-as workflow, automatic backups, validation, bulk fighter/company changes, and per-record JSON editing. It edits starting databases only, never an active career save.
+
 Each game now owns a self-contained folder, for example `Saves\Game 1\savegame.json`. Its two rolling recovery backups, autosaves, crash recovery files, and spectator archives stay inside that same `Game 1` folder, so multiple careers cannot overwrite one another. Autosaves use the same two-slot rolling policy per cadence, overwriting the oldest snapshot instead of accumulating files. Spectator Mode also writes a permanent archive at every completed decade, such as `Game 1 - 10 Years.json.gz`, under `Saves\Game 1\Snapshots`. Existing flat saves remain loadable and move to the folder layout the next time they are saved. Runtime diagnostics live in `Logs\mma_warriors.log`; unexpected failures create a separate report in `Logs\Crashes`.
 
 Before moving a build to another laptop, run `Portable Check.bat` from the packaged folder. It confirms that the EXE is present and tells you whether runtime data will be stored beside it or in the user profile fallback.
@@ -38,24 +42,6 @@ Run Smoke Tests.bat
 
 The test launcher runs `smoke_test.py`, `stability_test.py`, and `media_system_test.py`. The smoke test checks startup, core promotions, roster sizes, gyms, save/load serialization, and fight simulation. The stability playtest additionally completes normal and retirement events, verifies two-year retirement-card thresholds, popularity ordering, weight-safe matchmaking, weekly card caps and contract-expiry releases, opens every major UI viewer, exercises academy scouting, all-eligible showcase matchmaking, cooldowns, structured amateur history, adult-weight graduation, and child-sport pathways, round-trips a progressed world through JSON, and advances several independent worlds while watching for Tk callback errors. The media test covers editable outlets, player and AI offers/contracts, campaign limits, audience reporting, old-save migration, and a save/load round trip.
 
-For a reproducible 500-fight commentary, metrics, and finish-distribution report, run:
-
-```text
-python fight_text_audit.py
-```
-
-It writes `fight_text_500_audit_latest.txt` beside the game without changing saves or careers.
-
-For deterministic generation/fight/world balance reports that never touch a save, run:
-
-```text
-python tools\generated_fighter_balance_audit.py
-python tools\fight_matchmaking_balance_audit.py
-python tools\twenty_year_world_audit.py --years 30 --seed 20260720
-```
-
-World reports include annual population and free-agent circulation, AI event economics, financial distress/buyouts, academy and child-sport activity, division depth, starting-cohort survival, best active fighters/prospects, and retired legends. Reports are written to `audits`.
-
 The current development model is documented in `FIGHTER_DEVELOPMENT_GUIDE.md`; current clinch, cage, ground, and damage mechanics are documented in `FIGHT_DAMAGE_AND_CLINCH_AUDIT.md`.
 
 ## Build A Portable Windows Version
@@ -70,6 +56,7 @@ The script runs smoke tests first, installs PyInstaller if needed, then creates:
 
 ```text
 dist\MMA Warriors\MMA Warriors.exe
+dist\MMA Warriors\MMA Warriors Database Editor.exe
 ```
 
 Close the packaged game before rebuilding. The build script preserves packaged `Saves`, `Databases`, and `Logs` in a staging backup and restores them after PyInstaller replaces the folder.
@@ -78,6 +65,7 @@ Close the packaged game before rebuilding. The build script preserves packaged `
 
 - Choose any established promotion at the start of a career, including BAMMA, UFC, PFL, ONE Championship, RIZIN, KSW, Cage Warriors, LFA, Oktagon MMA, BRAVE Combat Federation, ACA, PRIDE Fighting Championships, Strikeforce, and World Extreme Cagefighting. You can also Create Your Own Promotion. The legacy promotions include prime-era legends such as Kimbo Slice, Kazushi Sakuraba, Gilbert Melendez, Cung Le, Miguel Torres, and more.
 - Change control to another promotion through the company screen, or begin a custom-promotion career with its own region, scale, divisions, identity, and initial roster draft.
+- Guide fighter career journeys from Roster > Career Goals: academy graduates can pursue a homegrown title, veterans can request a final run, troubled prospects can reset their habits or weight cut, camp fit can be rebuilt, and champions need real opponents, visibility, and contract security to stay invested.
 - Start a Spectator Mode save to hand the selected player promotion to the AI, fast-forward the living world by week, month, year, or a chosen date, and watch any promotion's latest card in the live fight-night viewer before taking control of a company.
 - Book main cards, prelims, early prelims, title fights, TBA fights, and career-affecting 4/8-fighter one-night MMA tournaments. Tournament entrants are seeded by rank, use the normal camp and weigh-in system, accumulate fatigue between rounds, can crown a champion in the final, and remain reserved from other bookings.
 - Schedule shows by month and week, then watch or instantly simulate them.

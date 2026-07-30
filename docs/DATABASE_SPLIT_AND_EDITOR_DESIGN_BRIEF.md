@@ -1,4 +1,4 @@
-# Database Split + Editor Design Brief
+# Universe Database + Editor Design Brief
 
 ## Goal
 
@@ -15,12 +15,7 @@ This applies to:
 
 ## Current issue
 
-The new split created:
-
-- `Databases/core_fighter_database.json`
-- `Databases/combat_sport_database.json`
-
-But the combat sport file is currently mostly name lists. Example: `Oleksandr Usyk` is listed under Boxing, then the game generates his stats from sport + list index + random variance.
+The starting database is now intentionally one file: `Databases/Default Universe.universe.json`. Its combat-sport section must not be mostly name lists. Example: `Oleksandr Usyk` must be an authored Boxing record, not a name that receives generated stats from a list index and random variance.
 
 That is not good enough long term. Usyk, Canelo, Karelin, Saenchai, Gordon Ryan, real MMA fighters, etc. need explicit stats.
 
@@ -86,7 +81,7 @@ Requirements:
 - Database files should be small enough to open in a normal editor.
 - Avoid deeply nested structures that make one fighter hard to find.
 
-Recommended structure:
+The one-file universe uses a top-level `sections` object. Its `fighters` and `combat_sports` sections follow these concepts:
 
 ```json
 {
@@ -133,13 +128,13 @@ Required editor modes:
    - Edits the currently loaded world/save.
    - Current behavior can remain.
 
-2. Core MMA Database
-   - Opens `Databases/core_fighter_database.json`.
+2. Default Universe: MMA
+   - Opens the `fighters` section of `Databases/Default Universe.universe.json`.
    - Edits named MMA fighters and promotion assignments.
    - Can add/remove fighters from promotion seed rosters.
 
-3. Combat Sports Database
-   - Opens `Databases/combat_sport_database.json`.
+3. Default Universe: Combat Sports
+   - Opens the `combat_sports` section of `Databases/Default Universe.universe.json`.
    - Edits Boxing/Kickboxing/Muay Thai/Wrestling/BJJ/Lethwei athletes.
    - Can move athletes between sport rosters.
 
@@ -220,13 +215,13 @@ Combat sport required additions:
    - Export resulting full stats into JSON records.
    - Mark generated fallback entries separately.
 
-3. Convert core MMA database.
+3. Convert the MMA section in the Default Universe.
    - Player real roster.
    - UFC/PFL/ONE/RIZIN/KSW/etc.
    - free-agent named fighters.
    - legends.
 
-4. Convert combat sport database.
+4. Convert the combat-sports section in the Default Universe.
    - Boxing.
    - Kickboxing.
    - Muay Thai.
@@ -247,7 +242,7 @@ Combat sport required additions:
    - Test combat sport worlds seed correctly.
 
 7. Rebuild portable exe.
-   - Include database files in packaged `Databases/`.
+   - Include `Default Universe.universe.json` as the sole shipped starting database file.
 
 ## Important design rule
 
@@ -260,4 +255,3 @@ Do not remove procedural generation. It is still needed for:
 - generated free agents
 
 But named fighters should be authored data, not procedural approximations.
-

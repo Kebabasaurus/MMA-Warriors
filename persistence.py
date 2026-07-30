@@ -11,11 +11,12 @@ import sys
 import threading
 import traceback
 from collections import Counter
+from copy import deepcopy
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from uuid import uuid4
 import tkinter as tk
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass, fields
 from pathlib import Path
 from tkinter import messagebox, ttk
 
@@ -25,6 +26,30 @@ from models import Fighter, Gym, Promotion
 
 LOGGER = logging.getLogger("mma_warriors")
 _CRASH_APP = None
+
+FIGHTER_SAVE_FIELDS = tuple(field.name for field in fields(Fighter))
+GYM_SAVE_FIELDS = tuple(field.name for field in fields(Gym))
+PROMOTION_SAVE_FIELDS = tuple(field.name for field in fields(Promotion))
+
+
+def model_field_dict(value, field_names):
+    """Serialize declared dataclass fields without asdict's expensive deep copy."""
+    source = getattr(value, "__dict__", {})
+    return {name: source[name] if name in source else getattr(value, name) for name in field_names}
+
+
+def serialize_fighter_model(fighter):
+    return model_field_dict(fighter, FIGHTER_SAVE_FIELDS)
+
+
+def serialize_gym_model(gym):
+    return model_field_dict(gym, GYM_SAVE_FIELDS)
+
+
+def serialize_promotion_model(promotion):
+    data = model_field_dict(promotion, PROMOTION_SAVE_FIELDS)
+    data["roster"] = [serialize_fighter_model(fighter) for fighter in getattr(promotion, "roster", [])]
+    return data
 
 
 def _crash_stamp():
@@ -90,6 +115,77 @@ def read_json_text(path):
         with gzip.open(path, "rt", encoding="utf-8") as handle:
             return handle.read()
     return path.read_text(encoding="utf-8")
+
+
+EXTERNAL_SAVE_BLOCK_KEYS = (
+    "roster", "free_agents", "promotions", "combat_sport_worlds",
+    "result_index", "result_records", "ai_event_archive", "player_event_archive",
+    "season_stats", "event_log",
+)
+
+
+def hydrate_external_save_blocks(path, data):
+    """Load gzip sidecar blocks back into the normal save payload shape."""
+    path = Path(path)
+    blocks = data.pop("_external_blocks", {}) or {}
+    if not isinstance(blocks, dict):
+        return data
+    for key, relative in blocks.items():
+        if key not in EXTERNAL_SAVE_BLOCK_KEYS:
+            continue
+        block_path = path.parent / str(relative)
+        data[key] = json.loads(read_json_text(block_path))
+    return data
+
+
+def load_save_payload(path):
+    """Read either a legacy single-file save or the split primary+blocks format."""
+    path = Path(path)
+    return hydrate_external_save_blocks(path, json.loads(read_json_text(path)))
+
+
+def prune_external_save_blocks(path, active_relatives):
+    """Keep only the sidecar block folder referenced by the current primary save."""
+    path = Path(path)
+    block_root = path.parent / "DataBlocks"
+    if not block_root.exists():
+        return
+    active_roots = set()
+    for relative in active_relatives:
+        parts = Path(str(relative)).parts
+        if len(parts) >= 2 and parts[0] == "DataBlocks":
+            active_roots.add(block_root / parts[1])
+    for child in block_root.iterdir():
+        if child in active_roots:
+            continue
+        try:
+            if child.is_dir():
+                shutil.rmtree(child, onerror=_remove_readonly_path)
+            else:
+                child.unlink()
+        except OSError:
+            LOGGER.exception("Could not prune stale save data block %s", child)
+
+
+def atomic_write_split_save(path, data):
+    """Write primary save metadata plus compressed heavy record blocks."""
+    path = Path(path)
+    payload = dict(data)
+    block_refs = {}
+    stamp = _crash_stamp()
+    block_dir = path.parent / "DataBlocks" / f"{path.stem}_{stamp}"
+    for key in EXTERNAL_SAVE_BLOCK_KEYS:
+        if key not in payload:
+            continue
+        block_path = block_dir / f"{key}.json.gz"
+        atomic_write_json_gzip(block_path, payload.pop(key), compresslevel=3)
+        block_refs[key] = str(Path("DataBlocks") / block_dir.name / block_path.name).replace("\\", "/")
+    if block_refs:
+        payload["_external_blocks"] = block_refs
+    else:
+        payload.pop("_external_blocks", None)
+    atomic_write_json_compact(path, payload)
+    prune_external_save_blocks(path, block_refs.values())
 
 
 def configure_runtime_logging():
@@ -255,9 +351,9 @@ class PersistenceMixin:
             data = self.serialize_world()
             crash_folder = self.save_slot_dir() / "Crash Recovery"
             crash_folder.mkdir(parents=True, exist_ok=True)
-            autosave_path = crash_folder / f"crash_autosave_{_crash_stamp()}.json"
+            autosave_path = crash_folder / f"crash_autosave_{_crash_stamp()}.json.gz"
             data["_save_meta"] = self.save_metadata("Crash Recovery")
-            atomic_write_json_compact(autosave_path, data)
+            atomic_write_json_gzip(autosave_path, data, compresslevel=3)
             self.write_save_metadata_sidecar(autosave_path, data["_save_meta"])
             crash_note += f"\nAn emergency autosave was written to {autosave_path}."
         except Exception as autosave_error:
@@ -279,7 +375,7 @@ class PersistenceMixin:
         try:
             if path.exists():
                 self.backup_save_file(path, "before_quick_save")
-            atomic_write_json_compact(path, data)
+            atomic_write_split_save(path, data)
             self.write_save_metadata_sidecar(path, data["_save_meta"])
             self.prune_save_backups()
         except Exception as exc:
@@ -475,7 +571,7 @@ class PersistenceMixin:
             return None
         backup_dir = self.save_backup_dir(path)
         target = self.rolling_snapshot_path(backup_dir, "backup")
-        data = json.loads(read_json_text(path))
+        data = load_save_payload(path)
         metadata = dict(data.get("_save_meta", {}))
         metadata.update({
             "backup_created_at": datetime.now().isoformat(timespec="seconds"),
@@ -571,11 +667,11 @@ class PersistenceMixin:
         slips into an archive or media metadata structure.
         """
         if isinstance(value, Fighter):
-            return asdict(value)
+            return serialize_fighter_model(value)
         if isinstance(value, Promotion):
-            return asdict(value)
+            return self.json_safe_save_value(serialize_promotion_model(value))
         if isinstance(value, Gym):
-            return asdict(value)
+            return serialize_gym_model(value)
         if isinstance(value, dict):
             return {str(key): self.json_safe_save_value(item) for key, item in value.items()}
         if isinstance(value, (list, tuple, set)):
@@ -613,14 +709,6 @@ class PersistenceMixin:
             fighter_groups.extend(promo.roster for promo in self.promotions)
             for group in fighter_groups:
                 for fighter in group:
-                    # Conor's old profile was incorrectly calibrated as a
-                    # late-career 82 despite this universe starting him at 27.
-                    # Only opening-world saves receive this correction; later
-                    # development remains part of that save's own history.
-                    if fighter.name == "Conor McGregor" and getattr(fighter, "prime_rating_profile_version", 0) < 1:
-                        self.apply_real_fighter_profile(fighter, 92)
-                        fighter.prime_rating_profile_version = 1
-                        fighter.potential = max(fighter.potential, 98)
                     target_age = prime_ages.get(fighter.name)
                     if target_age is None or getattr(fighter, "prime_legend_age_override_version", 0) >= 1:
                         continue
@@ -713,6 +801,13 @@ class PersistenceMixin:
                         log["b_id"] = fighter.fighter_id
 
     def serialize_world(self):
+        # KNOWN ISSUE: this fills thin divisions by generating fighters, so
+        # saving consumes simulation RNG and can add roster members. Removing
+        # it breaks the save/load round trip, because apply_world_data tops up
+        # on load and the two sides would no longer agree on roster size.
+        # Fixing it properly means moving division top-up out of both save and
+        # load and onto a single simulation step; left alone deliberately
+        # rather than destabilising the round trip.
         self.ensure_all_company_champions()
         return {
             "player_company_name": self.player_company_name,
@@ -734,14 +829,14 @@ class PersistenceMixin:
             "super_event_project": getattr(self, "super_event_project", None),
             "month": self.month,
             "week": self.week,
-            "roster": [asdict(f) for f in self.roster],
-            "free_agents": [asdict(f) for f in self.free_agents],
-            "promotions": [asdict(p) for p in self.promotions],
-            "combat_sport_worlds": {sport: {**world, "roster": [asdict(fighter) for fighter in world.get("roster", [])]} for sport, world in getattr(self, "combat_sport_worlds", {}).items()},
+            "roster": [serialize_fighter_model(f) for f in self.roster],
+            "free_agents": [serialize_fighter_model(f) for f in self.free_agents],
+            "promotions": [serialize_promotion_model(p) for p in self.promotions],
+            "combat_sport_worlds": {sport: {**world, "roster": [serialize_fighter_model(fighter) for fighter in world.get("roster", [])]} for sport, world in getattr(self, "combat_sport_worlds", {}).items()},
             "player_combat_divisions": getattr(self, "player_combat_divisions", {}),
             "standings_history": getattr(self, "standings_history", {}),
             "regions": self.regions,
-            "gyms": [asdict(g) for g in getattr(self, "gyms", [])],
+            "gyms": [serialize_gym_model(g) for g in getattr(self, "gyms", [])],
             "result_history": self.result_history,
             "result_records": self.json_safe_save_value(self.serialized_result_records()),
             "change_journal": self.json_safe_save_value(getattr(self, "change_journal", [])),
@@ -749,7 +844,7 @@ class PersistenceMixin:
             "ai_event_archive": self.json_safe_save_value(self.ai_event_archive),
             "player_event_archive": self.json_safe_save_value(getattr(self, "player_event_archive", [])),
             "independent_showcase_counter": getattr(self, "independent_showcase_counter", 1),
-            "retired_fighters": [asdict(f) for f in self.retired_fighters],
+            "retired_fighters": [serialize_fighter_model(f) for f in self.retired_fighters],
             "finance": self.finance,
             "media_companies": getattr(self, "media_companies", []),
             "media_market_history": getattr(self, "media_market_history", []),
@@ -797,7 +892,7 @@ class PersistenceMixin:
             messagebox.showinfo("No save", "No active save exists yet.")
             return
         try:
-            data = json.loads(read_json_text(path))
+            data = load_save_payload(path)
             self.apply_world_data(data)
         except Exception as exc:
             recovery_paths = self.rolling_backup_files()
@@ -808,7 +903,7 @@ class PersistenceMixin:
                 recovery_paths.append(legacy_previous)
             for backup_path in recovery_paths:
                 try:
-                    self.apply_world_data(json.loads(read_json_text(backup_path)))
+                    self.apply_world_data(load_save_payload(backup_path))
                     self.booked.clear()
                     self.ensure_player_event_name()
                     self.refresh_all()
@@ -996,6 +1091,15 @@ class PersistenceMixin:
             )
             self.change_journal.append({"date": self.format_game_date(), "type": "Migration", "summary": summary})
             self.change_journal = self.change_journal[-400:]
+        future_lineage_repair = self.repair_future_belt_history_dates()
+        if future_lineage_repair.get("entries"):
+            summary = (
+                f"Title lineage date repair corrected {future_lineage_repair['entries']} future-dated title "
+                f"history entr{'y' if future_lineage_repair['entries'] == 1 else 'ies'} across "
+                f"{future_lineage_repair.get('companies', 0)} promotion(s)."
+            )
+            self.change_journal.append({"date": self.format_game_date(), "type": "Migration", "summary": summary})
+            self.change_journal = self.change_journal[-400:]
         self.broadcasters = data.get("broadcasters", [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}])
         self.ensure_media_system()
         self.weight_classes = list(dict.fromkeys(
@@ -1079,6 +1183,16 @@ class PersistenceMixin:
                 f"largest change {migration['minimum_delta']} point(s)."
             )
             self.inbox.append({"subject": "Detailed Skill Balance Repair", "body": summary, "type": "Rules", "resolved": False})
+            self.change_journal.append({"date": self.format_game_date(), "type": "Migration", "summary": summary})
+            self.change_journal = self.change_journal[-400:]
+        frame_repair = self.migrate_division_frame_mismatch(loaded_fighters)
+        if frame_repair.get("repaired", 0) or frame_repair.get("reflagged", 0):
+            summary = (
+                f"Division frame repair reset {frame_repair['repaired']:,} fighter frame(s) that sat far below the "
+                f"division they compete in (worst {frame_repair['worst']} pound(s) under natural size) and "
+                f"refreshed the division-fit rating on {frame_repair.get('reflagged', 0):,} profile(s)."
+            )
+            self.inbox.append({"subject": "Division Frame Repair", "body": summary, "type": "Rules", "resolved": False})
             self.change_journal.append({"date": self.format_game_date(), "type": "Migration", "summary": summary})
             self.change_journal = self.change_journal[-400:]
         realism_updates = self.migrate_signature_real_fighter_profiles(loaded_fighters)
@@ -1205,6 +1319,53 @@ class PersistenceMixin:
             released_total += len(released)
         return released_total
 
+    def migrate_division_frame_mismatch(self, fighters):
+        """One-time repair for frames left far below the division they compete in.
+
+        The size-fit model measured a natural frame about twenty-five pounds
+        lighter than the generator built, so nothing was ever flagged as
+        undersized and nothing grew. Saves accumulated fighters whose frame had
+        no relation to their class at all -- a 131lb light heavyweight. Growing
+        eighty pounds is not something the monthly acclimatisation can
+        plausibly do, so clearly broken frames are reset into their division's
+        natural band once. Mild mismatches are left alone: those are a real
+        part of the game and acclimatisation now handles them.
+        """
+        version = int(getattr(self, "rules", {}).get("division_frame_repair_version", 0) or 0)
+        if version >= 1:
+            return {"repaired": 0, "worst": 0}
+        repaired = 0
+        reflagged = 0
+        worst = 0
+        seen = set()
+        for fighter in fighters:
+            if id(fighter) in seen or getattr(fighter, "weight", "") not in WEIGHT_LIMITS:
+                continue
+            seen.add(id(fighter))
+            walk = int(getattr(fighter, "walk_weight", 0) or 0)
+            if not walk:
+                continue
+            natural = self.natural_walk_weight_for(fighter, fighter.weight)
+            shortfall = natural - walk
+            if shortfall > 20:
+                worst = max(worst, shortfall)
+                fighter.walk_weight = self.default_walk_weight(fighter)
+                repaired += 1
+            # Every stored penalty was written by the old model and reads zero.
+            # Refresh it from the real frame, or a mild mismatch stays invisible
+            # forever: monthly acclimatisation only runs on a fighter who is
+            # already carrying a penalty, so it would never grow them in.
+            current = self.division_size_penalty_for(fighter, fighter.weight)
+            if current != int(getattr(fighter, "division_size_penalty", 0) or 0):
+                fighter.division_size_penalty = current
+                fighter.division_size_note = (
+                    f"Undersized for {fighter.weight}: division-fit penalty {current}/14."
+                    if current else "Natural division fit."
+                )
+                reflagged += 1
+        self.rules["division_frame_repair_version"] = 1
+        return {"repaired": repaired, "reflagged": reflagged, "worst": worst}
+
     def migrate_detailed_skill_balance(self, fighters):
         """One-time repair for saves created by group-wide detailed growth."""
         version = int(getattr(self, "rules", {}).get("detailed_skill_balance_version", 0) or 0)
@@ -1247,16 +1408,18 @@ class PersistenceMixin:
 
     def migrate_real_fighter_profiles(self, fighters):
         """One-time migration for saves made before deterministic real-fighter profiles."""
-        real_names = {row[0] for rows in self.expanded_real_fighter_data().values() for row in rows}
-        real_names.update(row[0] for row in self.cage_empire_fighter_data())
-        real_names.update(row[0] for row in self.independent_fighter_data())
-        real_names.update(row[0] for row in self.legend_fighter_data())
-        profiles = self.real_fighter_profiles()
+        seed_db = self.load_seed_fighter_database()
+        records = {
+            self.fighter_name_key(record.get("name", "")): record
+            for record in seed_db.get("all_fighters", [])
+            if isinstance(record, dict) and record.get("name")
+        }
         recalibrated = 0
         for fighter in fighters:
-            if fighter.name not in real_names or getattr(fighter, "rating_profile_version", 0) >= 3:
+            record = records.get(self.fighter_name_key(fighter.name))
+            if not record or getattr(fighter, "rating_profile_version", 0) >= 3:
                 continue
-            baseline = profiles.get(fighter.name, {}).get("rating", fighter.overall)
+            baseline = int(record.get("profile_rating", record.get("rating", fighter.overall)) or fighter.overall)
             self.apply_real_fighter_profile(fighter, baseline)
             recalibrated += 1
         return recalibrated
@@ -1285,11 +1448,30 @@ class PersistenceMixin:
             if id(fighter) in seen or getattr(fighter, "generated", False):
                 continue
             seen.add(id(fighter))
-            identity = self.real_fighter_identity_data(fighter.name)
+            record = self.seed_fighter_record_for(fighter.name)
+            identity = {}
+            if record:
+                identity = {
+                    "city": record.get("hometown", ""),
+                    "birth_country": record.get("birth_country", ""),
+                    "citizenship": record.get("birth_country", ""),
+                    "nationality": record.get("nationality", ""),
+                }
+            if not any(identity.values()):
+                identity = self.real_fighter_identity_data(fighter.name)
             if not identity:
                 continue
             if getattr(fighter, "real_identity_version", 0) < 2:
-                self.apply_real_fighter_birthplace(fighter, fighter.region)
+                if record:
+                    if record.get("nationality"):
+                        fighter.nationality = record["nationality"]
+                    if record.get("birth_country"):
+                        fighter.birth_country = record["birth_country"]
+                        fighter.birth_region = COUNTRY_TO_REGION.get(fighter.birth_country, getattr(fighter, "birth_region", "") or fighter.region)
+                    if record.get("hometown"):
+                        fighter.hometown = record["hometown"]
+                else:
+                    self.apply_real_fighter_birthplace(fighter, fighter.region)
                 fighter.real_identity_version = 2
                 identity_updates += 1
             if getattr(fighter, "real_record_baseline_version", 0) < 2:
@@ -1350,7 +1532,11 @@ class PersistenceMixin:
             fighter.fighting_base = getattr(fighter, "fighting_base", "") or fighter.residence
             fighter.cultural_connections = getattr(fighter, "cultural_connections", None) or list(dict.fromkeys([fighter.birth_region, fighter.residence, fighter.training_location]))
             markets = getattr(fighter, "regional_popularity", None) or {}
-            fighter.regional_popularity = {region: max(0, min(100, int(markets.get(region, 0)))) for region in REGIONS}
+            fighter.regional_popularity = {
+                region: max(0, min(100, int(value)))
+                for region, value in markets.items()
+                if region in REGIONS
+            }
             fighter.regional_popularity[fighter.birth_region] = max(fighter.regional_popularity.get(fighter.birth_region, 0), min(65, 18 + fighter.popularity // 3))
             fighter.home_event_history = getattr(fighter, "home_event_history", None) or []
         fighter.record_d = getattr(fighter, "record_d", 0)
@@ -1374,11 +1560,16 @@ class PersistenceMixin:
         self.ensure_fighter_history_baseline(fighter)
         entry_year = max(2026, int(getattr(fighter, "universe_entry_year", 0) or 2026))
         fighter.annual_overalls = fighter.annual_overalls or {str(entry_year): fighter.overall}
+        self.update_fighter_peak_overall(fighter)
         fighter.motivation = getattr(fighter, "motivation", 65) or 65
         fighter.retirement_pending = bool(getattr(fighter, "retirement_pending", False))
         fighter.retirement_requested_month = max(0, getattr(fighter, "retirement_requested_month", 0) or 0)
         fighter.retirement_fight_completed = bool(getattr(fighter, "retirement_fight_completed", False))
         fighter.retirement_fight_due_after_month = max(0, getattr(fighter, "retirement_fight_due_after_month", 0) or 0)
+        # Day-precision clock. Saves written before cards carried a weekday have
+        # neither value; zero means "fall back to the week-level fields".
+        fighter.available_day = max(0, int(getattr(fighter, "available_day", 0) or 0))
+        fighter.last_fight_day_index = max(0, int(getattr(fighter, "last_fight_day_index", 0) or 0))
         fighter.comeback_completion_prompted = bool(getattr(fighter, "comeback_completion_prompted", False))
         fighter.camp_quality = getattr(fighter, "camp_quality", 0) or self.gym_quality(fighter.camp)
         fighter.camp_joined_month = max(0, getattr(fighter, "camp_joined_month", 0) or 0)
@@ -1406,6 +1597,19 @@ class PersistenceMixin:
         fighter.career_goal_history = getattr(fighter, "career_goal_history", None) or []
         fighter.career_win_streak = max(0, getattr(fighter, "career_win_streak", 0) or 0)
         fighter.career_goal_last_review = max(0, getattr(fighter, "career_goal_last_review", 0) or 0)
+        fighter.career_arc = getattr(fighter, "career_arc", None) or None
+        if not isinstance(fighter.career_arc, dict):
+            fighter.career_arc = None
+        fighter.career_arc_history = getattr(fighter, "career_arc_history", None) or []
+        fighter.career_arc_last_offer_month = max(0, getattr(fighter, "career_arc_last_offer_month", 0) or 0)
+        fighter.academy_graduate = bool(
+            getattr(fighter, "academy_graduate", False)
+            or "Fighting Academy" in str(getattr(fighter, "feeder_origin", ""))
+            or any("Promoted from the Fighting Academy" in str(entry) for entry in (getattr(fighter, "fight_history", None) or []))
+        )
+        fighter.academy_graduated_month = max(0, getattr(fighter, "academy_graduated_month", 0) or 0)
+        if fighter.academy_graduate and not fighter.academy_graduated_month:
+            fighter.academy_graduated_month = max(1, getattr(fighter, "camp_joined_month", 0) or self.month)
         fighter.ranking_position = max(0, getattr(fighter, "ranking_position", 0) or 0)
         fighter.previous_ranking_position = max(0, getattr(fighter, "previous_ranking_position", 0) or 0)
         fighter.ranking_reason = getattr(fighter, "ranking_reason", "") or ""
@@ -1667,13 +1871,13 @@ class PersistenceMixin:
             target_root.parent.mkdir(parents=True, exist_ok=True)
             shutil.copytree(source_root, target_root, copy_function=shutil.copy2)
             copied_primary = target_root / "savegame.json"
-            copied_data = json.loads(read_json_text(copied_primary))
+            copied_data = load_save_payload(copied_primary)
             copied_data["active_save_name"] = requested
             copied_data["active_save_group"] = target_group
             metadata = dict(copied_data.get("_save_meta", {}) or {})
             metadata.update({"slot_name": requested, "folder": target_group, "saved_at": datetime.now().isoformat(timespec="seconds")})
             copied_data["_save_meta"] = metadata
-            atomic_write_json_compact(copied_primary, copied_data)
+            atomic_write_split_save(copied_primary, copied_data)
             self.write_save_metadata_sidecar(copied_primary, metadata)
         except Exception as exc:
             LOGGER.exception("Could not duplicate save slot %s to %s: %s", source_root, target_root, exc)
@@ -1801,7 +2005,7 @@ class PersistenceMixin:
         if not show_history and self.event_log:
             show_history = list(self.event_log[:12])
         self.belts, self.interim_belts, self.belt_history = self.ensure_company_champions(self.roster, self.belts, self.player_company_name, self.player_region, self.company_pop, player_owned=True, interim_belts=self.interim_belts, belt_history=self.belt_history)
-        return Promotion(
+        promotion = Promotion(
             self.player_company_name,
             self.player_region,
             self.company_pop,
@@ -1834,6 +2038,20 @@ class PersistenceMixin:
             closed_divisions=sorted(getattr(self, "closed_divisions", set())),
             closed_division_policy_set=True,
         )
+        if hasattr(self, "apply_authored_promotion_overrides"):
+            # The active player company may be a custom start or a company
+            # taken over mid-career. Its live identity and roster always win;
+            # database defaults only supply the secondary company systems.
+            authored = dict(getattr(self, "_player_database_company_spec", {}) or {})
+            for key in (
+                "name", "region", "size", "cash", "roster", "reputation", "reputation_score", "stability",
+                "show_history", "event_counter", "belts", "interim_belts", "special_belts", "belt_history",
+                "scheduled_events", "finance", "staff", "scouting", "inbox", "owner_goals", "academy",
+                "closed_divisions", "closed_division_policy_set",
+            ):
+                authored.pop(key, None)
+            self.apply_authored_promotion_overrides(promotion, authored)
+        return promotion
 
     def enter_spectator_mode(self):
         """Turn the currently controlled promotion over to the AI and observe the full world."""
@@ -2012,16 +2230,14 @@ class PersistenceMixin:
         messagebox.showinfo("Universe Cloned", f"Created and selected:\n{target.name}")
 
     def reset_default_universe_database(self):
-        if not messagebox.askyesno("Reset Default Universe", "Rebuild the default real-life universe database from the game's built-in source data?\n\nYour cloned custom universes will not be changed."):
+        if not messagebox.askyesno("Validate Default Universe", "Normalize the one-file Default Universe database and select it for new games?\n\nYour cloned custom universes will not be changed."):
             return
         path = self.universe_database_path("Default Universe")
-        if path.exists():
-            backup = path.with_suffix(f".backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
-            shutil.copy2(path, backup)
-        atomic_write_json(path, self.build_universe_database_pack("Default Universe"))
+        pack = self.load_universe_database_pack(path)
+        atomic_write_json(path, pack)
         self.active_universe_marker().write_text(path.name, encoding="utf-8")
         self.refresh_game_menu()
-        messagebox.showinfo("Default Restored", f"Default universe rebuilt and selected:\n{path.name}")
+        messagebox.showinfo("Default Universe Ready", f"Default universe normalized and selected:\n{path.name}")
 
     def open_database_folder(self):
         DATABASE_DIR.mkdir(parents=True, exist_ok=True)
@@ -2256,7 +2472,7 @@ class PersistenceMixin:
             self.set_active_save_location(name, group)
             data = self.serialize_world()
             data["_save_meta"] = self.save_metadata(name)
-            atomic_write_json_compact(path, data)
+            atomic_write_split_save(path, data)
             self.write_save_metadata_sidecar(path, data["_save_meta"])
             self.prune_save_backups()
         except Exception as exc:
@@ -2286,7 +2502,7 @@ class PersistenceMixin:
             current_path = self.active_save_path()
             if current_path.exists() and current_path != path:
                 self.backup_save_file(current_path, "before_slot_load")
-            self.apply_world_data(json.loads(read_json_text(path)))
+            self.apply_world_data(load_save_payload(path))
             self.set_active_save_location(
                 getattr(self, "save_slot_sources", {}).get(path, self.save_slot_name_from_path(path)),
                 getattr(self, "save_slot_groups", {}).get(path, self.save_slot_group_from_path(path)),
@@ -2422,7 +2638,7 @@ class PersistenceMixin:
                 return
             if target.exists():
                 self.backup_save_file(target, "before_restore")
-            atomic_write_text(target, read_json_text(item))
+            atomic_write_split_save(target, json.loads(read_json_text(item)))
             self.refresh_game_menu()
             messagebox.showinfo("Backup Restored", f"Restored to {target.name}.")
 
@@ -2457,7 +2673,7 @@ class PersistenceMixin:
             return
         DATABASE_DIR.mkdir(parents=True, exist_ok=True)
         name = self.safe_filename(self.database_name.get())
-        data = json.loads(read_json_text(source))
+        data = load_save_payload(source)
         for key in ("cash", "month", "scheduled_events", "event_log", "result_history", "result_records", "ai_event_archive", "player_event_archive", "finance", "inbox"):
             data.pop(key, None)
         data["database_name"] = name
@@ -2946,6 +3162,10 @@ class PersistenceMixin:
         self.broadcasters = [{"name": f"{self.player_region} Fight Network", "reach": reach, "fee": max(8_000, self.company_pop * 900), "type": "Regional Streaming" if self.company_pop < 50 else "National TV / Streaming"}]
         self.ensure_player_media_state()
         self.staff = self.seed_staff()
+        for index, member in enumerate(self.staff):
+            if member.get("role") == "Scout":
+                self.staff[index] = self.create_starting_scout(self.player_region, self.player_reputation)
+                break
         self.staff_candidates = self.seed_staff_candidates()
         self.ensure_staff_profiles()
         self.scouting = []
@@ -3002,12 +3222,13 @@ class PersistenceMixin:
             choice = PLAYER_PROMOTION_NAME
         company_section = self.universe_section("companies", {}) if hasattr(self, "universe_section") else {}
         player_spec = (company_section or {}).get("player_company", {})
+        self._player_database_company_spec = dict(player_spec) if isinstance(player_spec, dict) else {}
         self.player_company_name = player_spec.get("name", PLAYER_PROMOTION_NAME)
         self.spectator_mode = False
         self.player_region = player_spec.get("region", "USA")
         self.player_reputation = player_spec.get("reputation", "Regional Player Company")
-        self.company_show_personality = "Balanced"
-        self.cash = max(500_000, round(player_spec.get("cash", 275_000) * 1.5))
+        self.company_show_personality = player_spec.get("show_personality", player_spec.get("personality", "Balanced"))
+        self.cash = max(500_000, int(player_spec.get("cash", 275_000) or 275_000))
         self.company_pop = player_spec.get("popularity", 38)
         self.company_stability = player_spec.get("stability", 52)
         self.month = 1
@@ -3037,19 +3258,25 @@ class PersistenceMixin:
         self.independent_showcase_counter = 1
         self.retired_fighters = []
         self.finance = self.seed_finance()
+        if isinstance(player_spec.get("finance"), dict):
+            self.finance.update(deepcopy(player_spec["finance"]))
         self.engine_settings = self.seed_engine_settings()
         if hasattr(self, "engine_vars"):
             for key, var in self.engine_vars.items():
                 var.set(self.engine_settings.get(key, 1.0))
         self.staff = self.seed_staff()
+        if isinstance(player_spec.get("staff"), list):
+            self.staff = deepcopy(player_spec["staff"])
         self.staff_candidates = self.seed_staff_candidates()
         self.ensure_staff_profiles()
-        self.scouting = []
+        self.scouting = deepcopy(player_spec.get("scouting", [])) if isinstance(player_spec.get("scouting"), list) else []
         self.scouting_reports = {}
         self.scouting_searches = []
         self.scouting_shortlist = []
         self._scouting_state_migrated = True
         self.academy = self.academy_defaults() if hasattr(self, "academy_defaults") else {"owned": False, "level": 0, "capacity": 0, "prospects": [], "talent_pool": [], "weekly_cost": 0, "auto_train": True}
+        if isinstance(player_spec.get("academy"), dict):
+            self.academy.update(deepcopy(player_spec["academy"]))
         self.inbox = []
         self.owner_goals = self.seed_owner_goals()
         self.belts = self.blank_belts()
@@ -3058,15 +3285,17 @@ class PersistenceMixin:
         self.belt_history = self.blank_belt_history()
         self.closed_divisions = self.bamma_initial_closed_divisions()
         self.player_managed_divisions = set()
-        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "allow_mixed_gender": False, "active_fighter_target": 1200, "ai_offer_market_target": 100, "global_result_replay_limit": 2000, "auto_renew_enabled": False, "scouting_mode": True, "fight_night_audio_enabled": True, "fight_night_audio_output": "System default", "fight_night_audio_volume": 55, "autosave_enabled": True, "autosave_interval_months": 2, "autosave_weekly_keep": 2, "autosave_monthly_keep": 2, "save_backup_keep": 2, "save_retention_version": 4, "detailed_skill_balance_version": 1}
+        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "allow_mixed_gender": False, "active_fighter_target": 1200, "ai_offer_market_target": 100, "global_result_replay_limit": 2000, "auto_renew_enabled": False, "scouting_mode": True, "fight_night_audio_enabled": True, "fight_night_audio_output": "System default", "fight_night_audio_volume": 55, "autosave_enabled": True, "autosave_interval_months": 2, "autosave_weekly_keep": 2, "autosave_monthly_keep": 2, "save_backup_keep": 2, "save_retention_version": 4, "detailed_skill_balance_version": 1, "academy_upgrade_pricing_version": 2}
+        if isinstance(player_spec.get("rules"), dict):
+            self.rules.update(deepcopy(player_spec["rules"]))
         media_section = self.universe_section("media", {}) if hasattr(self, "universe_section") else {}
-        self.broadcasters = media_section.get("player_broadcasters", self.default_player_media() if hasattr(self, "default_player_media") else [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}])
+        self.broadcasters = deepcopy(player_spec["broadcasters"]) if isinstance(player_spec.get("broadcasters"), list) else media_section.get("player_broadcasters", self.default_player_media() if hasattr(self, "default_player_media") else [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}])
         self.media_companies = []
         self.media_market_history = []
         self.media_market_last_month = 0
         self.ensure_media_system()
-        self.weight_classes = list(WEIGHTS)
-        self.post_show_bonuses = {"fight": 5000, "ko": 5000, "sub": 5000}
+        self.weight_classes = list(player_spec.get("weight_classes", WEIGHTS))
+        self.post_show_bonuses = deepcopy(player_spec.get("post_show_bonuses", {"fight": 5000, "ko": 5000, "sub": 5000}))
         self.news = ["A new game has started."]
         self.world_chronicle = []
         self.fanbase = {"core_support": 42, "casual_reach": 30, "identity": "Regional Fight Community", "home_region": self.player_region, "event_history": []}
@@ -3091,5 +3320,13 @@ class PersistenceMixin:
             self.news.insert(0, f"New game started as {self.player_company_name}.")
             return
         self.set_player_event_location_default()
+        # Seed the opening free-agent depth and the first media offers here
+        # rather than leaving them to the first market or media redraw.
+        # Generating either from a redraw made simply looking at a screen
+        # mutate the world and consume simulation RNG.
+        self.ensure_free_agent_depth()
+        if hasattr(self, "generate_media_offers"):
+            self.ensure_player_media_state()
+            self.generate_media_offers(force=True)
         self.refresh_all()
         self.write_log()

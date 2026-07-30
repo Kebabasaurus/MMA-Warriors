@@ -3,6 +3,9 @@ from uuid import uuid4
 
 from constants import DETAILED_SKILL_GROUPS
 
+MENTAL_OVERALL_KEYS = tuple(DETAILED_SKILL_GROUPS["Mental"])
+PHYSICAL_OVERALL_KEYS = tuple(DETAILED_SKILL_GROUPS["Physical"])
+
 
 @dataclass(eq=False)
 class Fighter:
@@ -105,6 +108,10 @@ class Fighter:
     # Pre-bout ratings retained independently of the bounded card replay archive.
     bout_rating_history: list = None
     annual_overalls: dict = None
+    # Persistent high-water mark for profiles and retirement records. Annual
+    # snapshots remain useful for charts, but are not granular enough to be a
+    # fighter's definitive career peak.
+    career_peak_overall: int = 0
     sport_rating_history: dict = None
     sport_development_log: list = None
     # Compact, attributed MMA development history. Only meaningful rating
@@ -145,6 +152,11 @@ class Fighter:
     career_stat_rounds: int = 0
     career_stat_fights: int = 0
     available_week: int = 0
+    # Day-precision clearance. available_week stays the coarse gate so older
+    # saves keep working; this refines it once a fighter has fought on a dated
+    # card. Zero means "fall back to available_week".
+    available_day: int = 0
+    last_fight_day_index: int = 0
     hall_of_fame: bool = False
     legacy_score: int = 0
     title_wins: int = 0
@@ -204,6 +216,13 @@ class Fighter:
     career_goal_history: list = None
     career_win_streak: int = 0
     career_goal_last_review: int = 0
+    # A player-facing long-form story layered on top of the smaller career goal.
+    # It stays structured so a save can resume an unfinished journey precisely.
+    career_arc: dict = None
+    career_arc_history: list = None
+    career_arc_last_offer_month: int = 0
+    academy_graduate: bool = False
+    academy_graduated_month: int = 0
     ranking_position: int = 0
     previous_ranking_position: int = 0
     ranking_reason: str = ""
@@ -230,7 +249,10 @@ class Fighter:
     @property
     def overall(self):
         if self.detailed_skills:
-            return round((self.striking + self.wrestling + self.grappling + self.cardio + self.chin + self.detailed_group_average("Mental") + self.detailed_group_average("Physical")) / 7)
+            skills = self.detailed_skills
+            mental = round(sum(skills.get(key, 50) for key in MENTAL_OVERALL_KEYS) / len(MENTAL_OVERALL_KEYS))
+            physical = round(sum(skills.get(key, 50) for key in PHYSICAL_OVERALL_KEYS) / len(PHYSICAL_OVERALL_KEYS))
+            return round((self.striking + self.wrestling + self.grappling + self.cardio + self.chin + mental + physical) / 7)
         return round((self.striking + self.wrestling + self.grappling + self.cardio + self.chin) / 5)
 
     def detailed_group_average(self, group):

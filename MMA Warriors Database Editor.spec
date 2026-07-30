@@ -1,13 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-
 a = Analysis(
-    ['D:\\CodexFILES\\MMA Warriors\\main.py'],
+    ['D:\\CodexFILES\\MMA Warriors\\database_editor.py'],
     pathex=[],
     binaries=[],
     datas=[
-        ('D:\\CodexFILES\\MMA Warriors\\assets', 'assets'),
-        ('D:\\CodexFILES\\MMA Warriors\\country_flags', 'country_flags'),
+        ('D:\\CodexFILES\\MMA Warriors\\assets\\database_editor_icon.ico', 'assets'),
     ],
     hiddenimports=[],
     hookspath=[],
@@ -22,9 +20,10 @@ pyz = PYZ(a.pure)
 exe = EXE(
     pyz,
     a.scripts,
-    [],
-    exclude_binaries=True,
-    name='MMA Warriors',
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    name='MMA Warriors Database Editor',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -35,14 +34,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['D:\\CodexFILES\\MMA Warriors\\assets\\app_icon.ico'],
-)
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.datas,
-    strip=False,
-    upx=True,
-    upx_exclude=[],
-    name='MMA Warriors',
+    icon=['D:\\CodexFILES\\MMA Warriors\\assets\\database_editor_icon.ico'],
 )
