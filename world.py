@@ -10063,20 +10063,41 @@ class WorldMixin:
         for fighters in by_division.values():
             random.shuffle(fighters)
             fighters.sort(key=match_rating, reverse=True)
-        # A champion should only ever fight for the belt, never get quietly
-        # bumped into a throwaway development bout the same month a division
-        # is deep enough to produce a second pairing. Major promotions already
-        # protect a reigning champion this way (see `protected_champions` in
-        # build_ai_card); guarantee the same here by making the belt holder
-        # first in the queue, so they land in that division's very first bout
-        # of the month and are used up before any second pass can reach them.
+        # Regional champions follow the same rule as a major-promotion title
+        # holder: they only appear when the belt is on the line. Previously we
+        # moved the champion to the front of their division's generic queue,
+        # then marked that bout as a title fight only every four months. That
+        # quietly produced a stream of ordinary wins between defenses.
+        #
+        # Reserve a due defense before building the development slate. If there
+        # is no ready challenger, the champion sits out; a promotion cannot use
+        # its titleholder as a development opponent just to fill a card.
+        reserved_title_fights = []
+        reserved_title_keys = set()
         for (gender, weight), fighters in by_division.items():
-            champ_name = (promo.belts or {}).get(self.belt_key(gender, weight))
-            if not champ_name:
+            key = self.belt_key(gender, weight)
+            champion_name = self.ai_primary_title_holder_name(promo, gender, weight)
+            if not champion_name:
                 continue
-            holder_index = next((i for i, fighter in enumerate(fighters) if fighter.name == champ_name), None)
-            if holder_index is not None and holder_index != 0:
-                fighters.insert(0, fighters.pop(holder_index))
+            holder_index = next((index for index, fighter in enumerate(fighters) if fighter.name == champion_name), None)
+            if holder_index is None:
+                # The holder is injured, fatigued, or otherwise unavailable.
+                # They were not present in ``ready``, so generic booking cannot
+                # accidentally use them in this card.
+                continue
+            champion = fighters.pop(holder_index)
+            history = (promo.belt_history or {}).get(key) or []
+            last_title_month = max(
+                (self.result_lineage_date_key(entry.get("date", ""))[0] for entry in history),
+                default=0,
+            )
+            title_due = not last_title_month or self.month - last_title_month >= 4
+            if not title_due or not fighters:
+                continue
+            opponent_index = pick_opponent_index(champion, fighters)
+            challenger = fighters.pop(opponent_index)
+            reserved_title_fights.append((champion, challenger))
+            reserved_title_keys.add(key)
 
         # A shared bout budget used to drain itself on whichever divisions
         # happened to appear first in roster order, starving every division
@@ -10106,8 +10127,8 @@ class WorldMixin:
                 random.random(),
             ),
         )
-        fights = []
-        divisions_booked = set()
+        fights = list(reserved_title_fights)
+        divisions_booked = {(fighter.gender, fighter.weight) for fighter, _challenger in reserved_title_fights}
         progress = True
         while progress and len(fights) < max_card_bouts:
             progress = False
@@ -10132,8 +10153,8 @@ class WorldMixin:
         # A regional title starts only when two fighters have built enough of a
         # record to contest it. Existing champions defend at a measured cadence;
         # state repair must never create an appointed feeder champion.
-        title_flags = [False] * len(fights)
-        title_keys_used = set()
+        title_flags = [self.belt_key(a.gender, a.weight) in reserved_title_keys for a, _b in fights]
+        title_keys_used = set(reserved_title_keys)
         for index, (a, b) in enumerate(fights):
             key = self.belt_key(a.gender, a.weight)
             if key in title_keys_used:

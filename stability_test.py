@@ -15,6 +15,7 @@ from pathlib import Path
 from tkinter import messagebox
 
 from main import FightEmpireApp
+from models import Fighter, Promotion
 from persistence import atomic_write_json_gzip, read_json_text
 
 
@@ -1037,6 +1038,49 @@ def exercise_free_agent_safety_floor(app):
             "Free-agent safety floor created contracted emergency entrants")
 
 
+def exercise_regional_title_booking(app):
+    """Regional champions must sit out unless they are defending their belt."""
+    fighters = []
+    for index, name in enumerate(("Regional Champ", "Regional Challenger", "Regional Third", "Regional Fourth")):
+        fighter = Fighter(name, "Lightweight", 20, 6 + index, 1, 70 + index, 68, 67, 72, 70, 15, 0, 70, 1000)
+        fighter.gender = "Male"
+        fighter.potential = 80
+        fighter.available_week = 0
+        fighter.fatigue = 0
+        fighters.append(fighter)
+    champion = fighters[0]
+    champion.champion = True
+    promo = Promotion("Regional Title Regression", "UK", 30, 500000, fighters, is_regional_feeder=True)
+    key = app.belt_key("Male", "Lightweight")
+    promo.belts = app.blank_belts()
+    promo.belts[key] = champion.name
+    promo.interim_belts = app.blank_belts()
+    promo.belt_history = app.normalize_belt_history({
+        key: [{"date": "Month 9 Week 1", "action": "Champion Crowned", "division": key,
+               "fighter": champion.name, "note": "Regression fixture."}],
+    })
+    promo.show_history = []
+    promo.regional_division_activity = {}
+    promo.closed_divisions = []
+    app.promotions.append(promo)
+
+    app.month, app.week = 10, 1
+    app.simulate_regional_feeder_month(promo)
+    require(not any(entry.get("opponent_name") for entry in (champion.bout_rating_history or [])),
+            "Regional champion was booked in a non-title bout before a defense was due")
+
+    for fighter in promo.roster:
+        fighter.fatigue = 0
+        fighter.available_week = 0
+        fighter.available_day = 0
+        fighter.injured = 0
+    app.month, app.week = 13, 1
+    app.simulate_regional_feeder_month(promo)
+    title_bouts = champion.bout_rating_history or []
+    require(title_bouts and title_bouts[0]["title"] and title_bouts[0]["divisional_title"],
+            "Regional champion did not defend once the title cadence was due")
+
+
 def exercise_fighter_tree_identity_safety(app):
     """Duplicate display names and stale UI selections must not crash core tables."""
     market_original = app.free_agents[0]
@@ -1098,6 +1142,7 @@ def main():
         exercise_responsive_advance(app, root)
         exercise_sim_lab_population_tool(app)
         exercise_free_agent_safety_floor(app)
+        exercise_regional_title_booking(app)
         exercise_fighter_tree_identity_safety(app)
         require(not callback_errors, f"UI callback error: {callback_errors[0][1] if callback_errors else ''}")
     finally:
