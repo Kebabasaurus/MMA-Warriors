@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.0.2 - 2026-07-30
+
+### Database Editor And Universe Data
+
+- Rebuilt the fighter Skills tab as an all-skill sheet: each of the 67 individual attributes has a direct labelled 1-99 slider and numeric input, grouped by fighting discipline.
+- Added live Current OVR, Suggested OVR, and difference readouts; database authors can apply the entire sheet, synchronize broad core ratings, or use the calculated suggested OVR.
+- Authored exact opening detailed skills, career archetypes, Prime Start, and Prime End values for every seeded MMA fighter. The Database Editor and future new games now use the same values.
+- Clarified `prime_age` as an optional legend-age override. Normal fighters now display their actual Prime Start and Prime End values and blank optional overrides no longer block edits.
+- Hardened seed record lookup so same-name curated variants on different promotions keep their own authored profile rather than accidentally borrowing another variant's values.
+- Added a hidden-Tk editor acceptance audit that exercises all database field controls, all 67 skill sliders, skill-sheet persistence, and authored prime windows without saving the database.
+
 ## 3.0.1 - 2026-07-30
 
 ### Hotfixes

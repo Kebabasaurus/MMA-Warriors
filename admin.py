@@ -1211,7 +1211,14 @@ class AdminMixin:
             parts = fighter.name.rsplit(" ", 1)
             preferred = parts[0] if len(parts) == 2 and parts[1].isdigit() else fighter.name
             if preferred in existing:
-                fighter.name = self.generate_clean_unique_name(fighter.gender, existing)
+                # Curated universe data can intentionally include a younger or
+                # alternate-era version of a real fighter on another roster.
+                # They retain separate fighter_id values, so do not turn them
+                # into ugly "Name 2" entries or silently remove one at seed.
+                if not getattr(fighter, "generated", False):
+                    fighter.name = preferred
+                else:
+                    fighter.name = self.generate_clean_unique_name(fighter.gender, existing)
             else:
                 fighter.name = preferred
                 self.name_counts[fighter.name] = 1

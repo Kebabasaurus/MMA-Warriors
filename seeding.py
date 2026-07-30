@@ -452,6 +452,7 @@ class SeedMixin:
     def cache_seed_fighter_database(self, data):
         self._seed_fighter_database = data
         lookup = {}
+        owner_lookup = {}
         for record in (data or {}).get("all_fighters", []):
             if not isinstance(record, dict):
                 continue
@@ -459,16 +460,25 @@ class SeedMixin:
             if not name:
                 continue
             lookup.setdefault(self.fighter_name_key(name), record)
+            owner = record.get("owner") or record.get("seed_org") or ""
+            if owner:
+                owner_lookup.setdefault((self.fighter_name_key(name), str(owner).casefold()), record)
         self._seed_fighter_record_lookup = lookup
+        self._seed_fighter_record_owner_lookup = owner_lookup
         self.opening_replacements_embedded = bool((data or {}).get("opening_replacements_embedded"))
         return data
 
-    def seed_fighter_record_for(self, name):
+    def seed_fighter_record_for(self, name, owner=""):
         lookup = getattr(self, "_seed_fighter_record_lookup", None)
         if lookup is None:
             data = getattr(self, "_seed_fighter_database", {}) or {}
             self.cache_seed_fighter_database(data)
             lookup = getattr(self, "_seed_fighter_record_lookup", {})
+        if owner:
+            owner_lookup = getattr(self, "_seed_fighter_record_owner_lookup", {})
+            matched = owner_lookup.get((self.fighter_name_key(name), str(owner).casefold()))
+            if matched:
+                return matched
         return lookup.get(self.fighter_name_key(name), {})
 
     def seed_fighter_row_from_record(self, record):
@@ -905,6 +915,7 @@ class SeedMixin:
             kwargs["birth_country"] = row[14]
         if len(row) > 15:
             kwargs["hometown"] = row[15]
+        kwargs["seed_record"] = self.seed_fighter_record_for(row[0], row[2] if len(row) > 2 else "")
         return self.create_real_fighter(*row[:10], **kwargs)
 
     def apply_authored_fighter_overrides(self, fighter, record):
@@ -916,6 +927,7 @@ class SeedMixin:
         """
         if not isinstance(record, dict):
             return fighter
+        generated_details = dict(getattr(fighter, "detailed_skills", None) or {})
         for key in Fighter.__dataclass_fields__:
             if key in record:
                 value = record[key]
@@ -929,17 +941,20 @@ class SeedMixin:
         # Only synchronize broad ratings when the author supplied a detailed
         # sheet. Existing generated detail values must not overwrite an
         # explicitly authored broad skill such as striking or fight_iq.
-        if "detailed_skills" in record and isinstance(fighter.detailed_skills, dict):
-            fighter.detailed_skills = {
+        if "detailed_skills" in record and isinstance(record.get("detailed_skills"), dict):
+            # Database authors may pin one attribute without accidentally
+            # replacing the rest of the generated detailed profile with 50s.
+            generated_details.update({
                 key: max(1, min(99, int(value)))
-                for key, value in fighter.detailed_skills.items()
+                for key, value in record["detailed_skills"].items()
                 if isinstance(value, (int, float))
-            }
+            })
+            fighter.detailed_skills = generated_details
             self.sync_broad_skills_from_details(fighter)
         return fighter
 
-    def create_real_fighter(self, name, weight, org, popularity, skill, age, wins, losses, region, style, player_owned=False, source_url="", gender="", potential=None, nationality="", birth_country="", hometown=""):
-        record = self.seed_fighter_record_for(name)
+    def create_real_fighter(self, name, weight, org, popularity, skill, age, wins, losses, region, style, player_owned=False, source_url="", gender="", potential=None, nationality="", birth_country="", hometown="", seed_record=None):
+        record = seed_record if isinstance(seed_record, dict) else self.seed_fighter_record_for(name, org)
         weight = self.game_weight_class(weight)
         spread = lambda amount=8: random.randint(-amount, amount)
         fighter = Fighter(
@@ -975,8 +990,14 @@ class SeedMixin:
         if hometown:
             fighter.hometown = hometown
         fighter.detailed_skills = None
-        self.apply_real_fighter_profile(fighter, skill)
-        self.apply_special_real_fighter_profile(fighter)
+        self.apply_real_fighter_profile(fighter, skill, record=record)
+        self.apply_special_real_fighter_profile(fighter, record=record)
+        # A fully authored database sheet is the final authority. Special
+        # profiles may contain legacy random ranges; reapplying the complete
+        # signature here guarantees that an editor-locked opening profile is
+        # identical in every newly seeded game.
+        if isinstance(record.get("signature_skills"), dict) and record["signature_skills"]:
+            self.apply_signature_real_fighter_profile(fighter, preserve_career=False, record=record)
         if record.get("prime_rating_profile_version"):
             fighter.prime_rating_profile_version = int(record["prime_rating_profile_version"])
         prime_age = self.historic_prime_age_overrides().get(fighter.name)
@@ -1260,8 +1281,8 @@ class SeedMixin:
             if record.get("special_profile")
         }
 
-    def apply_signature_real_fighter_profile(self, fighter, preserve_career=False):
-        record = self.seed_fighter_record_for(fighter.name)
+    def apply_signature_real_fighter_profile(self, fighter, preserve_career=False, record=None):
+        record = record if isinstance(record, dict) else self.seed_fighter_record_for(fighter.name)
         targets = record.get("signature_skills") if record else self.signature_real_fighter_detailed_profiles().get(fighter.name)
         if not targets:
             return False
@@ -1278,8 +1299,8 @@ class SeedMixin:
         fighter.realism_profile_version = 1
         return True
 
-    def apply_special_real_fighter_profile(self, fighter):
-        record = self.seed_fighter_record_for(fighter.name)
+    def apply_special_real_fighter_profile(self, fighter, record=None):
+        record = record if isinstance(record, dict) else self.seed_fighter_record_for(fighter.name)
         profile = record.get("special_profile") if record else self.special_real_fighter_profiles().get(fighter.name)
         if not isinstance(profile, dict) or not profile:
             return False
@@ -1339,8 +1360,8 @@ class SeedMixin:
             if int(record.get("record_d", 0) or 0)
         }
 
-    def apply_real_fighter_profile(self, fighter, base_skill):
-        record = self.seed_fighter_record_for(fighter.name)
+    def apply_real_fighter_profile(self, fighter, base_skill, record=None):
+        record = record if isinstance(record, dict) else self.seed_fighter_record_for(fighter.name)
         if record:
             profile = {
                 "rating": record.get("profile_rating", record.get("rating", base_skill)),
@@ -1423,7 +1444,7 @@ class SeedMixin:
                 for key, value in fighter.detailed_skills.items()
             }
             self.sync_broad_skills_from_details(fighter)
-        signature_profile = self.apply_signature_real_fighter_profile(fighter, preserve_career=False)
+        signature_profile = self.apply_signature_real_fighter_profile(fighter, preserve_career=False, record=record)
         # Broad rating calibration can push an elite specialist's whole tab to
         # the same ceiling. Retain the authored OVR while restoring technique
         # differences that make styles and individual matchups meaningful.
@@ -2510,8 +2531,6 @@ class SeedMixin:
             fighters = self.unique_fighter_rows(fighters)
             roster = []
             for row in fighters:
-                if row[0] in global_names:
-                    continue
                 fighter = self.create_real_fighter_from_seed_row(row, player_owned=False)
                 roster.append(fighter)
                 global_names.add(fighter.name)

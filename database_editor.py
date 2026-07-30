@@ -16,7 +16,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
 
 from constants import (
-    ASSET_DIR, BEHAVIOURS, CAMPS, COUNTRY_TO_REGION, DATABASE_DIR, PLAYER_PROMOTION_NAME,
+    ASSET_DIR, BEHAVIOURS, CAMPS, COUNTRY_TO_REGION, DATABASE_DIR, DETAILED_SKILL_GROUPS, PLAYER_PROMOTION_NAME,
     REGIONS, STYLES, TRAITS, WEIGHTS,
 )
 from models import Fighter, Promotion
@@ -66,11 +66,59 @@ COMPANY_VALUE_CHOICES = {
     "show_personality": ("Balanced", "Star Builder", "Prospect Builder", "Seasonal", "Super Shows", "Regional Development"),
 }
 BOOLEAN_VALUES = ("true", "false")
+UNSET_CHOICE_LABEL = "Not set"
 FIGHTER_NUMERIC_AUTHOR_FIELDS = {
-    "rating", "profile_rating", "prime_age", "record_w", "record_l", "record_d", "popularity",
+    "rating", "profile_rating", "prime_age", "prime_start", "prime_end", "record_w", "record_l", "record_d", "popularity",
     "potential", "star_quality", "charisma", "professionalism", "injury_proneness", "finishing_instinct",
     "media_presence", "sponsor_appeal",
 }
+
+FIELD_HELP = {
+    "rating": "Base database rating. Opening OVR uses Profile Rating when it is supplied.",
+    "profile_rating": "Opening OVR used when a new game creates this curated fighter.",
+    "potential": "Long-term ceiling for development. It is not the fighter's current ability.",
+    "age": "Age at the start of a new game.",
+    "prime_age": "Optional historic-age override for a legend. Leave this blank for normal fighters; their actual development window is Prime Start through Prime End.",
+    "prime_start": "The age at which this fighter's normal prime development phase begins in a new game.",
+    "prime_end": "The age after which normal physical decline begins. Rare veteran resurgences can still occur.",
+    "weight": "Natural MMA competition division. Fighters can later move, with appropriate size penalties.",
+    "owner": "Promotion that owns this fighter at the start of a new game.",
+    "placement": "Starting market placement: promotion roster, player roster, or free agency.",
+    "detailed_skills": "Advanced full detailed-skill data. Use Skill Ratings (1-99) for normal editing.",
+    "signature_skills": "Direct individual-skill overrides. Use Skill Ratings (1-99) for normal editing.",
+    "striking": "Broad striking rating. It affects the suggested OVR and the standing fight engine.",
+    "wrestling": "Broad wrestling rating. It affects takedown and control exchanges.",
+    "grappling": "Broad grappling rating. It affects positional and submission exchanges.",
+    "cardio": "Broad endurance rating. It affects stamina, recovery between rounds, and late-fight form.",
+    "chin": "Broad durability rating. It affects knockdown, stoppage, and damage resistance.",
+}
+
+
+class Tooltip:
+    """Small hover tooltip used for editor controls that need context."""
+
+    def __init__(self, widget, text):
+        self.widget = widget
+        self.text = text
+        self.window = None
+        widget.bind("<Enter>", self.show, add="+")
+        widget.bind("<Leave>", self.hide, add="+")
+        widget.bind("<ButtonPress>", self.hide, add="+")
+
+    def show(self, _event=None):
+        if self.window or not self.text:
+            return
+        x = self.widget.winfo_rootx() + 14
+        y = self.widget.winfo_rooty() + self.widget.winfo_height() + 6
+        self.window = window = tk.Toplevel(self.widget)
+        window.wm_overrideredirect(True)
+        window.wm_geometry(f"+{x}+{y}")
+        tk.Label(window, text=self.text, justify="left", wraplength=360, bg="#102236", fg="#e6f2f2", padx=8, pady=6, relief="solid", borderwidth=1).pack()
+
+    def hide(self, _event=None):
+        if self.window is not None:
+            self.window.destroy()
+            self.window = None
 
 
 def json_value(text):
@@ -279,6 +327,9 @@ class UniverseDatabaseEditor:
         ttk.Button(toolbar, text="Save", style="Accent.TButton", command=self.save_database).pack(side="left", padx=3)
         ttk.Button(toolbar, text="Save As", command=self.save_database_as).pack(side="left", padx=3)
         ttk.Button(toolbar, text="Validate", command=self.validate_database).pack(side="left", padx=3)
+        profile_button = ttk.Button(toolbar, text="Lock Opening Profiles", command=self.materialize_all_opening_profiles)
+        profile_button.pack(side="left", padx=3)
+        Tooltip(profile_button, "Writes a complete core and detailed 1-99 skill sheet for every fighter. Future new games then use the exact database values, not seed-time rolls.")
         ttk.Button(toolbar, text="Open Folder", command=self.open_database_folder).pack(side="right", padx=8)
 
         self.notebook = ttk.Notebook(self.root)
@@ -331,7 +382,7 @@ class UniverseDatabaseEditor:
         self.fighter_min_popularity = tk.StringVar()
         self.fighter_style_combo = self.build_filter_combo(metrics, "Style", self.fighter_style_filter, 18)
         self.fighter_region_combo = self.build_filter_combo(metrics, "Region", self.fighter_region_filter, 14)
-        self.build_range_filter(metrics, "Rating", self.fighter_min_rating, self.fighter_max_rating, 1, 99)
+        self.build_range_filter(metrics, "Opening OVR", self.fighter_min_rating, self.fighter_max_rating, 1, 99)
         self.build_range_filter(metrics, "Age", self.fighter_min_age, self.fighter_max_age, 14, 70)
         self.build_single_number_filter(metrics, "Min pop.", self.fighter_min_popularity, 0, 100)
 
@@ -354,7 +405,7 @@ class UniverseDatabaseEditor:
         pane.add(left, weight=4)
         pane.add(right, weight=5)
         columns = ("name", "owner", "weight", "gender", "rating", "potential", "popularity", "age", "style", "region")
-        self.fighter_tree = self.build_tree(left, columns, ("Fighter", "Company", "Weight", "Gender", "Rating", "Potential", "Pop.", "Age", "Style", "Region"), (210, 185, 115, 70, 65, 72, 58, 55, 125, 100), "fighter")
+        self.fighter_tree = self.build_tree(left, columns, ("Fighter", "Company", "Weight", "Gender", "Opening OVR", "Potential", "Pop.", "Age", "Style", "Region"), (210, 185, 115, 70, 92, 72, 58, 55, 125, 100), "fighter")
         self.fighter_tree.bind("<<TreeviewSelect>>", lambda _event: self.select_fighter())
         self.build_record_editor(right, "fighter")
 
@@ -464,8 +515,19 @@ class UniverseDatabaseEditor:
         notebook.pack(fill="both", expand=True)
         fields_tab = ttk.Frame(notebook)
         raw_tab = ttk.Frame(notebook)
-        notebook.add(fields_tab, text="All Fields")
+        notebook.add(fields_tab, text="Advanced Fields")
         notebook.add(raw_tab, text="Record JSON")
+        ratings_tab = None
+        skills_tab = None
+        if kind == "fighter":
+            profile_tab = ttk.Frame(notebook)
+            business_tab = ttk.Frame(notebook)
+            ratings_tab = ttk.Frame(notebook)
+            skills_tab = ttk.Frame(notebook)
+            notebook.insert(0, profile_tab, text="Profile")
+            notebook.insert(1, ratings_tab, text="Core Ratings")
+            notebook.add(skills_tab, text="Skills (1-99)")
+            notebook.insert(3, business_tab, text="Business & Contract")
         columns = ("field", "value", "source")
         tree = self.build_tree(fields_tab, columns, ("Field", "Value", "Source"), (195, 390, 80))
         tree.bind("<<TreeviewSelect>>", lambda _event, item_kind=kind: self.select_field(item_kind))
@@ -474,17 +536,24 @@ class UniverseDatabaseEditor:
         field_var = tk.StringVar()
         choice_var = tk.StringVar()
         number_var = tk.StringVar()
+        field_help_var = tk.StringVar(value="Choose a field to see its editing guidance.")
         value = tk.Text(editor, height=3, wrap="word", bg=self.colors["inset"], fg=self.colors["text"], insertbackground=self.colors["text"], relief="flat")
         ttk.Label(editor, text="Field", style="Panel.TLabel").grid(row=0, column=0, sticky="w", padx=(8, 4), pady=(6, 2))
         field_box = ttk.Combobox(editor, textvariable=field_var, state="readonly", width=25)
         field_box.grid(row=0, column=1, sticky="ew", padx=(0, 6), pady=(6, 2))
+        Tooltip(field_box, "Choose a database field. The value control below changes automatically to the correct type.")
         field_box.bind("<<ComboboxSelected>>", lambda _event, item_kind=kind: self.field_choice_changed(item_kind))
         ttk.Label(editor, text="Value", style="Panel.TLabel").grid(row=1, column=0, sticky="nw", padx=(8, 4), pady=4)
         value.grid(row=1, column=1, sticky="ew", padx=(0, 6), pady=4)
         choice_box = ttk.Combobox(editor, textvariable=choice_var, state="readonly")
         number_box = ttk.Spinbox(editor, textvariable=number_var, width=18)
-        ttk.Button(editor, text="Apply Field", style="Accent.TButton", command=lambda item_kind=kind: self.apply_field(item_kind)).grid(row=2, column=1, sticky="w", padx=(0, 6), pady=(0, 7))
-        ttk.Button(editor, text="Remove Field", command=lambda item_kind=kind: self.remove_field(item_kind)).grid(row=2, column=1, sticky="e", padx=(0, 6), pady=(0, 7))
+        apply_button = ttk.Button(editor, text="Apply Field", style="Accent.TButton", command=lambda item_kind=kind: self.apply_field(item_kind))
+        apply_button.grid(row=2, column=1, sticky="w", padx=(0, 6), pady=(0, 3))
+        Tooltip(apply_button, "Writes the selected field value to the starting database.")
+        remove_button = ttk.Button(editor, text="Remove Field", command=lambda item_kind=kind: self.remove_field(item_kind))
+        remove_button.grid(row=2, column=1, sticky="e", padx=(0, 6), pady=(0, 3))
+        Tooltip(remove_button, "Removes an optional authored field. Required identity fields cannot be removed.")
+        ttk.Label(editor, textvariable=field_help_var, style="Muted.TLabel", wraplength=520).grid(row=3, column=0, columnspan=2, sticky="w", padx=8, pady=(0, 7))
         editor.columnconfigure(1, weight=1)
         raw = tk.Text(raw_tab, wrap="none", font=("Consolas", 9), bg=self.colors["inset"], fg=self.colors["text"], insertbackground=self.colors["text"])
         raw_scroll = ttk.Scrollbar(raw_tab, orient="vertical", command=raw.yview)
@@ -495,9 +564,624 @@ class UniverseDatabaseEditor:
         actions.pack(fill="x", side="bottom")
         ttk.Button(actions, text="Apply Record JSON", style="Accent.TButton", command=lambda item_kind=kind: self.apply_raw_record(item_kind)).pack(side="left", padx=7, pady=6)
         if kind == "fighter":
-            self.fighter_field_tree, self.fighter_field_var, self.fighter_value_text, self.fighter_value_choice, self.fighter_value_combo, self.fighter_value_number, self.fighter_value_spinbox, self.fighter_field_box, self.fighter_raw_text = tree, field_var, value, choice_var, choice_box, number_var, number_box, field_box, raw
+            self.fighter_field_tree, self.fighter_field_var, self.fighter_value_text, self.fighter_value_choice, self.fighter_value_combo, self.fighter_value_number, self.fighter_value_spinbox, self.fighter_field_box, self.fighter_raw_text, self.fighter_field_help = tree, field_var, value, choice_var, choice_box, number_var, number_box, field_box, raw, field_help_var
+            self.build_quick_fighter_editor(profile_tab, self.FIGHTER_PROFILE_SECTIONS, "Profile")
+            self.build_quick_fighter_editor(business_tab, self.FIGHTER_BUSINESS_SECTIONS, "Business & Contract")
+            self.build_core_rating_editor(ratings_tab)
+            self.build_detailed_skill_editor(skills_tab)
         else:
-            self.company_field_tree, self.company_field_var, self.company_value_text, self.company_value_choice, self.company_value_combo, self.company_value_number, self.company_value_spinbox, self.company_field_box, self.company_raw_text = tree, field_var, value, choice_var, choice_box, number_var, number_box, field_box, raw
+            self.company_field_tree, self.company_field_var, self.company_value_text, self.company_value_choice, self.company_value_combo, self.company_value_number, self.company_value_spinbox, self.company_field_box, self.company_raw_text, self.company_field_help = tree, field_var, value, choice_var, choice_box, number_var, number_box, field_box, raw, field_help_var
+
+    def build_detailed_skill_editor(self, parent):
+        """Build the direct, all-skills editor used for authored fighter sheets."""
+        overview = ttk.Frame(parent, style="Panel.TFrame")
+        overview.pack(fill="x", padx=8, pady=(8, 6))
+        ttk.Label(overview, text="SKILL SHEET", style="Title.TLabel").grid(row=0, column=0, sticky="w", padx=10, pady=(8, 1))
+        ttk.Label(
+            overview,
+            text="Every skill below is an exact opening value from 1 to 99. Edit the number or drag its slider, then apply the full sheet.",
+            style="Muted.TLabel",
+        ).grid(row=1, column=0, sticky="w", padx=10, pady=(0, 8))
+        self.fighter_skill_current_overall = tk.StringVar(value="Current OVR: -")
+        self.fighter_skill_suggested_overall = tk.StringVar(value="Suggested from skills: -")
+        self.fighter_skill_difference = tk.StringVar(value="Difference: -")
+        for row, variable in enumerate((self.fighter_skill_current_overall, self.fighter_skill_suggested_overall, self.fighter_skill_difference)):
+            ttk.Label(overview, textvariable=variable, style="Panel.TLabel" if row else "Title.TLabel").grid(
+                row=row, column=1, sticky="e", padx=12, pady=(8, 1) if row == 0 else 1,
+            )
+        overview.columnconfigure(0, weight=1)
+
+        sheet_frame = ttk.Frame(parent, style="Inset.TFrame")
+        sheet_frame.pack(fill="both", expand=True, padx=8, pady=(0, 7))
+        self.fighter_skill_canvas = tk.Canvas(sheet_frame, bg=self.colors["inset"], highlightthickness=0, borderwidth=0)
+        scrollbar = ttk.Scrollbar(sheet_frame, orient="vertical", command=self.fighter_skill_canvas.yview)
+        self.fighter_skill_canvas.configure(yscrollcommand=scrollbar.set)
+        self.fighter_skill_canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        self.fighter_skill_sheet = ttk.Frame(self.fighter_skill_canvas, style="Inset.TFrame")
+        self.fighter_skill_sheet_window = self.fighter_skill_canvas.create_window((0, 0), window=self.fighter_skill_sheet, anchor="nw")
+        self.fighter_skill_sheet.bind("<Configure>", self.refresh_skill_sheet_scrollregion)
+        self.fighter_skill_canvas.bind("<Configure>", self.fit_skill_sheet_to_canvas)
+        self.fighter_skill_canvas.bind_all("<MouseWheel>", self.scroll_skill_sheet, add="+")
+
+        self.fighter_skill_vars = {}
+        self.fighter_skill_scales = {}
+        self.fighter_skill_sources = {}
+        self._refreshing_skill_editor = False
+        for index, (group, skills) in enumerate(DETAILED_SKILL_GROUPS.items()):
+            row, column = divmod(index, 2)
+            group_frame = ttk.LabelFrame(self.fighter_skill_sheet, text=group, padding=(9, 7))
+            group_frame.grid(row=row, column=column, sticky="new", padx=6, pady=6)
+            group_frame.columnconfigure(1, weight=1)
+            for skill_row, skill in enumerate(skills):
+                label = ttk.Label(group_frame, text=self.detailed_skill_label(skill), style="Panel.TLabel")
+                label.grid(row=skill_row, column=0, sticky="w", padx=(0, 7), pady=3)
+                Tooltip(label, f"{self.detailed_skill_label(skill)}: exact opening ability from 1 to 99.")
+                variable = tk.StringVar(value="1")
+                self.fighter_skill_vars[skill] = variable
+                scale = ttk.Scale(
+                    group_frame, from_=1, to=99, orient="horizontal", length=145,
+                    command=lambda value, target=variable: self.set_skill_sheet_from_scale(target, value),
+                )
+                scale.grid(row=skill_row, column=1, sticky="ew", pady=3)
+                Tooltip(scale, f"Drag to set {self.detailed_skill_label(skill)} from 1 to 99.")
+                self.fighter_skill_scales[skill] = scale
+                spinbox = ttk.Spinbox(group_frame, textvariable=variable, from_=1, to=99, increment=1, width=5)
+                spinbox.grid(row=skill_row, column=2, sticky="e", padx=(7, 0), pady=3)
+                Tooltip(spinbox, f"Enter {self.detailed_skill_label(skill)} as a whole number from 1 to 99.")
+                spinbox.bind("<KeyRelease>", lambda _event: self.refresh_skill_sheet_overview())
+                spinbox.bind("<FocusOut>", lambda _event: self.normalize_skill_sheet_inputs())
+            self.fighter_skill_sheet.columnconfigure(column, weight=1, uniform="skill_groups")
+
+        actions = ttk.Frame(parent, style="Panel.TFrame")
+        actions.pack(fill="x", padx=8, pady=(0, 8))
+        apply_button = ttk.Button(actions, text="Apply Full Skill Sheet", style="Accent.TButton", command=self.apply_skill_sheet)
+        apply_button.pack(side="left", padx=8, pady=7)
+        Tooltip(apply_button, "Writes all 67 displayed 1-99 skills to the selected fighter's opening profile.")
+        sync_button = ttk.Button(actions, text="Sync Core Ratings From Skills", command=self.sync_core_ratings_from_skill_sheet)
+        sync_button.pack(side="left", padx=2, pady=7)
+        Tooltip(sync_button, "Recalculates the broad Core Ratings from this exact skill sheet, without changing the listed skill values.")
+        suggested_button = ttk.Button(actions, text="Use Suggested OVR", command=self.use_skill_sheet_suggested_overall)
+        suggested_button.pack(side="left", padx=2, pady=7)
+        Tooltip(suggested_button, "Applies the skill sheet and sets both opening OVR fields to the suggested rating calculated from it.")
+        revert_button = ttk.Button(actions, text="Revert Unapplied Changes", command=self.revert_skill_sheet)
+        revert_button.pack(side="left", padx=2, pady=7)
+        Tooltip(revert_button, "Restores the displayed values from the selected fighter's stored opening profile.")
+        lock_button = ttk.Button(actions, text="Lock Full Opening Profile", command=self.materialize_opening_profile)
+        lock_button.pack(side="right", padx=8, pady=7)
+        Tooltip(lock_button, "Fills any missing opening values so future new games use this exact authored profile.")
+
+    CORE_RATING_FIELDS = (
+        ("striking", "Striking"), ("wrestling", "Wrestling"), ("grappling", "Grappling"),
+        ("cardio", "Cardio"), ("chin", "Chin"), ("power", "Power"),
+        ("takedown_defence", "Takedown Defence"), ("ground_control", "Ground Control"),
+        ("submissions", "Submissions"), ("submission_defence", "Submission Defence"),
+        ("recovery", "Recovery"), ("toughness", "Toughness"), ("fight_iq", "Fight IQ"),
+        ("finishing_instinct", "Finishing"),
+    )
+    FIGHTER_PROFILE_SECTIONS = (
+        ("Identity", ("name", "owner", "placement", "seed_org", "gender", "weight", "age", "region", "nationality", "birth_country", "hometown")),
+        ("Career", ("record_w", "record_l", "record_d", "rating", "profile_rating", "potential", "prime_start", "prime_end", "style", "profile_style", "stance", "trait", "behaviour", "camp")),
+    )
+    FIGHTER_BUSINESS_SECTIONS = (
+        ("Market", ("popularity", "star_quality", "charisma", "media_presence", "sponsor_appeal", "professionalism", "injury_proneness")),
+        ("Contract", ("contract_type", "contract_months", "purse", "win_bonus", "exclusive", "negotiation_persona")),
+    )
+
+    def build_quick_fighter_editor(self, parent, sections, title):
+        ttk.Label(parent, text=f"{title} fields are direct starting-database values. Use Advanced Fields for every optional or technical value.", style="Muted.TLabel").pack(anchor="w", padx=8, pady=(8, 4))
+        body = ttk.Frame(parent, style="Panel.TFrame")
+        body.pack(fill="both", expand=True, padx=8, pady=(0, 8))
+        self.fighter_quick_vars = getattr(self, "fighter_quick_vars", {})
+        self.fighter_quick_controls = getattr(self, "fighter_quick_controls", {})
+        for section_index, (section_name, fields) in enumerate(sections):
+            frame = ttk.LabelFrame(body, text=section_name, padding=8)
+            frame.grid(row=0, column=section_index, sticky="nsew", padx=(0, 8) if section_index == 0 else 0, pady=8)
+            frame.columnconfigure(1, weight=1)
+            for row, field in enumerate(fields):
+                label = ttk.Label(frame, text=self.detailed_skill_label(field), style="Panel.TLabel")
+                label.grid(row=row, column=0, sticky="w", padx=(0, 7), pady=3)
+                Tooltip(label, self.field_help_text("fighter", field))
+                variable = tk.StringVar()
+                is_choice = field in FIGHTER_VALUE_CHOICES or field in ("owner", "seed_org")
+                if is_choice:
+                    control = ttk.Combobox(frame, textvariable=variable, state="readonly", width=24)
+                elif field in FIGHTER_NUMERIC_AUTHOR_FIELDS or field in {"age", "record_w", "record_l", "record_d", "contract_months", "purse", "win_bonus"}:
+                    control = ttk.Spinbox(frame, textvariable=variable, width=14)
+                else:
+                    control = ttk.Entry(frame, textvariable=variable, width=25)
+                control.grid(row=row, column=1, sticky="ew", pady=3)
+                Tooltip(control, self.field_help_text("fighter", field))
+                self.fighter_quick_vars[field] = variable
+                self.fighter_quick_controls[field] = control
+            body.columnconfigure(section_index, weight=1)
+        actions = ttk.Frame(parent, style="Panel.TFrame")
+        actions.pack(fill="x", padx=8, pady=(0, 8))
+        fields = tuple(field for _name, section_fields in sections for field in section_fields)
+        button = ttk.Button(actions, text=f"Apply {title}", style="Accent.TButton", command=lambda selected=fields: self.apply_quick_fighter_fields(selected))
+        button.pack(side="left", padx=8, pady=7)
+        Tooltip(button, f"Apply every edited field in this {title.lower()} section to the selected fighter.")
+
+    def refresh_quick_fighter_editor(self, record):
+        if not hasattr(self, "fighter_quick_vars"):
+            return
+        for field, variable in self.fighter_quick_vars.items():
+            value = record.get(field, self.fighter_defaults.get(field, "")) if isinstance(record, dict) else ""
+            control = self.fighter_quick_controls[field]
+            choices = self.value_choices_for("fighter", field)
+            if isinstance(control, ttk.Combobox):
+                values = tuple(str(choice) for choice in choices)
+                if value in (None, ""):
+                    values = (UNSET_CHOICE_LABEL, *values)
+                    variable.set(UNSET_CHOICE_LABEL)
+                else:
+                    shown = str(value)
+                    if shown not in values:
+                        values = (shown, *values)
+                    variable.set(shown)
+                control["values"] = values
+            else:
+                numeric = self.numeric_spec_for("fighter", field, compact_json(value))
+                if numeric and isinstance(control, ttk.Spinbox):
+                    lower, upper, increment = numeric
+                    control.configure(from_=lower, to=upper, increment=increment)
+                variable.set("" if value is None else str(value))
+
+    def apply_quick_fighter_fields(self, fields):
+        record = self.selected_fighter()
+        if not isinstance(record, dict):
+            messagebox.showinfo("No fighter selected", "Select a fighter first.")
+            return
+        updates = {}
+        for field in fields:
+            value = self.fighter_quick_vars[field].get()
+            if self.value_choices_for("fighter", field) and value == UNSET_CHOICE_LABEL:
+                value = ""
+            else:
+                value = json_value(value)
+            if field == "prime_age" and value in ("", None):
+                # This is a legacy legend reset override, not the normal
+                # prime window. Keeping it blank must be a valid profile save.
+                updates[field] = None
+                continue
+            numeric = self.numeric_spec_for("fighter", field, compact_json(record.get(field, self.fighter_defaults.get(field, ""))))
+            if numeric:
+                lower, upper, increment = numeric
+                if isinstance(value, bool) or not isinstance(value, (int, float)) or not lower <= value <= upper:
+                    messagebox.showerror("Invalid value", f"{self.detailed_skill_label(field)} must be between {lower:g} and {upper:g}.")
+                    return
+                value = int(value) if increment == 1 else float(value)
+            updates[field] = value
+        record.update(updates)
+        self.refresh_all()
+
+    def build_core_rating_editor(self, parent):
+        ttk.Label(parent, text="Core ratings are direct 1-99 values. Suggested OVR updates from these ratings and individual skill values.", style="Muted.TLabel").pack(anchor="w", padx=8, pady=(8, 4))
+        self.fighter_suggested_overall = tk.StringVar(value="Suggested OVR: -")
+        ttk.Label(parent, textvariable=self.fighter_suggested_overall, style="Title.TLabel").pack(anchor="w", padx=8, pady=(0, 7))
+        grid = ttk.Frame(parent, style="Panel.TFrame")
+        grid.pack(fill="x", padx=8, pady=(0, 8))
+        self.fighter_core_rating_vars = {}
+        self.fighter_core_rating_scales = {}
+        for index, (field, label) in enumerate(self.CORE_RATING_FIELDS):
+            row, column = divmod(index, 2)
+            offset = column * 3
+            rating_label = ttk.Label(grid, text=label, style="Panel.TLabel")
+            rating_label.grid(row=row, column=offset, sticky="w", padx=(8, 4), pady=4)
+            Tooltip(rating_label, FIELD_HELP.get(field, "Direct 1-99 fighter core rating."))
+            variable = tk.StringVar()
+            self.fighter_core_rating_vars[field] = variable
+            spinbox = ttk.Spinbox(grid, textvariable=variable, from_=1, to=99, increment=1, width=7)
+            spinbox.grid(row=row, column=offset + 1, sticky="w", padx=(0, 18), pady=4)
+            Tooltip(spinbox, f"{label}: enter a whole number from 1 to 99.")
+            spinbox.bind("<KeyRelease>", lambda _event: self.refresh_suggested_overall())
+            spinbox.bind("<FocusOut>", lambda _event: self.refresh_suggested_overall())
+            scale = ttk.Scale(
+                grid, from_=1, to=99, orient="horizontal", length=108,
+                command=lambda value, target=variable: self.set_core_rating_from_scale(target, value),
+            )
+            scale.grid(row=row, column=offset + 2, sticky="w", padx=(0, 10), pady=4)
+            self.fighter_core_rating_scales[field] = scale
+            Tooltip(scale, f"Drag to adjust {label}. The spinbox keeps the exact whole-number value.")
+        actions = ttk.Frame(parent, style="Panel.TFrame")
+        actions.pack(fill="x", padx=8, pady=(0, 8))
+        apply_button = ttk.Button(actions, text="Apply Core Ratings", style="Accent.TButton", command=self.apply_core_ratings)
+        apply_button.pack(side="left", padx=8, pady=7)
+        Tooltip(apply_button, "Writes all displayed 1-99 core ratings to this fighter's database record.")
+        suggested_button = ttk.Button(actions, text="Use Suggested OVR", command=self.use_suggested_overall)
+        suggested_button.pack(side="left", padx=2, pady=7)
+        Tooltip(suggested_button, "Sets Profile Rating to the suggested OVR calculated from the fighter's current ratings and skills.")
+
+    def core_rating_value(self, record, field, overrides=None):
+        values = overrides if isinstance(overrides, dict) and field in overrides else record if isinstance(record, dict) else {}
+        raw = values.get(field) if isinstance(values, dict) else None
+        if raw not in (None, ""):
+            try:
+                return max(1, min(99, int(raw)))
+            except (TypeError, ValueError):
+                pass
+        return self.fighter_opening_rating(record if isinstance(record, dict) else {})
+
+    def detailed_skill_value(self, record, skill, core_overrides=None, skill_overrides=None):
+        record = record if isinstance(record, dict) else {}
+        overrides = skill_overrides if isinstance(skill_overrides, dict) else self.fighter_skill_overrides(record)
+        if skill in overrides:
+            try:
+                return max(1, min(99, int(overrides[skill])))
+            except (TypeError, ValueError):
+                pass
+        rating = self.fighter_opening_rating(record)
+        style = record.get("profile_style") or record.get("style") or "Well-Rounded"
+        group_bias = {
+            "Boxer": (8, -6, -7, 2, 2, 1), "Kickboxer": (8, -5, -6, 3, 1, 1),
+            "Karate": (7, -6, -7, 2, 1, 2), "Muay Thai": (8, -3, -4, 5, 1, 1),
+            "Wrestler": (-7, 9, 4, 2, 3, 2), "BJJ": (-8, -1, 10, -1, 2, 2),
+            "Sambo": (-1, 7, 8, 2, 3, 3), "Judo": (-5, 8, 5, 4, 2, 2),
+            "Grappler": (-7, 3, 9, 0, 2, 2), "Well-Rounded": (2, 2, 2, 2, 2, 2),
+        }
+        standing, wrestling, ground, clinch, mental, physical = group_bias.get(style, group_bias["Well-Rounded"])
+        group_bases = {
+            "Standing": rating + standing,
+            "Ground": rating + ground,
+            "Wrestling": rating + wrestling,
+            "Muay Thai Clinch": rating + clinch,
+            "Mental": rating + mental,
+            "Physical": rating + physical,
+        }
+        if isinstance(core_overrides, dict):
+            group_bases.update({
+                "Standing": core_overrides.get("striking", group_bases["Standing"]),
+                "Ground": core_overrides.get("grappling", group_bases["Ground"]),
+                "Wrestling": core_overrides.get("wrestling", group_bases["Wrestling"]),
+                "Mental": core_overrides.get("fight_iq", group_bases["Mental"]),
+                "Physical": round((core_overrides.get("cardio", group_bases["Physical"]) + core_overrides.get("chin", group_bases["Physical"])) / 2),
+            })
+        style_focus = {
+            "Boxer": ("punch_power", "punch_technique", "hand_speed", "head_movement"),
+            "Kickboxer": ("high_kick_power", "high_kick_technique", "low_kick_technique", "kick_defence"),
+            "Karate": ("footwork", "high_kick_speed", "creative_kicks", "head_movement"),
+            "Muay Thai": ("knees", "elbows", "thai_plum", "low_kick_power"),
+            "Wrestler": ("takedowns", "takedown_setup", "chain_wrestling", "sprawl"),
+            "BJJ": ("submission_attack", "submission_defence_detail", "guard_work", "back_control"),
+            "Sambo": ("takedowns", "throws", "submission_attack", "leg_locks"),
+            "Judo": ("throws", "clinch_takedowns", "top_control", "positional_ability"),
+            "Grappler": ("top_control", "submission_attack", "transitions", "scrambles"),
+        }
+        name_seed = sum((index + 1) * ord(char) for index, char in enumerate(str(record.get("name", ""))))
+        skill_mods = record.get("skill_mods") if isinstance(record.get("skill_mods"), dict) else {}
+        for group, skills in DETAILED_SKILL_GROUPS.items():
+            if skill in skills:
+                variation = ((name_seed + skills.index(skill) * 17 + len(group) * 7) % 7) - 3
+                focus_bonus = 5 if skill in style_focus.get(style, ("adaptability", "conditioning")) else 0
+                return max(1, min(99, group_bases[group] + variation + focus_bonus + int(skill_mods.get(skill, 0) or 0)))
+        return self.fighter_opening_rating(record)
+
+    def suggested_overall_for_record(self, record, core_overrides=None, skill_overrides=None):
+        """Suggest an OVR from the actual authored broad and individual skill sheet."""
+        values = core_overrides if isinstance(core_overrides, dict) else {}
+        core = {field: self.core_rating_value(record, field, values) for field, _label in self.CORE_RATING_FIELDS}
+        group_values = {
+            group: round(sum(
+                self.detailed_skill_value(record, skill, values, skill_overrides)
+                for skill in skills
+            ) / max(1, len(skills)))
+            for group, skills in DETAILED_SKILL_GROUPS.items()
+        }
+        # Broad ratings describe a fighter at a glance, while individual skills are
+        # the actual exchange-level data. Blend both so neither can mask the other.
+        components = (
+            (0.22, (core["striking"] + group_values["Standing"]) / 2),
+            (0.15, (core["wrestling"] + group_values["Wrestling"]) / 2),
+            (0.15, (core["grappling"] + group_values["Ground"]) / 2),
+            (0.10, (core["takedown_defence"] + core["ground_control"] + group_values["Muay Thai Clinch"]) / 3),
+            (0.14, (core["cardio"] + core["recovery"] + group_values["Physical"]) / 3),
+            (0.10, (core["chin"] + core["toughness"] + group_values["Physical"]) / 3),
+            (0.09, (core["fight_iq"] + group_values["Mental"]) / 2),
+            (0.05, (core["power"] + core["finishing_instinct"] + group_values["Standing"] + group_values["Ground"]) / 4),
+        )
+        return max(1, min(99, round(sum(weight * value for weight, value in components))))
+
+    def refresh_suggested_overall(self):
+        record = self.selected_fighter()
+        if not isinstance(record, dict) or not hasattr(self, "fighter_core_rating_vars"):
+            if hasattr(self, "fighter_suggested_overall"):
+                self.fighter_suggested_overall.set("Suggested OVR: -")
+            return
+        overrides = {}
+        for field, variable in self.fighter_core_rating_vars.items():
+            try:
+                overrides[field] = int(variable.get())
+            except (TypeError, ValueError):
+                continue
+        self.fighter_suggested_overall.set(f"Suggested OVR: {self.suggested_overall_for_record(record, overrides)}")
+
+    def refresh_core_rating_editor(self, record):
+        if not hasattr(self, "fighter_core_rating_vars"):
+            return
+        for field, variable in self.fighter_core_rating_vars.items():
+            value = self.core_rating_value(record, field)
+            variable.set(str(value))
+            scale = getattr(self, "fighter_core_rating_scales", {}).get(field)
+            if scale:
+                scale.set(value)
+        self.refresh_suggested_overall()
+
+    def set_core_rating_from_scale(self, variable, value):
+        variable.set(str(max(1, min(99, round(float(value))))))
+        self.refresh_suggested_overall()
+
+    def apply_core_ratings(self):
+        record = self.selected_fighter()
+        if not isinstance(record, dict):
+            messagebox.showinfo("No fighter selected", "Select a fighter first.")
+            return
+        values = {}
+        for field, variable in self.fighter_core_rating_vars.items():
+            try:
+                value = int(variable.get())
+            except (TypeError, ValueError):
+                messagebox.showerror("Invalid rating", f"{field} must be a whole number from 1 to 99.")
+                return
+            if not 1 <= value <= 99:
+                messagebox.showerror("Rating out of range", f"{field} must be between 1 and 99.")
+                return
+            values[field] = value
+        record.update(values)
+        self.refresh_fighter_editor()
+
+    def use_suggested_overall(self):
+        record = self.selected_fighter()
+        if not isinstance(record, dict):
+            messagebox.showinfo("No fighter selected", "Select a fighter first.")
+            return
+        overrides = {}
+        for field, _label in self.CORE_RATING_FIELDS:
+            try:
+                value = int(self.fighter_core_rating_vars[field].get())
+            except (TypeError, ValueError):
+                value = self.core_rating_value(record, field)
+            overrides[field] = max(1, min(99, value))
+        suggested = self.suggested_overall_for_record(record, overrides)
+        record["rating"] = suggested
+        record["profile_rating"] = suggested
+        self.refresh_fighter_editor()
+
+    @staticmethod
+    def _average_skill_values(values, keys, fallback=50):
+        return round(sum(values.get(key, fallback) for key in keys) / max(1, len(keys)))
+
+    def apply_core_ratings_from_skill_values(self, record, details):
+        """Keep the broad card ratings coherent with a directly authored skill sheet."""
+        groups = DETAILED_SKILL_GROUPS
+        record["striking"] = self._average_skill_values(details, groups["Standing"])
+        record["wrestling"] = self._average_skill_values(details, groups["Wrestling"])
+        record["grappling"] = self._average_skill_values(details, groups["Ground"])
+        record["cardio"] = self._average_skill_values(details, ("conditioning", "resilience", "dedication"))
+        record["chin"] = self._average_skill_values(details, ("chin_strength", "stun_recovery", "resilience"))
+        record["power"] = self._average_skill_values(details, ("punch_power", "high_kick_power", "strength"))
+        record["takedown_defence"] = self._average_skill_values(details, ("takedown_defence_detail", "sprawl", "get_ups"))
+        record["ground_control"] = self._average_skill_values(details, ("top_control", "positional_ability", "ride_control"))
+        record["submissions"] = self._average_skill_values(details, ("submission_attack", "leg_locks", "back_control"))
+        record["submission_defence"] = self._average_skill_values(details, ("submission_defence_detail", "guard_work"))
+        record["recovery"] = self._average_skill_values(details, ("stun_recovery", "composure"))
+        record["toughness"] = self._average_skill_values(details, ("resilience", "chin_strength"))
+        record["fight_iq"] = self._average_skill_values(details, ("adaptability", "composure", "discipline"))
+        record["finishing_instinct"] = self._average_skill_values(details, ("killer_instinct", "punch_power", "submission_attack"))
+
+    def materialize_record_opening_profile(self, record):
+        """Write a complete opening profile directly into one database record."""
+        if not isinstance(record, dict):
+            return False
+        details = dict(self.fighter_skill_overrides(record))
+        for skills in DETAILED_SKILL_GROUPS.values():
+            for skill in skills:
+                details[skill] = self.detailed_skill_value(record, skill)
+        special = record.get("special_profile") if isinstance(record.get("special_profile"), dict) else {}
+        for key, value in (special.get("skill_minimums") or {}).items():
+            if key in details:
+                details[key] = max(details[key], int(value))
+        for key, value in (special.get("skill_values") or {}).items():
+            if key in details:
+                details[key] = max(1, min(99, int(value)))
+        for group, value in (special.get("group_minimums") or {}).items():
+            for key in DETAILED_SKILL_GROUPS.get(group, ()):
+                details[key] = max(details[key], int(value))
+        for key, bounds in (special.get("skill_random_minimums") or {}).items():
+            if key in details and isinstance(bounds, (tuple, list)) and len(bounds) == 2:
+                details[key] = max(details[key], round((int(bounds[0]) + int(bounds[1])) / 2))
+        for key, bounds in (special.get("skill_random_maximums") or {}).items():
+            if key in details and isinstance(bounds, (tuple, list)) and len(bounds) == 2:
+                details[key] = min(details[key], round((int(bounds[0]) + int(bounds[1])) / 2))
+        record["signature_skills"] = details
+
+        self.apply_core_ratings_from_skill_values(record, details)
+        for field, value in (special.get("broad_values") or {}).items():
+            if field in {key for key, _label in self.CORE_RATING_FIELDS}:
+                record[field] = max(1, min(99, int(value)))
+        for field, value in (special.get("broad_minimums") or {}).items():
+            if field in {key for key, _label in self.CORE_RATING_FIELDS}:
+                record[field] = max(record[field], int(value))
+        for field, value in (special.get("broad_maximums") or {}).items():
+            if field in {key for key, _label in self.CORE_RATING_FIELDS}:
+                record[field] = min(record[field], int(value))
+        if special.get("potential") not in (None, ""):
+            record["potential"] = max(record.get("potential") or 0, int(special["potential"]))
+        overall = self.suggested_overall_for_record(record)
+        record["rating"] = overall
+        record["profile_rating"] = overall
+        if record.get("potential") in (None, ""):
+            record["potential"] = min(98, overall + 6)
+        return True
+
+    def materialize_opening_profile(self):
+        """Persist a complete, deterministic opening sheet for the selected fighter."""
+        record = self.selected_fighter()
+        if not isinstance(record, dict):
+            messagebox.showinfo("No fighter selected", "Select a fighter first.")
+            return
+        self.materialize_record_opening_profile(record)
+        self.refresh_fighter_editor()
+
+    def materialize_all_opening_profiles(self):
+        if not self.ensure_database_loaded():
+            return
+        count = len(self.fighter_records())
+        if not messagebox.askyesno(
+            "Lock opening profiles",
+            f"Write full core and detailed 1-99 opening profiles for all {count:,} fighters?\n\n"
+            "This makes the editor and all future new games use the same seeded values. Save the database afterwards.",
+        ):
+            return
+        for record in self.fighter_records():
+            self.materialize_record_opening_profile(record)
+        self.refresh_all()
+        self.status_var.set(f"Locked exact opening profiles for {count:,} fighters. Save to write the database.")
+
+    @staticmethod
+    def detailed_skill_label(skill):
+        return str(skill).replace("_", " ").title()
+
+    @staticmethod
+    def fighter_skill_overrides(record):
+        if not isinstance(record, dict):
+            return {}
+        values = record.get("signature_skills") or record.get("detailed_skills") or {}
+        return values if isinstance(values, dict) else {}
+
+    def refresh_skill_sheet_scrollregion(self, _event=None):
+        if hasattr(self, "fighter_skill_canvas"):
+            self.fighter_skill_canvas.configure(scrollregion=self.fighter_skill_canvas.bbox("all"))
+
+    def fit_skill_sheet_to_canvas(self, event):
+        if hasattr(self, "fighter_skill_canvas") and hasattr(self, "fighter_skill_sheet_window"):
+            self.fighter_skill_canvas.itemconfigure(self.fighter_skill_sheet_window, width=event.width)
+
+    def scroll_skill_sheet(self, event):
+        if not hasattr(self, "fighter_skill_canvas") or not self.fighter_skill_canvas.winfo_ismapped():
+            return
+        canvas = self.fighter_skill_canvas
+        within_canvas = (
+            canvas.winfo_rootx() <= event.x_root <= canvas.winfo_rootx() + canvas.winfo_width()
+            and canvas.winfo_rooty() <= event.y_root <= canvas.winfo_rooty() + canvas.winfo_height()
+        )
+        if not within_canvas:
+            return
+        steps = -1 if event.delta > 0 else 1
+        canvas.yview_scroll(steps * 3, "units")
+
+    def skill_sheet_values(self, show_errors=False):
+        values = {}
+        for skill, variable in getattr(self, "fighter_skill_vars", {}).items():
+            try:
+                value = int(variable.get())
+            except (TypeError, ValueError):
+                if show_errors:
+                    messagebox.showerror("Invalid skill value", f"{self.detailed_skill_label(skill)} must be a whole number from 1 to 99.")
+                return None
+            if not 1 <= value <= 99:
+                if show_errors:
+                    messagebox.showerror("Skill value out of range", f"{self.detailed_skill_label(skill)} must be between 1 and 99.")
+                return None
+            values[skill] = value
+        return values
+
+    def refresh_skill_sheet_overview(self):
+        if getattr(self, "_refreshing_skill_editor", False):
+            return
+        record = self.selected_fighter()
+        values = self.skill_sheet_values()
+        if not isinstance(record, dict) or values is None:
+            return
+        current = self.fighter_opening_rating(record)
+        suggested = self.suggested_overall_for_record(record, skill_overrides=values)
+        difference = suggested - current
+        self.fighter_skill_current_overall.set(f"Current OVR: {current}")
+        self.fighter_skill_suggested_overall.set(f"Suggested OVR: {suggested}")
+        self.fighter_skill_difference.set(f"Difference: {difference:+d} from current OVR")
+
+    def normalize_skill_sheet_inputs(self):
+        if getattr(self, "_refreshing_skill_editor", False):
+            return
+        for skill, variable in getattr(self, "fighter_skill_vars", {}).items():
+            try:
+                value = int(variable.get())
+            except (TypeError, ValueError):
+                continue
+            value = max(1, min(99, value))
+            variable.set(str(value))
+            scale = self.fighter_skill_scales.get(skill)
+            if scale:
+                scale.set(value)
+        self.refresh_skill_sheet_overview()
+
+    def set_skill_sheet_from_scale(self, variable, value):
+        if getattr(self, "_refreshing_skill_editor", False):
+            return
+        variable.set(str(max(1, min(99, round(float(value))))))
+        self.refresh_skill_sheet_overview()
+
+    def refresh_detailed_skill_editor(self, record):
+        if not hasattr(self, "fighter_skill_vars"):
+            return
+        self._refreshing_skill_editor = True
+        try:
+            overrides = self.fighter_skill_overrides(record)
+            for skill, variable in self.fighter_skill_vars.items():
+                value = overrides.get(skill)
+                if value in (None, ""):
+                    value = self.detailed_skill_value(record, skill)
+                value = max(1, min(99, int(value)))
+                variable.set(str(value))
+                scale = self.fighter_skill_scales.get(skill)
+                if scale:
+                    scale.set(value)
+        finally:
+            self._refreshing_skill_editor = False
+        self.refresh_skill_sheet_overview()
+
+    def save_skill_sheet_values(self, record, values):
+        record["signature_skills"] = dict(values)
+        record.pop("detailed_skills", None)
+
+    def apply_skill_sheet(self):
+        record = self.selected_fighter()
+        if not isinstance(record, dict):
+            messagebox.showinfo("No fighter selected", "Select a fighter first.")
+            return False
+        values = self.skill_sheet_values(show_errors=True)
+        if values is None:
+            return False
+        self.save_skill_sheet_values(record, values)
+        self.refresh_fighter_editor()
+        self.status_var.set(f"Applied all {len(values)} individual skill values for {record.get('name', 'fighter')}.")
+        return True
+
+    def sync_core_ratings_from_skill_sheet(self):
+        record = self.selected_fighter()
+        values = self.skill_sheet_values(show_errors=True)
+        if not isinstance(record, dict) or values is None:
+            return
+        self.save_skill_sheet_values(record, values)
+        self.apply_core_ratings_from_skill_values(record, values)
+        self.refresh_fighter_editor()
+        self.status_var.set(f"Synced Core Ratings from the skill sheet for {record.get('name', 'fighter')}.")
+
+    def use_skill_sheet_suggested_overall(self):
+        record = self.selected_fighter()
+        values = self.skill_sheet_values(show_errors=True)
+        if not isinstance(record, dict) or values is None:
+            return
+        self.save_skill_sheet_values(record, values)
+        self.apply_core_ratings_from_skill_values(record, values)
+        suggested = self.suggested_overall_for_record(record, skill_overrides=values)
+        record["rating"] = suggested
+        record["profile_rating"] = suggested
+        self.refresh_fighter_editor()
+        self.status_var.set(f"Set {record.get('name', 'fighter')} to suggested OVR {suggested} from the current skill sheet.")
+
+    def revert_skill_sheet(self):
+        record = self.selected_fighter()
+        self.refresh_detailed_skill_editor(record)
 
     def build_fighter_defaults(self):
         example = Fighter("", "Lightweight", 28, 0, 0, 65, 65, 65, 65, 65, 20, 0, 70, 8000)
@@ -704,7 +1388,7 @@ class UniverseDatabaseEditor:
                 continue
             if region != "All regions" and record.get("region") != region:
                 continue
-            if not self.matches_number_range(record.get("rating"), min_rating, max_rating):
+            if not self.matches_number_range(self.fighter_opening_rating(record), min_rating, max_rating):
                 continue
             if not self.matches_number_range(record.get("age"), min_age, max_age):
                 continue
@@ -712,6 +1396,15 @@ class UniverseDatabaseEditor:
                 continue
             rows.append((index, record))
         return rows
+
+    @staticmethod
+    def fighter_opening_rating(record):
+        """Return the OVR a new game will use for an authored fighter."""
+        value = record.get("profile_rating", record.get("rating", record.get("skill", record.get("overall", 65))))
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return int(record.get("rating", 65) or 65)
 
     def filtered_companies(self):
         search = self.company_search.get().strip().casefold()
@@ -784,7 +1477,11 @@ class UniverseDatabaseEditor:
         }
         populated, missing = [], []
         for key, record in rows:
-            value = self.company_kind_for_key(key) if table_kind == "company" and column == "kind" else record.get(column)
+            value = (
+                self.company_kind_for_key(key) if table_kind == "company" and column == "kind"
+                else self.fighter_opening_rating(record) if table_kind == "fighter" and column == "rating"
+                else record.get(column)
+            )
             if value in (None, ""):
                 missing.append((key, record))
                 continue
@@ -836,7 +1533,7 @@ class UniverseDatabaseEditor:
         for item in self.fighter_tree.get_children():
             self.fighter_tree.delete(item)
         for index, record in self.sort_rows("fighter", self.filtered_fighters()):
-            self.fighter_tree.insert("", "end", iid=str(index), values=(record.get("name", ""), record.get("owner", ""), record.get("weight", ""), record.get("gender", ""), record.get("rating", ""), record.get("potential", ""), record.get("popularity", record.get("pop", "")), record.get("age", ""), record.get("style", ""), record.get("region", "")))
+            self.fighter_tree.insert("", "end", iid=str(index), values=(record.get("name", ""), record.get("owner", ""), record.get("weight", ""), record.get("gender", ""), self.fighter_opening_rating(record), record.get("potential", ""), record.get("popularity", record.get("pop", "")), record.get("age", ""), record.get("style", ""), record.get("region", "")))
         values = self.fighter_field_names()
         self.fighter_bulk_field_box["values"] = values
         if not self.fighter_bulk_field.get() and values:
@@ -934,24 +1631,40 @@ class UniverseDatabaseEditor:
 
     def refresh_record_editor(self, kind, record):
         if kind == "fighter":
-            tree, raw = self.fighter_field_tree, self.fighter_raw_text
+            tree, raw, field_var, field_box = self.fighter_field_tree, self.fighter_raw_text, self.fighter_field_var, self.fighter_field_box
             fields, defaults = self.fighter_field_names(), self.fighter_defaults
         else:
-            tree, raw = self.company_field_tree, self.company_raw_text
+            tree, raw, field_var, field_box = self.company_field_tree, self.company_raw_text, self.company_field_var, self.company_field_box
             fields, defaults = self.company_field_names(), self.company_defaults
         for item in tree.get_children():
             tree.delete(item)
         raw.delete("1.0", "end")
         if not isinstance(record, dict):
+            field_var.set("")
+            field_box["values"] = ()
+            self.clear_value_control(kind)
+            if kind == "fighter":
+                self.refresh_quick_fighter_editor(None)
+                self.refresh_core_rating_editor(None)
+                self.refresh_detailed_skill_editor(None)
             return
         for field in fields:
             authored = field in record
             value = record[field] if authored else defaults.get(field, "")
             source = "Authored" if authored else "Default"
             tree.insert("", "end", iid=field, values=(field, compact_json(value), source))
-        field_box = self.fighter_field_box if kind == "fighter" else self.company_field_box
         field_box["values"] = fields
         raw.insert("1.0", json.dumps(record, indent=2, ensure_ascii=True))
+        current_field = field_var.get()
+        if current_field in fields:
+            self.configure_value_control(kind, current_field, compact_json(record.get(current_field, defaults.get(current_field, ""))))
+        else:
+            field_var.set("")
+            self.clear_value_control(kind)
+        if kind == "fighter":
+            self.refresh_quick_fighter_editor(record)
+            self.refresh_core_rating_editor(record)
+            self.refresh_detailed_skill_editor(record)
 
     def select_field(self, kind):
         if kind == "fighter":
@@ -968,11 +1681,38 @@ class UniverseDatabaseEditor:
 
     def field_choice_changed(self, kind):
         field = self.fighter_field_var.get() if kind == "fighter" else self.company_field_var.get()
-        record = self.record_for_kind(kind)
-        if not isinstance(record, dict) or not field:
+        if not field:
+            self.clear_value_control(kind)
             return
-        value = record.get(field, self.fighter_defaults.get(field, "") if kind == "fighter" else self.company_defaults.get(field, ""))
+        record = self.record_for_kind(kind)
+        defaults = self.fighter_defaults if kind == "fighter" else self.company_defaults
+        value = record.get(field, defaults.get(field, "")) if isinstance(record, dict) else defaults.get(field, "")
         self.configure_value_control(kind, field, compact_json(value))
+
+    def clear_value_control(self, kind):
+        """Return an editor value area to a neutral state between records/fields."""
+        if kind == "fighter":
+            value_text, choice_var, choice_box, number_var, number_box = self.fighter_value_text, self.fighter_value_choice, self.fighter_value_combo, self.fighter_value_number, self.fighter_value_spinbox
+        else:
+            value_text, choice_var, choice_box, number_var, number_box = self.company_value_text, self.company_value_choice, self.company_value_combo, self.company_value_number, self.company_value_spinbox
+        choice_var.set("")
+        choice_box["values"] = ()
+        number_var.set("")
+        choice_box.grid_remove()
+        number_box.grid_remove()
+        value_text.grid(row=1, column=1, sticky="ew", padx=(0, 6), pady=4)
+        value_text.delete("1.0", "end")
+        help_var = self.fighter_field_help if kind == "fighter" else self.company_field_help
+        help_var.set("Choose a field to see its editing guidance.")
+
+    def field_help_text(self, kind, field):
+        if field in FIELD_HELP:
+            return FIELD_HELP[field]
+        if self.value_choices_for(kind, field):
+            return "Choose a valid option. Existing custom values are retained so they can be corrected safely."
+        if self.numeric_spec_for(kind, field, "0"):
+            return "Numeric field. The editor enforces the valid range shown by its spinner."
+        return "Free-form database value. Use valid JSON for lists or objects; plain text is stored as text."
 
     def value_choices_for(self, kind, field):
         values = dict(FIGHTER_VALUE_CHOICES if kind == "fighter" else COMPANY_VALUE_CHOICES).get(field)
@@ -982,7 +1722,11 @@ class UniverseDatabaseEditor:
             return values
         if kind == "fighter" and field in ("owner", "seed_org"):
             companies = [PLAYER_PROMOTION_NAME, "Free Agent", "Legend"]
-            companies.extend(str(record.get("name")) for _key, record in self.filtered_companies() if record.get("name"))
+            companies.extend(
+                str(record.get("name"))
+                for record in (*self.company_records(), *self.regional_company_records())
+                if record.get("name")
+            )
             return tuple(dict.fromkeys(companies))
         if kind == "company" and field == "roster_key":
             return tuple(dict.fromkeys(str(record.get("owner")) for record in self.fighter_records() if record.get("owner")))
@@ -1001,17 +1745,31 @@ class UniverseDatabaseEditor:
             value_text, choice_var, choice_box, number_var, number_box = self.company_value_text, self.company_value_choice, self.company_value_combo, self.company_value_number, self.company_value_spinbox
         choices = self.value_choices_for(kind, field)
         numeric = self.numeric_spec_for(kind, field, rendered_value)
+        help_var = self.fighter_field_help if kind == "fighter" else self.company_field_help
+        help_var.set(self.field_help_text(kind, field))
         if choices:
             value_text.grid_remove()
             number_box.grid_remove()
-            choice_box["values"] = choices
+            number_var.set("")
             raw_value = json_value(rendered_value)
             selected = str(raw_value).lower() if isinstance(raw_value, bool) else str(raw_value)
-            choice_var.set(selected if selected in choices else "")
+            # Old/custom databases can contain a value outside today's normal
+            # list. Keep it visible instead of blanking the field or making it
+            # impossible to repair through the dropdown.
+            choice_values = tuple(str(choice) for choice in choices)
+            if not selected:
+                choice_values = (UNSET_CHOICE_LABEL, *choice_values)
+                selected = UNSET_CHOICE_LABEL
+            elif selected not in choice_values:
+                choice_values = (selected, *choice_values)
+            choice_box["values"] = choice_values
+            choice_var.set(selected)
             choice_box.grid(row=1, column=1, sticky="ew", padx=(0, 6), pady=4)
         elif numeric:
             value_text.grid_remove()
             choice_box.grid_remove()
+            choice_var.set("")
+            choice_box["values"] = ()
             lower, upper, increment = numeric
             number_box.configure(from_=lower, to=upper, increment=increment)
             number_var.set(str(json_value(rendered_value)))
@@ -1019,6 +1777,9 @@ class UniverseDatabaseEditor:
         else:
             choice_box.grid_remove()
             number_box.grid_remove()
+            choice_var.set("")
+            choice_box["values"] = ()
+            number_var.set("")
             value_text.grid(row=1, column=1, sticky="ew", padx=(0, 6), pady=4)
             value_text.delete("1.0", "end")
             value_text.insert("1.0", rendered_value)
@@ -1072,6 +1833,12 @@ class UniverseDatabaseEditor:
             return
         numeric = self.numeric_spec_for(kind, field, compact_json(record.get(field, self.fighter_defaults.get(field, "") if kind == "fighter" else self.company_defaults.get(field, ""))))
         value = json_value(selected_value)
+        if self.value_choices_for(kind, field) and selected_value == UNSET_CHOICE_LABEL:
+            value = ""
+        if kind == "fighter" and field == "prime_age" and value in ("", None):
+            record[field] = None
+            self.refresh_all()
+            return
         if numeric:
             lower, upper, increment = numeric
             if isinstance(value, bool) or not isinstance(value, (int, float)):
