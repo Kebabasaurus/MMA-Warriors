@@ -179,7 +179,11 @@ Current path behavior:
 
 ## New Promotion Starts
 
-`Create Your Own Promotion` is a real starting mode, not an editor shortcut.
+`Create New Promotion...` is a real starting mode, not an editor shortcut.
+
+- The Starting Promotion dropdown is the sole entry point for established, custom, and
+  Spectator Mode starts. Keep `Start New Game With Selected Promotion` as the only action
+  button in that panel; do not restore a separate create-promotion shortcut.
 
 - The player chooses region, scale, event philosophy, theme, genders, and active weights.
 - New starts use viable roster targets of 8, 10, or 12 fighters per active division.

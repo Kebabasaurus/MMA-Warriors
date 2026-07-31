@@ -995,7 +995,6 @@ class UIMixin:
         start_button_row = ttk.Frame(start_inner, style="Inset.TFrame")
         start_button_row.pack(fill="x", padx=4, pady=(2, 4))
         ttk.Button(start_button_row, text="Start New Game With Selected Promotion", style="Accent.TButton", command=self.new_game).pack(side="left", fill="x", expand=True)
-        ttk.Button(start_button_row, text="Create Your Own Promotion", command=self.open_create_promotion_mode).pack(side="left", fill="x", expand=True, padx=(4, 0))
         ttk.Label(start_inner, text="Spectator Mode starts a fresh observer save with no player company.", style="Inset.TLabel", wraplength=260).pack(fill="x", padx=6, pady=(0, 4))
 
         self.spectator_sim_panel, spectator = self.section(db_inner, "SPECTATOR WORLD SIMULATION")

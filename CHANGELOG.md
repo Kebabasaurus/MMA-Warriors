@@ -15,6 +15,12 @@
 - Added automated per-theme contrast checks and a documented tab palette/state guide.
 - The main game window now opens maximized, while retaining its responsive fallback geometry for smaller displays and test environments.
 
+### Starting Promotion Selection
+
+- Removed the broken duplicate `Create Your Own Promotion` button from the starting screen.
+- Consolidated established, custom, and Spectator Mode starts through the Starting Promotion dropdown and the single `Start New Game With Selected Promotion` action.
+- Preserved the existing `Create New Promotion...` setup and roster-draft workflow behind the dropdown selection.
+
 ## 3.0.4 - 2026-07-30
 
 ### Championship Integrity

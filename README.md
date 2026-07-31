@@ -1,8 +1,8 @@
 # MMA Warriors
 
-## Version 3.0.4
+## Version 3.0.5
 
-This release expands the living-world simulation, improves watched fight-night presentation and commentary variety, adds career journeys and directed scouting, introduces the shipped Universe Database Editor, and strengthens UI scaling, AI scheduling, finance stability, and release packaging. Version 3.0.4 keeps regional championships credible by ensuring champions only make title defenses, makes late-career decline taper toward a realistic veteran level, and introduces peak-aware retirement reviews. See [CHANGELOG.md](CHANGELOG.md) for the 3.0 release notes and hotfixes.
+This release expands the living-world simulation, improves watched fight-night presentation and commentary variety, adds career journeys and directed scouting, introduces the shipped Universe Database Editor, and strengthens UI scaling, AI scheduling, finance stability, contract negotiations, accessibility, and release packaging. Version 3.0.5 also consolidates starting-career selection into one dropdown and one Start action. See [CHANGELOG.md](CHANGELOG.md) for the 3.0 release notes and hotfixes.
 
 MMA Warriors is a deep Windows desktop promotion-management simulation. Choose any real-world-inspired promotion, take control of an existing company, or create a new one from scratch. Build a roster, negotiate contracts and transfer deals, book cards, develop prospects, manage finances and media, and try to turn a regional operation into the sport's defining brand.
 
@@ -67,7 +67,7 @@ Close the packaged game before rebuilding. The build script preserves packaged `
 
 ## Current Core Features
 
-- Choose any established promotion at the start of a career, including BAMMA, UFC, PFL, ONE Championship, RIZIN, KSW, Cage Warriors, LFA, Oktagon MMA, BRAVE Combat Federation, ACA, PRIDE Fighting Championships, Strikeforce, and World Extreme Cagefighting. You can also Create Your Own Promotion. The legacy promotions include prime-era legends such as Kimbo Slice, Kazushi Sakuraba, Gilbert Melendez, Cung Le, Miguel Torres, and more.
+- Choose an established promotion, `Create New Promotion...`, or `Spectator Mode` from the Starting Promotion dropdown, then use the single `Start New Game With Selected Promotion` button. Established choices include BAMMA, UFC, PFL, ONE Championship, RIZIN, KSW, Cage Warriors, LFA, Oktagon MMA, BRAVE Combat Federation, ACA, PRIDE Fighting Championships, Strikeforce, and World Extreme Cagefighting. The legacy promotions include prime-era legends such as Kimbo Slice, Kazushi Sakuraba, Gilbert Melendez, Cung Le, Miguel Torres, and more.
 - Change control to another promotion through the company screen, or begin a custom-promotion career with its own region, scale, divisions, identity, and initial roster draft.
 - Guide fighter career journeys from Roster > Career Goals: academy graduates can pursue a homegrown title, veterans can request a final run, troubled prospects can reset their habits or weight cut, camp fit can be rebuilt, and champions need real opponents, visibility, and contract security to stay invested.
 - Start a Spectator Mode save to hand the selected player promotion to the AI, fast-forward the living world by week, month, year, or a chosen date, and watch any promotion's latest card in the live fight-night viewer before taking control of a company.
