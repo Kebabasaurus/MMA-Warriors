@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.0.5 - 2026-07-31
+
+### Contract Negotiations
+
+- Rebalanced free-agent contract evaluation so base purse and annualized compensation matter more than raw contract length.
+- Added compensation-gated diminishing returns for contract security through 48 months; longer terms provide no additional signing advantage.
+- Enforced the negotiation system's 60-month contract limit even when a player manually enters a higher value.
+- Added regression coverage for minimum-pay long-term offers, competitively paid contracts, low-cost prospects, and the duration cap.
+
 ## 3.0.4 - 2026-07-30
 
 ### Championship Integrity

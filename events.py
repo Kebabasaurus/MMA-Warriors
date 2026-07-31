@@ -14,6 +14,48 @@ from models import Fighter, Gym, Promotion
 
 
 class EventMixin:
+    def normalized_contract_months(self, months):
+        """Keep player-negotiated contract terms inside the supported range."""
+        return max(1, min(60, int(months)))
+
+    def contract_duration_offer_score(self, months, purse, ask, signing_bonus=0, win_bonus=0,
+                                      finish_bonus_pct=0):
+        """Value contract security without letting raw duration replace fair pay.
+
+        Fighters are paid per fight, so the compensation gate uses a three-fight
+        annual earnings proxy.  Base purse remains the largest component; win,
+        finish, and signing bonuses provide secondary support.  Security has
+        diminishing returns through 48 months and no extra value after that.
+        """
+        term = self.normalized_contract_months(months)
+        security_months = min(term, 48)
+        duration_value = min(security_months, 12) * 260
+        duration_value += max(0, min(security_months, 24) - 12) * 130
+        duration_value += max(0, min(security_months, 36) - 24) * 60
+        duration_value += max(0, security_months - 36) * 20
+
+        market_purse = max(1, int(ask))
+        offered_purse = max(0, int(purse))
+        security_rate = min(security_months, 12) / 12 * 0.08
+        security_rate += max(0, min(security_months, 24) - 12) / 12 * 0.04
+        security_rate += max(0, min(security_months, 36) - 24) / 12 * 0.02
+        security_rate += max(0, security_months - 36) / 12 * 0.01
+        # Duration stays secondary to a three-fight year of market-rate pay,
+        # including for inexpensive prospects where fixed points loom largest.
+        duration_value = min(duration_value, market_purse * 3 * security_rate)
+        base_pay_ratio = offered_purse / market_purse
+        # An agent will not trade badly under-market base pay for years of control.
+        salary_gate = max(0.0, min(1.0, (base_pay_ratio - 0.60) / 0.40))
+
+        expected_annual_pay = offered_purse * 3
+        expected_annual_pay += max(0, int(win_bonus)) * 1.25
+        expected_annual_pay += offered_purse * max(0, int(finish_bonus_pct)) / 100 * 0.75
+        # A signing bonus is worth less per year when spread across a long deal.
+        expected_annual_pay += max(0, int(signing_bonus)) * 12 / term
+        annual_pay_ratio = expected_annual_pay / (market_purse * 3)
+        compensation_gate = min(1.15, annual_pay_ratio) * salary_gate
+        return round(duration_value * compensation_gate)
+
     def event_fight_participants(self, fight):
         """Return every booked athlete, including a tournament's complete field."""
         return list(fight.get("tournament_entrants", fight.get("fighters", [])))
@@ -2165,7 +2207,12 @@ class EventMixin:
             win_bonus, ppv = win_bonus_var.get(), ppv_var.get()
             champ_clause, title_shot = champ_clause_var.get(), title_shot_var.get()
             main_event_promise, top_opponent_promise = main_event_promise_var.get(), top_opponent_promise_var.get()
-            score = purse + term * 260 + fights * 2100 + bonus * 260 + signing * 0.35 + self.company_pop * 190 + self.company_stability * 95
+            term = self.normalized_contract_months(term)
+            duration_score = self.contract_duration_offer_score(
+                term, purse, ask, signing_bonus=signing, win_bonus=win_bonus,
+                finish_bonus_pct=bonus,
+            )
+            score = purse + duration_score + fights * 2100 + bonus * 260 + signing * 0.35 + self.company_pop * 190 + self.company_stability * 95
             score += 9000 if exclusive else -3500
             score += 12000 if existing else 0
             score += win_bonus * 0.5 + ppv * 3600
@@ -2309,7 +2356,9 @@ class EventMixin:
                     if hasattr(self, "refresh_regional_prospects"):
                         self.refresh_regional_prospects()
                     return
-            purse, term, fights = purse_var.get(), term_var.get(), fights_var.get()
+            purse, term, fights = purse_var.get(), self.normalized_contract_months(term_var.get()), fights_var.get()
+            if term != term_var.get():
+                term_var.set(term)
             bonus, signing, exclusive = bonus_var.get(), signing_var.get(), exclusive_var.get()
             score, target, _pct, unmet = evaluate()
             score += random.randint(-4500, 4500)
