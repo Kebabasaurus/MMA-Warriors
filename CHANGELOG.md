@@ -9,6 +9,12 @@
 - Enforced the negotiation system's 60-month contract limit even when a player manually enters a higher value.
 - Added regression coverage for minimum-pay long-term offers, competitively paid contracts, low-cost prospects, and the duration cap.
 
+### Interface Accessibility
+
+- Rebuilt shared notebook-tab states across all 24 themes with WCAG AA text contrast, a minimum 3:1 selected-surface change, larger labels, and redundant outline/elevation cues for the current tab.
+- Added automated per-theme contrast checks and a documented tab palette/state guide.
+- The main game window now opens maximized, while retaining its responsive fallback geometry for smaller displays and test environments.
+
 ## 3.0.4 - 2026-07-30
 
 ### Championship Integrity
