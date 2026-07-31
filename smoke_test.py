@@ -1,16 +1,24 @@
 import importlib.util
 import json
 import random
+import struct
 import sys
 import tempfile
+import threading
 import tkinter as tk
+import wave
 from dataclasses import asdict
 from pathlib import Path
+from tkinter import ttk
 from types import SimpleNamespace
 
 
 ROOT = Path(__file__).resolve().parent
 MAIN = ROOT / "main.py"
+README = ROOT / "README.md"
+CHANGELOG = ROOT / "CHANGELOG.md"
+AGENT_GUIDE = ROOT / "AGENTS.md"
+CROWD_AUDIO_DIR = ROOT / "assets" / "crowd_audio"
 
 
 def load_game_module():
@@ -25,8 +33,185 @@ def assert_true(condition, message):
         raise AssertionError(message)
 
 
+def assert_release_documentation_policy(game):
+    """Keep release metadata and the required change package synchronized."""
+    readme = README.read_text(encoding="utf-8")
+    changelog = CHANGELOG.read_text(encoding="utf-8")
+    agent_guide = AGENT_GUIDE.read_text(encoding="utf-8")
+    version = game.GAME_VERSION
+
+    assert_true(f"## Version {version}" in readme,
+                "README version does not match constants.GAME_VERSION")
+    assert_true(f"## {version} -" in changelog,
+                "CHANGELOG has no current-release section matching constants.GAME_VERSION")
+    assert_true("## Developer Change Contract" in readme,
+                "README is missing the mandatory developer change contract")
+    assert_true("### Mandatory change package" in agent_guide,
+                "AGENTS.md is missing the mandatory change-package instructions")
+    for required_file in ("CHANGELOG.md", "README.md", "AGENTS.md"):
+        assert_true(required_file in readme and required_file in agent_guide,
+                    f"The documented change contract does not include {required_file}")
+    assert_true("Build Database Editor.bat" in readme,
+                "README does not document the separate Database Editor build")
+
+
+def assert_crowd_audio_pack():
+    """Bundled crowd cues remain complete and directly usable by runtime playback."""
+    manifest_path = CROWD_AUDIO_DIR / "manifest.json"
+    assert_true(manifest_path.exists(), "Crowd-audio manifest is missing")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    cues = manifest.get("cues", [])
+    sources = {source.get("id") for source in manifest.get("sources", [])}
+    mix_controls = manifest.get("mix_controls", {})
+    assert_true(len(cues) == 36, "Crowd-audio pack does not contain all 36 candidate variants")
+    assert_true(manifest.get("variants_per_family") == 3,
+                "Crowd-audio manifest does not declare three variants per trigger family")
+    assert_true(len(sources) >= 4 and None not in sources,
+                "Crowd-audio manifest does not preserve licensed source provenance")
+    assert_true(float(mix_controls.get("clean_strike_target_rms_db", 0)) <= -20.0,
+                "Clean-strike vocal reaction is mastered too loudly")
+    assert_true(float(mix_controls.get("clean_strike_peak_ceiling_db", 0)) <= -7.0,
+                "Clean-strike vocal transient ceiling is too loud")
+    assert_true(float(mix_controls.get("knockdown_gasp_layer_gain", 1)) <= 0.60,
+                "Knockdown gasp layer is too prominent in the crowd roar")
+    assert_true({cue.get("phase") for cue in cues} == {"before", "during", "after"},
+                "Crowd-audio pack does not cover every fight phase")
+    assert_true(len({cue.get("id") for cue in cues}) == len(cues),
+                "Crowd-audio cue identifiers are not unique")
+    families = {}
+    for cue in cues:
+        families.setdefault(cue.get("family"), set()).add(cue.get("variant"))
+    assert_true(len(families) == 12 and all(variants == {1, 2, 3} for variants in families.values()),
+                "Crowd-audio trigger families do not each contain Variants 1, 2, and 3")
+    for cue in cues:
+        assert_true(set(cue.get("sources", [])).issubset(sources) and cue.get("sources"),
+                    f"Crowd cue has missing source provenance: {cue.get('id')}")
+        wav_path = CROWD_AUDIO_DIR / cue["file"]
+        assert_true(wav_path.exists(), f"Crowd-audio cue is missing: {cue['file']}")
+        with wave.open(str(wav_path), "rb") as wav_file:
+            assert_true(wav_file.getnchannels() == 2, f"Crowd cue is not stereo: {cue['file']}")
+            assert_true(wav_file.getsampwidth() == 2, f"Crowd cue is not 16-bit PCM: {cue['file']}")
+            assert_true(wav_file.getframerate() == 44_100,
+                        f"Crowd cue is not 44.1 kHz: {cue['file']}")
+            actual_duration = wav_file.getnframes() / wav_file.getframerate()
+            assert_true(abs(actual_duration - float(cue["duration"])) <= 0.02,
+                        f"Crowd cue duration differs from its manifest: {cue['file']}")
+
+
+def assert_crowd_audio_runtime(game):
+    """Fight Night resolves every family, rotates variants, and can scale PCM safely."""
+    probe = object.__new__(game.FightNightAudioMixin)
+    probe.rules = {}
+    probe.ensure_audio_defaults()
+    assert_true(probe.fight_night_audio_volume() == 55,
+                "Legacy-shaped rules do not receive the default Fight Night volume")
+    assert_true(probe.set_fight_night_audio_volume(-20) == 0,
+                "Fight Night volume does not clamp at silence")
+    assert_true(probe.set_fight_night_audio_volume(47.6) == 48,
+                "Fight Night volume does not normalize live slider values")
+    assert_true(probe.set_fight_night_audio_volume(140) == 100,
+                "Fight Night volume does not clamp at 100 percent")
+    assert_true(probe.set_fight_night_audio_volume("invalid") == 55,
+                "Malformed saved Fight Night volume does not repair to the default")
+    assert_true(probe.set_fight_night_audio_volume(float("inf")) == 55,
+                "Infinite saved Fight Night volume does not repair to the default")
+    manifest_families = {
+        cue["family"]
+        for cue in json.loads((CROWD_AUDIO_DIR / "manifest.json").read_text(encoding="utf-8"))["cues"]
+    }
+    assert_true(set(probe._CROWD_CUE_FAMILIES.values()) == manifest_families,
+                "Fight Night does not map every bundled crowd-audio family")
+    for cue in (
+        "pre_fight", "walkout", "opening", "impact", "knockdown", "submission",
+        "inactivity", "round_end", "finish", "decision_pending",
+        "controversial_decision", "decision",
+    ):
+        entries = probe._crowd_audio_entries_for_cue(cue)
+        assert_true(len(entries) == 3, f"Fight Night cannot resolve all variants for {cue}")
+        assert_true(all(entry["path"].parent == CROWD_AUDIO_DIR.resolve() for entry in entries),
+                    f"Fight Night resolved a crowd cue outside the asset directory: {cue}")
+    first = probe._choose_crowd_audio("impact")
+    second = probe._choose_crowd_audio("impact")
+    assert_true(first and second and first["path"] != second["path"],
+                "Consecutive crowd reactions can repeat the same variant")
+    frames, channels, sample_rate = probe._read_crowd_audio(first["path"])
+    assert_true(frames and channels == 2 and sample_rate == 44_100,
+                "Fight Night cannot decode a mastered stereo crowd cue")
+    scaled = probe._scale_pcm16(struct.pack("<hh", 20_000, -20_000), 0.5)
+    assert_true(struct.unpack("<hh", scaled) == (10_000, -10_000),
+                "Fight Night PCM volume scaling is not symmetric")
+    assert_true(probe.fight_night_decision_reaction(["Judges' vote: Red 2, Blue 1"])
+                == "controversial_decision",
+                "A split judges' vote does not select the decision-boo family")
+    assert_true(probe.fight_night_decision_reaction(["Judges' vote: Red 3, Blue 0"])
+                == "decision",
+                "A unanimous judges' vote does not select respectful applause")
+    probe.fighter_event_connection = game.SeedMixin.fighter_event_connection.__get__(probe)
+
+    def crowd_fighter(name, hometown, birth_region):
+        return SimpleNamespace(
+            name=name, hometown=hometown, birth_region=birth_region, residence="",
+            fighting_base="", training_location="", cultural_connections=[], regional_popularity={},
+        )
+
+    hometown_fighter = crowd_fighter("Toronto Local", "Toronto", "Canada")
+    nearby_fighter = crowd_fighter("Canadian Visitor", "Vancouver", "Canada")
+    neutral_fighter = crowd_fighter("International Visitor", "Tokyo", "Japan")
+    hometown_profile = probe.fight_night_local_crowd_profile(
+        (hometown_fighter, neutral_fighter), "Canada", "Toronto"
+    )
+    nearby_profile = probe.fight_night_local_crowd_profile(
+        (nearby_fighter, neutral_fighter), "Canada", "Toronto"
+    )
+    neutral_profile = probe.fight_night_local_crowd_profile(
+        (neutral_fighter,), "Canada", "Toronto"
+    )
+    assert_true(hometown_profile["level"] == "Hometown" and hometown_profile["gain"] == 1.20,
+                "An exact hometown appearance does not receive the full crowd-audio lift")
+    assert_true(1.0 < nearby_profile["gain"] < hometown_profile["gain"],
+                "A nearby home-market appearance does not receive a smaller crowd-audio lift")
+    assert_true(neutral_profile["gain"] == 1.0 and not neutral_profile["summary"],
+                "A neutral fighter incorrectly receives a local crowd-audio lift")
+    played = []
+    playback_finished = threading.Event()
+    probe.rules = {
+        "fight_night_audio_enabled": True,
+        "fight_night_audio_volume": 55,
+        "fight_night_audio_output": probe.AUDIO_DEFAULT,
+    }
+
+    def capture_playback(entry, volume, device_index=None):
+        played.append((entry, volume, device_index))
+        playback_finished.set()
+
+    probe._play_crowd_audio_entry = capture_playback
+    assert_true(probe.play_fight_night_sound("knockdown", hometown_profile["gain"]),
+                "A mapped Fight Night crowd cue was not accepted for playback")
+    assert_true(playback_finished.wait(2.0) and played[0][0]["family"] == "knockdown_gasp_roar",
+                "Fight Night did not send the mastered knockdown asset to playback")
+    assert_true(abs(played[0][1] - 0.66) < 0.001,
+                "Fight Night did not apply hometown gain to the user's playback volume")
+    played.clear()
+    playback_finished.clear()
+    probe._fight_night_last_sound_at = 0.0
+    probe._fight_night_last_family_at = {}
+    probe.set_fight_night_audio_volume(25)
+    assert_true(probe.play_fight_night_sound("decision"),
+                "A cue was not accepted after changing the live volume")
+    assert_true(playback_finished.wait(2.0) and abs(played[0][1] - 0.25) < 0.001,
+                "The next Fight Night cue did not use the adjusted live volume")
+    probe._fight_night_last_sound_at = 0.0
+    probe._fight_night_last_family_at = {}
+    probe.set_fight_night_audio_volume(0)
+    assert_true(not probe.play_fight_night_sound("decision"),
+                "Zero Fight Night volume did not silence new cues")
+
+
 def main():
     game = load_game_module()
+    assert_release_documentation_policy(game)
+    assert_crowd_audio_pack()
+    assert_crowd_audio_runtime(game)
     root = tk.Tk()
     root.withdraw()
     try:
@@ -34,6 +219,95 @@ def main():
         app = game.FightEmpireApp(root, startup_progress=lambda value, text: startup_updates.append((value, text)))
         assert_true(startup_updates and startup_updates[-1][0] == 100, "Startup progress did not reach its ready state")
         assert_true(all(a[0] <= b[0] for a, b in zip(startup_updates, startup_updates[1:])), "Startup progress moved backwards")
+        ontario_cities = {"Belleville", "Kingston"}
+        assert_true(ontario_cities.issubset(game.REGION_CITIES["Canada"]),
+                    "Belleville and Kingston are missing from the Canadian location pool")
+        original_event_region, original_event_city = app.event_region.get(), app.event_city.get()
+        app.event_region.set("Canada")
+        app.update_city_options()
+        assert_true(ontario_cities.issubset(set(app.city_box.cget("values"))),
+                    "The event-booking city selector does not expose both added Ontario cities")
+        assert_true(ontario_cities.issubset(set(game.REGION_IDENTITY_PROFILES["Canada"][0][2])),
+                    "Generated Canadian fighters cannot receive both added Ontario hometowns")
+        app.event_region.set(original_event_region)
+        app.update_city_options()
+        app.event_city.set(original_event_city)
+        original_company_name, original_company_pop = app.player_company_name, app.company_pop
+        app.player_company_name = "International Championship Fighting Alliance"
+        app.company_pop = 99
+        app.refresh_header()
+        assert_true(app.stat_company.cget("text") == "Promotion: International Championship Fighting Alliance",
+                    "Long promotion name was not retained in the responsive header")
+        assert_true(app.stat_pop.cget("text") == "Popularity: 99",
+                    "Promotion popularity was not kept in its own stable header field")
+        assert_true(app.stat_company.winfo_manager() == "grid" and int(app.statusbar.columnconfigure(2)["weight"]) == 1,
+                    "Promotion header field does not expand with the window")
+        app.player_company_name, app.company_pop = original_company_name, original_company_pop
+        app.refresh_header()
+        original_cursor = root.cget("cursor")
+        busy_overlay = app.show_busy_overlay("Loading save", "Reading save data...", 8)
+        assert_true(busy_overlay["window"].winfo_exists(), "The reusable please-wait overlay did not open")
+        assert_true(busy_overlay["status"].get() == "Reading save data...", "The please-wait overlay lost its initial status")
+        assert_true(root.cget("cursor") == "wait", "The main window did not show a busy cursor during synchronous work")
+        assert_true(busy_overlay["progress"].cget("style") == "Activity.Horizontal.TProgressbar",
+                    "The please-wait overlay did not use the high-contrast activity bar")
+        app.update_busy_overlay("Refreshing the promoter dashboard...", 82)
+        assert_true(busy_overlay["status"].get() == "Refreshing the promoter dashboard...",
+                    "The please-wait overlay did not accept phase updates")
+        assert_true(int(float(busy_overlay["progress"]["value"])) == 82,
+                    "The please-wait overlay did not accept progress updates")
+        app.close_busy_overlay(busy_overlay)
+        assert_true(getattr(app, "_busy_overlay", None) is None, "The please-wait overlay was not cleared after work")
+        assert_true(root.cget("cursor") == original_cursor, "The main-window cursor was not restored after the overlay closed")
+        original_theme = app.theme_name
+        for theme_name in app.themes:
+            app.theme_name = theme_name
+            app.configure_style()
+            palette = app.tab_colors
+            style = ttk.Style(root)
+            state_specs = {
+                "inactive": (),
+                "hover": ("active",),
+                "selected": ("selected",),
+                "disabled": ("disabled",),
+            }
+            for state in ("inactive", "hover", "selected", "disabled"):
+                ratio = app.wcag_contrast_ratio(palette[f"{state}_fg"], palette[f"{state}_bg"])
+                assert_true(ratio >= 4.5, f"{theme_name} {state} tab contrast fell below WCAG AA: {ratio:.2f}:1")
+                actual_fg = style.lookup("TNotebook.Tab", "foreground", state_specs[state])
+                actual_bg = style.lookup("TNotebook.Tab", "background", state_specs[state])
+                actual_ratio = app.wcag_contrast_ratio(actual_fg, actual_bg)
+                assert_true(actual_ratio >= 4.5, f"{theme_name} rendered {state} tab contrast fell below WCAG AA: {actual_ratio:.2f}:1")
+            selected_hover_bg = style.lookup("TNotebook.Tab", "background", ("selected", "active"))
+            selected_hover_fg = style.lookup("TNotebook.Tab", "foreground", ("selected", "active"))
+            assert_true(
+                (selected_hover_bg, selected_hover_fg) == (palette["selected_bg"], palette["selected_fg"]),
+                f"{theme_name} hover state overrides the selected-tab treatment",
+            )
+            state_contrast = app.wcag_contrast_ratio(palette["selected_bg"], palette["inactive_bg"])
+            assert_true(state_contrast >= 3.0, f"{theme_name} selected and inactive tab surfaces are too similar: {state_contrast:.2f}:1")
+            assert_true(palette["selected_border"] != palette["selected_bg"], f"{theme_name} selected tab lacks its secondary border cue")
+            focus_contrast = app.wcag_contrast_ratio(palette["focus_border"], palette["inactive_bg"])
+            assert_true(focus_contrast >= 3.0, f"{theme_name} keyboard-focus border is too subtle: {focus_contrast:.2f}:1")
+            discovery_fg = style.lookup("Discovery.TLabel", "foreground")
+            discovery_bg = style.lookup("Discovery.TLabel", "background")
+            discovery_ratio = app.wcag_contrast_ratio(discovery_fg, discovery_bg)
+            assert_true(discovery_ratio >= 4.5, f"{theme_name} discoverability hint contrast fell below WCAG AA: {discovery_ratio:.2f}:1")
+            expected_progress_styles = {
+                "Activity.Horizontal.TProgressbar": app.colors["gold"],
+                app.live_fight_condition_styles["red"]: "#e0444e",
+                app.live_fight_condition_styles["blue"]: "#3d8cff",
+            }
+            for progress_style, expected_fill in expected_progress_styles.items():
+                fill = style.lookup(progress_style, "background")
+                track = style.lookup(progress_style, "troughcolor")
+                assert_true(fill == expected_fill, f"{theme_name} {progress_style} lost its intended fill color")
+                assert_true(track == "#101318", f"{theme_name} {progress_style} lost its dark progress track")
+                ratio = app.wcag_contrast_ratio(fill, track)
+                assert_true(ratio >= 3.0, f"{theme_name} {progress_style} fill is too subtle against its track: {ratio:.2f}:1")
+        app.theme_name = original_theme
+        app.theme_name_var.set(original_theme)
+        app.configure_style()
         peak_probe = game.Fighter("Retired Peak Probe", "Lightweight", 36, 12, 5, 62, 62, 62, 62, 62, 25, 0, 60, 8000)
         peak_probe.annual_overalls = {"2026": "74", "2027": 79}
         peak_probe.bout_rating_history = [{"self_overall": 86}, {"self_overall": 81}]
@@ -172,6 +446,178 @@ def main():
         for screen_name in app.screen_builders:
             app.ensure_screen_built(screen_name)
         assert_true(set(app.screen_builders) == app.built_screens, "One or more lazy management screens failed to build")
+        app.ensure_rule_defaults()
+        for rule_key in ("ui_owner_goals_collapsed", "ui_show_details_collapsed", "ui_matchup_insight_collapsed"):
+            assert_true(rule_key in app.rules, f"Legacy saves do not receive the {rule_key} UI default")
+        assert_true(not hasattr(app, "inbox_discovery_hint") and not hasattr(app, "matchmaking_discovery_hint"),
+                    "Removed full-width NEW HERE guidance was rebuilt on Inbox or Matchmaking")
+        assert_true(int(app.inbox_tree.cget("height")) <= 8 and int(app.goals_tree.cget("height")) <= 8,
+                    "Inbox tables request enough height to push their action footer off-screen")
+        assert_true(app.inbox_actions.winfo_manager() == "grid" and app.card_actions.winfo_manager() == "pack",
+                    "Inbox or fight-card action footer is not part of the visible panel layout")
+        booking_action_buttons = [child for child in app.booking_actions.winfo_children() if isinstance(child, ttk.Button)]
+        app.configure_booking_action_layout(900)
+        assert_true(len(booking_action_buttons) == 5 and {int(button.grid_info()["row"]) for button in booking_action_buttons} == {0},
+                    "Wide Matchmaking does not reclaim table height with one booking-action row")
+        app.configure_booking_action_layout(520)
+        assert_true({int(button.grid_info()["row"]) for button in booking_action_buttons} == {0, 1},
+                    "Narrow Matchmaking does not restore the safe two-row booking-action grid")
+        app.configure_booking_action_layout(900)
+        inbox_action_buttons = [child for child in app.inbox_actions.winfo_children() if isinstance(child, ttk.Button)]
+        assert_true(len(inbox_action_buttons) == 8 and {int(button.grid_info()["row"]) for button in inbox_action_buttons} == {0, 1},
+                    "Inbox does not expose all eight actions in two reserved rows")
+        assert_true(app.inbox_resize._resize_min_top >= 425,
+                    "Inbox top-pane minimum is too short to show both action rows at startup")
+        app.select_tab("inbox")
+        root.deiconify()
+        root.update()
+        root.update_idletasks()
+        action_bottom = max(button.winfo_rooty() + button.winfo_height() for button in inbox_action_buttons)
+        inbox_bottom = app.inbox_messages_panel.winfo_rooty() + app.inbox_messages_panel.winfo_height()
+        assert_true(all(button.winfo_viewable() for button in inbox_action_buttons) and action_bottom <= inbox_bottom,
+                    "One or more Inbox action buttons are clipped in the initial mapped window")
+        root.withdraw()
+
+        class ResizerProbe:
+            def __init__(self):
+                self._resize_ready = True
+                self._resize_user_adjusted = False
+                self._resize_last_height = 300
+                self._resize_fraction = 0.72
+                self._resize_min_top = 425
+                self._resize_min_bottom = 135
+                self.height = 800
+                self.placed = []
+
+            def winfo_height(self):
+                return self.height
+
+            def winfo_ismapped(self):
+                return True
+
+            def panes(self):
+                return ("top", "bottom")
+
+            def sash_place(self, index, x, y):
+                self.placed.append((index, x, y))
+
+            def after_idle(self, callback):
+                callback()
+
+        resizer_probe = ResizerProbe()
+        app.initialize_vertical_resizer(resizer_probe)
+        assert_true(resizer_probe._resize_last_height == 800 and resizer_probe.placed[-1][2] == 576,
+                    "A vertical resizer still locks to its smaller pre-maximized startup height")
+        resizer_probe._resize_user_adjusted = True
+        resizer_probe.height = 900
+        app.initialize_vertical_resizer(resizer_probe)
+        assert_true(resizer_probe._resize_last_height == 800,
+                    "Automatic vertical resizing overwrote a player-adjusted sash position")
+        assert_true(app.inbox_tab._force_viewport_width and app.booking_tab._force_viewport_width,
+                    "Inbox or Matchmaking can still widen the entire page beyond the visible viewport")
+        app.configure_inbox_panel_layout(700)
+        assert_true(app.inbox_section_split.cget("orient") == "vertical" and str(app.inbox_section_split.panes()[0]) == str(app.inbox_messages_panel),
+                    "Narrow Inbox does not stack Owner Goals visibly below the message list")
+        app.configure_inbox_panel_layout(1400)
+        assert_true(app.inbox_section_split.cget("orient") == "horizontal",
+                    "Wide Inbox did not restore the dense side-by-side layout")
+        assert_true(app.owner_goals_panel._disclosure_toggle.cget("text") == "▲ Collapse",
+                    "Owner Goals does not expose a labelled collapse affordance")
+        app.owner_goals_panel._disclosure_toggle.invoke()
+        assert_true(app.rules["ui_owner_goals_collapsed"] and not app.owner_goals_panel._disclosure_inner.winfo_manager(),
+                    "Owner Goals collapse state is not explicit and persistent")
+        app.owner_goals_panel._disclosure_toggle.invoke()
+        assert_true(not app.rules["ui_owner_goals_collapsed"] and app.owner_goals_panel._disclosure_inner.winfo_manager(),
+                    "Owner Goals could not be expanded from its persistent header")
+        show_details_panel = app.show_details_panel
+        show_groups = (
+            app.show_details_event_fields,
+            app.show_details_location_fields,
+            app.show_details_date_fields,
+            app.show_details_primary_actions,
+            app.show_details_secondary_actions,
+        )
+        app.configure_show_details_layout(1700)
+        assert_true(app._show_details_layout_mode == "wide" and [int(group.grid_info()["row"]) for group in show_groups] == [0, 0, 1, 1, 0],
+                    "Wide Show Details does not use its compact two-row layout")
+        assert_true(int(app.schedule_status.grid_info()["row"]) == int(app.event_broadcaster_status.grid_info()["row"]) == 0,
+                    "Wide Show Details does not share one compact status row")
+        app.configure_show_details_layout(1200)
+        assert_true(app._show_details_layout_mode == "medium" and int(app.show_details_secondary_actions.grid_info()["row"]) == 2,
+                    "Medium Show Details does not move optional show tools to a safe third row")
+        app.configure_show_details_layout(700)
+        assert_true(app._show_details_layout_mode == "narrow" and [int(group.grid_info()["row"]) for group in show_groups] == [0, 1, 2, 3, 4],
+                    "Narrow Show Details does not stack every semantic control group")
+        assert_true(int(app.schedule_status.grid_info()["row"]) == 0 and int(app.event_broadcaster_status.grid_info()["row"]) == 1,
+                    "Narrow Show Details does not stack its full schedule and broadcaster status")
+        pending_show_widgets = list(app.show_details_controls.winfo_children())
+        show_widgets = []
+        while pending_show_widgets:
+            widget = pending_show_widgets.pop()
+            show_widgets.append(widget)
+            pending_show_widgets.extend(widget.winfo_children())
+        show_text = {str(widget.cget("text")) for widget in show_widgets if "text" in widget.keys()}
+        required_show_text = {
+            "Event", "Venue", "Region", "City", "Provider", "Month", "Year", "Week", "Day",
+            "Skip Event", "Watch Event", "Earliest Valid Date", "Schedule Show",
+            "Super Events", "★ Superfight Night", "Fanbase & Atmosphere",
+        }
+        assert_true(required_show_text.issubset(show_text),
+                    "Compacting Show Details removed a field label or action")
+        show_bindings = (
+            (app.event_name_entry, app.event_name),
+            (app.event_venue_box, app.venue),
+            (app.event_region_box, app.event_region),
+            (app.city_box, app.event_city),
+            (app.event_broadcaster_box, app.event_broadcaster),
+            (app.event_calendar_month_box, app.event_calendar_month),
+            (app.event_year_box, app.event_year),
+            (app.event_week_box, app.event_week),
+            (app.event_day_box, app.event_day_choice),
+        )
+        assert_true(all(str(widget.cget("textvariable")) == str(variable) for widget, variable in show_bindings),
+                    "A compact Show Details field is disconnected from its canonical booking variable")
+        assert_true(all(widget.winfo_manager() for widget in (app.schedule_status, app.event_broadcaster_status, app.event_atmosphere_status)),
+                    "A Show Details status or atmosphere forecast disappeared from the compact layout")
+        show_details_panel._disclosure_toggle.invoke()
+        assert_true(app.rules["ui_show_details_collapsed"] and "Expand" in show_details_panel._disclosure_toggle.cget("text"),
+                    "Show Details does not retain a visible expansion affordance when collapsed")
+        show_details_panel._disclosure_toggle.invoke()
+        assert_true(not app.rules["ui_show_details_collapsed"] and app._show_details_layout_mode == "narrow",
+                    "Show Details did not restore its expanded state and responsive layout")
+        app.configure_show_details_layout(1700)
+        matchup_insight_panel = app.matchup_insight_panel
+        assert_true(app.rules["ui_matchup_insight_collapsed"] and "Expand" in matchup_insight_panel._disclosure_toggle.cget("text"),
+                    "Matchup Insight does not default to a compact, explicitly expandable state")
+        matchup_insight_panel._disclosure_toggle.invoke()
+        assert_true(not app.rules["ui_matchup_insight_collapsed"] and matchup_insight_panel._disclosure_inner.winfo_manager(),
+                    "Matchup Insight could not expose the preserved history, context, and row-colour guide")
+        matchup_insight_panel._disclosure_toggle.invoke()
+        assert_true(app.rules["ui_matchup_insight_collapsed"] and not matchup_insight_panel._disclosure_inner.winfo_manager(),
+                    "Matchup Insight did not return to its compact state")
+        original_inbox_filter = app.inbox_filter.get()
+        original_hidden_types = set(app.inbox_hidden_types)
+        inbox_filter_probe = {
+            "subject": "Smoke-test archived mail",
+            "body": "Filter-count regression fixture.",
+            "type": "Test",
+            "resolved": True,
+            "seen": True,
+            "created_month": app.month,
+            "created_week": app.week,
+        }
+        app.inbox.append(inbox_filter_probe)
+        app.inbox_filter.set("Open")
+        app.refresh_inbox()
+        assert_true("hidden by current filters" in app.inbox_summary.cget("text"),
+                    "Inbox counts still conceal why stored messages are not shown")
+        app.show_all_inbox_messages()
+        assert_true(app.inbox_filter.get() == "All" and not app.inbox_hidden_types,
+                    "Show All Messages did not clear every inbox visibility filter")
+        app.inbox.remove(inbox_filter_probe)
+        app.inbox_filter.set(original_inbox_filter)
+        app.inbox_hidden_types = original_hidden_types
+        app.refresh_inbox()
         app.open_career_goals_window()
         root.update_idletasks()
         journey_windows = [child for child in root.winfo_children() if isinstance(child, tk.Toplevel) and "Career Journeys" in child.title()]
@@ -288,6 +734,27 @@ def main():
         app.special_belts = original_special_belts
         assert_true(app.contract_time_remaining_label(1) == "1 mo", "Contract screen does not show readable time remaining")
         assert_true(app.contract_time_remaining_label(14) == "1y 2mo", "Long contract duration is not compact and readable")
+        minimum_24 = app.contract_duration_offer_score(24, 1, 20000)
+        minimum_70 = app.contract_duration_offer_score(70, 1, 20000)
+        assert_true(minimum_70 == minimum_24 == 0,
+                    "Long contract duration still improves a minimum-compensation offer")
+        competitive_24 = app.contract_duration_offer_score(24, 20000, 20000, signing_bonus=10000, finish_bonus_pct=15)
+        competitive_36 = app.contract_duration_offer_score(36, 20000, 20000, signing_bonus=10000, finish_bonus_pct=15)
+        competitive_48 = app.contract_duration_offer_score(48, 20000, 20000, signing_bonus=10000, finish_bonus_pct=15)
+        competitive_60 = app.contract_duration_offer_score(60, 20000, 20000, signing_bonus=10000, finish_bonus_pct=15)
+        competitive_70 = app.contract_duration_offer_score(70, 20000, 20000, signing_bonus=10000, finish_bonus_pct=15)
+        assert_true(competitive_36 > competitive_24,
+                    "A competitively paid longer contract no longer provides meaningful security value")
+        assert_true(competitive_70 - competitive_24 < 900,
+                    "A 70-month term still outweighs meaningful improvements to base compensation")
+        assert_true(competitive_60 <= competitive_48 and competitive_70 == competitive_60,
+                    "Contract duration still gains acceptance value beyond its realistic cap")
+        prospect_24 = app.contract_duration_offer_score(24, 4000, 4000, signing_bonus=2000, finish_bonus_pct=15)
+        prospect_36 = app.contract_duration_offer_score(36, 4000, 4000, signing_bonus=2000, finish_bonus_pct=15)
+        assert_true(0 < prospect_24 < prospect_36 < 4000,
+                    "Contract duration can outweigh base compensation for inexpensive fighters")
+        assert_true(app.normalized_contract_months(70) == 60,
+                    "Player contract terms can still bypass the 60-month validation cap")
         assert_true(app.contract_expiry_date_label(1) == app.format_game_date(app.month + 1, 1),
                     "Contract expiry date does not match the monthly contract tick")
         original_scheduled_events = list(app.scheduled_events)
@@ -305,11 +772,91 @@ def main():
         matchmaking_columns = set(app.available_tree["columns"])
         assert_true({"history", "last", "form", "activity", "fit", "elo", "record"}.issubset(matchmaking_columns),
                     "Matchmaking is missing career context or recommendation columns")
+        expected_essential_columns = app.matchmaking_table_view_columns("Essentials")
+        assert_true(tuple(app.available_tree.cget("displaycolumns")) == expected_essential_columns,
+                    "Matchmaking does not open with its focused essential-column view")
+        preset_union = set().union(*(app.matchmaking_table_view_columns(name) for name in ("Essentials", "Readiness", "Form & Fitness", "All 20")))
+        assert_true(preset_union == matchmaking_columns,
+                    "One or more fighter metrics disappeared from every Matchmaking table view")
+        table_probe_rows = app.available_tree.get_children()[:2]
+        app.available_tree.selection_set(table_probe_rows)
+        app.available_table_view.set("Readiness")
+        app.apply_matchmaking_table_view()
+        assert_true(tuple(app.available_tree.selection()) == tuple(table_probe_rows),
+                    "Changing the Matchmaking table view cleared the selected fighters")
+        app.available_table_view.set("All 20")
+        app.apply_matchmaking_table_view()
+        assert_true(tuple(app.available_tree.cget("displaycolumns")) == tuple(app.available_tree.cget("columns")),
+                    "The All 20 Matchmaking view does not restore the complete fighter table")
+        app.available_table_view.set("Essentials")
+        app.apply_matchmaking_table_view()
+        root.update_idletasks()
+        click_probe_rows = app.available_tree.get_children()[:3]
+        app.available_tree.selection_remove(*app.available_tree.selection())
+        first_box = app.available_tree.bbox(click_probe_rows[0])
+        second_box = app.available_tree.bbox(click_probe_rows[1])
+        third_box = app.available_tree.bbox(click_probe_rows[2])
+        assert_true(first_box and second_box and third_box, "Matchmaking click-selection probe rows are not visible")
+        first_click = SimpleNamespace(x=first_box[0] + 4, y=first_box[1] + 4, state=0)
+        second_click = SimpleNamespace(x=second_box[0] + 4, y=second_box[1] + 4, state=0)
+        third_click = SimpleNamespace(x=third_box[0] + 4, y=third_box[1] + 4, state=0)
+        assert_true(app.select_matchmaking_fighter_click(first_click) == "break" and tuple(app.available_tree.selection()) == (click_probe_rows[0],),
+                    "A normal first Matchmaking click did not select fighter one")
+        assert_true(app.select_matchmaking_fighter_click(second_click) == "break" and set(app.available_tree.selection()) == set(click_probe_rows[:2]),
+                    "A normal second Matchmaking click still requires Ctrl to retain fighter one")
+        app.refresh_matchmaking_history_indicators()
+        assert_true(app.matchup_insight_summary_var.get().startswith("Pair ready"),
+                    "The Matchmaking selection cue does not confirm that the pair is ready")
+        app.select_matchmaking_fighter_click(third_click)
+        assert_true(set(app.available_tree.selection()) == set(click_probe_rows),
+                    "A normal Matchmaking click stopped adding fighters after the first pair")
+        app.refresh_matchmaking_history_indicators()
+        assert_true("click any selected fighter to remove" in app.matchup_insight_summary_var.get(),
+                    "The Matchmaking selection cue does not explain how to trim a multi-fighter selection")
+        app.select_matchmaking_fighter_click(second_click)
+        assert_true(set(app.available_tree.selection()) == {click_probe_rows[0], click_probe_rows[2]},
+                    "Clicking a selected Matchmaking fighter did not remove that fighter")
+        profile_fighters = []
+        original_profile_opener = app.open_fighter_profile_window
+        app.open_fighter_profile_window = profile_fighters.append
+        try:
+            assert_true(app.open_matchmaking_fighter_profile_click(second_click) == "break",
+                        "A Matchmaking fighter double-click was not handled")
+        finally:
+            app.open_fighter_profile_window = original_profile_opener
+        assert_true(profile_fighters == [app.available_tree_fighters[click_probe_rows[1]]],
+                    "Matchmaking double-click did not open the fighter directly under the pointer")
+        assert_true(click_probe_rows[1] in app.available_tree.selection(),
+                    "Matchmaking double-click left the opened fighter deselected")
+        tournament_probe_rows = app.available_tree.get_children()[:4]
+        app.available_tree.selection_set(tournament_probe_rows)
+        app.refresh_matchmaking_history_indicators()
+        assert_true(app.matchup_insight_summary_var.get().startswith("4 selected") and "TOURNAMENT GROUP" in app.matchmaking_history_var.get(),
+                    "A multi-fighter tournament selection is mislabeled as a two-fighter comparison")
+        app.available_tree.selection_remove(*app.available_tree.selection())
+        app.refresh_matchmaking_history_indicators()
+        app.set_matchmaking_notice()
+        assert_true(not app.matchmaking_notice.winfo_manager() and not app.matchmaking_title_warning.winfo_manager(),
+                    "Empty Matchmaking alerts still reserve table height")
+        app.set_matchmaking_notice("Smoke-test booking guidance")
+        assert_true(app.matchmaking_notice.winfo_manager() == "pack",
+                    "An actionable Matchmaking notice is not restored above Matchup Insight")
+        app.set_matchmaking_notice()
         history_pair = next(
             (a, b) for index, a in enumerate(app.roster) for b in app.roster[index + 1:]
             if a.gender == b.gender and a.weight == b.weight
         )
         history_a, history_b = history_pair
+        compare_rows = [row_id for row_id, fighter in app.available_tree_fighters.items() if fighter in (history_a, history_b)]
+        assert_true(len(compare_rows) == 2, "Matchmaking could not expose a valid pair for comparison")
+        app.available_tree.selection_set(compare_rows)
+        compare_windows_before = set(root.winfo_children())
+        app.compare_selected_available_fighters()
+        root.update_idletasks()
+        compare_windows = [child for child in root.winfo_children() if child not in compare_windows_before and isinstance(child, tk.Toplevel)]
+        assert_true(len(compare_windows) == 1 and compare_windows[0].title().startswith("Compare Fighters - "),
+                    "Compare Selected did not open the preserved side-by-side fighter popup")
+        compare_windows[0].destroy()
         original_history = list(history_a.fight_history)
         history_a.fight_history.insert(0, f"Month 3 Week 2: {history_a.name} def. {history_b.name} by Decision")
         original_bout_history = list(history_a.bout_rating_history or [])
@@ -335,6 +882,16 @@ def main():
         assert_true(app.fighter_matchmaking_status(recovery_probe, app.month, app.week).startswith("Available "),
                     "Matchmaking does not expose the recovery status of an unavailable fighter")
         assert_true(len(app.booking_horizontal_split.panes()) == 2, "Matchmaking no longer has two independently sized panels")
+        assert_true(tuple(app.card_tree.cget("columns")) == ("slot", "fight", "weight", "booking"),
+                    "Current Fight Card still requires separate off-screen metric columns")
+        app.configure_booking_panel_layout(700)
+        assert_true(app.booking_horizontal_split.cget("orient") == "vertical" and str(app.booking_horizontal_split.panes()[0]) == str(app.booking_card_panel),
+                    "Narrow Matchmaking does not move Current Fight Card above Available Fighters")
+        app.configure_booking_panel_layout(1400)
+        assert_true(app.booking_horizontal_split.cget("orient") == "horizontal" and str(app.booking_horizontal_split.panes()[0]) == str(app.booking_available_panel),
+                    "Wide Matchmaking did not restore the dense side-by-side layout")
+        assert_true("20 METRICS AVAILABLE" in app.available_columns_hint.cget("text"),
+                    "Available Fighters does not signal that more table metrics exist")
         original_booked = list(app.booked)
         history_b_available_week = history_b.available_week
         history_b.available_week = 0
@@ -342,7 +899,12 @@ def main():
         earliest_month, earliest_week = app.earliest_booked_card_date()
         assert_true(app.calendar_week_index(earliest_month, earliest_week) == recovery_probe.available_week,
                     "Earliest Valid Date ignored a booked fighter's recovery window")
+        app.refresh_card()
+        booking_summary = app.card_tree.set(app.card_tree.get_children()[0], "booking")
+        assert_true(all(label in booking_summary for label in ("Hype", "Build", "Fatigue", "Medical")),
+                    "Current Fight Card grouping dropped a booking metric while removing horizontal overflow")
         app.booked = original_booked
+        app.refresh_card()
         history_b.available_week = history_b_available_week
         recovery_probe.available_week = original_available_week
         assistant_candidates = app.assistant_matchmaking_candidates(app.month, app.week)
@@ -418,7 +980,7 @@ def main():
             ("Jon Jones", "Rochester", "American"),
             ("Tom Aspinall CW", "Salford", "British"),
             ("Matthew Green", "Birmingham", "British"),
-            ("Brett Akey", "Ontario", "Canadian"),
+            ("Brett Akey", "Belleville", "Canadian"),
             ("Markell Holmes", "Arkansas", "American"),
         ):
             assert_true(name in real_identities and real_identities[name].hometown == city,
@@ -1290,6 +1852,91 @@ def main():
             assert_true(all(isinstance(stats.get(key), int) for key in ("knockdowns", "head_damage", "body_damage", "leg_damage", "cuts")), "Fight metrics contain non-integer combat statistics")
             assert_true(stats["damage_taken"] >= stats["head_damage"] + stats["body_damage"] + stats["leg_damage"], "Location damage exceeds aggregate damage")
 
+        # Long five-round bouts used to slice the entire commentary list at 95
+        # lines, deleting Round 4 summaries and Round 5 introductions. Force a
+        # verbose decision through both five-round routes and verify that the
+        # per-round compactor retains every playback boundary.
+        random_state = random.getstate()
+        original_resolve_exchange = app.resolve_exchange
+        original_fighter_presence_line = app.fighter_presence_line
+        original_check_fight_stoppage = app.check_fight_stoppage
+        original_check_corner_stoppage = app.check_corner_stoppage
+
+        def verbose_resolve_exchange(actor, defender, action, state, round_stats):
+            result = original_resolve_exchange(actor, defender, action, state, round_stats)
+            return f"{result or 'Both fighters reset in open space.'} QA exchange {state['round']}-{state['tick']}."
+
+        app.resolve_exchange = verbose_resolve_exchange
+        app.fighter_presence_line = lambda actor, defender, state: f"QA broadcast detail {state['round']}-{state['tick']}."
+        app.check_fight_stoppage = lambda *args: None
+        app.check_corner_stoppage = lambda *args: None
+        try:
+            assert_true(
+                game.FIGHT_COMMENTARY_ROUND_HEAD_LINES + game.FIGHT_COMMENTARY_ROUND_TAIL_LINES + 1
+                <= game.FIGHT_COMMENTARY_ROUND_LINE_LIMIT,
+                "Fight commentary compactor configuration exceeds its per-round limit",
+            )
+            for flags in ({"main": False, "title": True}, {"main": True, "title": False}):
+                verbose_pair = tuple(game.Fighter(**asdict(fighter)) for fighter in pair)
+                random.seed(22095)
+                _winner, _loser, verbose_method, verbose_round, verbose_lines = app.simulate_fight(
+                    verbose_pair[0], verbose_pair[1], flags
+                )
+                assert_true(verbose_method in ("Decision", "Draw") and verbose_round == 5,
+                            "Forced five-round commentary probe did not reach the scorecards")
+                for expected_round in range(1, 6):
+                    intro_prefix = f"Round {expected_round}:"
+                    summary_prefix = f"Round {expected_round} summary:"
+                    assert_true(sum(line.startswith(intro_prefix) for line in verbose_lines) == 1,
+                                f"Five-round commentary lost or duplicated the Round {expected_round} introduction")
+                    assert_true(sum(line.startswith(summary_prefix) for line in verbose_lines) == 1,
+                                f"Five-round commentary lost or duplicated the Round {expected_round} summary")
+                assert_true(sum(line.startswith("Between rounds:") for line in verbose_lines) == 4,
+                            "Five-round commentary lost a between-round transition")
+                assert_true("Official scorecards:" in verbose_lines and "FIGHT METRICS" in verbose_lines,
+                            "Five-round commentary lost its scorecards or fight metrics")
+                assert_true(sum("middle exchanges are summarized" in line for line in verbose_lines) == 5,
+                            "Verbose five-round commentary did not compact each round independently")
+                timestamped_lines = sum(line.startswith("  [") for line in verbose_lines)
+                assert_true(
+                    timestamped_lines <= 5 * (
+                        game.FIGHT_COMMENTARY_ROUND_HEAD_LINES + game.FIGHT_COMMENTARY_ROUND_TAIL_LINES
+                    ),
+                    "Five-round commentary exceeded its configured action-line bound",
+                )
+
+            def late_round_five_stoppage(actor, defender, state):
+                if state["round"] == 5 and state["tick"] == state["ticks_per_round"]:
+                    return actor, defender, "TKO", "Regression late Round 5 stoppage preserved."
+                return None
+
+            app.check_fight_stoppage = late_round_five_stoppage
+            stoppage_pair = tuple(game.Fighter(**asdict(fighter)) for fighter in pair)
+            random.seed(22105)
+            _winner, _loser, stoppage_method, stoppage_round, stoppage_lines = app.simulate_fight(
+                stoppage_pair[0], stoppage_pair[1], {"main": True, "title": False}
+            )
+            assert_true(stoppage_method == "TKO" and stoppage_round == 5,
+                        "Late-stoppage commentary probe did not finish in Round 5")
+            assert_true(all(sum(line.startswith(f"Round {round_number}:") for line in stoppage_lines) == 1 for round_number in range(1, 6)),
+                        "Late-stoppage commentary lost a round introduction")
+            assert_true(all(sum(line.startswith(f"Round {round_number} summary:") for line in stoppage_lines) == 1 for round_number in range(1, 5)),
+                        "Late-stoppage commentary lost a completed-round summary")
+            assert_true(not any(line.startswith("Round 5 summary:") for line in stoppage_lines),
+                        "Late Round 5 stoppage incorrectly produced a Round 5 score summary")
+            assert_true(sum(line.startswith("Between rounds:") for line in stoppage_lines) == 4,
+                        "Late-stoppage commentary lost a between-round transition")
+            assert_true(sum("Regression late Round 5 stoppage preserved." in line for line in stoppage_lines) == 1,
+                        "Round 5 finish detail was lost or duplicated during commentary compaction")
+            assert_true(any(line.startswith("Broadcast recap:") for line in stoppage_lines) and "FIGHT METRICS" in stoppage_lines,
+                        "Late-stoppage commentary lost its recap or fight metrics")
+        finally:
+            random.setstate(random_state)
+            app.resolve_exchange = original_resolve_exchange
+            app.fighter_presence_line = original_fighter_presence_line
+            app.check_fight_stoppage = original_check_fight_stoppage
+            app.check_corner_stoppage = original_check_corner_stoppage
+
         app.sim_gender_filter.set(pair[0].gender)
         app.sim_weight_filter.set(pair[0].weight)
         app.refresh_sim_fighter_choices()
@@ -1517,9 +2164,18 @@ def main():
                     "Fight-night title presentation does not distinguish the champion from the challenger")
         app.rules["live_auto_play_card"] = True
         app.rules["live_follow_commentary"] = False
+        app.rules["ui_owner_goals_collapsed"] = True
+        app.rules["ui_show_details_collapsed"] = True
+        app.rules["ui_matchup_insight_collapsed"] = True
+        app.set_fight_night_audio_volume(37)
         serialized_preferences = app.serialize_world()["rules"]
         assert_true(serialized_preferences["live_auto_play_card"] is True and serialized_preferences["live_follow_commentary"] is False,
                     "Fight-night viewer preferences are not persisted with the save")
+        assert_true(serialized_preferences["ui_owner_goals_collapsed"] is True and serialized_preferences["ui_show_details_collapsed"] is True
+                    and serialized_preferences["ui_matchup_insight_collapsed"] is True,
+                    "Inbox or Matchmaking disclosure preferences did not persist with the save")
+        assert_true(serialized_preferences["fight_night_audio_volume"] == 37,
+                    "The live Fight Night volume does not persist with the save")
 
         rival_fighter = next(fighter for promo in app.promotions for fighter in promo.roster if not fighter.retired)
         saved_reports = dict(app.scouting_reports)
@@ -1562,6 +2218,31 @@ def main():
                     "Player lower-card savings are not reflected in event finance")
 
         import persistence
+        load_events = []
+        with tempfile.TemporaryDirectory(prefix="mma_warriors_load_overlay_") as load_temp_dir:
+            load_path = Path(load_temp_dir) / "savegame.json"
+            load_path.write_text("{}", encoding="utf-8")
+            load_probe = SimpleNamespace(
+                active_save_path=lambda: load_path,
+                show_busy_overlay=lambda title, message, progress: load_events.append(("show", title, message, progress)) or "busy",
+                update_busy_overlay=lambda message, progress=None: load_events.append(("update", message, progress)),
+                close_busy_overlay=lambda overlay=None: load_events.append(("close", overlay)),
+                apply_world_data=lambda data: load_events.append(("apply", data)),
+                rolling_backup_files=lambda: [],
+                booked=set(),
+                ensure_player_event_name=lambda: None,
+                reconcile_title_shot_alerts=lambda: None,
+                refresh_all=lambda: load_events.append(("refresh",)),
+                write_log=lambda: load_events.append(("log",)),
+            )
+            persistence.PersistenceMixin.load_game(load_probe)
+        assert_true(load_events[0][:2] == ("show", "Loading save"),
+                    "Quick Load did not show the please-wait overlay before reading the save")
+        assert_true(any(event[:2] == ("update", "Rebuilding fighters, companies, and world history...") for event in load_events),
+                    "Quick Load did not report its world-rebuild phase")
+        assert_true(any(event[:2] == ("update", "Refreshing the promoter dashboard...") for event in load_events),
+                    "Quick Load did not report its dashboard-refresh phase")
+        assert_true(load_events[-1] == ("close", "busy"), "Quick Load did not close its please-wait overlay")
         original_active_path = app.active_save_path
         original_showinfo = persistence.messagebox.showinfo
         original_askyesno = persistence.messagebox.askyesno

@@ -891,8 +891,10 @@ class PersistenceMixin:
         if not path.exists():
             messagebox.showinfo("No save", "No active save exists yet.")
             return
+        busy = self.show_busy_overlay("Loading save", "Reading save data...", 8)
         try:
             data = load_save_payload(path)
+            self.update_busy_overlay("Rebuilding fighters, companies, and world history...", 32)
             self.apply_world_data(data)
         except Exception as exc:
             recovery_paths = self.rolling_backup_files()
@@ -903,27 +905,40 @@ class PersistenceMixin:
                 recovery_paths.append(legacy_previous)
             for backup_path in recovery_paths:
                 try:
+                    self.update_busy_overlay(f"Trying recovery snapshot {backup_path.stem}...", 42)
                     self.apply_world_data(load_save_payload(backup_path))
                     self.booked.clear()
                     self.ensure_player_event_name()
+                    self.update_busy_overlay("Refreshing the promoter dashboard...", 82)
                     self.refresh_all()
                     self.write_log()
+                    self.update_busy_overlay("Recovery save loaded.", 100)
+                    self.close_busy_overlay(busy)
+                    busy = None
                     messagebox.showwarning("Backup loaded", f"The current quick save could not be read. Recovery snapshot {backup_path.stem} was loaded instead.")
                     LOGGER.warning("Quick save failed to load; restored previous backup: %s", exc)
                     return
                 except Exception:
                     LOGGER.exception("Quick-save backup could not be loaded after primary failure")
             LOGGER.exception("Quick save could not be loaded: %s", exc)
+            self.close_busy_overlay(busy)
+            busy = None
             messagebox.showerror(
                 "Load failed",
                 f"That save could not be loaded and was left untouched.\n\n{type(exc).__name__}: {exc}",
             )
             return
-        self.booked.clear()
-        self.ensure_player_event_name()
-        self.reconcile_title_shot_alerts()
-        self.refresh_all()
-        self.write_log()
+        try:
+            self.booked.clear()
+            self.ensure_player_event_name()
+            self.reconcile_title_shot_alerts()
+            self.update_busy_overlay("Refreshing the promoter dashboard...", 82)
+            self.refresh_all()
+            self.update_busy_overlay("Finishing load...", 96)
+            self.write_log()
+            self.update_busy_overlay("Save loaded.", 100)
+        finally:
+            self.close_busy_overlay(busy)
 
     def apply_world_data(self, data):
         if hasattr(self, "editor_current_dirty"):
@@ -2498,23 +2513,36 @@ class PersistenceMixin:
         if not path.exists():
             messagebox.showinfo("No save", "Select an existing save slot.")
             return
+        busy = self.show_busy_overlay("Loading save slot", "Preparing the selected save...", 8)
         try:
             current_path = self.active_save_path()
             if current_path.exists() and current_path != path:
+                self.update_busy_overlay("Creating a recovery snapshot of the current save...", 18)
                 self.backup_save_file(current_path, "before_slot_load")
-            self.apply_world_data(load_save_payload(path))
+            self.update_busy_overlay("Reading save data...", 28)
+            data = load_save_payload(path)
+            self.update_busy_overlay("Rebuilding fighters, companies, and world history...", 42)
+            self.apply_world_data(data)
             self.set_active_save_location(
                 getattr(self, "save_slot_sources", {}).get(path, self.save_slot_name_from_path(path)),
                 getattr(self, "save_slot_groups", {}).get(path, self.save_slot_group_from_path(path)),
             )
         except Exception as exc:
             LOGGER.exception("Save slot failed to load: %s", exc)
+            self.close_busy_overlay(busy)
+            busy = None
             messagebox.showerror("Load failed", f"That slot was left untouched.\n\n{type(exc).__name__}: {exc}")
             return
-        self.booked.clear()
-        self.refresh_all()
-        self.write_log()
-        self.set_save_manager_status(f"Loaded {self.active_save_name} from {self.active_save_group}.")
+        try:
+            self.booked.clear()
+            self.update_busy_overlay("Refreshing the promoter dashboard...", 82)
+            self.refresh_all()
+            self.update_busy_overlay("Finishing load...", 96)
+            self.write_log()
+            self.set_save_manager_status(f"Loaded {self.active_save_name} from {self.active_save_group}.")
+            self.update_busy_overlay("Save slot loaded.", 100)
+        finally:
+            self.close_busy_overlay(busy)
 
     def delete_selected_slot(self):
         path = self.selected_save_path()
@@ -3285,7 +3313,7 @@ class PersistenceMixin:
         self.belt_history = self.blank_belt_history()
         self.closed_divisions = self.bamma_initial_closed_divisions()
         self.player_managed_divisions = set()
-        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "allow_mixed_gender": False, "active_fighter_target": 1200, "ai_offer_market_target": 100, "global_result_replay_limit": 2000, "auto_renew_enabled": False, "scouting_mode": True, "fight_night_audio_enabled": True, "fight_night_audio_output": "System default", "fight_night_audio_volume": 55, "autosave_enabled": True, "autosave_interval_months": 2, "autosave_weekly_keep": 2, "autosave_monthly_keep": 2, "save_backup_keep": 2, "save_retention_version": 4, "detailed_skill_balance_version": 1, "academy_upgrade_pricing_version": 2}
+        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "allow_mixed_gender": False, "active_fighter_target": 1200, "ai_offer_market_target": 100, "global_result_replay_limit": 2000, "auto_renew_enabled": False, "scouting_mode": True, "ui_matchup_insight_collapsed": True, "fight_night_audio_enabled": True, "fight_night_audio_output": "System default", "fight_night_audio_volume": 55, "autosave_enabled": True, "autosave_interval_months": 2, "autosave_weekly_keep": 2, "autosave_monthly_keep": 2, "save_backup_keep": 2, "save_retention_version": 4, "detailed_skill_balance_version": 1, "academy_upgrade_pricing_version": 2}
         if isinstance(player_spec.get("rules"), dict):
             self.rules.update(deepcopy(player_spec["rules"]))
         media_section = self.universe_section("media", {}) if hasattr(self, "universe_section") else {}

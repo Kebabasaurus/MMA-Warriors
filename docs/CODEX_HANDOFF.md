@@ -1,6 +1,6 @@
 # MMA Warriors Codex Handoff
 
-Last updated: 2026-07-19
+Last updated: 2026-07-31
 
 This is a working handoff for continuing MMA Warriors in a fresh Codex session on another machine. It is a curated project summary, not a verbatim chat transcript.
 
@@ -65,9 +65,11 @@ Africa, the US Midwest, the Nordic region, Korea, South America, and Britain.
 
 ### July 18-19: starting mode, matchmaking, and saves
 
-- `Create Your Own Promotion` now launches a proper setup and roster-draft flow. The
-  player chooses active genders/weights, scale, philosophy, theme, roster depth, and a
-  Balanced/Star Led/Prospect Heavy allocation strategy.
+- The Starting Promotion dropdown is the sole entry point for established, custom, and
+  Spectator Mode starts, with one `Start New Game With Selected Promotion` action.
+  Selecting `Create New Promotion...` launches the proper setup and roster-draft flow.
+  The player chooses active genders/weights, scale, philosophy, theme, roster depth, and
+  a Balanced/Star Led/Prospect Heavy allocation strategy.
 - Custom divisions target 8, 10, or 12 fighters. The interactive draft enforces a hard
   six-fighter viability floor in every active division and a scale/division-based annual
   contract budget. Automatic selection reserves every division's complete baseline before

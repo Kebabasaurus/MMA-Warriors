@@ -28,6 +28,17 @@ class StartupSplash:
 
     def __init__(self, root):
         self.root = root
+        style = ttk.Style(root)
+        style.theme_use("clam")
+        style.configure(
+            "Startup.Horizontal.TProgressbar",
+            troughcolor="#101318",
+            background="#e31b23",
+            bordercolor="#59636f",
+            lightcolor="#e31b23",
+            darkcolor="#e31b23",
+            thickness=14,
+        )
         self.window = tk.Toplevel(root)
         self.window.overrideredirect(True)
         self.window.configure(bg="#090909")
@@ -55,7 +66,13 @@ class StartupSplash:
             body, textvariable=self.status, bg="#111111", fg="#f3f3f3",
             font=("Tahoma", 9), anchor="w",
         ).pack(fill="x", padx=25, pady=(0, 7))
-        self.progress = ttk.Progressbar(body, mode="determinate", maximum=100, length=490)
+        self.progress = ttk.Progressbar(
+            body,
+            mode="determinate",
+            maximum=100,
+            length=490,
+            style="Startup.Horizontal.TProgressbar",
+        )
         self.progress.pack(fill="x", padx=25, pady=(0, 7))
         self.percent = tk.StringVar(value="0%")
         tk.Label(
@@ -190,7 +207,7 @@ class FightEmpireApp(
         self.inbox = []
         self.inbox_hidden_types = set()
         self.owner_goals = self.seed_owner_goals()
-        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "active_fighter_target": 1200, "ai_offer_market_target": 100, "global_result_replay_limit": 2000, "auto_renew_enabled": False, "scouting_mode": True, "fight_night_audio_enabled": True, "fight_night_audio_output": "System default", "fight_night_audio_volume": 55, "autosave_enabled": True, "autosave_interval_months": 2, "autosave_weekly_keep": 2, "autosave_monthly_keep": 2, "save_backup_keep": 2, "save_retention_version": 4, "detailed_skill_balance_version": 1}
+        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "active_fighter_target": 1200, "ai_offer_market_target": 100, "global_result_replay_limit": 2000, "auto_renew_enabled": False, "scouting_mode": True, "ui_matchup_insight_collapsed": True, "fight_night_audio_enabled": True, "fight_night_audio_output": "System default", "fight_night_audio_volume": 55, "autosave_enabled": True, "autosave_interval_months": 2, "autosave_weekly_keep": 2, "autosave_monthly_keep": 2, "save_backup_keep": 2, "save_retention_version": 4, "detailed_skill_balance_version": 1}
         self.rules["allow_mixed_gender"] = False
         self.broadcasters = [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}]
         self.media_companies = []
@@ -326,6 +343,13 @@ if __name__ == "__main__":
         splash.close()
         splash = None
         root.deiconify()
+        # The management UI is designed for a maximized desktop workspace.
+        # Keep the responsive fallback geometry above for tests and platforms
+        # that do not expose Windows' "zoomed" window state.
+        try:
+            root.state("zoomed")
+        except tk.TclError:
+            pass
         root.lift()
         root.focus_force()
     except Exception as exc:

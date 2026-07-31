@@ -14,6 +14,48 @@ from models import Fighter, Gym, Promotion
 
 
 class EventMixin:
+    def normalized_contract_months(self, months):
+        """Keep player-negotiated contract terms inside the supported range."""
+        return max(1, min(60, int(months)))
+
+    def contract_duration_offer_score(self, months, purse, ask, signing_bonus=0, win_bonus=0,
+                                      finish_bonus_pct=0):
+        """Value contract security without letting raw duration replace fair pay.
+
+        Fighters are paid per fight, so the compensation gate uses a three-fight
+        annual earnings proxy.  Base purse remains the largest component; win,
+        finish, and signing bonuses provide secondary support.  Security has
+        diminishing returns through 48 months and no extra value after that.
+        """
+        term = self.normalized_contract_months(months)
+        security_months = min(term, 48)
+        duration_value = min(security_months, 12) * 260
+        duration_value += max(0, min(security_months, 24) - 12) * 130
+        duration_value += max(0, min(security_months, 36) - 24) * 60
+        duration_value += max(0, security_months - 36) * 20
+
+        market_purse = max(1, int(ask))
+        offered_purse = max(0, int(purse))
+        security_rate = min(security_months, 12) / 12 * 0.08
+        security_rate += max(0, min(security_months, 24) - 12) / 12 * 0.04
+        security_rate += max(0, min(security_months, 36) - 24) / 12 * 0.02
+        security_rate += max(0, security_months - 36) / 12 * 0.01
+        # Duration stays secondary to a three-fight year of market-rate pay,
+        # including for inexpensive prospects where fixed points loom largest.
+        duration_value = min(duration_value, market_purse * 3 * security_rate)
+        base_pay_ratio = offered_purse / market_purse
+        # An agent will not trade badly under-market base pay for years of control.
+        salary_gate = max(0.0, min(1.0, (base_pay_ratio - 0.60) / 0.40))
+
+        expected_annual_pay = offered_purse * 3
+        expected_annual_pay += max(0, int(win_bonus)) * 1.25
+        expected_annual_pay += offered_purse * max(0, int(finish_bonus_pct)) / 100 * 0.75
+        # A signing bonus is worth less per year when spread across a long deal.
+        expected_annual_pay += max(0, int(signing_bonus)) * 12 / term
+        annual_pay_ratio = expected_annual_pay / (market_purse * 3)
+        compensation_gate = min(1.15, annual_pay_ratio) * salary_gate
+        return round(duration_value * compensation_gate)
+
     def event_fight_participants(self, fight):
         """Return every booked athlete, including a tournament's complete field."""
         return list(fight.get("tournament_entrants", fight.get("fighters", [])))
@@ -1057,9 +1099,21 @@ class EventMixin:
         condition_row.pack(fill="x", padx=28, pady=(0, 5))
         left_condition = tk.Label(condition_row, text="RED CORNER READY", width=24, anchor="e", bg=self.colors["chrome"], fg=self.colors["muted"], font=("Tahoma", 8, "bold"))
         left_condition.pack(side="left", padx=(0, 5))
-        left_gas = ttk.Progressbar(condition_row, maximum=100, value=100, length=220)
+        left_gas = ttk.Progressbar(
+            condition_row,
+            maximum=100,
+            value=100,
+            length=220,
+            style=self.live_fight_condition_styles["red"],
+        )
         left_gas.pack(side="left", fill="x", expand=True, padx=(0, 12))
-        right_gas = ttk.Progressbar(condition_row, maximum=100, value=100, length=220)
+        right_gas = ttk.Progressbar(
+            condition_row,
+            maximum=100,
+            value=100,
+            length=220,
+            style=self.live_fight_condition_styles["blue"],
+        )
         right_gas.pack(side="left", fill="x", expand=True, padx=(12, 0))
         right_condition = tk.Label(condition_row, text="BLUE CORNER READY", width=24, anchor="w", bg=self.colors["chrome"], fg=self.colors["muted"], font=("Tahoma", 8, "bold"))
         right_condition.pack(side="left", padx=(5, 0))
@@ -1158,7 +1212,7 @@ class EventMixin:
             "delay": max(300, min(3000, self.fight_timer_delay.get() if hasattr(self, "fight_timer_delay") else 1600)),
             "running": False, "finished": False, "after_id": None, "phase": "", "result_shown": False,
             "metrics_rows_remaining": 0, "scorecard_buffer": [], "holding_scorecards": False,
-            "momentum": "", "close_armed": False,
+            "momentum": "", "close_armed": False, "walkout_played": False,
             "auto": bool(self.rules.get("live_auto_play_card", False)),
         }
         fight_logs = package.get("fight_logs", [{"heading": "Event Report", "lines": package["log"]}])
@@ -1296,6 +1350,10 @@ class EventMixin:
             current_moment_label.config(text=summary)
             return summary
 
+        def play_crowd(cue):
+            profile = state.get("crowd_profile", {}) or {}
+            return self.play_fight_night_sound(cue, profile.get("gain", 1.0))
+
         def append_line(value):
             value = str(value or "").strip("\n")
             if not value:
@@ -1337,10 +1395,10 @@ class EventMixin:
                     clock_label.config(text=f"{int(self.rules.get('round_length', 5))}:00")
             elif value.startswith(("Corner read:", "Mat-side read:", "Broadcast read:", "Fight-night readiness:")):
                 tag = "analysis"
-            elif "referee" in lowered or "official" in lowered:
-                tag = "referee"
             elif any(k in lowered for k in ("taps to", "has to tap", "gets the tap", "and it's all over", "unconscious", "stops the fight", "by ko", "by tko", "by submission", "technical fall", "secures the pin", "referee has seen enough", "stoppage comes")):
                 tag = "finish"
+            elif "referee" in lowered or "official" in lowered:
+                tag = "referee"
             elif any(k in lowered for k in ("drops", "hits the mat", "stumbles badly", "knocked down", "wobbl", "buckl", "rocked", "hurt")):
                 tag = "knockdown"
             elif "cut" in lowered or "swelling" in lowered:
@@ -1365,13 +1423,28 @@ class EventMixin:
             # affect fight simulation or event timing, and can be disabled in
             # Game Settings.
             if is_phase_start:
-                self.play_fight_night_sound("round_start")
+                phase = str(phase_match.group(1)).upper()
+                play_crowd(
+                    "opening" if phase in ("ROUND 1", "PERIOD 1", "MATCH CLOCK") else "round_start"
+                )
             elif tag == "finish":
-                self.play_fight_night_sound("finish")
+                play_crowd("finish")
             elif tag == "knockdown":
-                self.play_fight_night_sound("knockdown")
+                play_crowd("knockdown")
+            elif tag == "round" and " summary:" in lowered:
+                play_crowd("round_end")
+            elif clock_match and any(phrase in lowered for phrase in (
+                "deep submission", "submission threat", "choke threat", "armbar threat",
+                "triangle threat", "locks the choke", "locks on", "nearly taps",
+            )):
+                play_crowd("submission")
+            elif clock_match and any(phrase in lowered for phrase in (
+                "stalls", "inactive", "inactivity", "stand-up", "restarts them at range",
+                "little action", "crowd grows restless",
+            )):
+                play_crowd("inactivity")
             elif clock_match and any(word in lowered for word in ("lands", "connects", "drives", "slams", "elbow")):
-                self.play_fight_night_sound("impact")
+                play_crowd("impact")
             # Keep the shared scoreboard live for MMA rounds, boxing/kickboxing/
             # Thai rounds, wrestling periods and BJJ matches.
             if value.startswith("R") and "Scores " in value:
@@ -1404,7 +1477,7 @@ class EventMixin:
             if not buffered:
                 return
             append_line("OFFICIAL SCORECARDS - RESULT CONFIRMED")
-            self.play_fight_night_sound("decision")
+            play_crowd(self.fight_night_decision_reaction(buffered))
             for card_line in buffered[1:]:
                 append_line(card_line)
 
@@ -1414,6 +1487,7 @@ class EventMixin:
             if stripped == "Official scorecards:":
                 state["holding_scorecards"] = True
                 state["scorecard_buffer"] = [stripped]
+                play_crowd("decision_pending")
                 phase_label.config(text="DECISION PENDING")
                 current_moment_label.config(text="The judges are finalising their cards...")
                 round_read_label.config(text="Exact totals remain sealed until the official decision is announced.")
@@ -1513,8 +1587,10 @@ class EventMixin:
             stakes = log.get("special_belt") or ("Interim championship" if log.get("interim") else "Championship" if log.get("divisional_title") or log.get("title") else "Featured bout")
             rivalry = self.rivalry_heat_between(a, b) if hasattr(self, "rivalry_heat_between") else 0
             rivalry_copy = f" Rivalry heat {rivalry}/100." if rivalry else ""
+            local_copy = str((state.get("crowd_profile", {}) or {}).get("summary", "") or "")
+            local_copy = f" {local_copy}" if local_copy else ""
             return (f"{stakes}: {a.style} from {a.camp or 'independent camp'} meets {b.style} from {b.camp or 'independent camp'}. "
-                    f"Recent form {a.name}: {form_text(a)} | {b.name}: {form_text(b)}. Odds {self.matchup_odds(a, b)}.{rivalry_copy}")
+                    f"Recent form {a.name}: {form_text(a)} | {b.name}: {form_text(b)}. Odds {self.matchup_odds(a, b)}.{rivalry_copy}{local_copy}")
 
         def broadcast_rundown(index, log):
             """Give each bout a concise place in the event broadcast."""
@@ -1605,6 +1681,7 @@ class EventMixin:
             state["phase"] = ""
             state["result_shown"] = False
             state["close_armed"] = False
+            state["walkout_played"] = False
             if state["fight"] >= len(fight_logs):
                 finish_live_event()
                 return
@@ -1615,7 +1692,16 @@ class EventMixin:
                 fight_list.selection_set(state["fight"])
                 fight_list.see(state["fight"])
             log = fight_logs[state["fight"]]
-            self.play_fight_night_sound("bout_start")
+            a_fighter = self.result_fighter(log.get("a", ""), log.get("a_id", ""), log.get("sport", ""), log.get("weight", ""))
+            b_fighter = self.result_fighter(log.get("b", ""), log.get("b_id", ""), log.get("sport", ""), log.get("weight", ""))
+            state["crowd_profile"] = self.fight_night_local_crowd_profile(
+                (a_fighter, b_fighter), package.get("region", ""), package.get("city", "")
+            )
+            if state.get("auto"):
+                state["walkout_played"] = True
+                play_crowd("walkout")
+            else:
+                play_crowd("pre_fight")
             heading = log.get("heading", log.get("fight", "Bout"))
             title_label.config(text=f"LIVE FIGHT: {heading[:70]}")
             stage = f" - {log.get('tournament_stage')}" if log.get("tournament_stage") else ""
@@ -1759,6 +1845,9 @@ class EventMixin:
                 start_next_fight()
             if state["finished"]:
                 return
+            if not state.get("walkout_played"):
+                state["walkout_played"] = True
+                play_crowd("walkout")
             state["running"] = True
             state["close_armed"] = False
             status_label.config(text="Live playback running", fg=self.colors["muted"])
@@ -1956,6 +2045,25 @@ class EventMixin:
         fight_list.bind("<Double-1>", review_selected_bout)
         if package.get("tournament_brackets"):
             ttk.Button(controls3, text="View Bracket", command=lambda: self.open_event_tournament_bracket(package, window)).pack(side="left", padx=4)
+        self.ensure_audio_defaults()
+        live_audio_volume_var = tk.DoubleVar(value=self.fight_night_audio_volume())
+        live_audio_volume_label = tk.StringVar(value=f"{self.fight_night_audio_volume()}%")
+
+        def apply_live_audio_volume(value=None):
+            volume = self.set_fight_night_audio_volume(
+                live_audio_volume_var.get() if value is None else value
+            )
+            live_audio_volume_label.set(f"{volume}%")
+
+        ttk.Label(controls3, text="Audio", style="Panel.TLabel").pack(side="left", padx=(12, 3))
+        ttk.Scale(
+            controls3, from_=0, to=100, variable=live_audio_volume_var,
+            orient="horizontal", length=120, command=apply_live_audio_volume,
+        ).pack(side="left", padx=2)
+        ttk.Label(
+            controls3, textvariable=live_audio_volume_label,
+            style="Panel.TLabel", width=4, anchor="e",
+        ).pack(side="left", padx=(2, 4))
         status_label = tk.Label(controls3, text="Ready", bg=self.colors["chrome"], fg=self.colors["muted"], font=("Tahoma", 9, "bold"), anchor="w")
         status_label.pack(side="left", fill="x", expand=True, padx=12)
         close_button = ttk.Button(controls3, text="Close", style="Accent.TButton", command=close_window)
@@ -2165,7 +2273,12 @@ class EventMixin:
             win_bonus, ppv = win_bonus_var.get(), ppv_var.get()
             champ_clause, title_shot = champ_clause_var.get(), title_shot_var.get()
             main_event_promise, top_opponent_promise = main_event_promise_var.get(), top_opponent_promise_var.get()
-            score = purse + term * 260 + fights * 2100 + bonus * 260 + signing * 0.35 + self.company_pop * 190 + self.company_stability * 95
+            term = self.normalized_contract_months(term)
+            duration_score = self.contract_duration_offer_score(
+                term, purse, ask, signing_bonus=signing, win_bonus=win_bonus,
+                finish_bonus_pct=bonus,
+            )
+            score = purse + duration_score + fights * 2100 + bonus * 260 + signing * 0.35 + self.company_pop * 190 + self.company_stability * 95
             score += 9000 if exclusive else -3500
             score += 12000 if existing else 0
             score += win_bonus * 0.5 + ppv * 3600
@@ -2309,7 +2422,9 @@ class EventMixin:
                     if hasattr(self, "refresh_regional_prospects"):
                         self.refresh_regional_prospects()
                     return
-            purse, term, fights = purse_var.get(), term_var.get(), fights_var.get()
+            purse, term, fights = purse_var.get(), self.normalized_contract_months(term_var.get()), fights_var.get()
+            if term != term_var.get():
+                term_var.set(term)
             bonus, signing, exclusive = bonus_var.get(), signing_var.get(), exclusive_var.get()
             score, target, _pct, unmet = evaluate()
             score += random.randint(-4500, 4500)
