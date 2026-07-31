@@ -324,7 +324,7 @@ REGION_COUNTRIES = {
 }
 REGION_CITIES = {
     "USA": ["Las Vegas", "New York", "Los Angeles", "Dallas", "Miami", "Chicago", "Atlanta", "Boston", "Denver", "Detroit", "Houston", "Nashville", "New Orleans", "Philadelphia", "Phoenix", "Seattle"],
-    "Canada": ["Toronto", "Montreal", "Vancouver", "Calgary", "Edmonton", "Halifax", "Hamilton", "Ottawa", "Quebec City", "Winnipeg"],
+    "Canada": ["Toronto", "Montreal", "Vancouver", "Calgary", "Edmonton", "Halifax", "Hamilton", "Ottawa", "Quebec City", "Winnipeg", "Belleville", "Kingston"],
     "Brazil": ["Rio de Janeiro", "Sao Paulo", "Curitiba", "Brasilia", "Belo Horizonte", "Campinas", "Fortaleza", "Manaus", "Porto Alegre", "Salvador"],
     "Mexico": ["Mexico City", "Guadalajara", "Monterrey", "Tijuana", "Cancun", "Chihuahua", "Leon", "Puebla"],
     "UK": ["London", "Manchester", "Liverpool", "Cardiff", "Glasgow", "Belfast", "Birmingham", "Bristol", "Edinburgh", "Leeds", "Newcastle", "Sheffield"],

@@ -61,6 +61,19 @@ def main():
         app = game.FightEmpireApp(root, startup_progress=lambda value, text: startup_updates.append((value, text)))
         assert_true(startup_updates and startup_updates[-1][0] == 100, "Startup progress did not reach its ready state")
         assert_true(all(a[0] <= b[0] for a, b in zip(startup_updates, startup_updates[1:])), "Startup progress moved backwards")
+        ontario_cities = {"Belleville", "Kingston"}
+        assert_true(ontario_cities.issubset(game.REGION_CITIES["Canada"]),
+                    "Belleville and Kingston are missing from the Canadian location pool")
+        original_event_region, original_event_city = app.event_region.get(), app.event_city.get()
+        app.event_region.set("Canada")
+        app.update_city_options()
+        assert_true(ontario_cities.issubset(set(app.city_box.cget("values"))),
+                    "The event-booking city selector does not expose both added Ontario cities")
+        assert_true(ontario_cities.issubset(set(game.REGION_IDENTITY_PROFILES["Canada"][0][2])),
+                    "Generated Canadian fighters cannot receive both added Ontario hometowns")
+        app.event_region.set(original_event_region)
+        app.update_city_options()
+        app.event_city.set(original_event_city)
         original_company_name, original_company_pop = app.player_company_name, app.company_pop
         app.player_company_name = "International Championship Fighting Alliance"
         app.company_pop = 99

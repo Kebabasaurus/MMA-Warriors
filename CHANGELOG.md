@@ -2,6 +2,10 @@
 
 ## 3.0.5 - 2026-07-31
 
+### World Locations
+
+- Added Belleville and Kingston, Ontario to Canada's event-city and generated-fighter hometown pool.
+
 ### Fight Night Commentary
 
 - Fixed long five-round fights occasionally losing late-round introductions, transitions, summaries, or action commentary when the fight log exceeded its global line limit.

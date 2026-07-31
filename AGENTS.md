@@ -330,6 +330,12 @@ Use `database_editor.py` or a carefully reviewed data edit for starting-universe
 validate the file. The standalone database editor changes universe database packs; it does **not**
 edit an active career save.
 
+Event-city choices and generated-fighter hometowns come from `REGION_CITIES` in `constants.py`.
+Keep each city in its broad simulation market (for example, Belleville and Kingston are Canadian
+locations), and add smoke coverage for both the booking selector and identity pool. The universe
+database's `regions[*].areas` list describes larger tracked areas such as Ontario; do not duplicate
+individual cities there merely to make them available for events.
+
 ### Company ownership invariant
 
 During a normal player career, the player company is represented by player-owned fields such as
