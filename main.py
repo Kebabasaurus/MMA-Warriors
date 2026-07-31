@@ -28,6 +28,17 @@ class StartupSplash:
 
     def __init__(self, root):
         self.root = root
+        style = ttk.Style(root)
+        style.theme_use("clam")
+        style.configure(
+            "Startup.Horizontal.TProgressbar",
+            troughcolor="#101318",
+            background="#e31b23",
+            bordercolor="#59636f",
+            lightcolor="#e31b23",
+            darkcolor="#e31b23",
+            thickness=14,
+        )
         self.window = tk.Toplevel(root)
         self.window.overrideredirect(True)
         self.window.configure(bg="#090909")
@@ -55,7 +66,13 @@ class StartupSplash:
             body, textvariable=self.status, bg="#111111", fg="#f3f3f3",
             font=("Tahoma", 9), anchor="w",
         ).pack(fill="x", padx=25, pady=(0, 7))
-        self.progress = ttk.Progressbar(body, mode="determinate", maximum=100, length=490)
+        self.progress = ttk.Progressbar(
+            body,
+            mode="determinate",
+            maximum=100,
+            length=490,
+            style="Startup.Horizontal.TProgressbar",
+        )
         self.progress.pack(fill="x", padx=25, pady=(0, 7))
         self.percent = tk.StringVar(value="0%")
         tk.Label(

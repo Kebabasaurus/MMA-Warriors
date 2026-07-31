@@ -1099,9 +1099,21 @@ class EventMixin:
         condition_row.pack(fill="x", padx=28, pady=(0, 5))
         left_condition = tk.Label(condition_row, text="RED CORNER READY", width=24, anchor="e", bg=self.colors["chrome"], fg=self.colors["muted"], font=("Tahoma", 8, "bold"))
         left_condition.pack(side="left", padx=(0, 5))
-        left_gas = ttk.Progressbar(condition_row, maximum=100, value=100, length=220)
+        left_gas = ttk.Progressbar(
+            condition_row,
+            maximum=100,
+            value=100,
+            length=220,
+            style=self.live_fight_condition_styles["red"],
+        )
         left_gas.pack(side="left", fill="x", expand=True, padx=(0, 12))
-        right_gas = ttk.Progressbar(condition_row, maximum=100, value=100, length=220)
+        right_gas = ttk.Progressbar(
+            condition_row,
+            maximum=100,
+            value=100,
+            length=220,
+            style=self.live_fight_condition_styles["blue"],
+        )
         right_gas.pack(side="left", fill="x", expand=True, padx=(12, 0))
         right_condition = tk.Label(condition_row, text="BLUE CORNER READY", width=24, anchor="w", bg=self.colors["chrome"], fg=self.colors["muted"], font=("Tahoma", 8, "bold"))
         right_condition.pack(side="left", padx=(5, 0))

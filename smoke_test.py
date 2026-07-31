@@ -78,6 +78,8 @@ def main():
         assert_true(busy_overlay["window"].winfo_exists(), "The reusable please-wait overlay did not open")
         assert_true(busy_overlay["status"].get() == "Reading save data...", "The please-wait overlay lost its initial status")
         assert_true(root.cget("cursor") == "wait", "The main window did not show a busy cursor during synchronous work")
+        assert_true(busy_overlay["progress"].cget("style") == "Activity.Horizontal.TProgressbar",
+                    "The please-wait overlay did not use the high-contrast activity bar")
         app.update_busy_overlay("Refreshing the promoter dashboard...", 82)
         assert_true(busy_overlay["status"].get() == "Refreshing the promoter dashboard...",
                     "The please-wait overlay did not accept phase updates")
@@ -120,6 +122,18 @@ def main():
             discovery_bg = style.lookup("Discovery.TLabel", "background")
             discovery_ratio = app.wcag_contrast_ratio(discovery_fg, discovery_bg)
             assert_true(discovery_ratio >= 4.5, f"{theme_name} discoverability hint contrast fell below WCAG AA: {discovery_ratio:.2f}:1")
+            expected_progress_styles = {
+                "Activity.Horizontal.TProgressbar": app.colors["gold"],
+                app.live_fight_condition_styles["red"]: "#e0444e",
+                app.live_fight_condition_styles["blue"]: "#3d8cff",
+            }
+            for progress_style, expected_fill in expected_progress_styles.items():
+                fill = style.lookup(progress_style, "background")
+                track = style.lookup(progress_style, "troughcolor")
+                assert_true(fill == expected_fill, f"{theme_name} {progress_style} lost its intended fill color")
+                assert_true(track == "#101318", f"{theme_name} {progress_style} lost its dark progress track")
+                ratio = app.wcag_contrast_ratio(fill, track)
+                assert_true(ratio >= 3.0, f"{theme_name} {progress_style} fill is too subtle against its track: {ratio:.2f}:1")
         app.theme_name = original_theme
         app.theme_name_var.set(original_theme)
         app.configure_style()

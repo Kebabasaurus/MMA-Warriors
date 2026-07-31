@@ -60,7 +60,13 @@ class UIMixin:
             font=("Tahoma", 9),
             anchor="w",
         ).pack(fill="x", pady=(10, 9))
-        bar = ttk.Progressbar(body, mode="determinate", maximum=100, value=max(0, min(100, int(progress))))
+        bar = ttk.Progressbar(
+            body,
+            mode="determinate",
+            maximum=100,
+            value=max(0, min(100, int(progress))),
+            style="Activity.Horizontal.TProgressbar",
+        )
         bar.pack(fill="x")
 
         overlay = {
@@ -326,6 +332,30 @@ class UIMixin:
         style.map("TButton", background=[("active", self.colors["panel_dark"])])
         style.configure("Accent.TButton", font=("Tahoma", 8, "bold"), background=self.colors["red"], foreground="#ffffff")
         style.map("Accent.TButton", background=[("active", self.colors["gold"])], foreground=[("active", "#111111")])
+        # Native progress bars fall back to a low-contrast grey-on-grey Windows
+        # treatment. Give general activity and each fight corner a solid fill
+        # over the same dark track so progress remains legible at a glance.
+        progress_track = "#101318"
+        progress_border = "#59636f"
+        progress_styles = {
+            "Activity.Horizontal.TProgressbar": self.colors["gold"],
+            "RedCorner.Horizontal.TProgressbar": "#e0444e",
+            "BlueCorner.Horizontal.TProgressbar": "#3d8cff",
+        }
+        for progress_style, fill_color in progress_styles.items():
+            style.configure(
+                progress_style,
+                troughcolor=progress_track,
+                background=fill_color,
+                bordercolor=progress_border,
+                lightcolor=fill_color,
+                darkcolor=fill_color,
+                thickness=14,
+            )
+        self.live_fight_condition_styles = {
+            "red": "RedCorner.Horizontal.TProgressbar",
+            "blue": "BlueCorner.Horizontal.TProgressbar",
+        }
         # Sidebar navigation buttons: default look, plus a highlighted "active screen" look.
         style.configure("Nav.TButton", font=("Tahoma", 8, "bold"), padding=(8, 4), anchor="w", background=self.colors["button"], foreground=self.colors["button_text"], borderwidth=1)
         style.map("Nav.TButton", background=[("active", self.colors["panel_dark"])])

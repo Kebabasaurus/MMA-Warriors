@@ -583,6 +583,9 @@ layouts must still degrade cleanly at smaller supported widths.
 
 - Avoid hard-coded white or pale backgrounds. Use `self.colors["cream"]`,
   `self.colors["text"]`, and the active palette.
+- Do not leave player-facing `ttk.Progressbar` widgets on the native grey defaults. Loading activity
+  uses `Activity.Horizontal.TProgressbar`; live-fight freshness uses the red/blue corner styles, all
+  with a dark track and a fill-to-track contrast ratio of at least 3:1.
 - Keep dense database screens sortable and filterable.
 - Add double-click profile/viewer behavior where it is natural.
 - Do not add giant explanatory landing pages or unnecessary tabs.

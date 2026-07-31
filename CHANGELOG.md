@@ -11,6 +11,7 @@
 
 ### Interface Polish
 
+- Replaced the low-contrast grey progress treatment with high-contrast loading bars and distinct red/blue fight freshness bars on a dark track.
 - Reworked the top status bar so long promotion names use the flexible space available in maximized windows, while popularity, stability, cash, date, and advance controls remain separate and fully readable.
 - Added a modal, themed loading panel with phase and progress feedback for Quick Load and Save Manager slot loads, including recovery-snapshot attempts, so large careers no longer appear frozen while their world state and screens are rebuilt.
 - Rebuilt Mail / Decisions discoverability with explicit Owner Goals collapse/expand controls, persistent goal summaries, filter-aware message counts, a one-click Show All action, selection guidance, and responsive side-by-side/stacked panels.
