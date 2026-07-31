@@ -67,6 +67,8 @@ class ViewMixin:
         gameplay uses lazy page refreshes, avoiding thousands of invisible Tk
         row insertions after every simulation step.
         """
+        if hasattr(self, "apply_ui_disclosure_preferences"):
+            self.apply_ui_disclosure_preferences()
         self.refresh_header()
         if full:
             for name in (
@@ -2854,7 +2856,8 @@ class ViewMixin:
                 avg_fatigue = round(sum(fighter.fatigue for fighter in tournament_fighters) / max(1, len(tournament_fighters)))
                 recovery = "All clear" if all(self.fighter_recovery_date_label(fighter) == "Now" for fighter in tournament_fighters) else "Mixed"
                 tags = ("non_title_champion",) if non_title_warning else ()
-                self.card_tree.insert("", "end", iid=str(index - 1), tags=tags, values=(slot, f"{fight.get('tournament_name', 'MMA Grand Prix')} [{field}]", fight.get("tournament_weight", ""), avg_hype, "Bracket", f"Avg {avg_fatigue}", recovery))
+                booking = f"Hype {avg_hype} | Build Bracket | Fatigue Avg {avg_fatigue} | Medical {recovery}"
+                self.card_tree.insert("", "end", iid=str(index - 1), tags=tags, values=(slot, f"{fight.get('tournament_name', 'MMA Grand Prix')} [{field}]", fight.get("tournament_weight", ""), booking))
                 continue
             if fight.get("special_belt"):
                 slot = f"{fight['special_belt']} Title"
@@ -2880,10 +2883,28 @@ class ViewMixin:
             if "TBA" in fight["fighters"]:
                 known = self.get_fighter(next(name for name in fight["fighters"] if name != "TBA"))
                 tba_label = f"TBA {fight.get('tba_gender', known.gender)} {fight.get('tba_weight', known.weight)}"
-                self.card_tree.insert("", "end", iid=str(index - 1), tags=(("non_title_champion",) if non_title_warning else ()), values=(slot, f"{known.name} vs {tba_label}", known.weight, self.fight_build_score(known), "TBA", f"{known.fatigue} / -", f"{self.fighter_recovery_date_label(known)} / -"))
+                booking = f"Hype {self.fight_build_score(known)} | Build TBA | Fatigue {known.fatigue} / - | Medical {self.fighter_recovery_date_label(known)} / -"
+                self.card_tree.insert("", "end", iid=str(index - 1), tags=(("non_title_champion",) if non_title_warning else ()), values=(slot, f"{known.name} vs {tba_label}", known.weight, booking))
             else:
                 a, b = [self.get_fighter(name) for name in fight["fighters"]]
-                self.card_tree.insert("", "end", iid=str(index - 1), tags=(("non_title_champion",) if non_title_warning else ()), values=(slot, f"{a.name} vs {b.name}", a.weight, self.fight_hype(a, b, fight), self.match_build_score(a, b, fight), f"{a.fatigue} / {b.fatigue}", f"{self.fighter_recovery_date_label(a)} / {self.fighter_recovery_date_label(b)}"))
+                booking = (
+                    f"Hype {self.fight_hype(a, b, fight)} | Build {self.match_build_score(a, b, fight)} | "
+                    f"Fatigue {a.fatigue} / {b.fatigue} | Medical {self.fighter_recovery_date_label(a)} / {self.fighter_recovery_date_label(b)}"
+                )
+                self.card_tree.insert("", "end", iid=str(index - 1), tags=(("non_title_champion",) if non_title_warning else ()), values=(slot, f"{a.name} vs {b.name}", a.weight, booking))
+        fight_count = len(self.booked)
+        if hasattr(self, "card_summary_var"):
+            if fight_count:
+                self.card_summary_var.set(f"{fight_count} fight{'s' if fight_count != 1 else ''} on the draft card • Select a row to reorder, edit stakes, fill TBA, or remove it.")
+            else:
+                self.card_summary_var.set("0 fights • Your card is empty. Select two fighters, then choose Add Matchup.")
+        nav_button = getattr(self, "nav_buttons", {}).get("booking")
+        if nav_button:
+            nav_button.configure(text=f"Matchmaking ({fight_count})")
+        if hasattr(self, "show_details_summary_var"):
+            schedule_text = self.schedule_status_var.get().lower() if hasattr(self, "schedule_status_var") else ""
+            schedule_state = "Scheduled" if "scheduled" in schedule_text and "not been scheduled" not in schedule_text else "Unscheduled"
+            self.show_details_summary_var.set(f"{schedule_state} • {fight_count} fight{'s' if fight_count != 1 else ''}")
         if hasattr(self, "event_name") and not getattr(self, "spectator_mode", False):
             current = self.event_name.get()
             prefix, number = self.event_name_parts(current)
@@ -8498,6 +8519,8 @@ class ViewMixin:
         self.rules.setdefault("global_result_replay_limit", GLOBAL_RESULT_REPLAY_LIMIT)
         self.rules.setdefault("live_follow_commentary", True)
         self.rules.setdefault("live_auto_play_card", False)
+        self.rules.setdefault("ui_owner_goals_collapsed", False)
+        self.rules.setdefault("ui_show_details_collapsed", False)
         self.rules.setdefault("fight_night_audio_enabled", True)
         self.rules.setdefault("fight_night_audio_output", "System default")
         self.rules.setdefault("fight_night_audio_volume", 55)
@@ -8694,8 +8717,25 @@ class ViewMixin:
             actions = sum(self.inbox_item_needs_action(item) for item in self.inbox)
             unread = sum(not item.get("seen", False) and not item.get("resolved", False) for item in self.inbox)
             shown = min(160, len(items))
-            suffix = " (first 160)" if len(items) > 160 else ""
-            self.inbox_summary.configure(text=f"{shown} shown{suffix} | {len(self.inbox)} stored | {unread} unread | {actions} need action")
+            filtered_out = max(0, len(self.inbox) - len(items))
+            capped = max(0, len(items) - shown)
+            hidden_parts = []
+            if filtered_out:
+                hidden_parts.append(f"{filtered_out} hidden by current filters")
+            if capped:
+                hidden_parts.append(f"{capped} beyond the first 160")
+            hidden_text = " | " + " | ".join(hidden_parts) if hidden_parts else " | all matching mail visible"
+            self.inbox_summary.configure(text=f"{shown} shown | {len(self.inbox)} stored{hidden_text} | {unread} unread | {actions} need action")
+            if hasattr(self, "inbox_show_all_button"):
+                can_clear_filters = bool(filtered_out)
+                self.inbox_show_all_button.configure(
+                    text=f"Show All {len(self.inbox)}" if can_clear_filters else ("First 160 Displayed" if capped else "All Messages Shown"),
+                    state="normal" if can_clear_filters else "disabled",
+                )
+            nav_button = getattr(self, "nav_buttons", {}).get("inbox")
+            if nav_button:
+                not_visible = filtered_out + capped
+                nav_button.configure(text=f"Inbox ({not_visible} hidden)" if not_visible else "Inbox")
         if selected and selected[0] in self.inbox_tree.get_children():
             self.inbox_tree.selection_set(selected[0])
         elif self.inbox_tree.get_children():
@@ -8708,6 +8748,9 @@ class ViewMixin:
             return
         self.goals_tree.delete(*self.goals_tree.get_children())
         shows = len(self.result_history)
+        completed = 0
+        active = 0
+        deadlines = []
         for index, goal in enumerate(self.owner_goals):
             if goal["metric"] == "cash":
                 current = self.cash
@@ -8716,9 +8759,27 @@ class ViewMixin:
             else:
                 current = shows
             goal["status"] = "Complete" if current >= goal["target"] else ("Failed" if self.month > goal["deadline"] else "Active")
+            completed += goal["status"] == "Complete"
+            active += goal["status"] == "Active"
+            if goal["status"] == "Active":
+                deadlines.append(int(goal.get("deadline", self.month)))
             progress = f"{current:,} / {goal['target']:,}" if goal["metric"] == "cash" else f"{current} / {goal['target']}"
             tag = "complete" if goal["status"] == "Complete" else "failed" if goal["status"] == "Failed" else ""
             self.goals_tree.insert("", "end", iid=str(index), tags=(tag,) if tag else (), values=(goal["goal"], progress, self.format_game_date(goal["deadline"], 4, include_week=False), goal["status"]))
+        if hasattr(self, "owner_goals_summary_var"):
+            deadline = f" • next {self.format_game_date(min(deadlines), 4, include_week=False)}" if deadlines else ""
+            self.owner_goals_summary_var.set(f"{len(self.owner_goals)} goals • {completed} complete • {active} active{deadline}")
+
+    def show_all_inbox_messages(self):
+        """Clear every inbox visibility filter from one explicit action."""
+        if hasattr(self, "inbox_filter"):
+            self.inbox_filter.set("All")
+        if hasattr(self, "inbox_type_filter"):
+            self.inbox_type_filter.set("All")
+        if hasattr(self, "inbox_search"):
+            self.inbox_search.set("")
+        self.inbox_hidden_types = set()
+        self.refresh_inbox()
 
     def open_selected_owner_goal(self):
         if not hasattr(self, "goals_tree") or not self.goals_tree.selection():
@@ -8757,7 +8818,9 @@ class ViewMixin:
         self.inbox_detail.config(state="normal")
         self.inbox_detail.delete("1.0", "end")
         if not item:
-            self.inbox_detail.insert("end", "No message selected.")
+            self.inbox_detail.insert("end", "Select a message above to view its full detail and available actions.")
+            if hasattr(self, "inbox_detail_hint_var"):
+                self.inbox_detail_hint_var.set("No message selected • Choose a row in Inbox to view the message here.")
         else:
             item["seen"] = True
             fighter = self.inbox_related_fighter(item)
@@ -8765,6 +8828,8 @@ class ViewMixin:
             received = self.format_game_date(item.get("created_month", self.month), item.get("created_week", 1))
             action_status = "Needs action" if self.inbox_item_needs_action(item) else ("Archived" if item.get("resolved") else "For information")
             self.inbox_detail.insert("end", f"{item.get('type', 'Mail').upper()} | RECEIVED {received}\n{item.get('subject', 'Untitled')}\n\n{item.get('body', '')}{context}\n\nStatus: {action_status}")
+            if hasattr(self, "inbox_detail_hint_var"):
+                self.inbox_detail_hint_var.set(f"Viewing: {item.get('subject', 'Untitled')} • Double-click the inbox row or use Open Context for related screens.")
         self.inbox_detail.config(state="disabled")
         if hasattr(self, "medical_decision_bar"):
             show_medical = bool(item and item.get("action") == "serious_injury" and not item.get("resolved"))

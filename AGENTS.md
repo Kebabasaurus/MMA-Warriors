@@ -591,6 +591,28 @@ layouts must still degrade cleanly at smaller supported widths.
   For example, promotion name and `Popularity` must never share one clipped label.
 - Prefer dark, game-like panels and inline status/decision areas.
 - Reserve modal confirmation for destructive or genuinely blocking decisions.
+- Synchronous operations that can visibly stall the Tk event loop, especially Quick Load and Save
+  Manager slot loads, must open the reusable `show_busy_overlay` panel before heavy work, update it
+  at stable phase boundaries, and close it in every success and failure path. Keep the panel modal so
+  users cannot start a second state-changing action while the first is rebuilding shared state.
+- Inbox and Matchmaking deliberately set `_force_viewport_width` because their internal responsive
+  panes and table scrollbars own overflow. Do not let either screen's natural table width widen the
+  entire page canvas again. `configure_inbox_panel_layout` stacks Owner Goals below Inbox on narrow
+  pages; `configure_booking_panel_layout` moves Current Fight Card above Available Fighters.
+- Collapsible content must use `disclosure_section`: its named Expand / Collapse button and summary
+  remain visible when content is closed. The two disclosure states live in save-compatible `rules`
+  keys. Never replace these with arrow-only headers or blank collapsed space.
+- Do not restore full-width first-visit or `NEW HERE?` banners on dense management screens. Put brief
+  instructions in persistent local summaries, table cues, detail placeholders, or meaningful empty
+  states so onboarding help does not push data and action buttons below the viewport.
+- Vertical resizers must keep applying their configured fractional target while the window moves
+  through its startup and maximize sizes. Stop automatic placement only after the player releases
+  directly on the sash; otherwise a small pre-maximized layout can permanently clip action footers.
+  Mail / Decisions additionally reserves a 425-pixel top pane and grids its eight actions into two
+  non-shrinking rows; only the Inbox table row may absorb a vertical-space shortage.
+- Current Fight Card groups hype, build, fatigue A/B, and medical return A/B in its `booking` column
+  so the complete card fits without page-level horizontal scrolling. Available Fighters intentionally
+  retains all 20 dense columns and its local horizontal scrollbar, plus the visible column-count cue.
 - `CLOSED` is too ambiguous. Free agents in a player-disabled division show `DIVISION CLOSED`, and
   the detail panel points to `Roster > Manage Divisions`.
 

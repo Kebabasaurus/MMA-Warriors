@@ -12,6 +12,13 @@
 ### Interface Polish
 
 - Reworked the top status bar so long promotion names use the flexible space available in maximized windows, while popularity, stability, cash, date, and advance controls remain separate and fully readable.
+- Added a modal, themed loading panel with phase and progress feedback for Quick Load and Save Manager slot loads, including recovery-snapshot attempts, so large careers no longer appear frozen while their world state and screens are rebuilt.
+- Rebuilt Mail / Decisions discoverability with explicit Owner Goals collapse/expand controls, persistent goal summaries, filter-aware message counts, a one-click Show All action, selection guidance, and responsive side-by-side/stacked panels.
+- Reworked Add Show / Matchmaking so Show Details keeps a labelled toggle and status summary, the Current Fight Card remains visible beside fighters or above them on narrow windows, and an instructional empty-card state explains the booking flow.
+- Consolidated fight-card hype, build, fatigue, and medical-return values into one visible booking-information column, eliminating the page-level horizontal scroll that previously hid the card while preserving the complete 20-column fighter table and its own labelled table scrollbar.
+- Fixed vertical splitters locking to the smaller pre-maximized startup height. Mail / Decisions now also reserves a 425-pixel top pane and a fixed two-row action grid, guaranteeing that all eight Inbox buttons appear at startup even if the sash begins at its minimum; later player adjustments remain preserved.
+- Removed the full-width `NEW HERE?` alerts. Concise guidance remains beside Inbox counts, Message Detail, the fighter-column cue, and the empty fight card without consuming the vertical space needed by tables and actions.
+- Added responsive layout and sash-startup regressions, full inbox-filter reset coverage, and per-theme contrast checks for the remaining inline discovery cues.
 
 ### Contract Negotiations
 

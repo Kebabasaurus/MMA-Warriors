@@ -73,6 +73,19 @@ def main():
                     "Promotion header field does not expand with the window")
         app.player_company_name, app.company_pop = original_company_name, original_company_pop
         app.refresh_header()
+        original_cursor = root.cget("cursor")
+        busy_overlay = app.show_busy_overlay("Loading save", "Reading save data...", 8)
+        assert_true(busy_overlay["window"].winfo_exists(), "The reusable please-wait overlay did not open")
+        assert_true(busy_overlay["status"].get() == "Reading save data...", "The please-wait overlay lost its initial status")
+        assert_true(root.cget("cursor") == "wait", "The main window did not show a busy cursor during synchronous work")
+        app.update_busy_overlay("Refreshing the promoter dashboard...", 82)
+        assert_true(busy_overlay["status"].get() == "Refreshing the promoter dashboard...",
+                    "The please-wait overlay did not accept phase updates")
+        assert_true(int(float(busy_overlay["progress"]["value"])) == 82,
+                    "The please-wait overlay did not accept progress updates")
+        app.close_busy_overlay(busy_overlay)
+        assert_true(getattr(app, "_busy_overlay", None) is None, "The please-wait overlay was not cleared after work")
+        assert_true(root.cget("cursor") == original_cursor, "The main-window cursor was not restored after the overlay closed")
         original_theme = app.theme_name
         for theme_name in app.themes:
             app.theme_name = theme_name
@@ -103,6 +116,10 @@ def main():
             assert_true(palette["selected_border"] != palette["selected_bg"], f"{theme_name} selected tab lacks its secondary border cue")
             focus_contrast = app.wcag_contrast_ratio(palette["focus_border"], palette["inactive_bg"])
             assert_true(focus_contrast >= 3.0, f"{theme_name} keyboard-focus border is too subtle: {focus_contrast:.2f}:1")
+            discovery_fg = style.lookup("Discovery.TLabel", "foreground")
+            discovery_bg = style.lookup("Discovery.TLabel", "background")
+            discovery_ratio = app.wcag_contrast_ratio(discovery_fg, discovery_bg)
+            assert_true(discovery_ratio >= 4.5, f"{theme_name} discoverability hint contrast fell below WCAG AA: {discovery_ratio:.2f}:1")
         app.theme_name = original_theme
         app.theme_name_var.set(original_theme)
         app.configure_style()
@@ -244,6 +261,110 @@ def main():
         for screen_name in app.screen_builders:
             app.ensure_screen_built(screen_name)
         assert_true(set(app.screen_builders) == app.built_screens, "One or more lazy management screens failed to build")
+        app.ensure_rule_defaults()
+        for rule_key in ("ui_owner_goals_collapsed", "ui_show_details_collapsed"):
+            assert_true(rule_key in app.rules, f"Legacy saves do not receive the {rule_key} UI default")
+        assert_true(not hasattr(app, "inbox_discovery_hint") and not hasattr(app, "matchmaking_discovery_hint"),
+                    "Removed full-width NEW HERE guidance was rebuilt on Inbox or Matchmaking")
+        assert_true(int(app.inbox_tree.cget("height")) <= 8 and int(app.goals_tree.cget("height")) <= 8,
+                    "Inbox tables request enough height to push their action footer off-screen")
+        assert_true(app.inbox_actions.winfo_manager() == "grid" and app.card_actions.winfo_manager() == "pack",
+                    "Inbox or fight-card action footer is not part of the visible panel layout")
+        inbox_action_buttons = [child for child in app.inbox_actions.winfo_children() if isinstance(child, ttk.Button)]
+        assert_true(len(inbox_action_buttons) == 8 and {int(button.grid_info()["row"]) for button in inbox_action_buttons} == {0, 1},
+                    "Inbox does not expose all eight actions in two reserved rows")
+        assert_true(app.inbox_resize._resize_min_top >= 425,
+                    "Inbox top-pane minimum is too short to show both action rows at startup")
+        app.select_tab("inbox")
+        root.deiconify()
+        root.update()
+        root.update_idletasks()
+        action_bottom = max(button.winfo_rooty() + button.winfo_height() for button in inbox_action_buttons)
+        inbox_bottom = app.inbox_messages_panel.winfo_rooty() + app.inbox_messages_panel.winfo_height()
+        assert_true(all(button.winfo_viewable() for button in inbox_action_buttons) and action_bottom <= inbox_bottom,
+                    "One or more Inbox action buttons are clipped in the initial mapped window")
+        root.withdraw()
+
+        class ResizerProbe:
+            def __init__(self):
+                self._resize_ready = True
+                self._resize_user_adjusted = False
+                self._resize_last_height = 300
+                self._resize_fraction = 0.72
+                self._resize_min_top = 425
+                self._resize_min_bottom = 135
+                self.height = 800
+                self.placed = []
+
+            def winfo_height(self):
+                return self.height
+
+            def winfo_ismapped(self):
+                return True
+
+            def panes(self):
+                return ("top", "bottom")
+
+            def sash_place(self, index, x, y):
+                self.placed.append((index, x, y))
+
+            def after_idle(self, callback):
+                callback()
+
+        resizer_probe = ResizerProbe()
+        app.initialize_vertical_resizer(resizer_probe)
+        assert_true(resizer_probe._resize_last_height == 800 and resizer_probe.placed[-1][2] == 576,
+                    "A vertical resizer still locks to its smaller pre-maximized startup height")
+        resizer_probe._resize_user_adjusted = True
+        resizer_probe.height = 900
+        app.initialize_vertical_resizer(resizer_probe)
+        assert_true(resizer_probe._resize_last_height == 800,
+                    "Automatic vertical resizing overwrote a player-adjusted sash position")
+        assert_true(app.inbox_tab._force_viewport_width and app.booking_tab._force_viewport_width,
+                    "Inbox or Matchmaking can still widen the entire page beyond the visible viewport")
+        app.configure_inbox_panel_layout(700)
+        assert_true(app.inbox_section_split.cget("orient") == "vertical" and str(app.inbox_section_split.panes()[0]) == str(app.inbox_messages_panel),
+                    "Narrow Inbox does not stack Owner Goals visibly below the message list")
+        app.configure_inbox_panel_layout(1400)
+        assert_true(app.inbox_section_split.cget("orient") == "horizontal",
+                    "Wide Inbox did not restore the dense side-by-side layout")
+        assert_true(app.owner_goals_panel._disclosure_toggle.cget("text") == "▲ Collapse",
+                    "Owner Goals does not expose a labelled collapse affordance")
+        app.owner_goals_panel._disclosure_toggle.invoke()
+        assert_true(app.rules["ui_owner_goals_collapsed"] and not app.owner_goals_panel._disclosure_inner.winfo_manager(),
+                    "Owner Goals collapse state is not explicit and persistent")
+        app.owner_goals_panel._disclosure_toggle.invoke()
+        assert_true(not app.rules["ui_owner_goals_collapsed"] and app.owner_goals_panel._disclosure_inner.winfo_manager(),
+                    "Owner Goals could not be expanded from its persistent header")
+        show_details_panel = app.show_details_panel
+        show_details_panel._disclosure_toggle.invoke()
+        assert_true(app.rules["ui_show_details_collapsed"] and "Expand" in show_details_panel._disclosure_toggle.cget("text"),
+                    "Show Details does not retain a visible expansion affordance when collapsed")
+        show_details_panel._disclosure_toggle.invoke()
+        assert_true(not app.rules["ui_show_details_collapsed"], "Show Details did not restore its expanded state")
+        original_inbox_filter = app.inbox_filter.get()
+        original_hidden_types = set(app.inbox_hidden_types)
+        inbox_filter_probe = {
+            "subject": "Smoke-test archived mail",
+            "body": "Filter-count regression fixture.",
+            "type": "Test",
+            "resolved": True,
+            "seen": True,
+            "created_month": app.month,
+            "created_week": app.week,
+        }
+        app.inbox.append(inbox_filter_probe)
+        app.inbox_filter.set("Open")
+        app.refresh_inbox()
+        assert_true("hidden by current filters" in app.inbox_summary.cget("text"),
+                    "Inbox counts still conceal why stored messages are not shown")
+        app.show_all_inbox_messages()
+        assert_true(app.inbox_filter.get() == "All" and not app.inbox_hidden_types,
+                    "Show All Messages did not clear every inbox visibility filter")
+        app.inbox.remove(inbox_filter_probe)
+        app.inbox_filter.set(original_inbox_filter)
+        app.inbox_hidden_types = original_hidden_types
+        app.refresh_inbox()
         app.open_career_goals_window()
         root.update_idletasks()
         journey_windows = [child for child in root.winfo_children() if isinstance(child, tk.Toplevel) and "Career Journeys" in child.title()]
@@ -428,6 +549,16 @@ def main():
         assert_true(app.fighter_matchmaking_status(recovery_probe, app.month, app.week).startswith("Available "),
                     "Matchmaking does not expose the recovery status of an unavailable fighter")
         assert_true(len(app.booking_horizontal_split.panes()) == 2, "Matchmaking no longer has two independently sized panels")
+        assert_true(tuple(app.card_tree.cget("columns")) == ("slot", "fight", "weight", "booking"),
+                    "Current Fight Card still requires separate off-screen metric columns")
+        app.configure_booking_panel_layout(700)
+        assert_true(app.booking_horizontal_split.cget("orient") == "vertical" and str(app.booking_horizontal_split.panes()[0]) == str(app.booking_card_panel),
+                    "Narrow Matchmaking does not move Current Fight Card above Available Fighters")
+        app.configure_booking_panel_layout(1400)
+        assert_true(app.booking_horizontal_split.cget("orient") == "horizontal" and str(app.booking_horizontal_split.panes()[0]) == str(app.booking_available_panel),
+                    "Wide Matchmaking did not restore the dense side-by-side layout")
+        assert_true("20 COLUMNS AVAILABLE" in app.available_columns_hint.cget("text"),
+                    "Available Fighters does not signal that more table metrics exist")
         original_booked = list(app.booked)
         history_b_available_week = history_b.available_week
         history_b.available_week = 0
@@ -435,7 +566,12 @@ def main():
         earliest_month, earliest_week = app.earliest_booked_card_date()
         assert_true(app.calendar_week_index(earliest_month, earliest_week) == recovery_probe.available_week,
                     "Earliest Valid Date ignored a booked fighter's recovery window")
+        app.refresh_card()
+        booking_summary = app.card_tree.set(app.card_tree.get_children()[0], "booking")
+        assert_true(all(label in booking_summary for label in ("Hype", "Build", "Fatigue", "Medical")),
+                    "Current Fight Card grouping dropped a booking metric while removing horizontal overflow")
         app.booked = original_booked
+        app.refresh_card()
         history_b.available_week = history_b_available_week
         recovery_probe.available_week = original_available_week
         assistant_candidates = app.assistant_matchmaking_candidates(app.month, app.week)
@@ -1695,9 +1831,13 @@ def main():
                     "Fight-night title presentation does not distinguish the champion from the challenger")
         app.rules["live_auto_play_card"] = True
         app.rules["live_follow_commentary"] = False
+        app.rules["ui_owner_goals_collapsed"] = True
+        app.rules["ui_show_details_collapsed"] = True
         serialized_preferences = app.serialize_world()["rules"]
         assert_true(serialized_preferences["live_auto_play_card"] is True and serialized_preferences["live_follow_commentary"] is False,
                     "Fight-night viewer preferences are not persisted with the save")
+        assert_true(serialized_preferences["ui_owner_goals_collapsed"] is True and serialized_preferences["ui_show_details_collapsed"] is True,
+                    "Inbox or Matchmaking disclosure preferences did not persist with the save")
 
         rival_fighter = next(fighter for promo in app.promotions for fighter in promo.roster if not fighter.retired)
         saved_reports = dict(app.scouting_reports)
@@ -1740,6 +1880,31 @@ def main():
                     "Player lower-card savings are not reflected in event finance")
 
         import persistence
+        load_events = []
+        with tempfile.TemporaryDirectory(prefix="mma_warriors_load_overlay_") as load_temp_dir:
+            load_path = Path(load_temp_dir) / "savegame.json"
+            load_path.write_text("{}", encoding="utf-8")
+            load_probe = SimpleNamespace(
+                active_save_path=lambda: load_path,
+                show_busy_overlay=lambda title, message, progress: load_events.append(("show", title, message, progress)) or "busy",
+                update_busy_overlay=lambda message, progress=None: load_events.append(("update", message, progress)),
+                close_busy_overlay=lambda overlay=None: load_events.append(("close", overlay)),
+                apply_world_data=lambda data: load_events.append(("apply", data)),
+                rolling_backup_files=lambda: [],
+                booked=set(),
+                ensure_player_event_name=lambda: None,
+                reconcile_title_shot_alerts=lambda: None,
+                refresh_all=lambda: load_events.append(("refresh",)),
+                write_log=lambda: load_events.append(("log",)),
+            )
+            persistence.PersistenceMixin.load_game(load_probe)
+        assert_true(load_events[0][:2] == ("show", "Loading save"),
+                    "Quick Load did not show the please-wait overlay before reading the save")
+        assert_true(any(event[:2] == ("update", "Rebuilding fighters, companies, and world history...") for event in load_events),
+                    "Quick Load did not report its world-rebuild phase")
+        assert_true(any(event[:2] == ("update", "Refreshing the promoter dashboard...") for event in load_events),
+                    "Quick Load did not report its dashboard-refresh phase")
+        assert_true(load_events[-1] == ("close", "busy"), "Quick Load did not close its please-wait overlay")
         original_active_path = app.active_save_path
         original_showinfo = persistence.messagebox.showinfo
         original_askyesno = persistence.messagebox.askyesno

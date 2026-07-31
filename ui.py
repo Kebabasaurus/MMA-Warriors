@@ -14,6 +14,100 @@ from models import Fighter, Gym, Promotion
 
 
 class UIMixin:
+    def show_busy_overlay(self, title="Please wait", message="Working...", progress=0):
+        """Show a modal, repaintable status panel before synchronous UI work begins."""
+        existing = getattr(self, "_busy_overlay", None)
+        if existing and existing.get("window") and existing["window"].winfo_exists():
+            self.update_busy_overlay(message, progress)
+            return existing
+
+        root = self.root
+        previous_cursor = root.cget("cursor")
+        root.configure(cursor="wait")
+        window = tk.Toplevel(root)
+        window.title(str(title))
+        window.transient(root)
+        window.resizable(False, False)
+        window.protocol("WM_DELETE_WINDOW", lambda: None)
+        window.configure(bg=self.colors["chrome"])
+
+        width, height = 480, 172
+        root.update_idletasks()
+        root_width = max(root.winfo_width(), root.winfo_reqwidth())
+        root_height = max(root.winfo_height(), root.winfo_reqheight())
+        x = root.winfo_rootx() + max(0, (root_width - width) // 2)
+        y = root.winfo_rooty() + max(0, (root_height - height) // 2)
+        window.geometry(f"{width}x{height}+{x}+{y}")
+
+        border = tk.Frame(window, bg=self.colors["red"], padx=2, pady=2)
+        border.pack(fill="both", expand=True)
+        body = tk.Frame(border, bg=self.colors["panel"], padx=22, pady=18)
+        body.pack(fill="both", expand=True)
+        tk.Label(
+            body,
+            text=str(title).upper(),
+            bg=self.colors["panel"],
+            fg=self.colors["text"],
+            font=("Arial", 15, "bold"),
+            anchor="w",
+        ).pack(fill="x")
+        status = tk.StringVar(master=window, value=str(message))
+        tk.Label(
+            body,
+            textvariable=status,
+            bg=self.colors["panel"],
+            fg=self.colors["muted"],
+            font=("Tahoma", 9),
+            anchor="w",
+        ).pack(fill="x", pady=(10, 9))
+        bar = ttk.Progressbar(body, mode="determinate", maximum=100, value=max(0, min(100, int(progress))))
+        bar.pack(fill="x")
+
+        overlay = {
+            "window": window,
+            "status": status,
+            "progress": bar,
+            "previous_cursor": previous_cursor,
+        }
+        self._busy_overlay = overlay
+        window.grab_set()
+        window.lift()
+        window.update_idletasks()
+        window.update()
+        return overlay
+
+    def update_busy_overlay(self, message, progress=None):
+        """Refresh the active busy panel at a safe boundary in a long operation."""
+        overlay = getattr(self, "_busy_overlay", None)
+        if not overlay:
+            return
+        window = overlay.get("window")
+        if not window or not window.winfo_exists():
+            return
+        overlay["status"].set(str(message))
+        if progress is not None:
+            overlay["progress"]["value"] = max(0, min(100, int(progress)))
+        window.update_idletasks()
+
+    def close_busy_overlay(self, overlay=None):
+        """Close the active busy panel and restore the main-window cursor."""
+        active = overlay or getattr(self, "_busy_overlay", None)
+        if not active:
+            return
+        window = active.get("window")
+        try:
+            if window and window.winfo_exists():
+                window.grab_release()
+                window.destroy()
+        except tk.TclError:
+            pass
+        try:
+            self.root.configure(cursor=active.get("previous_cursor", ""))
+        except tk.TclError:
+            pass
+        if getattr(self, "_busy_overlay", None) is active:
+            self._busy_overlay = None
+
     @staticmethod
     def wcag_relative_luminance(color):
         """Return the WCAG 2.x relative luminance for a #RRGGBB color."""
@@ -222,6 +316,9 @@ class UIMixin:
         style.configure("Title.TLabel", font=("Impact", 20), background=self.colors["chrome"], foreground=self.colors["gold"])
         style.configure("ScreenTitle.TLabel", font=("Impact", 15), background=self.colors["red"], foreground="#ffffff")
         style.configure("Section.TLabel", font=("Impact", 10), background=self.colors["panel_dark"], foreground="#ffffff")
+        style.configure("Discovery.TFrame", background=self.colors["panel_dark"], relief="flat", borderwidth=1)
+        discovery_text = self.accessible_tab_text(self.colors["panel_dark"], self.colors["gold"])
+        style.configure("Discovery.TLabel", font=("Tahoma", 8, "bold"), background=self.colors["panel_dark"], foreground=discovery_text)
         style.configure("Panel.TLabel", background=self.colors["panel"], foreground=self.colors["text"])
         style.configure("Inset.TLabel", background=self.colors["cream"], foreground=self.colors["text"])
         style.configure("Stat.TLabel", font=("Tahoma", 8, "bold"), background=self.colors["chrome2"], foreground=self.colors["text"])
@@ -341,7 +438,11 @@ class UIMixin:
             # packed with expand=True (especially Treeviews) receive the unused
             # height. Preserve larger natural dimensions for genuinely long or
             # wide pages, which remain reachable through the page scrollbars.
-            width = max(1, canvas.winfo_width(), inner.winfo_reqwidth())
+            # Some dense screens contain their own responsive panes and table
+            # scrollbars. They must remain fitted to the visible page instead
+            # of making the entire management page wider than the viewport.
+            force_viewport_width = bool(getattr(inner, "_force_viewport_width", False))
+            width = max(1, canvas.winfo_width()) if force_viewport_width else max(1, canvas.winfo_width(), inner.winfo_reqwidth())
             height = max(1, canvas.winfo_height(), inner.winfo_reqheight())
             canvas.itemconfigure(window_id, width=width, height=height)
             canvas.configure(scrollregion=(0, 0, width, height))
@@ -598,6 +699,11 @@ class UIMixin:
                 pane.configure(bg=self.colors["panel"])
             except tk.TclError:
                 pass
+        for pane in getattr(self, "responsive_layout_panes", []):
+            try:
+                pane.configure(bg=self.colors["panel"])
+            except tk.TclError:
+                pass
         spacer = getattr(self, "market_resize_spacer", None)
         if spacer:
             spacer.configure(bg=self.colors["paper"])
@@ -694,6 +800,54 @@ class UIMixin:
         inner.pack(fill="both", expand=True, padx=6, pady=6)
         return frame, inner
 
+    def disclosure_section(self, parent, title, summary_var, expanded=True, on_toggle=None):
+        """Build an explicit, summary-preserving collapsible section."""
+        frame = ttk.Frame(parent, style="Panel.TFrame")
+        header = ttk.Frame(frame, style="Discovery.TFrame")
+        header.pack(fill="x")
+        ttk.Label(header, text=title, anchor="w", style="Section.TLabel").pack(side="left", fill="x", expand=True, padx=(7, 4), ipady=3)
+        ttk.Label(header, textvariable=summary_var, anchor="e", style="Discovery.TLabel").pack(side="left", padx=6)
+        toggle = ttk.Button(header, width=17)
+        toggle.pack(side="right", padx=4, pady=3)
+        inner = ttk.Frame(frame, style="Inset.TFrame")
+        frame._disclosure_inner = inner
+        frame._disclosure_toggle = toggle
+        frame._disclosure_expanded = None
+        frame._disclosure_callback = on_toggle
+        toggle.configure(command=lambda target=frame: self.toggle_disclosure_section(target))
+        self.set_disclosure_section_expanded(frame, expanded, notify=False)
+        return frame, inner
+
+    def set_disclosure_section_expanded(self, frame, expanded, notify=True):
+        """Show or hide disclosure content while its named header remains visible."""
+        expanded = bool(expanded)
+        inner = frame._disclosure_inner
+        if expanded:
+            if not inner.winfo_manager():
+                inner.pack(fill="both", expand=True, padx=6, pady=6)
+            frame._disclosure_toggle.configure(text="▲ Collapse")
+        else:
+            inner.pack_forget()
+            frame._disclosure_toggle.configure(text="▼ Expand")
+        frame._disclosure_expanded = expanded
+        if notify and callable(frame._disclosure_callback):
+            frame._disclosure_callback(expanded)
+
+    def toggle_disclosure_section(self, frame):
+        self.set_disclosure_section_expanded(frame, not bool(frame._disclosure_expanded))
+
+    def apply_ui_disclosure_preferences(self):
+        """Apply loaded-career disclosure preferences to built screens."""
+        disclosure_specs = (
+            ("owner_goals_panel", "ui_owner_goals_collapsed"),
+            ("show_details_panel", "ui_show_details_collapsed"),
+        )
+        for panel_name, rule_key in disclosure_specs:
+            panel = getattr(self, panel_name, None)
+            desired_expanded = not self.rules.get(rule_key, False)
+            if panel and bool(panel._disclosure_expanded) != bool(desired_expanded):
+                self.set_disclosure_section_expanded(panel, desired_expanded, notify=False)
+
     def create_vertical_resizer(self, parent, initial_fraction=0.7, min_top=180, min_bottom=80):
         """Create a themed vertical split that keeps its useful default on first layout."""
         pane = tk.PanedWindow(
@@ -707,18 +861,21 @@ class UIMixin:
             opaqueresize=True,
         )
         pane._resize_ready = False
+        pane._resize_user_adjusted = False
+        pane._resize_last_height = 0
         pane._resize_fraction = initial_fraction
         pane._resize_min_top = min_top
         pane._resize_min_bottom = min_bottom
         pane.bind("<Configure>", lambda _event, target=pane: self.initialize_vertical_resizer(target), add="+")
+        pane.bind("<ButtonRelease-1>", lambda event, target=pane: self.mark_vertical_resizer_adjusted(target, event), add="+")
         if not hasattr(self, "vertical_resize_panes"):
             self.vertical_resize_panes = []
         self.vertical_resize_panes.append(pane)
         return pane
 
     def initialize_vertical_resizer(self, pane):
-        """Position a new split once; subsequent drags belong entirely to the player."""
-        if getattr(pane, "_resize_ready", False) or pane.winfo_height() < 260:
+        """Track the intended split through startup resizing until the player drags it."""
+        if getattr(pane, "_resize_user_adjusted", False) or pane.winfo_height() < 260:
             return
         if not pane.winfo_ismapped():
             if not getattr(pane, "_resize_map_bound", False):
@@ -729,16 +886,78 @@ class UIMixin:
             pane.after_idle(lambda: self.initialize_vertical_resizer(pane))
             return
         height = pane.winfo_height()
+        if getattr(pane, "_resize_ready", False) and height == getattr(pane, "_resize_last_height", 0):
+            return
         min_top = getattr(pane, "_resize_min_top", 180)
         min_bottom = getattr(pane, "_resize_min_bottom", 80)
         fraction = getattr(pane, "_resize_fraction", 0.7)
         top_height = max(min_top, min(height - min_bottom, round(height * fraction)))
         try:
+            pane._resize_last_height = height
             pane.sash_place(0, 0, top_height)
             pane._resize_ready = True
         except tk.TclError:
             # Both child panes may not exist until Tk completes this layout pass.
             pane.after_idle(lambda: self.initialize_vertical_resizer(pane))
+
+    def mark_vertical_resizer_adjusted(self, pane, event):
+        """Stop automatic sash placement only after a release on the sash itself."""
+        if len(pane.panes()) < 2:
+            return
+        try:
+            _x, sash_y = pane.sash_coord(0)
+        except tk.TclError:
+            return
+        if abs(int(event.y) - int(sash_y)) <= max(10, int(pane.cget("sashwidth")) + 4):
+            pane._resize_user_adjusted = True
+
+    def configure_inbox_panel_layout(self, width):
+        """Keep Inbox and Owner Goals discoverable without widening the page."""
+        pane = getattr(self, "inbox_section_split", None)
+        messages = getattr(self, "inbox_messages_panel", None)
+        goals = getattr(self, "owner_goals_panel", None)
+        if not pane or not messages or not goals:
+            return
+        mode = "vertical" if int(width) < 900 else "horizontal"
+        if getattr(self, "_inbox_layout_mode", None) == mode:
+            return
+        for child in pane.panes():
+            pane.forget(child)
+        pane.configure(orient=mode)
+        if mode == "vertical":
+            pane.add(messages, minsize=190, stretch="always")
+            pane.add(goals, minsize=90, stretch="always")
+        else:
+            pane.add(messages, minsize=430, stretch="always")
+            pane.add(goals, minsize=310, stretch="always")
+        self._inbox_layout_mode = mode
+
+    def configure_booking_panel_layout(self, width):
+        """Move the fight card above fighters when side-by-side space is unsafe."""
+        pane = getattr(self, "booking_horizontal_split", None)
+        available = getattr(self, "booking_available_panel", None)
+        card = getattr(self, "booking_card_panel", None)
+        if not pane or not available or not card:
+            return
+        mode = "vertical" if int(width) < 1180 else "horizontal"
+        if getattr(self, "_booking_layout_mode", None) == mode:
+            return
+        for child in pane.panes():
+            pane.forget(child)
+        pane.configure(orient=mode)
+        if mode == "vertical":
+            # Card first: new players see where booked fights will land before
+            # working through the dense fighter table below it.
+            pane.add(card, minsize=150, stretch="always")
+            pane.add(available, minsize=230, stretch="always")
+            if hasattr(self, "card_tree"):
+                self.card_tree.configure(height=5)
+        else:
+            pane.add(available, minsize=520, stretch="always")
+            pane.add(card, minsize=430, stretch="always")
+            if hasattr(self, "card_tree"):
+                self.card_tree.configure(height=8)
+        self._booking_layout_mode = mode
 
     def _show_tooltip(self, holder, text, x, y):
         """Render a small themed hover tooltip at screen coordinates (x, y)."""
@@ -1598,15 +1817,30 @@ class UIMixin:
             buttons.columnconfigure(col, weight=1)
 
     def build_inbox_tab(self):
+        self.inbox_tab._force_viewport_width = True
         self.screen_header(self.inbox_tab, "MAIL / DECISIONS", "Owner goals, decisions, contract alerts, suspensions, and business mail")
-        inbox_resize = self.create_vertical_resizer(self.inbox_tab, initial_fraction=0.66, min_top=220, min_bottom=135)
+        inbox_resize = self.create_vertical_resizer(self.inbox_tab, initial_fraction=0.72, min_top=425, min_bottom=135)
+        self.inbox_resize = inbox_resize
         inbox_resize.pack(fill="both", expand=True)
-        body = ttk.Frame(inbox_resize, style="Inset.TFrame")
-        inbox_resize.add(body, minsize=220)
+        body = tk.PanedWindow(
+            inbox_resize,
+            orient="horizontal",
+            bg=self.colors["panel"],
+            bd=0,
+            sashwidth=8,
+            sashpad=2,
+            sashrelief="raised",
+            opaqueresize=True,
+        )
+        if not hasattr(self, "responsive_layout_panes"):
+            self.responsive_layout_panes = []
+        self.responsive_layout_panes.append(body)
+        inbox_resize.add(body, minsize=425)
         inbox_panel, inbox = self.section(body, "INBOX")
-        inbox_panel.pack(side="left", fill="both", expand=True, padx=(0, 6))
+        inbox.columnconfigure(0, weight=1)
+        inbox.rowconfigure(2, weight=1)
         controls = ttk.Frame(inbox, style="Inset.TFrame")
-        controls.pack(fill="x", pady=(0, 6))
+        controls.grid(row=0, column=0, sticky="ew", pady=(0, 6))
         self.inbox_filter = tk.StringVar(value="Open")
         self.inbox_type_filter = tk.StringVar(value="All")
         self.inbox_search = tk.StringVar(value="")
@@ -1627,26 +1861,31 @@ class UIMixin:
         status.bind("<<ComboboxSelected>>", lambda _event: self.refresh_inbox())
         self.inbox_type_box.bind("<<ComboboxSelected>>", lambda _event: self.refresh_inbox())
         order.bind("<<ComboboxSelected>>", lambda _event: self.refresh_inbox())
-        self.inbox_summary = ttk.Label(inbox, text="", style="Inset.TLabel", anchor="w")
-        self.inbox_summary.pack(fill="x", padx=5, pady=(0, 4))
-        self.inbox_tree = ttk.Treeview(inbox, columns=("state", "date", "type", "subject"), show="headings", height=14)
+        inbox_summary_row = ttk.Frame(inbox, style="Inset.TFrame")
+        inbox_summary_row.grid(row=1, column=0, sticky="ew", padx=5, pady=(0, 4))
+        self.inbox_summary = ttk.Label(inbox_summary_row, text="", style="Inset.TLabel", anchor="w")
+        self.inbox_summary.pack(side="left", fill="x", expand=True)
+        self.inbox_show_all_button = ttk.Button(inbox_summary_row, text="Show All Messages", command=self.show_all_inbox_messages)
+        self.inbox_show_all_button.pack(side="right", padx=(6, 0))
+        self.inbox_tree = ttk.Treeview(inbox, columns=("state", "date", "type", "subject"), show="headings", height=8)
         for column, text, width in (("state", "", 32), ("date", "Received", 100), ("type", "Type", 110), ("subject", "Subject", 390)):
             self.inbox_tree.heading(column, text=text)
             self.inbox_tree.column(column, width=width, anchor="w")
         self.inbox_tree.tag_configure("unread", foreground="#ffe08a")
         self.inbox_tree.tag_configure("urgent", foreground="#ff9b9b")
-        self.inbox_tree.pack(fill="both", expand=True)
+        self.inbox_tree.grid(row=2, column=0, sticky="nsew")
         self.inbox_tree.bind("<<TreeviewSelect>>", self.show_selected_inbox_message)
         self.inbox_tree.bind("<Double-1>", lambda _event: self.open_inbox_context())
         inbox_actions = ttk.Frame(inbox, style="Inset.TFrame")
-        inbox_actions.pack(fill="x", pady=(6, 0))
+        self.inbox_actions = inbox_actions
+        inbox_actions.grid(row=3, column=0, sticky="ew", pady=(6, 0))
         for col, (text, command, style) in enumerate((
             ("Open Context", self.open_inbox_context, "Accent.TButton"),
             ("Medical Decision", self.resolve_serious_injury_inbox, None),
             ("Mark Read", self.mark_inbox_read, None),
             ("Mark Visible Read", self.mark_visible_inbox_read, None),
             ("Hide Type", self.hide_selected_inbox_type, None),
-            ("Show Hidden", self.show_all_inbox_types, None),
+            ("Show Hidden Types", self.show_all_inbox_types, None),
             ("Resolve / Archive", self.resolve_inbox_item, None),
             ("Clear Old Mail", self.clear_old_inbox, None),
         )):
@@ -1655,10 +1894,17 @@ class UIMixin:
         for col in range(4):
             inbox_actions.columnconfigure(col, weight=1)
         self.inbox_notice = ttk.Label(inbox, text="", style="Inset.TLabel", anchor="w")
-        self.inbox_notice.pack(fill="x", padx=5, pady=(4, 0))
-        goals_panel, goals = self.section(body, "OWNER GOALS")
-        goals_panel.pack(side="left", fill="both", expand=True)
-        self.goals_tree = ttk.Treeview(goals, columns=("goal", "progress", "deadline", "status"), show="headings", height=14)
+        self.inbox_notice.grid(row=4, column=0, sticky="ew", padx=5, pady=(4, 0))
+        self.owner_goals_summary_var = tk.StringVar(value="0 goals")
+        goals_panel, goals = self.disclosure_section(
+            body,
+            "OWNER GOALS",
+            self.owner_goals_summary_var,
+            expanded=not self.rules.get("ui_owner_goals_collapsed", False),
+            on_toggle=lambda expanded: self.rules.__setitem__("ui_owner_goals_collapsed", not expanded),
+        )
+        self.owner_goals_panel = goals_panel
+        self.goals_tree = ttk.Treeview(goals, columns=("goal", "progress", "deadline", "status"), show="headings", height=8)
         for column, text, width in (("goal", "Goal", 260), ("progress", "Progress", 115), ("deadline", "Deadline", 85), ("status", "Status", 80)):
             self.goals_tree.heading(column, text=text)
             self.goals_tree.column(column, width=width, anchor="w")
@@ -1666,8 +1912,14 @@ class UIMixin:
         self.goals_tree.tag_configure("failed", foreground="#ff9b9b")
         self.goals_tree.pack(fill="both", expand=True)
         self.goals_tree.bind("<Double-1>", lambda _event: self.open_selected_owner_goal())
+        self.inbox_section_split = body
+        self.inbox_messages_panel = inbox_panel
+        body.bind("<Configure>", lambda event: self.configure_inbox_panel_layout(event.width), add="+")
+        self.configure_inbox_panel_layout(1400)
         detail_panel, detail = self.section(inbox_resize, "MESSAGE DETAIL")
         inbox_resize.add(detail_panel, minsize=135)
+        self.inbox_detail_hint_var = tk.StringVar(value="Select a message above to view its full detail and available actions.")
+        ttk.Label(detail, textvariable=self.inbox_detail_hint_var, style="Discovery.TLabel", anchor="w").pack(fill="x", pady=(0, 5))
         self.inbox_detail = tk.Text(detail, wrap="word", font=("Tahoma", 10), bg=self.colors["panel_dark"], fg=self.colors["text"], insertbackground=self.colors["text"], padx=12, pady=12)
         self.inbox_detail.pack(fill="both", expand=True)
         self.medical_decision_bar = ttk.Frame(detail, style="Inset.TFrame")
@@ -2121,14 +2373,27 @@ class UIMixin:
         self.contracts_summary.pack(side="right", padx=8)
 
     def build_booking_tab(self):
+        self.booking_tab._force_viewport_width = True
         self.screen_header(self.booking_tab, "ADD SHOW / MATCHMAKING", "Build the card from opener to main event")
-        header_panel, header = self.section(self.booking_tab, "SHOW DETAILS")
+        self.show_details_summary_var = tk.StringVar(value="Unscheduled")
+        header_panel, header = self.disclosure_section(
+            self.booking_tab,
+            "SHOW DETAILS",
+            self.show_details_summary_var,
+            expanded=not self.rules.get("ui_show_details_collapsed", False),
+            on_toggle=lambda expanded: self.rules.__setitem__("ui_show_details_collapsed", not expanded),
+        )
+        self.show_details_panel = header_panel
         header_panel.pack(fill="x", pady=(0, 6))
         self.schedule_status_var = tk.StringVar(value="Card has not been scheduled.")
         line1 = ttk.Frame(header, style="Inset.TFrame")
         line1.pack(fill="x", pady=2)
         line2 = ttk.Frame(header, style="Inset.TFrame")
         line2.pack(fill="x", pady=2)
+        line3 = ttk.Frame(header, style="Inset.TFrame")
+        line3.pack(fill="x", pady=2)
+        schedule_actions = ttk.Frame(header, style="Inset.TFrame")
+        schedule_actions.pack(fill="x", pady=(2, 3))
         ttk.Label(line1, text="Event", style="Inset.TLabel", width=7).pack(side="left")
         ttk.Entry(line1, textvariable=self.event_name, width=34).pack(side="left", padx=(4, 12))
         ttk.Label(line1, text="Venue", style="Inset.TLabel", width=7).pack(side="left")
@@ -2136,12 +2401,12 @@ class UIMixin:
         venue_box.pack(side="left", padx=(4, 12))
         self.event_venue_box = venue_box
         self.attach_tooltip(venue_box, "Bigger venues seat more fans and can lift the gate, but a half-empty large room hurts atmosphere and stability. Match the venue to your drawing power.")
-        schedule_btn = ttk.Button(line1, text="Schedule Show", command=self.schedule_event)
+        schedule_btn = ttk.Button(schedule_actions, text="Schedule Show", style="Accent.TButton", command=self.schedule_event)
         schedule_btn.pack(side="right", padx=(4, 0))
         self.attach_tooltip(schedule_btn, "Lock in the card for the chosen date. A viable card needs at least one complete bout, every fighter available, and any champion's title correctly flagged.")
-        ttk.Button(line1, text="Earliest Valid Date", command=self.move_booking_to_earliest_card_date).pack(side="right", padx=(4, 0))
-        ttk.Button(line1, text="Watch Event", command=self.watch_due_event).pack(side="right", padx=(4, 0))
-        ttk.Button(line1, text="Skip Event", style="Accent.TButton", command=self.skip_due_event).pack(side="right", padx=(4, 0))
+        ttk.Button(schedule_actions, text="Earliest Valid Date", command=self.move_booking_to_earliest_card_date).pack(side="right", padx=(4, 0))
+        ttk.Button(schedule_actions, text="Watch Event", command=self.watch_due_event).pack(side="right", padx=(4, 0))
+        ttk.Button(schedule_actions, text="Skip Event", command=self.skip_due_event).pack(side="right", padx=(4, 0))
         ttk.Label(line2, text="Region", style="Inset.TLabel", width=7).pack(side="left")
         region_box = ttk.Combobox(line2, textvariable=self.event_region, values=REGIONS, state="readonly", width=11)
         region_box.pack(side="left", padx=(4, 12))
@@ -2149,21 +2414,21 @@ class UIMixin:
         ttk.Label(line2, text="City", style="Inset.TLabel", width=7).pack(side="left")
         self.city_box = ttk.Combobox(line2, textvariable=self.event_city, values=REGION_CITIES["USA"], state="readonly", width=13)
         self.city_box.pack(side="left", padx=(4, 12))
-        ttk.Label(line2, text="Month", style="Inset.TLabel", width=7).pack(side="left")
-        event_month_box = ttk.Combobox(line2, textvariable=self.event_calendar_month, values=CALENDAR_MONTH_ABBREVIATIONS, state="readonly", width=6)
+        ttk.Label(line3, text="Month", style="Inset.TLabel", width=7).pack(side="left")
+        event_month_box = ttk.Combobox(line3, textvariable=self.event_calendar_month, values=CALENDAR_MONTH_ABBREVIATIONS, state="readonly", width=6)
         event_month_box.pack(side="left", padx=(4, 5))
         event_month_box.bind("<<ComboboxSelected>>", lambda _e: (self.sync_booking_internal_date(), self.refresh_available()))
-        ttk.Label(line2, text="Year", style="Inset.TLabel", width=5).pack(side="left")
-        event_year_box = ttk.Spinbox(line2, from_=GAME_START_YEAR, to=GAME_START_YEAR + 50, textvariable=self.event_year, width=6)
+        ttk.Label(line3, text="Year", style="Inset.TLabel", width=5).pack(side="left")
+        event_year_box = ttk.Spinbox(line3, from_=GAME_START_YEAR, to=GAME_START_YEAR + 50, textvariable=self.event_year, width=6)
         event_year_box.pack(side="left", padx=(4, 12))
         event_year_box.bind("<FocusOut>", lambda _e: (self.sync_booking_internal_date(), self.refresh_available()))
         event_year_box.bind("<Return>", lambda _e: (self.sync_booking_internal_date(), self.refresh_available()))
-        ttk.Label(line2, text="Week", style="Inset.TLabel", width=5).pack(side="left")
-        event_week_box = ttk.Combobox(line2, textvariable=self.event_week, values=(1, 2, 3, 4), state="readonly", width=4)
+        ttk.Label(line3, text="Week", style="Inset.TLabel", width=5).pack(side="left")
+        event_week_box = ttk.Combobox(line3, textvariable=self.event_week, values=(1, 2, 3, 4), state="readonly", width=4)
         event_week_box.pack(side="left", padx=(4, 12))
         event_week_box.bind("<<ComboboxSelected>>", lambda _e: (self.sync_booking_internal_date(), self.refresh_available()))
-        ttk.Label(line2, text="Day", style="Inset.TLabel", width=4).pack(side="left")
-        event_day_box = ttk.Combobox(line2, textvariable=self.event_day_choice, values=CALENDAR_DAYS, state="readonly", width=10)
+        ttk.Label(line3, text="Day", style="Inset.TLabel", width=4).pack(side="left")
+        event_day_box = ttk.Combobox(line3, textvariable=self.event_day_choice, values=CALENDAR_DAYS, state="readonly", width=10)
         event_day_box.pack(side="left", padx=(4, 12))
         event_day_box.bind("<<ComboboxSelected>>", lambda _e: self.refresh_available())
         self.attach_tooltip(event_day_box, "The day of the week the card runs. A later day in the week means a longer camp and more recovery since the last fight; an earlier one means a shorter turnaround.")
@@ -2198,22 +2463,28 @@ class UIMixin:
 
         booking_resize = self.create_vertical_resizer(self.booking_tab, initial_fraction=0.8, min_top=250, min_bottom=120)
         booking_resize.pack(fill="both", expand=True)
-        body = ttk.Panedwindow(booking_resize, orient="horizontal")
+        body = tk.PanedWindow(
+            booking_resize,
+            orient="horizontal",
+            bg=self.colors["panel"],
+            bd=0,
+            sashwidth=8,
+            sashpad=2,
+            sashrelief="raised",
+            opaqueresize=True,
+        )
+        if not hasattr(self, "responsive_layout_panes"):
+            self.responsive_layout_panes = []
+        self.responsive_layout_panes.append(body)
         booking_resize.add(body, minsize=250)
         left_panel, left = self.section(body, "AVAILABLE FIGHTERS")
         right_panel, right = self.section(body, "CURRENT FIGHT CARD")
-        body.add(left_panel, weight=3)
-        body.add(right_panel, weight=2)
         self.booking_horizontal_split = body
-        self._booking_split_initialized = False
-
-        def initialize_booking_split(event):
-            if self._booking_split_initialized or event.width < 700:
-                return
-            self._booking_split_initialized = True
-            body.sashpos(0, int(event.width * 0.62))
-
-        body.bind("<Configure>", initialize_booking_split, add="+")
+        self.booking_available_panel = left_panel
+        self.booking_card_panel = right_panel
+        self._booking_layout_mode = None
+        body.bind("<Configure>", lambda event: self.configure_booking_panel_layout(event.width), add="+")
+        self.configure_booking_panel_layout(1400)
 
         available_filters = ttk.Frame(left, style="Inset.TFrame")
         available_filters.pack(fill="x", pady=(0, 5))
@@ -2241,6 +2512,8 @@ class UIMixin:
         # buttons were effectively on the other side of the horizontal page.
         booking_actions = ttk.Frame(left, style="Inset.TFrame")
         booking_actions.pack(fill="x", pady=(0, 5))
+        booking_options = ttk.Frame(left, style="Inset.TFrame")
+        booking_options.pack(fill="x", pady=(0, 5))
         add_matchup_btn = ttk.Button(booking_actions, text="Add Matchup", style="Accent.TButton", command=self.add_matchup)
         add_matchup_btn.pack(side="left", padx=(2, 4), pady=3)
         add_tba_btn = ttk.Button(booking_actions, text="Add TBA", command=self.add_tba_matchup)
@@ -2249,19 +2522,19 @@ class UIMixin:
         tournament_btn.pack(side="left", padx=3, pady=3)
         assistant_btn = ttk.Button(booking_actions, text="Assistant Recommend", command=self.assistant_pick_matchup)
         assistant_btn.pack(side="left", padx=3, pady=3)
-        title_check = ttk.Checkbutton(booking_actions, text="Title", variable=self.title_fight, command=self.toggle_divisional_title_booking)
-        title_check.pack(side="left", padx=(12, 3))
-        main_event_check = ttk.Checkbutton(booking_actions, text="Main event", variable=self.main_event)
+        title_check = ttk.Checkbutton(booking_options, text="Title", variable=self.title_fight, command=self.toggle_divisional_title_booking)
+        title_check.pack(side="left", padx=(2, 3))
+        main_event_check = ttk.Checkbutton(booking_options, text="Main event", variable=self.main_event)
         main_event_check.pack(side="left", padx=3)
         self.special_belt_choice = tk.StringVar(value="None")
-        special_belt_label = ttk.Label(booking_actions, text="Special Belt", style="Inset.TLabel")
+        special_belt_label = ttk.Label(booking_options, text="Special Belt", style="Inset.TLabel")
         special_belt_label.pack(side="left", padx=(10, 2))
-        self.special_belt_box = ttk.Combobox(booking_actions, textvariable=self.special_belt_choice, state="readonly", width=14)
+        self.special_belt_box = ttk.Combobox(booking_options, textvariable=self.special_belt_choice, state="readonly", width=14)
         self.special_belt_box.pack(side="left", padx=(0, 3))
         self.special_belt_box.bind("<<ComboboxSelected>>", self.select_special_belt_booking)
-        tier_label = ttk.Label(booking_actions, text="Tier", style="Inset.TLabel")
+        tier_label = ttk.Label(booking_options, text="Tier", style="Inset.TLabel")
         tier_label.pack(side="left", padx=(10, 2))
-        tier_box = ttk.Combobox(booking_actions, textvariable=self.card_tier, values=CARD_TIERS, state="readonly", width=12)
+        tier_box = ttk.Combobox(booking_options, textvariable=self.card_tier, values=CARD_TIERS, state="readonly", width=12)
         tier_box.pack(side="left", padx=(0, 3))
         self.attach_tooltip(add_matchup_btn, "Book the two selected available fighters into a bout. Pick same-gender fighters in the same (or a close) division for a viable, credible fight.")
         self.attach_tooltip(add_tba_btn, "Add a bout with one side left open (To Be Announced). Reserve a slot now and fill it later from Upcoming Events once you've signed or freed an opponent.")
@@ -2306,7 +2579,17 @@ class UIMixin:
         self.matchmaking_brief.pack(fill="x", pady=(0, 4), padx=3)
         self.matchmaking_brief.bind("<Configure>", lambda event: self.matchmaking_brief.configure(wraplength=max(300, event.width - 18)))
 
-        self.available_tree = ttk.Treeview(left, columns=("name", "gender", "weight", "rank", "titlepath", "record", "age", "overall", "elo", "pop", "build", "last", "form", "trend", "activity", "fatigue", "recovery", "fit", "history", "status"), show="headings", selectmode="extended", height=14)
+        self.available_columns_hint = ttk.Label(
+            left,
+            text="20 COLUMNS AVAILABLE • Use the table scrollbar for scouting, form, fatigue, medical return, matchup fit, history, and date availability.",
+            style="Discovery.TLabel",
+            anchor="w",
+            justify="left",
+        )
+        self.available_columns_hint.pack(fill="x", pady=(0, 2), padx=3)
+        self.available_columns_hint.bind("<Configure>", lambda event: self.available_columns_hint.configure(wraplength=max(300, event.width - 18)))
+
+        self.available_tree = ttk.Treeview(left, columns=("name", "gender", "weight", "rank", "titlepath", "record", "age", "overall", "elo", "pop", "build", "last", "form", "trend", "activity", "fatigue", "recovery", "fit", "history", "status"), show="headings", selectmode="extended", height=8)
         for col, text, width in (("name", "Name", 148), ("gender", "G", 34), ("weight", "Class", 90), ("rank", "Rank", 44), ("titlepath", "Title Path", 104), ("record", "Record", 66), ("age", "Age", 40), ("overall", "OVR", 44), ("elo", "ELO", 54), ("pop", "Pop", 42), ("build", "Build", 48), ("last", "Last Fight", 84), ("form", "Last 5 (→latest)", 82), ("trend", "Form", 56), ("activity", "Active", 50), ("fatigue", "Fatigue", 88), ("recovery", "Medical Return", 104), ("fit", "Match Fit", 66), ("history", "History", 74), ("status", "Event Availability", 132)):
             self.available_tree.heading(col, text=text)
             self.available_tree.column(col, width=width, anchor="center")
@@ -2346,35 +2629,42 @@ class UIMixin:
         self.available_tree.bind("<Double-1>", lambda _e: self.open_tree_fighter_profile(self.available_tree, "name"))
         self.available_tree.bind("<<TreeviewSelect>>", self.refresh_matchmaking_history_indicators, add="+")
 
-        self.card_tree = ttk.Treeview(right, columns=("slot", "fight", "weight", "hype", "media", "fatigue", "recovery"), show="headings", height=14)
-        for col, text, width in (("slot", "Slot", 90), ("fight", "Fight", 250), ("weight", "Weight", 105), ("hype", "Hype", 60), ("media", "Build", 60), ("fatigue", "Fatigue A/B", 92), ("recovery", "Medical Return A/B", 150)):
+        self.card_summary_var = tk.StringVar(value="0 fights • Select two fighters, then choose Add Matchup.")
+        self.card_summary = ttk.Label(right, textvariable=self.card_summary_var, style="Discovery.TLabel", anchor="w", justify="left")
+        self.card_summary.pack(fill="x", pady=(0, 4))
+        self.card_summary.bind("<Configure>", lambda event: self.card_summary.configure(wraplength=max(240, event.width - 14)))
+        self.card_tree = ttk.Treeview(right, columns=("slot", "fight", "weight", "booking"), show="headings", height=8)
+        for col, text, width in (("slot", "Slot", 82), ("fight", "Fight", 205), ("weight", "Weight", 90), ("booking", "Hype • Build • Fatigue • Medical A/B", 245)):
             self.card_tree.heading(col, text=text)
             self.card_tree.column(col, width=width, anchor="center")
         self.card_tree.column("fight", anchor="w")
+        self.card_tree.column("fight", stretch=True)
+        self.card_tree.column("booking", anchor="w", stretch=True)
         self.card_tree.tag_configure("non_title_champion", background="#5c1a1a", foreground="#ffffff")
         self.attach_tree_heading_tooltips(self.card_tree, {
             "slot": "Position on the card. The top row is your main event — order bouts from opener up to the headliner.",
             "fight": "The booked matchup. A red row flags a champion booked without their title on the line.",
             "weight": "Division the bout is contested at.",
-            "hype": "Projected fan interest in this bout — drives gate and media rating. Ranked names, titles, and rivalries raise it.",
-            "media": "Fight build score — how competitive and story-rich the matchup is. Even, high-stakes fights score highest.",
-            "fatigue": "Current fatigue for each fighter in the same order as the matchup. 65 or higher is unfit.",
-            "recovery": "Earliest medical return for each fighter in matchup order. Now means medically cleared today.",
+            "booking": "Grouped booking information: projected hype, fight build, fatigue A/B, and medical return A/B. No page-level side-scroll is required.",
         })
         self.make_tree_sortable(self.card_tree)
         self.card_tree.pack(fill="both", expand=True, pady=5)
         self.card_tree.bind("<Double-1>", lambda _event: self.compare_selected_card_matchup())
         footer = ttk.Frame(right)
+        self.card_actions = footer
         footer.pack(fill="x")
-        ttk.Button(footer, text="Remove Fight", command=self.remove_matchup).pack(side="left")
+        ttk.Button(footer, text="Add Selected Matchup", style="Accent.TButton", command=self.add_matchup).grid(row=0, column=0, sticky="ew", padx=2, pady=2)
+        ttk.Button(footer, text="Remove Fight", command=self.remove_matchup).grid(row=0, column=1, sticky="ew", padx=2, pady=2)
         fill_tba_btn = ttk.Button(footer, text="Fill TBA", command=self.fill_selected_tba_matchup)
-        fill_tba_btn.pack(side="left", padx=4)
+        fill_tba_btn.grid(row=0, column=2, sticky="ew", padx=2, pady=2)
         title_interim_btn = ttk.Button(footer, text="Title / Interim", command=self.toggle_card_title)
-        title_interim_btn.pack(side="left", padx=4)
+        title_interim_btn.grid(row=0, column=3, sticky="ew", padx=2, pady=2)
         move_up_btn = ttk.Button(footer, text="Move Up", command=self.move_fight_up)
-        move_up_btn.pack(side="left", padx=4)
-        ttk.Button(footer, text="Move Down", command=self.move_fight_down).pack(side="left", padx=4)
-        ttk.Button(footer, text="Clear Card", command=self.clear_card).pack(side="right")
+        move_up_btn.grid(row=1, column=0, sticky="ew", padx=2, pady=2)
+        ttk.Button(footer, text="Move Down", command=self.move_fight_down).grid(row=1, column=1, sticky="ew", padx=2, pady=2)
+        ttk.Button(footer, text="Clear Card", command=self.clear_card).grid(row=1, column=2, columnspan=2, sticky="ew", padx=2, pady=2)
+        for column in range(4):
+            footer.columnconfigure(column, weight=1)
         self.attach_tooltip(fill_tba_btn, "Assign the selected available fighter to a highlighted TBA bout, completing a reserved slot.")
         self.attach_tooltip(title_interim_btn, "Toggle the selected bout between a title fight and an interim title fight (or off).")
         self.attach_tooltip(move_up_btn, "Reorder the selected bout. The top of the card is the main event, so move your biggest fight up.")
