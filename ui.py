@@ -1072,6 +1072,42 @@ class UIMixin:
             buttons[4].grid(row=1, column=1, columnspan=2, sticky="ew", padx=3, pady=2)
         self._booking_action_layout_mode = mode
 
+    def select_matchmaking_fighter_click(self, event):
+        """Toggle Matchmaking rows without requiring keyboard modifiers.
+
+        Ctrl/Shift keep their native extended-selection behavior, but ordinary
+        clicks can build or trim matchup and tournament selections on their own.
+        """
+        tree = getattr(self, "available_tree", None)
+        if tree is None or int(getattr(event, "state", 0) or 0) & 0x0005:
+            return None
+        if tree.identify_region(event.x, event.y) != "cell":
+            return None
+        row_id = tree.identify_row(event.y)
+        if not row_id:
+            return None
+        if row_id in tree.selection():
+            tree.selection_remove(row_id)
+        else:
+            tree.selection_add(row_id)
+        tree.focus(row_id)
+        return "break"
+
+    def open_matchmaking_fighter_profile_click(self, event):
+        """Open the double-clicked row even when several other rows are selected."""
+        tree = getattr(self, "available_tree", None)
+        if tree is None or tree.identify_region(event.x, event.y) != "cell":
+            return None
+        row_id = tree.identify_row(event.y)
+        fighter = getattr(self, "available_tree_fighters", {}).get(row_id)
+        if fighter is not None:
+            # A double-click may follow one or two toggle callbacks depending on
+            # the Tk platform. Leave the opened fighter selected either way.
+            tree.selection_add(row_id)
+            tree.focus(row_id)
+            self.open_fighter_profile_window(fighter)
+        return "break"
+
     def matchmaking_table_view_columns(self, view_name):
         """Return a focused display-column preset without dropping table data."""
         presets = {
@@ -2742,7 +2778,7 @@ class UIMixin:
         self.attach_tooltip(self.special_belt_box, "Attach an interim, tournament, or other special title to raise the stakes and hype of a non-divisional-title bout.")
         self.attach_tooltip(tier_box, "Card position tier (Main Card, Prelims, etc.). Lower tiers pay and cost less — stack prospects on the prelims and save stars for the main card.")
 
-        self.matchup_insight_summary_var = tk.StringVar(value="No selection")
+        self.matchup_insight_summary_var = tk.StringVar(value="Click to add fighters • click a selected fighter to remove")
         insight_panel, insight = self.disclosure_section(
             left,
             "MATCHUP INSIGHT",
@@ -2854,7 +2890,8 @@ class UIMixin:
         available_scroll_x.pack(side="bottom", fill="x")
         available_scroll.pack(side="right", fill="y")
         self.available_tree.pack(side="left", fill="both", expand=True, pady=5)
-        self.available_tree.bind("<Double-1>", lambda _e: self.open_tree_fighter_profile(self.available_tree, "name"))
+        self.available_tree.bind("<Button-1>", self.select_matchmaking_fighter_click)
+        self.available_tree.bind("<Double-1>", self.open_matchmaking_fighter_profile_click)
         self.available_tree.bind("<<TreeviewSelect>>", self.refresh_matchmaking_history_indicators, add="+")
         self.apply_matchmaking_table_view()
 

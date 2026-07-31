@@ -762,6 +762,44 @@ def main():
                     "The All 20 Matchmaking view does not restore the complete fighter table")
         app.available_table_view.set("Essentials")
         app.apply_matchmaking_table_view()
+        root.update_idletasks()
+        click_probe_rows = app.available_tree.get_children()[:3]
+        app.available_tree.selection_remove(*app.available_tree.selection())
+        first_box = app.available_tree.bbox(click_probe_rows[0])
+        second_box = app.available_tree.bbox(click_probe_rows[1])
+        third_box = app.available_tree.bbox(click_probe_rows[2])
+        assert_true(first_box and second_box and third_box, "Matchmaking click-selection probe rows are not visible")
+        first_click = SimpleNamespace(x=first_box[0] + 4, y=first_box[1] + 4, state=0)
+        second_click = SimpleNamespace(x=second_box[0] + 4, y=second_box[1] + 4, state=0)
+        third_click = SimpleNamespace(x=third_box[0] + 4, y=third_box[1] + 4, state=0)
+        assert_true(app.select_matchmaking_fighter_click(first_click) == "break" and tuple(app.available_tree.selection()) == (click_probe_rows[0],),
+                    "A normal first Matchmaking click did not select fighter one")
+        assert_true(app.select_matchmaking_fighter_click(second_click) == "break" and set(app.available_tree.selection()) == set(click_probe_rows[:2]),
+                    "A normal second Matchmaking click still requires Ctrl to retain fighter one")
+        app.refresh_matchmaking_history_indicators()
+        assert_true(app.matchup_insight_summary_var.get().startswith("Pair ready"),
+                    "The Matchmaking selection cue does not confirm that the pair is ready")
+        app.select_matchmaking_fighter_click(third_click)
+        assert_true(set(app.available_tree.selection()) == set(click_probe_rows),
+                    "A normal Matchmaking click stopped adding fighters after the first pair")
+        app.refresh_matchmaking_history_indicators()
+        assert_true("click any selected fighter to remove" in app.matchup_insight_summary_var.get(),
+                    "The Matchmaking selection cue does not explain how to trim a multi-fighter selection")
+        app.select_matchmaking_fighter_click(second_click)
+        assert_true(set(app.available_tree.selection()) == {click_probe_rows[0], click_probe_rows[2]},
+                    "Clicking a selected Matchmaking fighter did not remove that fighter")
+        profile_fighters = []
+        original_profile_opener = app.open_fighter_profile_window
+        app.open_fighter_profile_window = profile_fighters.append
+        try:
+            assert_true(app.open_matchmaking_fighter_profile_click(second_click) == "break",
+                        "A Matchmaking fighter double-click was not handled")
+        finally:
+            app.open_fighter_profile_window = original_profile_opener
+        assert_true(profile_fighters == [app.available_tree_fighters[click_probe_rows[1]]],
+                    "Matchmaking double-click did not open the fighter directly under the pointer")
+        assert_true(click_probe_rows[1] in app.available_tree.selection(),
+                    "Matchmaking double-click left the opened fighter deselected")
         tournament_probe_rows = app.available_tree.get_children()[:4]
         app.available_tree.selection_set(tournament_probe_rows)
         app.refresh_matchmaking_history_indicators()

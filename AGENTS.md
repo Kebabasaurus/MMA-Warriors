@@ -619,6 +619,10 @@ layouts must still degrade cleanly at smaller supported widths.
   rows, clear selection, or make any metric unreachable. The Compare Selected action reuses the
   shared fighter-comparison window instead of duplicating a second matchmaking tree. Its five
   booking actions use one row on wide panes and the 3+2 grid below 700 pixels; preserve both modes.
+- Ordinary Available Fighters row clicks intentionally toggle that row into or out of the current
+  selection without requiring Ctrl, for both matchup pairs and 4/8-fighter tournaments. Double-click
+  must resolve and open the fighter directly under the pointer rather than the first selected row.
+  Keep Matchup Insight synchronized with the empty, one-fighter, pair-ready, and tournament states.
 - `configure_show_details_layout` owns the expanded Show Details geometry. It grids stable Event /
   Venue, location/provider, date, primary-action, and show-tool frames into wide, medium, or narrow
   arrangements; never rebuild or reparent their widgets. Keep `schedule_status`,

@@ -26,6 +26,7 @@
 
 ### Interface Polish
 
+- Made ordinary Matchmaking row clicks toggle fighters into or out of the current selection, so players can build pairs and tournament groups without keyboard modifiers; double-click still opens the fighter under the pointer, and the persistent Matchup Insight summary explains the interaction.
 - Replaced the low-contrast grey progress treatment with high-contrast loading bars and distinct red/blue fight freshness bars on a dark track.
 - Reworked the top status bar so long promotion names use the flexible space available in maximized windows, while popularity, stability, cash, date, and advance controls remain separate and fully readable.
 - Added a modal, themed loading panel with phase and progress feedback for Quick Load and Save Manager slot loads, including recovery-snapshot attempts, so large careers no longer appear frozen while their world state and screens are rebuilt.

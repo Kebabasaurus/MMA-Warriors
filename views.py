@@ -2696,7 +2696,7 @@ class ViewMixin:
                 tree.item(row_id, tags=(() if status == "Ready" else ("not_ready",)))
         if not selected:
             if hasattr(self, "matchup_insight_summary_var"):
-                self.matchup_insight_summary_var.set("No selection")
+                self.matchup_insight_summary_var.set("Click to add fighters • click a selected fighter to remove")
             if hasattr(self, "matchmaking_history_var"):
                 self.matchmaking_history_var.set("Select one fighter to compare prior meetings with every possible opponent.")
             if hasattr(self, "matchmaking_brief_var"):
@@ -2704,7 +2704,7 @@ class ViewMixin:
             return
         if len(selected) > 2:
             if hasattr(self, "matchup_insight_summary_var"):
-                self.matchup_insight_summary_var.set(f"{len(selected)} selected • Tournament group")
+                self.matchup_insight_summary_var.set(f"{len(selected)} selected • click any selected fighter to remove")
             if hasattr(self, "matchmaking_history_var"):
                 self.matchmaking_history_var.set(
                     f"TOURNAMENT GROUP: {len(selected)} fighters selected. Choose exactly two to compare their meeting history and matchup fit."
@@ -2717,7 +2717,7 @@ class ViewMixin:
         if len(selected) == 1:
             anchor = selected[0]
             if hasattr(self, "matchup_insight_summary_var"):
-                self.matchup_insight_summary_var.set(f"1 selected • {anchor.weight}")
+                self.matchup_insight_summary_var.set(f"{anchor.name} selected • keep clicking to add")
             for row_id, opponent in mapping.items():
                 tree.set(row_id, "history", self.matchup_history_indicator(anchor, opponent))
                 fit = self.matchmaking_fit_score(anchor, opponent)
@@ -2740,7 +2740,7 @@ class ViewMixin:
         indicator = self.matchup_history_indicator(a, b)
         fit = self.matchmaking_fit_score(a, b)
         if hasattr(self, "matchup_insight_summary_var"):
-            self.matchup_insight_summary_var.set(f"2 selected • Fit {fit or '-'}")
+            self.matchup_insight_summary_var.set(f"Pair ready • Fit {fit or '-'} • click either fighter to remove")
         for row_id in selected_ids[:2]:
             tree.set(row_id, "history", indicator)
             tree.set(row_id, "fit", str(fit or "-"))
