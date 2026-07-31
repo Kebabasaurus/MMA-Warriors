@@ -1,8 +1,8 @@
 # MMA Warriors
 
-## Version 3.0.4
+## Version 3.0.5
 
-This release expands the living-world simulation, improves watched fight-night presentation and commentary variety, adds career journeys and directed scouting, introduces the shipped Universe Database Editor, and strengthens UI scaling, AI scheduling, finance stability, and release packaging. Version 3.0.4 keeps regional championships credible by ensuring champions only make title defenses, makes late-career decline taper toward a realistic veteran level, and introduces peak-aware retirement reviews. See [CHANGELOG.md](CHANGELOG.md) for the 3.0 release notes and hotfixes.
+Version 3.0.5 fixes missing late-round commentary in long five-round fights, keeps long promotion names and popularity readable in the maximized header, improves notebook-tab accessibility across every theme, and rebalances contract security so duration cannot replace fair compensation. It also retains the 3.0.4 veteran-decline and retirement-review fixes and the 3.0.3 regional championship-booking improvements. See [CHANGELOG.md](CHANGELOG.md) for the complete release notes.
 
 MMA Warriors is a deep Windows desktop promotion-management simulation. Choose any real-world-inspired promotion, take control of an existing company, or create a new one from scratch. Build a roster, negotiate contracts and transfer deals, book cards, develop prospects, manage finances and media, and try to turn a regional operation into the sport's defining brand.
 
@@ -32,9 +32,20 @@ Each game now owns a self-contained folder, for example `Saves\Game 1\savegame.j
 
 Before moving a build to another laptop, run `Portable Check.bat` from the packaged folder. It confirms that the EXE is present and tells you whether runtime data will be stored beside it or in the user profile fallback.
 
-Fight Night uses one live broadcast viewer for MMA, boxing, kickboxing, Muay Thai, wrestling, and Brazilian jiu-jitsu. Other-sport replays include sport-native round/period/match starts, clocked exchanges, cumulative scoring, stamina and condition reads, and an official result. The viewer is laptop-sized, has visible scrollbars, adjustable text size, a Follow live toggle, round/period navigation, and paced holds for round summaries and finishes.
+Fight Night uses one live broadcast viewer for MMA, boxing, kickboxing, Muay Thai, wrestling, and Brazilian jiu-jitsu. Other-sport replays include sport-native round/period/match starts, clocked exchanges, cumulative scoring, stamina and condition reads, and an official result. Long MMA fights compact ordinary exchanges per round without discarding introductions, transitions, summaries, finishes, scorecards, or metrics. The viewer is laptop-sized, has visible scrollbars, adjustable text size, a Follow live toggle, round/period navigation, and paced holds for round summaries and finishes.
 
 Striking commentary uses action-specific situation banks rather than shared generic calls. Boxing, kickboxing, Muay Thai, Lethwei presentation, and MMA distinguish entries, counters, body work, leg damage, kick checks, pocket/clinch work, rope or fence pressure, defensive exits, knockdowns, cuts, and damage-aware follow-up attacks. Recent-line memory prevents the same broadcast template from cycling repeatedly during a watched fight.
+
+## Developer Change Contract
+
+Every implementation update, improvement, fix, balance adjustment, data change, UI change, tooling change, or packaging change ships as one complete change package:
+
+1. Add a meaningful entry to the current release in `CHANGELOG.md`.
+2. Update `README.md` wherever the feature, workflow, compatibility note, test coverage, or build instructions changed.
+3. Update [`AGENTS.md`](AGENTS.md) with the affected architecture, invariant, integration point, pitfall, or verification rule.
+4. Add or update focused automated regression coverage and run the affected test suite. When a behavior cannot be automated reliably, document and perform a reproducible manual check in addition to the closest stable automated invariant.
+
+Documentation-only edits do not need artificial runtime tests, but their links, commands, formatting, and diff integrity must still be checked. A change is not complete merely because the code works; its tests and all three documents must describe the same behavior.
 
 ## Smoke Test
 
@@ -44,9 +55,9 @@ Before shipping a build, run:
 Run Smoke Tests.bat
 ```
 
-The test launcher runs `smoke_test.py`, `stability_test.py`, and `media_system_test.py`. The smoke test checks startup, core promotions, roster sizes, gyms, save/load serialization, and fight simulation. The stability playtest additionally completes normal and retirement events, verifies two-year retirement-card thresholds, popularity ordering, weight-safe matchmaking, weekly card caps and contract-expiry releases, opens every major UI viewer, exercises academy scouting, all-eligible showcase matchmaking, cooldowns, structured amateur history, adult-weight graduation, and child-sport pathways, round-trips a progressed world through JSON, and advances several independent worlds while watching for Tk callback errors. The media test covers editable outlets, player and AI offers/contracts, campaign limits, audience reporting, old-save migration, and a save/load round trip.
+The test launcher runs `smoke_test.py`, `stability_test.py`, and `media_system_test.py`. The smoke test checks release-document/version synchronization, startup, the responsive long-name header, per-theme tab contrast, contract-duration scoring, core promotions, roster sizes, gyms, save/load serialization, and full five-round commentary integrity. The stability playtest additionally completes normal and retirement events, verifies two-year retirement-card thresholds, popularity ordering, weight-safe matchmaking, weekly card caps and contract-expiry releases, opens every major UI viewer, exercises academy scouting, all-eligible showcase matchmaking, cooldowns, structured amateur history, adult-weight graduation, and child-sport pathways, round-trips a progressed world through JSON, and advances several independent worlds while watching for Tk callback errors. The media test covers editable outlets, player and AI offers/contracts, campaign limits, audience reporting, old-save migration, and a save/load round trip.
 
-The current development model is documented in `FIGHTER_DEVELOPMENT_GUIDE.md`; current clinch, cage, ground, and damage mechanics are documented in `FIGHT_DAMAGE_AND_CLINCH_AUDIT.md`; shared per-theme tab colors and WCAG ratios are documented in `TAB_ACCESSIBILITY.md`.
+The current development model is documented in [`docs/FIGHTER_DEVELOPMENT_GUIDE.md`](docs/FIGHTER_DEVELOPMENT_GUIDE.md); current clinch, cage, ground, and damage mechanics are documented in [`docs/FIGHT_DAMAGE_AND_CLINCH_AUDIT.md`](docs/FIGHT_DAMAGE_AND_CLINCH_AUDIT.md); shared per-theme tab colors and WCAG ratios are documented in [`TAB_ACCESSIBILITY.md`](TAB_ACCESSIBILITY.md).
 
 ## Build A Portable Windows Version
 
@@ -56,12 +67,13 @@ Run:
 Build Portable.bat
 ```
 
-The script runs smoke tests first, installs PyInstaller if needed, then creates:
+The script runs the shipping tests first, installs PyInstaller if needed, then creates:
 
 ```text
 dist\MMA Warriors\MMA Warriors.exe
-dist\MMA Warriors\MMA Warriors Database Editor.exe
 ```
+
+Run `Build Database Editor.bat` separately to validate the shipped universe and build `dist\MMA Warriors\MMA Warriors Database Editor.exe`.
 
 Close the packaged game before rebuilding. The build script preserves packaged `Saves`, `Databases`, and `Logs` in a staging backup and restores them after PyInstaller replaces the folder.
 
@@ -73,7 +85,7 @@ Close the packaged game before rebuilding. The build script preserves packaged `
 - Start a Spectator Mode save to hand the selected player promotion to the AI, fast-forward the living world by week, month, year, or a chosen date, and watch any promotion's latest card in the live fight-night viewer before taking control of a company.
 - Book main cards, prelims, early prelims, title fights, TBA fights, and career-affecting 4/8-fighter one-night MMA tournaments. Tournament entrants are seeded by rank, use the normal camp and weigh-in system, accumulate fatigue between rounds, can crown a champion in the final, and remain reserved from other bookings.
 - Schedule shows by month and week, then watch or instantly simulate them.
-- Advance from the persistent top bar; world simulation runs in responsive queued steps with live phase/progress feedback, guarded controls, and efficient batched spectator fast-forward.
+- Advance from the persistent responsive top bar; long promotion names use the flexible center field while popularity, stability, cash, date, and advance controls remain readable. World simulation runs in queued steps with live phase/progress feedback, guarded controls, and efficient batched spectator fast-forward.
 - Fight-night viewer with play-by-play, a tale-of-the-tape scoreboard, live round-by-round scores, red/blue gas and condition bars, card progress and bout states, colour-coded knockdowns and finishes, auto-play, round timing, scorecards, skip controls, post-event bonuses, and live/completed tournament bracket viewing.
 - End-of-year awards (Fighter, Fight, Knockout, Submission, Prospect, Veteran, and Promotion of the Year) crowned automatically each January, with a browsable awards history.
 - A living world where fighters age a year each season, prospects break out, veterans decline, title contenders emerge on win streaks, and busy regions grow.
@@ -87,9 +99,9 @@ Close the packaged game before rebuilding. The build script preserves packaged `
 - Shared weight-management model across live cards, AI cards, and the Simulation Lab: walking weight, natural size, cutting skill, camp length, camp quality, scale weight, missed weight, and cut penalties all affect the bout. Player fighters can only change division when their body can credibly make the move.
 - Simulation Lab with gender and weight-class filters, side-by-side fighter scouting cards, full profile access, one-off fight watching, engine audits, and sandbox 4/8/16-fighter tournaments that never alter careers or saves.
 - Fighter profiles with portraits, nationality, records, rankings, detailed skill sheets, camp info, morale, annual overall peaks, and fight history.
-- Curated real-fighter profiles with deterministic ratings, real fighting styles, career-appropriate traits, and one-time migration for older saves; see `REAL_FIGHTER_RATING_AUDIT.md`.
+- Curated real-fighter profiles with deterministic ratings, real fighting styles, career-appropriate traits, and one-time migration for older saves; see [`docs/REAL_FIGHTER_RATING_AUDIT.md`](docs/REAL_FIGHTER_RATING_AUDIT.md).
 - Company and world rankings by gender, division, company, and worldwide scope.
-- Contracts, bidding wars, exclusive/non-exclusive deals, market churn, and AI signings.
+- Contracts, bidding wars, exclusive/non-exclusive deals, market churn, and AI signings. Player negotiations cap terms at 60 months, and long-term security only adds meaningful value when compensation is competitive.
 - Rival AI promotions run shows, manage budgets, sign fighters, and produce event histories.
 - World regions with cities, local popularity, economy, drug-testing accuracy, venues, and promotional benefits.
 - Gym system with quality, facilities, reputation, morale, specialties, capacity, scouting, camp development, and a gym viewer.
@@ -99,10 +111,11 @@ Close the packaged game before rebuilding. The build script preserves packaged `
 
 ## Shipping Checklist
 
-1. Run `Run Smoke Tests.bat` and confirm both the smoke and stability playtests pass.
+1. Run `Run Smoke Tests.bat` and confirm the smoke, stability, and media-system playtests all pass.
 2. Start the game from `Launch MMA Warriors.bat`.
 3. Confirm the Game Menu company picker shows every listed promotion once, including Oktagon MMA, BRAVE Combat Federation, and ACA.
 4. Schedule a small event for the current week and simulate it.
 5. Save, close, relaunch, and load the save.
 6. Run `Build Portable.bat` for the distributable exe.
-7. On the target laptop, extract/copy the complete `dist\MMA Warriors` folder to a local writable location, then launch `MMA Warriors.exe` once before moving across any existing saves.
+7. Run `Build Database Editor.bat` so the validated editor executable is copied into the distributable folder.
+8. On the target laptop, extract/copy the complete `dist\MMA Warriors` folder to a local writable location, then launch `MMA Warriors.exe` once before moving across any existing saves.

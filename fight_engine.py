@@ -110,6 +110,7 @@ class FightEngineMixin:
         lines.extend(self.commentary_opening_context(a, b, fight, state))
 
         recent_commentary = []
+        round_commentary = []
 
         def add_fight_line(line):
             clean = line.strip()
@@ -123,9 +124,19 @@ class FightEngineMixin:
                 memory_key = memory_key.replace(fighter_name, "{fighter}")
             if memory_key in recent_commentary:
                 return
-            lines.append(line)
+            round_commentary.append(line)
             recent_commentary.append(memory_key)
             del recent_commentary[:-18]
+
+        def flush_round_commentary():
+            """Bound action calls without deleting round or result structure."""
+            if len(round_commentary) <= FIGHT_COMMENTARY_ROUND_LINE_LIMIT:
+                lines.extend(round_commentary)
+            else:
+                lines.extend(round_commentary[:FIGHT_COMMENTARY_ROUND_HEAD_LINES])
+                lines.append("  ...some middle exchanges are summarized; the live call resumes late in the round.")
+                lines.extend(round_commentary[-FIGHT_COMMENTARY_ROUND_TAIL_LINES:])
+            round_commentary.clear()
 
         for round_no in range(1, max_rounds + 1):
             # Commentary beats are not evenly spaced in a real round.  Use a
@@ -189,11 +200,12 @@ class FightEngineMixin:
                 if stoppage:
                     winner, loser, method, detail = stoppage
                     add_fight_line(f"  [{clock}] {detail}")
+                    flush_round_commentary()
                     lines.extend(self.commentary_closing_context(a, b, winner, method, state))
                     self.attach_fight_stats(a, b, state, round_no, lines)
                     return finish_result((winner, loser, method, round_no, lines))
-                if len(lines) > 95:
-                    lines = lines[:92] + ["  ...later exchanges are summarized by the judges and fight report."]
+
+            flush_round_commentary()
 
             judge_rounds = []
             for judge in state["judge_scores"]:

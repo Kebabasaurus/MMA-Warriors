@@ -18,11 +18,13 @@ class ViewMixin:
         self.sync_gym_membership()
         if getattr(self, "spectator_mode", False):
             self.stat_cash.config(text="World Simulation")
-            self.stat_pop.config(text=f"{len(self.promotions)} active promotions")
-            self.stat_stability.config(text=f"{len(self.free_agents)} free agents")
+            self.stat_company.config(text="Observer Mode")
+            self.stat_pop.config(text=f"Promotions: {len(self.promotions)}")
+            self.stat_stability.config(text=f"Free agents: {len(self.free_agents)}")
         else:
             self.stat_cash.config(text=f"Cash: ${self.cash:,.0f}")
-            self.stat_pop.config(text=f"{self.player_company_name} popularity: {self.company_pop}")
+            self.stat_company.config(text=f"Promotion: {self.player_company_name}")
+            self.stat_pop.config(text=f"Popularity: {self.company_pop}")
             self.stat_stability.config(text=f"Stability: {self.company_stability}")
         self.stat_month.config(text=self.format_game_date())
 
