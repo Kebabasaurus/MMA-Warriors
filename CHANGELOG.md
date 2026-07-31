@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.0.5 - 2026-07-31
+
+### Fight Night Commentary
+
+- Fixed long five-round fights occasionally losing late-round introductions, transitions, summaries, or action commentary when the fight log exceeded its global line limit.
+- Replaced global fight-log truncation with per-round commentary compaction that preserves the opening and closing exchanges while always retaining round boundaries, finishes, scorecards, recaps, and fight metrics.
+- Applied the fix to both championship fights and non-title five-round main events.
+- Added regression coverage for full-distance title and non-title main events, commentary bounds, and a final-tick Round 5 stoppage.
+
+### Interface Polish
+
+- Reworked the top status bar so long promotion names use the flexible space available in maximized windows, while popularity, stability, cash, date, and advance controls remain separate and fully readable.
+
 ## 3.0.4 - 2026-07-30
 
 ### Championship Integrity

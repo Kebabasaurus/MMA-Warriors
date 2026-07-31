@@ -363,16 +363,22 @@ class UIMixin:
         self.statusbar.pack(fill="x", padx=8, pady=(0, 4))
         self.stat_month = ttk.Label(self.statusbar, width=16, anchor="center", style="Stat.TLabel")
         self.stat_cash = ttk.Label(self.statusbar, width=18, anchor="center", style="Stat.TLabel")
-        self.stat_pop = ttk.Label(self.statusbar, width=20, anchor="center", style="Stat.TLabel")
+        self.stat_company = ttk.Label(self.statusbar, anchor="w", style="Stat.TLabel")
+        self.stat_pop = ttk.Label(self.statusbar, width=15, anchor="center", style="Stat.TLabel")
         self.stat_stability = ttk.Label(self.statusbar, width=13, anchor="center", style="Stat.TLabel")
-        for label in (self.stat_month, self.stat_cash, self.stat_pop, self.stat_stability):
-            label.pack(side="left", padx=2, ipady=4)
+        status_labels = (self.stat_month, self.stat_cash, self.stat_company, self.stat_pop, self.stat_stability)
+        for column, label in enumerate(status_labels):
+            label.grid(row=0, column=column, sticky="ew", padx=2, ipady=4)
+        # The promotion name is the only flexible status field. Maximized
+        # windows give it the spare width, while the business values remain
+        # stable and readable when a long company name has to compress.
+        self.statusbar.columnconfigure(2, weight=1, minsize=170)
 
         # Advancing is always visible here, even when the left navigation needs
         # scrolling on a laptop-sized display. Spectator fast-forward remains in
         # the Game Menu; this normal one-week button is hidden in observer saves.
         self.advance_activity = ttk.Frame(self.statusbar, style="Chrome.TFrame")
-        self.advance_activity.pack(side="right", padx=(6, 2))
+        self.advance_activity.grid(row=0, column=5, sticky="e", padx=(6, 2))
         self.advance_button = ttk.Button(
             self.advance_activity,
             text="Advance Week",
