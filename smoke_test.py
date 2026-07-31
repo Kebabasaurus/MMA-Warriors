@@ -419,7 +419,7 @@ def main():
             app.ensure_screen_built(screen_name)
         assert_true(set(app.screen_builders) == app.built_screens, "One or more lazy management screens failed to build")
         app.ensure_rule_defaults()
-        for rule_key in ("ui_owner_goals_collapsed", "ui_show_details_collapsed"):
+        for rule_key in ("ui_owner_goals_collapsed", "ui_show_details_collapsed", "ui_matchup_insight_collapsed"):
             assert_true(rule_key in app.rules, f"Legacy saves do not receive the {rule_key} UI default")
         assert_true(not hasattr(app, "inbox_discovery_hint") and not hasattr(app, "matchmaking_discovery_hint"),
                     "Removed full-width NEW HERE guidance was rebuilt on Inbox or Matchmaking")
@@ -427,6 +427,14 @@ def main():
                     "Inbox tables request enough height to push their action footer off-screen")
         assert_true(app.inbox_actions.winfo_manager() == "grid" and app.card_actions.winfo_manager() == "pack",
                     "Inbox or fight-card action footer is not part of the visible panel layout")
+        booking_action_buttons = [child for child in app.booking_actions.winfo_children() if isinstance(child, ttk.Button)]
+        app.configure_booking_action_layout(900)
+        assert_true(len(booking_action_buttons) == 5 and {int(button.grid_info()["row"]) for button in booking_action_buttons} == {0},
+                    "Wide Matchmaking does not reclaim table height with one booking-action row")
+        app.configure_booking_action_layout(520)
+        assert_true({int(button.grid_info()["row"]) for button in booking_action_buttons} == {0, 1},
+                    "Narrow Matchmaking does not restore the safe two-row booking-action grid")
+        app.configure_booking_action_layout(900)
         inbox_action_buttons = [child for child in app.inbox_actions.winfo_children() if isinstance(child, ttk.Button)]
         assert_true(len(inbox_action_buttons) == 8 and {int(button.grid_info()["row"]) for button in inbox_action_buttons} == {0, 1},
                     "Inbox does not expose all eight actions in two reserved rows")
@@ -494,11 +502,71 @@ def main():
         assert_true(not app.rules["ui_owner_goals_collapsed"] and app.owner_goals_panel._disclosure_inner.winfo_manager(),
                     "Owner Goals could not be expanded from its persistent header")
         show_details_panel = app.show_details_panel
+        show_groups = (
+            app.show_details_event_fields,
+            app.show_details_location_fields,
+            app.show_details_date_fields,
+            app.show_details_primary_actions,
+            app.show_details_secondary_actions,
+        )
+        app.configure_show_details_layout(1700)
+        assert_true(app._show_details_layout_mode == "wide" and [int(group.grid_info()["row"]) for group in show_groups] == [0, 0, 1, 1, 0],
+                    "Wide Show Details does not use its compact two-row layout")
+        assert_true(int(app.schedule_status.grid_info()["row"]) == int(app.event_broadcaster_status.grid_info()["row"]) == 0,
+                    "Wide Show Details does not share one compact status row")
+        app.configure_show_details_layout(1200)
+        assert_true(app._show_details_layout_mode == "medium" and int(app.show_details_secondary_actions.grid_info()["row"]) == 2,
+                    "Medium Show Details does not move optional show tools to a safe third row")
+        app.configure_show_details_layout(700)
+        assert_true(app._show_details_layout_mode == "narrow" and [int(group.grid_info()["row"]) for group in show_groups] == [0, 1, 2, 3, 4],
+                    "Narrow Show Details does not stack every semantic control group")
+        assert_true(int(app.schedule_status.grid_info()["row"]) == 0 and int(app.event_broadcaster_status.grid_info()["row"]) == 1,
+                    "Narrow Show Details does not stack its full schedule and broadcaster status")
+        pending_show_widgets = list(app.show_details_controls.winfo_children())
+        show_widgets = []
+        while pending_show_widgets:
+            widget = pending_show_widgets.pop()
+            show_widgets.append(widget)
+            pending_show_widgets.extend(widget.winfo_children())
+        show_text = {str(widget.cget("text")) for widget in show_widgets if "text" in widget.keys()}
+        required_show_text = {
+            "Event", "Venue", "Region", "City", "Provider", "Month", "Year", "Week", "Day",
+            "Skip Event", "Watch Event", "Earliest Valid Date", "Schedule Show",
+            "Super Events", "★ Superfight Night", "Fanbase & Atmosphere",
+        }
+        assert_true(required_show_text.issubset(show_text),
+                    "Compacting Show Details removed a field label or action")
+        show_bindings = (
+            (app.event_name_entry, app.event_name),
+            (app.event_venue_box, app.venue),
+            (app.event_region_box, app.event_region),
+            (app.city_box, app.event_city),
+            (app.event_broadcaster_box, app.event_broadcaster),
+            (app.event_calendar_month_box, app.event_calendar_month),
+            (app.event_year_box, app.event_year),
+            (app.event_week_box, app.event_week),
+            (app.event_day_box, app.event_day_choice),
+        )
+        assert_true(all(str(widget.cget("textvariable")) == str(variable) for widget, variable in show_bindings),
+                    "A compact Show Details field is disconnected from its canonical booking variable")
+        assert_true(all(widget.winfo_manager() for widget in (app.schedule_status, app.event_broadcaster_status, app.event_atmosphere_status)),
+                    "A Show Details status or atmosphere forecast disappeared from the compact layout")
         show_details_panel._disclosure_toggle.invoke()
         assert_true(app.rules["ui_show_details_collapsed"] and "Expand" in show_details_panel._disclosure_toggle.cget("text"),
                     "Show Details does not retain a visible expansion affordance when collapsed")
         show_details_panel._disclosure_toggle.invoke()
-        assert_true(not app.rules["ui_show_details_collapsed"], "Show Details did not restore its expanded state")
+        assert_true(not app.rules["ui_show_details_collapsed"] and app._show_details_layout_mode == "narrow",
+                    "Show Details did not restore its expanded state and responsive layout")
+        app.configure_show_details_layout(1700)
+        matchup_insight_panel = app.matchup_insight_panel
+        assert_true(app.rules["ui_matchup_insight_collapsed"] and "Expand" in matchup_insight_panel._disclosure_toggle.cget("text"),
+                    "Matchup Insight does not default to a compact, explicitly expandable state")
+        matchup_insight_panel._disclosure_toggle.invoke()
+        assert_true(not app.rules["ui_matchup_insight_collapsed"] and matchup_insight_panel._disclosure_inner.winfo_manager(),
+                    "Matchup Insight could not expose the preserved history, context, and row-colour guide")
+        matchup_insight_panel._disclosure_toggle.invoke()
+        assert_true(app.rules["ui_matchup_insight_collapsed"] and not matchup_insight_panel._disclosure_inner.winfo_manager(),
+                    "Matchup Insight did not return to its compact state")
         original_inbox_filter = app.inbox_filter.get()
         original_hidden_types = set(app.inbox_hidden_types)
         inbox_filter_probe = {
@@ -676,11 +744,53 @@ def main():
         matchmaking_columns = set(app.available_tree["columns"])
         assert_true({"history", "last", "form", "activity", "fit", "elo", "record"}.issubset(matchmaking_columns),
                     "Matchmaking is missing career context or recommendation columns")
+        expected_essential_columns = app.matchmaking_table_view_columns("Essentials")
+        assert_true(tuple(app.available_tree.cget("displaycolumns")) == expected_essential_columns,
+                    "Matchmaking does not open with its focused essential-column view")
+        preset_union = set().union(*(app.matchmaking_table_view_columns(name) for name in ("Essentials", "Readiness", "Form & Fitness", "All 20")))
+        assert_true(preset_union == matchmaking_columns,
+                    "One or more fighter metrics disappeared from every Matchmaking table view")
+        table_probe_rows = app.available_tree.get_children()[:2]
+        app.available_tree.selection_set(table_probe_rows)
+        app.available_table_view.set("Readiness")
+        app.apply_matchmaking_table_view()
+        assert_true(tuple(app.available_tree.selection()) == tuple(table_probe_rows),
+                    "Changing the Matchmaking table view cleared the selected fighters")
+        app.available_table_view.set("All 20")
+        app.apply_matchmaking_table_view()
+        assert_true(tuple(app.available_tree.cget("displaycolumns")) == tuple(app.available_tree.cget("columns")),
+                    "The All 20 Matchmaking view does not restore the complete fighter table")
+        app.available_table_view.set("Essentials")
+        app.apply_matchmaking_table_view()
+        tournament_probe_rows = app.available_tree.get_children()[:4]
+        app.available_tree.selection_set(tournament_probe_rows)
+        app.refresh_matchmaking_history_indicators()
+        assert_true(app.matchup_insight_summary_var.get().startswith("4 selected") and "TOURNAMENT GROUP" in app.matchmaking_history_var.get(),
+                    "A multi-fighter tournament selection is mislabeled as a two-fighter comparison")
+        app.available_tree.selection_remove(*app.available_tree.selection())
+        app.refresh_matchmaking_history_indicators()
+        app.set_matchmaking_notice()
+        assert_true(not app.matchmaking_notice.winfo_manager() and not app.matchmaking_title_warning.winfo_manager(),
+                    "Empty Matchmaking alerts still reserve table height")
+        app.set_matchmaking_notice("Smoke-test booking guidance")
+        assert_true(app.matchmaking_notice.winfo_manager() == "pack",
+                    "An actionable Matchmaking notice is not restored above Matchup Insight")
+        app.set_matchmaking_notice()
         history_pair = next(
             (a, b) for index, a in enumerate(app.roster) for b in app.roster[index + 1:]
             if a.gender == b.gender and a.weight == b.weight
         )
         history_a, history_b = history_pair
+        compare_rows = [row_id for row_id, fighter in app.available_tree_fighters.items() if fighter in (history_a, history_b)]
+        assert_true(len(compare_rows) == 2, "Matchmaking could not expose a valid pair for comparison")
+        app.available_tree.selection_set(compare_rows)
+        compare_windows_before = set(root.winfo_children())
+        app.compare_selected_available_fighters()
+        root.update_idletasks()
+        compare_windows = [child for child in root.winfo_children() if child not in compare_windows_before and isinstance(child, tk.Toplevel)]
+        assert_true(len(compare_windows) == 1 and compare_windows[0].title().startswith("Compare Fighters - "),
+                    "Compare Selected did not open the preserved side-by-side fighter popup")
+        compare_windows[0].destroy()
         original_history = list(history_a.fight_history)
         history_a.fight_history.insert(0, f"Month 3 Week 2: {history_a.name} def. {history_b.name} by Decision")
         original_bout_history = list(history_a.bout_rating_history or [])
@@ -714,7 +824,7 @@ def main():
         app.configure_booking_panel_layout(1400)
         assert_true(app.booking_horizontal_split.cget("orient") == "horizontal" and str(app.booking_horizontal_split.panes()[0]) == str(app.booking_available_panel),
                     "Wide Matchmaking did not restore the dense side-by-side layout")
-        assert_true("20 COLUMNS AVAILABLE" in app.available_columns_hint.cget("text"),
+        assert_true("20 METRICS AVAILABLE" in app.available_columns_hint.cget("text"),
                     "Available Fighters does not signal that more table metrics exist")
         original_booked = list(app.booked)
         history_b_available_week = history_b.available_week
@@ -1990,10 +2100,12 @@ def main():
         app.rules["live_follow_commentary"] = False
         app.rules["ui_owner_goals_collapsed"] = True
         app.rules["ui_show_details_collapsed"] = True
+        app.rules["ui_matchup_insight_collapsed"] = True
         serialized_preferences = app.serialize_world()["rules"]
         assert_true(serialized_preferences["live_auto_play_card"] is True and serialized_preferences["live_follow_commentary"] is False,
                     "Fight-night viewer preferences are not persisted with the save")
-        assert_true(serialized_preferences["ui_owner_goals_collapsed"] is True and serialized_preferences["ui_show_details_collapsed"] is True,
+        assert_true(serialized_preferences["ui_owner_goals_collapsed"] is True and serialized_preferences["ui_show_details_collapsed"] is True
+                    and serialized_preferences["ui_matchup_insight_collapsed"] is True,
                     "Inbox or Matchmaking disclosure preferences did not persist with the save")
 
         rival_fighter = next(fighter for promo in app.promotions for fighter in promo.roster if not fighter.retired)

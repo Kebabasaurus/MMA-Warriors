@@ -871,6 +871,7 @@ class UIMixin:
         disclosure_specs = (
             ("owner_goals_panel", "ui_owner_goals_collapsed"),
             ("show_details_panel", "ui_show_details_collapsed"),
+            ("matchup_insight_panel", "ui_matchup_insight_collapsed"),
         )
         for panel_name, rule_key in disclosure_specs:
             panel = getattr(self, panel_name, None)
@@ -988,6 +989,145 @@ class UIMixin:
             if hasattr(self, "card_tree"):
                 self.card_tree.configure(height=8)
         self._booking_layout_mode = mode
+
+    def configure_show_details_layout(self, width):
+        """Compact Show Details into two rows when space permits, stacking safely when it does not."""
+        controls = getattr(self, "show_details_controls", None)
+        event_fields = getattr(self, "show_details_event_fields", None)
+        location_fields = getattr(self, "show_details_location_fields", None)
+        date_fields = getattr(self, "show_details_date_fields", None)
+        primary_actions = getattr(self, "show_details_primary_actions", None)
+        secondary_actions = getattr(self, "show_details_secondary_actions", None)
+        status_grid = getattr(self, "show_details_status_grid", None)
+        schedule_status = getattr(self, "schedule_status", None)
+        broadcaster_status = getattr(self, "event_broadcaster_status", None)
+        required = (controls, event_fields, location_fields, date_fields, primary_actions, secondary_actions, status_grid, schedule_status, broadcaster_status)
+        if not all(required):
+            return
+        width = int(width)
+        mode = "wide" if width >= 1500 else ("medium" if width >= 1150 else "narrow")
+        if getattr(self, "_show_details_layout_mode", None) == mode:
+            return
+        for group in (event_fields, location_fields, date_fields, primary_actions, secondary_actions):
+            group.grid_forget()
+        schedule_status.grid_forget()
+        broadcaster_status.grid_forget()
+        for column in range(3):
+            controls.columnconfigure(column, weight=0)
+            status_grid.columnconfigure(column, weight=0)
+        if mode == "wide":
+            event_fields.grid(row=0, column=0, sticky="w", padx=(0, 8), pady=1)
+            location_fields.grid(row=0, column=1, sticky="w", padx=(0, 8), pady=1)
+            secondary_actions.grid(row=0, column=2, sticky="e", pady=1)
+            date_fields.grid(row=1, column=0, sticky="w", padx=(0, 8), pady=1)
+            primary_actions.grid(row=1, column=1, columnspan=2, sticky="e", pady=1)
+            controls.columnconfigure(2, weight=1)
+        elif mode == "medium":
+            event_fields.grid(row=0, column=0, sticky="w", padx=(0, 8), pady=1)
+            location_fields.grid(row=0, column=1, columnspan=2, sticky="w", pady=1)
+            date_fields.grid(row=1, column=0, sticky="w", padx=(0, 8), pady=1)
+            primary_actions.grid(row=1, column=1, columnspan=2, sticky="e", pady=1)
+            secondary_actions.grid(row=2, column=0, columnspan=3, sticky="e", pady=1)
+            controls.columnconfigure(2, weight=1)
+        else:
+            event_fields.grid(row=0, column=0, sticky="w", pady=1)
+            location_fields.grid(row=1, column=0, sticky="w", pady=1)
+            date_fields.grid(row=2, column=0, sticky="w", pady=1)
+            primary_actions.grid(row=3, column=0, sticky="w", pady=1)
+            secondary_actions.grid(row=4, column=0, sticky="w", pady=1)
+            controls.columnconfigure(0, weight=1)
+        if mode == "narrow":
+            schedule_status.grid(row=0, column=0, sticky="ew", pady=(2, 0))
+            broadcaster_status.grid(row=1, column=0, sticky="ew", pady=(1, 0))
+            status_grid.columnconfigure(0, weight=1)
+        else:
+            schedule_status.grid(row=0, column=0, sticky="ew", padx=(0, 6), pady=(2, 0))
+            broadcaster_status.grid(row=0, column=1, sticky="ew", pady=(2, 0))
+            status_grid.columnconfigure(0, weight=1)
+            status_grid.columnconfigure(1, weight=3)
+        self._show_details_layout_mode = mode
+
+    def configure_booking_action_layout(self, width):
+        """Use one action row when the fighter pane is wide and a 3+2 grid when it is not."""
+        frame = getattr(self, "booking_actions", None)
+        buttons = getattr(self, "booking_action_buttons", ())
+        if frame is None or len(buttons) != 5:
+            return
+        mode = "wide" if int(width) >= 700 else "narrow"
+        if getattr(self, "_booking_action_layout_mode", None) == mode:
+            return
+        for button in buttons:
+            button.grid_forget()
+        for column in range(5):
+            frame.columnconfigure(column, weight=0)
+        if mode == "wide":
+            for column, button in enumerate(buttons):
+                button.grid(row=0, column=column, sticky="ew", padx=3, pady=2)
+                frame.columnconfigure(column, weight=1)
+        else:
+            for column, button in enumerate(buttons[:3]):
+                button.grid(row=0, column=column, sticky="ew", padx=3, pady=2)
+                frame.columnconfigure(column, weight=1)
+            buttons[3].grid(row=1, column=0, sticky="ew", padx=3, pady=2)
+            buttons[4].grid(row=1, column=1, columnspan=2, sticky="ew", padx=3, pady=2)
+        self._booking_action_layout_mode = mode
+
+    def matchmaking_table_view_columns(self, view_name):
+        """Return a focused display-column preset without dropping table data."""
+        presets = {
+            "Essentials": (
+                "name", "weight", "rank", "record", "overall", "elo", "pop",
+                "build", "fit", "history", "status",
+            ),
+            "Readiness": (
+                "name", "gender", "weight", "last", "activity", "fatigue",
+                "recovery", "fit", "status",
+            ),
+            "Form & Fitness": (
+                "name", "weight", "record", "age", "overall", "elo", "pop",
+                "build", "last", "form", "trend", "activity", "fatigue", "fit",
+            ),
+            "All 20": (
+                "name", "gender", "weight", "rank", "titlepath", "record",
+                "age", "overall", "elo", "pop", "build", "last", "form",
+                "trend", "activity", "fatigue", "recovery", "fit", "history",
+                "status",
+            ),
+        }
+        return presets.get(str(view_name), presets["Essentials"])
+
+    def apply_matchmaking_table_view(self, _event=None):
+        """Switch the visible fighter metrics while preserving rows and selection."""
+        tree = getattr(self, "available_tree", None)
+        view_var = getattr(self, "available_table_view", None)
+        if tree is None or view_var is None:
+            return
+        tree.configure(displaycolumns=self.matchmaking_table_view_columns(view_var.get()))
+        tree.xview_moveto(0)
+
+    def sync_matchmaking_alert_visibility(self, *_args):
+        """Keep actionable booking alerts visible without reserving empty bands."""
+        for widget_name, variable_name in (
+            ("matchmaking_notice", "matchmaking_notice_var"),
+            ("matchmaking_title_warning", "matchmaking_title_warning_var"),
+        ):
+            widget = getattr(self, widget_name, None)
+            variable = getattr(self, variable_name, None)
+            if widget is None or variable is None:
+                continue
+            if str(variable.get()).strip():
+                if not widget.winfo_manager():
+                    before = getattr(self, "matchup_insight_panel", None)
+                    if widget_name == "matchmaking_notice":
+                        warning = getattr(self, "matchmaking_title_warning", None)
+                        if warning is not None and warning.winfo_manager():
+                            before = warning
+                    pack_options = {"fill": "x", "pady": (0, 4), "padx": 3}
+                    if before is not None and before.winfo_manager():
+                        pack_options["before"] = before
+                    widget.pack(**pack_options)
+            else:
+                widget.pack_forget()
 
     def _show_tooltip(self, holder, text, x, y):
         """Render a small themed hover tooltip at screen coordinates (x, y)."""
@@ -2416,16 +2556,21 @@ class UIMixin:
         self.show_details_panel = header_panel
         header_panel.pack(fill="x", pady=(0, 6))
         self.schedule_status_var = tk.StringVar(value="Card has not been scheduled.")
-        line1 = ttk.Frame(header, style="Inset.TFrame")
-        line1.pack(fill="x", pady=2)
-        line2 = ttk.Frame(header, style="Inset.TFrame")
-        line2.pack(fill="x", pady=2)
-        line3 = ttk.Frame(header, style="Inset.TFrame")
-        line3.pack(fill="x", pady=2)
-        schedule_actions = ttk.Frame(header, style="Inset.TFrame")
-        schedule_actions.pack(fill="x", pady=(2, 3))
+        controls = ttk.Frame(header, style="Inset.TFrame")
+        controls.pack(fill="x")
+        self.show_details_controls = controls
+        self.show_details_event_fields = ttk.Frame(controls, style="Inset.TFrame")
+        self.show_details_location_fields = ttk.Frame(controls, style="Inset.TFrame")
+        self.show_details_date_fields = ttk.Frame(controls, style="Inset.TFrame")
+        self.show_details_primary_actions = ttk.Frame(controls, style="Inset.TFrame")
+        self.show_details_secondary_actions = ttk.Frame(controls, style="Inset.TFrame")
+        line1 = self.show_details_event_fields
+        line2 = self.show_details_location_fields
+        line3 = self.show_details_date_fields
+        schedule_actions = self.show_details_primary_actions
         ttk.Label(line1, text="Event", style="Inset.TLabel", width=7).pack(side="left")
-        ttk.Entry(line1, textvariable=self.event_name, width=34).pack(side="left", padx=(4, 12))
+        self.event_name_entry = ttk.Entry(line1, textvariable=self.event_name, width=34)
+        self.event_name_entry.pack(side="left", padx=(4, 12))
         ttk.Label(line1, text="Venue", style="Inset.TLabel", width=7).pack(side="left")
         venue_box = ttk.Combobox(line1, textvariable=self.venue, values=self.available_event_venues(), state="readonly", width=24)
         venue_box.pack(side="left", padx=(4, 12))
@@ -2440,6 +2585,7 @@ class UIMixin:
         ttk.Label(line2, text="Region", style="Inset.TLabel", width=7).pack(side="left")
         region_box = ttk.Combobox(line2, textvariable=self.event_region, values=REGIONS, state="readonly", width=11)
         region_box.pack(side="left", padx=(4, 12))
+        self.event_region_box = region_box
         region_box.bind("<<ComboboxSelected>>", lambda _e: (self.update_city_options(), self.refresh_event_atmosphere_forecast()))
         ttk.Label(line2, text="City", style="Inset.TLabel", width=7).pack(side="left")
         self.city_box = ttk.Combobox(line2, textvariable=self.event_city, values=REGION_CITIES["USA"], state="readonly", width=13)
@@ -2447,19 +2593,23 @@ class UIMixin:
         ttk.Label(line3, text="Month", style="Inset.TLabel", width=7).pack(side="left")
         event_month_box = ttk.Combobox(line3, textvariable=self.event_calendar_month, values=CALENDAR_MONTH_ABBREVIATIONS, state="readonly", width=6)
         event_month_box.pack(side="left", padx=(4, 5))
+        self.event_calendar_month_box = event_month_box
         event_month_box.bind("<<ComboboxSelected>>", lambda _e: (self.sync_booking_internal_date(), self.refresh_available()))
         ttk.Label(line3, text="Year", style="Inset.TLabel", width=5).pack(side="left")
         event_year_box = ttk.Spinbox(line3, from_=GAME_START_YEAR, to=GAME_START_YEAR + 50, textvariable=self.event_year, width=6)
         event_year_box.pack(side="left", padx=(4, 12))
+        self.event_year_box = event_year_box
         event_year_box.bind("<FocusOut>", lambda _e: (self.sync_booking_internal_date(), self.refresh_available()))
         event_year_box.bind("<Return>", lambda _e: (self.sync_booking_internal_date(), self.refresh_available()))
         ttk.Label(line3, text="Week", style="Inset.TLabel", width=5).pack(side="left")
         event_week_box = ttk.Combobox(line3, textvariable=self.event_week, values=(1, 2, 3, 4), state="readonly", width=4)
         event_week_box.pack(side="left", padx=(4, 12))
+        self.event_week_box = event_week_box
         event_week_box.bind("<<ComboboxSelected>>", lambda _e: (self.sync_booking_internal_date(), self.refresh_available()))
         ttk.Label(line3, text="Day", style="Inset.TLabel", width=4).pack(side="left")
         event_day_box = ttk.Combobox(line3, textvariable=self.event_day_choice, values=CALENDAR_DAYS, state="readonly", width=10)
         event_day_box.pack(side="left", padx=(4, 12))
+        self.event_day_box = event_day_box
         event_day_box.bind("<<ComboboxSelected>>", lambda _e: self.refresh_available())
         self.attach_tooltip(event_day_box, "The day of the week the card runs. A later day in the week means a longer camp and more recovery since the last fight; an earlier one means a shorter turnaround.")
         ttk.Label(line2, text="Provider", style="Inset.TLabel", width=7).pack(side="left")
@@ -2467,29 +2617,36 @@ class UIMixin:
         self.event_broadcaster_box.pack(side="left", padx=(4, 0))
         self.event_broadcaster_box.bind("<<ComboboxSelected>>", self.refresh_event_broadcaster_status)
         self.attach_tooltip(self.event_broadcaster_box, "A broadcast provider adds media income and exposure that grows your popularity. 'No Coverage' means sharply reduced reach and revenue.")
+        status_grid = ttk.Frame(header, style="Inset.TFrame")
+        status_grid.pack(fill="x")
+        self.show_details_status_grid = status_grid
         self.schedule_status = tk.Label(
-            header,
+            status_grid,
             textvariable=self.schedule_status_var,
             anchor="w",
             justify="left",
             bg="#252525",
             fg=self.colors["text"],
             font=("Tahoma", 9, "bold"),
-            padx=8,
-            pady=5,
+            padx=6,
+            pady=3,
         )
-        self.schedule_status.pack(fill="x", pady=(4, 2))
         self.schedule_status.bind("<Configure>", lambda event: self.schedule_status.configure(wraplength=max(300, event.width - 20)))
-        self.event_broadcaster_status = ttk.Label(header, text="", style="Inset.TLabel", justify="left")
-        self.event_broadcaster_status.pack(fill="x", pady=(4, 0))
-        atmosphere_row = ttk.Frame(header, style="Inset.TFrame"); atmosphere_row.pack(fill="x", pady=(4, 0))
-        self.event_atmosphere_status = ttk.Label(atmosphere_row, text="", style="Inset.TLabel", justify="left")
-        self.event_atmosphere_status.pack(side="left", fill="x", expand=True, padx=4, pady=3)
-        ttk.Button(atmosphere_row, text="Fanbase & Atmosphere", command=self.open_fanbase_window).pack(side="right", padx=4, pady=3)
-        superfight_btn = ttk.Button(atmosphere_row, text="★ Superfight Night", style="Accent.TButton", command=self.open_superfight_night_window)
-        superfight_btn.pack(side="right", padx=4, pady=3)
+        self.event_broadcaster_status = ttk.Label(status_grid, text="", style="Inset.TLabel", anchor="w", justify="left")
+        self.event_broadcaster_status.bind("<Configure>", lambda event: self.event_broadcaster_status.configure(wraplength=max(260, event.width - 14)))
+        atmosphere_row = ttk.Frame(header, style="Inset.TFrame")
+        atmosphere_row.pack(fill="x")
+        self.event_atmosphere_status = ttk.Label(atmosphere_row, text="", style="Inset.TLabel", anchor="w", justify="left")
+        self.event_atmosphere_status.pack(fill="x", expand=True, padx=4, pady=2)
+        self.event_atmosphere_status.bind("<Configure>", lambda event: self.event_atmosphere_status.configure(wraplength=max(300, event.width - 14)))
+        ttk.Button(self.show_details_secondary_actions, text="Fanbase & Atmosphere", command=self.open_fanbase_window).pack(side="right", padx=3, pady=1)
+        superfight_btn = ttk.Button(self.show_details_secondary_actions, text="★ Superfight Night", style="Accent.TButton", command=self.open_superfight_night_window)
+        superfight_btn.pack(side="right", padx=3, pady=1)
         self.attach_tooltip(superfight_btn, "Promote a Crossover Superfight Night: pay rival promotions to sanction champion-vs-champion superfights (non-title, no belts change) plus prelims from your roster.")
-        ttk.Button(atmosphere_row, text="Super Events", command=self.open_company_milestones_window).pack(side="right", padx=4, pady=3)
+        ttk.Button(self.show_details_secondary_actions, text="Super Events", command=self.open_company_milestones_window).pack(side="right", padx=3, pady=1)
+        controls.bind("<Configure>", lambda event: self.configure_show_details_layout(event.width), add="+")
+        self._show_details_layout_mode = None
+        self.configure_show_details_layout(1600)
 
         booking_resize = self.create_vertical_resizer(self.booking_tab, initial_fraction=0.8, min_top=250, min_bottom=120)
         booking_resize.pack(fill="both", expand=True)
@@ -2542,16 +2699,25 @@ class UIMixin:
         # buttons were effectively on the other side of the horizontal page.
         booking_actions = ttk.Frame(left, style="Inset.TFrame")
         booking_actions.pack(fill="x", pady=(0, 5))
+        self.booking_actions = booking_actions
         booking_options = ttk.Frame(left, style="Inset.TFrame")
         booking_options.pack(fill="x", pady=(0, 5))
         add_matchup_btn = ttk.Button(booking_actions, text="Add Matchup", style="Accent.TButton", command=self.add_matchup)
-        add_matchup_btn.pack(side="left", padx=(2, 4), pady=3)
+        add_matchup_btn.grid(row=0, column=0, sticky="ew", padx=3, pady=2)
         add_tba_btn = ttk.Button(booking_actions, text="Add TBA", command=self.add_tba_matchup)
-        add_tba_btn.pack(side="left", padx=3, pady=3)
+        add_tba_btn.grid(row=0, column=1, sticky="ew", padx=3, pady=2)
         tournament_btn = ttk.Button(booking_actions, text="Tournament", command=self.add_tournament_to_card)
-        tournament_btn.pack(side="left", padx=3, pady=3)
+        tournament_btn.grid(row=0, column=2, sticky="ew", padx=3, pady=2)
         assistant_btn = ttk.Button(booking_actions, text="Assistant Recommend", command=self.assistant_pick_matchup)
-        assistant_btn.pack(side="left", padx=3, pady=3)
+        assistant_btn.grid(row=1, column=0, sticky="ew", padx=3, pady=2)
+        compare_btn = ttk.Button(booking_actions, text="Compare Selected", command=self.compare_selected_available_fighters)
+        compare_btn.grid(row=1, column=1, columnspan=2, sticky="ew", padx=3, pady=2)
+        for column in range(3):
+            booking_actions.columnconfigure(column, weight=1)
+        self.booking_action_buttons = (add_matchup_btn, add_tba_btn, tournament_btn, assistant_btn, compare_btn)
+        booking_actions.bind("<Configure>", lambda event: self.configure_booking_action_layout(event.width), add="+")
+        self._booking_action_layout_mode = None
+        self.configure_booking_action_layout(900)
         title_check = ttk.Checkbutton(booking_options, text="Title", variable=self.title_fight, command=self.toggle_divisional_title_booking)
         title_check.pack(side="left", padx=(2, 3))
         main_event_check = ttk.Checkbutton(booking_options, text="Main event", variable=self.main_event)
@@ -2572,10 +2738,22 @@ class UIMixin:
         self.attach_tooltip(assistant_btn, "Let your matchmaker propose a competitive, fresh pairing from your available roster — a fast route to a sensible bout.")
         self.attach_tooltip(title_check, "Book the bout for the divisional belt. Needs a champion or ranked contenders. A champion booked WITHOUT this defends no title — watch for the red warning.")
         self.attach_tooltip(main_event_check, "Flag this as the headline bout. Your main event drives hype, gate, and the media rating, so put your biggest draw or title fight on top.")
+        self.attach_tooltip(compare_btn, "Open the full side-by-side fighter comparison for the two selected rows without leaving Matchmaking.")
         self.attach_tooltip(self.special_belt_box, "Attach an interim, tournament, or other special title to raise the stakes and hype of a non-divisional-title bout.")
         self.attach_tooltip(tier_box, "Card position tier (Main Card, Prelims, etc.). Lower tiers pay and cost less — stack prospects on the prelims and save stars for the main card.")
 
-        legend = tk.Frame(left, bg=self.colors["panel_dark"])
+        self.matchup_insight_summary_var = tk.StringVar(value="No selection")
+        insight_panel, insight = self.disclosure_section(
+            left,
+            "MATCHUP INSIGHT",
+            self.matchup_insight_summary_var,
+            expanded=not self.rules.get("ui_matchup_insight_collapsed", True),
+            on_toggle=lambda expanded: self.rules.__setitem__("ui_matchup_insight_collapsed", not expanded),
+        )
+        self.matchup_insight_panel = insight_panel
+        insight_panel.pack(fill="x", pady=(0, 4), padx=3)
+
+        legend = tk.Frame(insight, bg=self.colors["panel_dark"])
         legend.pack(fill="x", pady=(0, 4), padx=3)
         tk.Label(legend, text="Row colour:", bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 8)).pack(side="left", padx=(4, 6), pady=2)
         for swatch_color, swatch_text in (
@@ -2588,36 +2766,56 @@ class UIMixin:
 
         self.matchmaking_notice_var = tk.StringVar(value="")
         self.matchmaking_notice = ttk.Label(left, textvariable=self.matchmaking_notice_var, style="Inset.TLabel", anchor="w")
-        self.matchmaking_notice.pack(fill="x", pady=(0, 4), padx=3)
+        self.matchmaking_notice.pack(fill="x", pady=(0, 4), padx=3, before=insight_panel)
 
         self.matchmaking_title_warning_var = tk.StringVar(value="")
         self.matchmaking_title_warning = tk.Label(
             left, textvariable=self.matchmaking_title_warning_var, anchor="w", justify="left",
             bg=self.colors["panel_dark"], fg="#ff766d", font=("Tahoma", 9, "bold"), padx=7, pady=3,
         )
-        self.matchmaking_title_warning.pack(fill="x", pady=(0, 4), padx=3)
+        self.matchmaking_title_warning.pack(fill="x", pady=(0, 4), padx=3, before=insight_panel)
+
+        self.matchmaking_notice_var.trace_add("write", self.sync_matchmaking_alert_visibility)
+        self.matchmaking_title_warning_var.trace_add("write", self.sync_matchmaking_alert_visibility)
+        self.sync_matchmaking_alert_visibility()
 
         self.matchmaking_history_var = tk.StringVar(value="Select one fighter to compare prior meetings with every possible opponent.")
-        self.matchmaking_history = ttk.Label(left, textvariable=self.matchmaking_history_var, style="Inset.TLabel", anchor="w")
+        self.matchmaking_history = ttk.Label(insight, textvariable=self.matchmaking_history_var, style="Inset.TLabel", anchor="w", justify="left")
         self.matchmaking_history.pack(fill="x", pady=(0, 4), padx=3)
+        self.matchmaking_history.bind("<Configure>", lambda event: self.matchmaking_history.configure(wraplength=max(300, event.width - 18)))
 
         self.matchmaking_brief_var = tk.StringVar(value="Select a fighter for a divisional recommendation and detailed booking context.")
         self.matchmaking_brief = tk.Label(
-            left, textvariable=self.matchmaking_brief_var, anchor="w", justify="left",
+            insight, textvariable=self.matchmaking_brief_var, anchor="w", justify="left",
             bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 8), padx=7, pady=5,
         )
         self.matchmaking_brief.pack(fill="x", pady=(0, 4), padx=3)
         self.matchmaking_brief.bind("<Configure>", lambda event: self.matchmaking_brief.configure(wraplength=max(300, event.width - 18)))
 
+        table_tools = ttk.Frame(left, style="Inset.TFrame")
+        table_tools.pack(fill="x", pady=(0, 2), padx=3)
         self.available_columns_hint = ttk.Label(
-            left,
-            text="20 COLUMNS AVAILABLE • Use the table scrollbar for scouting, form, fatigue, medical return, matchup fit, history, and date availability.",
+            table_tools,
+            text="20 METRICS AVAILABLE • Choose a focused view; All 20 uses the table scrollbar.",
             style="Discovery.TLabel",
             anchor="w",
             justify="left",
         )
-        self.available_columns_hint.pack(fill="x", pady=(0, 2), padx=3)
+        self.available_columns_hint.pack(side="left", fill="x", expand=True)
         self.available_columns_hint.bind("<Configure>", lambda event: self.available_columns_hint.configure(wraplength=max(300, event.width - 18)))
+        self.attach_tooltip(self.available_columns_hint, "All scouting, form, fatigue, medical-return, matchup-fit, history, and event-availability metrics remain available through the table views.")
+        ttk.Label(table_tools, text="Table view", style="Inset.TLabel").pack(side="left", padx=(8, 3))
+        self.available_table_view = tk.StringVar(value="Essentials")
+        table_view_box = ttk.Combobox(
+            table_tools,
+            values=("Essentials", "Readiness", "Form & Fitness", "All 20"),
+            textvariable=self.available_table_view,
+            state="readonly",
+            width=15,
+        )
+        table_view_box.pack(side="right")
+        table_view_box.bind("<<ComboboxSelected>>", self.apply_matchmaking_table_view)
+        self.attach_tooltip(table_view_box, "Change which fighter metrics are visible without filtering rows or losing the selected matchup. All 20 restores the complete scouting table.")
 
         self.available_tree = ttk.Treeview(left, columns=("name", "gender", "weight", "rank", "titlepath", "record", "age", "overall", "elo", "pop", "build", "last", "form", "trend", "activity", "fatigue", "recovery", "fit", "history", "status"), show="headings", selectmode="extended", height=8)
         for col, text, width in (("name", "Name", 148), ("gender", "G", 34), ("weight", "Class", 90), ("rank", "Rank", 44), ("titlepath", "Title Path", 104), ("record", "Record", 66), ("age", "Age", 40), ("overall", "OVR", 44), ("elo", "ELO", 54), ("pop", "Pop", 42), ("build", "Build", 48), ("last", "Last Fight", 84), ("form", "Last 5 (→latest)", 82), ("trend", "Form", 56), ("activity", "Active", 50), ("fatigue", "Fatigue", 88), ("recovery", "Medical Return", 104), ("fit", "Match Fit", 66), ("history", "History", 74), ("status", "Event Availability", 132)):
@@ -2658,6 +2856,7 @@ class UIMixin:
         self.available_tree.pack(side="left", fill="both", expand=True, pady=5)
         self.available_tree.bind("<Double-1>", lambda _e: self.open_tree_fighter_profile(self.available_tree, "name"))
         self.available_tree.bind("<<TreeviewSelect>>", self.refresh_matchmaking_history_indicators, add="+")
+        self.apply_matchmaking_table_view()
 
         self.card_summary_var = tk.StringVar(value="0 fights • Select two fighters, then choose Add Matchup.")
         self.card_summary = ttk.Label(right, textvariable=self.card_summary_var, style="Discovery.TLabel", anchor="w", justify="left")

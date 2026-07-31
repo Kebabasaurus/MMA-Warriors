@@ -614,8 +614,22 @@ layouts must still degrade cleanly at smaller supported widths.
   panes and table scrollbars own overflow. Do not let either screen's natural table width widen the
   entire page canvas again. `configure_inbox_panel_layout` stacks Owner Goals below Inbox on narrow
   pages; `configure_booking_panel_layout` moves Current Fight Card above Available Fighters.
+- Matchmaking's Available Fighters tree always retains all 20 underlying columns. Its Essentials,
+  Readiness, Form & Fitness, and All 20 presets change only `displaycolumns`; they must not rebuild
+  rows, clear selection, or make any metric unreachable. The Compare Selected action reuses the
+  shared fighter-comparison window instead of duplicating a second matchmaking tree. Its five
+  booking actions use one row on wide panes and the 3+2 grid below 700 pixels; preserve both modes.
+- `configure_show_details_layout` owns the expanded Show Details geometry. It grids stable Event /
+  Venue, location/provider, date, primary-action, and show-tool frames into wide, medium, or narrow
+  arrangements; never rebuild or reparent their widgets. Keep `schedule_status`,
+  `event_broadcaster_status`, and `event_atmosphere_status` managed and wrapped in every mode, and
+  retain the canonical field attributes because refresh and event code writes through them.
+- Matchup Insight preserves detailed selection history, booking context, and the row-colour guide
+  behind a named persistent disclosure (`rules["ui_matchup_insight_collapsed"]`). Empty booking
+  notice and title-warning labels must not reserve table height, but must reappear immediately when
+  their variables contain actionable text.
 - Collapsible content must use `disclosure_section`: its named Expand / Collapse button and summary
-  remain visible when content is closed. The two disclosure states live in save-compatible `rules`
+  remain visible when content is closed. The three disclosure states live in save-compatible `rules`
   keys. Never replace these with arrow-only headers or blank collapsed space.
 - Do not restore full-width first-visit or `NEW HERE?` banners on dense management screens. Put brief
   instructions in persistent local summaries, table cues, detail placeholders, or meaningful empty

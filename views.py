@@ -2695,13 +2695,29 @@ class ViewMixin:
             else:
                 tree.item(row_id, tags=(() if status == "Ready" else ("not_ready",)))
         if not selected:
+            if hasattr(self, "matchup_insight_summary_var"):
+                self.matchup_insight_summary_var.set("No selection")
             if hasattr(self, "matchmaking_history_var"):
                 self.matchmaking_history_var.set("Select one fighter to compare prior meetings with every possible opponent.")
             if hasattr(self, "matchmaking_brief_var"):
                 self.matchmaking_brief_var.set("Select a fighter for a divisional recommendation and detailed booking context.")
             return
+        if len(selected) > 2:
+            if hasattr(self, "matchup_insight_summary_var"):
+                self.matchup_insight_summary_var.set(f"{len(selected)} selected • Tournament group")
+            if hasattr(self, "matchmaking_history_var"):
+                self.matchmaking_history_var.set(
+                    f"TOURNAMENT GROUP: {len(selected)} fighters selected. Choose exactly two to compare their meeting history and matchup fit."
+                )
+            if hasattr(self, "matchmaking_brief_var"):
+                self.matchmaking_brief_var.set(
+                    "Add Tournament uses every selected fighter. The field must contain exactly 4 or 8 available fighters from one gender and weight division."
+                )
+            return
         if len(selected) == 1:
             anchor = selected[0]
+            if hasattr(self, "matchup_insight_summary_var"):
+                self.matchup_insight_summary_var.set(f"1 selected • {anchor.weight}")
             for row_id, opponent in mapping.items():
                 tree.set(row_id, "history", self.matchup_history_indicator(anchor, opponent))
                 fit = self.matchmaking_fit_score(anchor, opponent)
@@ -2723,6 +2739,8 @@ class ViewMixin:
         meetings, latest_month = self.matchup_history_summary(a, b)
         indicator = self.matchup_history_indicator(a, b)
         fit = self.matchmaking_fit_score(a, b)
+        if hasattr(self, "matchup_insight_summary_var"):
+            self.matchup_insight_summary_var.set(f"2 selected • Fit {fit or '-'}")
         for row_id in selected_ids[:2]:
             tree.set(row_id, "history", indicator)
             tree.set(row_id, "fit", str(fit or "-"))
@@ -8521,6 +8539,7 @@ class ViewMixin:
         self.rules.setdefault("live_auto_play_card", False)
         self.rules.setdefault("ui_owner_goals_collapsed", False)
         self.rules.setdefault("ui_show_details_collapsed", False)
+        self.rules.setdefault("ui_matchup_insight_collapsed", True)
         self.rules.setdefault("fight_night_audio_enabled", True)
         self.rules.setdefault("fight_night_audio_output", "System default")
         self.rules.setdefault("fight_night_audio_volume", 55)
@@ -10141,6 +10160,24 @@ class ViewMixin:
             self.normalize_card_order()
             self.refresh_available()
             self.refresh_card()
+
+    def compare_selected_available_fighters(self):
+        """Open the existing side-by-side profile for two matchmaking rows."""
+        selection = list(self.available_tree.selection()) if hasattr(self, "available_tree") else []
+        if len(selection) != 2:
+            self.set_matchmaking_notice("COMPARE: Select exactly two fighters in Available Fighters.")
+            return
+        mapping = getattr(self, "available_tree_fighters", {})
+        fighters = [mapping.get(row_id) for row_id in selection]
+        if any(fighter is None for fighter in fighters):
+            self.refresh_available()
+            self.set_matchmaking_notice("COMPARE: The selected rows changed; select two fighters again.")
+            return
+        self.set_matchmaking_notice()
+        self.open_compare_fighters_window(
+            (self.player_company_name, fighters[0]),
+            (self.player_company_name, fighters[1]),
+        )
 
     def compare_selected_card_matchup(self):
         selected = self.card_tree.selection() if hasattr(self, "card_tree") else ()
