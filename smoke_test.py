@@ -1,9 +1,12 @@
 import importlib.util
 import json
 import random
+import struct
 import sys
 import tempfile
+import threading
 import tkinter as tk
+import wave
 from dataclasses import asdict
 from pathlib import Path
 from tkinter import ttk
@@ -15,6 +18,7 @@ MAIN = ROOT / "main.py"
 README = ROOT / "README.md"
 CHANGELOG = ROOT / "CHANGELOG.md"
 AGENT_GUIDE = ROOT / "AGENTS.md"
+CROWD_AUDIO_DIR = ROOT / "assets" / "crowd_audio"
 
 
 def load_game_module():
@@ -51,9 +55,135 @@ def assert_release_documentation_policy(game):
                 "README does not document the separate Database Editor build")
 
 
+def assert_crowd_audio_pack():
+    """Bundled crowd cues remain complete and directly usable by runtime playback."""
+    manifest_path = CROWD_AUDIO_DIR / "manifest.json"
+    assert_true(manifest_path.exists(), "Crowd-audio manifest is missing")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    cues = manifest.get("cues", [])
+    sources = {source.get("id") for source in manifest.get("sources", [])}
+    mix_controls = manifest.get("mix_controls", {})
+    assert_true(len(cues) == 36, "Crowd-audio pack does not contain all 36 candidate variants")
+    assert_true(manifest.get("variants_per_family") == 3,
+                "Crowd-audio manifest does not declare three variants per trigger family")
+    assert_true(len(sources) >= 4 and None not in sources,
+                "Crowd-audio manifest does not preserve licensed source provenance")
+    assert_true(float(mix_controls.get("clean_strike_target_rms_db", 0)) <= -20.0,
+                "Clean-strike vocal reaction is mastered too loudly")
+    assert_true(float(mix_controls.get("clean_strike_peak_ceiling_db", 0)) <= -7.0,
+                "Clean-strike vocal transient ceiling is too loud")
+    assert_true(float(mix_controls.get("knockdown_gasp_layer_gain", 1)) <= 0.60,
+                "Knockdown gasp layer is too prominent in the crowd roar")
+    assert_true({cue.get("phase") for cue in cues} == {"before", "during", "after"},
+                "Crowd-audio pack does not cover every fight phase")
+    assert_true(len({cue.get("id") for cue in cues}) == len(cues),
+                "Crowd-audio cue identifiers are not unique")
+    families = {}
+    for cue in cues:
+        families.setdefault(cue.get("family"), set()).add(cue.get("variant"))
+    assert_true(len(families) == 12 and all(variants == {1, 2, 3} for variants in families.values()),
+                "Crowd-audio trigger families do not each contain Variants 1, 2, and 3")
+    for cue in cues:
+        assert_true(set(cue.get("sources", [])).issubset(sources) and cue.get("sources"),
+                    f"Crowd cue has missing source provenance: {cue.get('id')}")
+        wav_path = CROWD_AUDIO_DIR / cue["file"]
+        assert_true(wav_path.exists(), f"Crowd-audio cue is missing: {cue['file']}")
+        with wave.open(str(wav_path), "rb") as wav_file:
+            assert_true(wav_file.getnchannels() == 2, f"Crowd cue is not stereo: {cue['file']}")
+            assert_true(wav_file.getsampwidth() == 2, f"Crowd cue is not 16-bit PCM: {cue['file']}")
+            assert_true(wav_file.getframerate() == 44_100,
+                        f"Crowd cue is not 44.1 kHz: {cue['file']}")
+            actual_duration = wav_file.getnframes() / wav_file.getframerate()
+            assert_true(abs(actual_duration - float(cue["duration"])) <= 0.02,
+                        f"Crowd cue duration differs from its manifest: {cue['file']}")
+
+
+def assert_crowd_audio_runtime(game):
+    """Fight Night resolves every family, rotates variants, and can scale PCM safely."""
+    probe = object.__new__(game.FightNightAudioMixin)
+    manifest_families = {
+        cue["family"]
+        for cue in json.loads((CROWD_AUDIO_DIR / "manifest.json").read_text(encoding="utf-8"))["cues"]
+    }
+    assert_true(set(probe._CROWD_CUE_FAMILIES.values()) == manifest_families,
+                "Fight Night does not map every bundled crowd-audio family")
+    for cue in (
+        "pre_fight", "walkout", "opening", "impact", "knockdown", "submission",
+        "inactivity", "round_end", "finish", "decision_pending",
+        "controversial_decision", "decision",
+    ):
+        entries = probe._crowd_audio_entries_for_cue(cue)
+        assert_true(len(entries) == 3, f"Fight Night cannot resolve all variants for {cue}")
+        assert_true(all(entry["path"].parent == CROWD_AUDIO_DIR.resolve() for entry in entries),
+                    f"Fight Night resolved a crowd cue outside the asset directory: {cue}")
+    first = probe._choose_crowd_audio("impact")
+    second = probe._choose_crowd_audio("impact")
+    assert_true(first and second and first["path"] != second["path"],
+                "Consecutive crowd reactions can repeat the same variant")
+    frames, channels, sample_rate = probe._read_crowd_audio(first["path"])
+    assert_true(frames and channels == 2 and sample_rate == 44_100,
+                "Fight Night cannot decode a mastered stereo crowd cue")
+    scaled = probe._scale_pcm16(struct.pack("<hh", 20_000, -20_000), 0.5)
+    assert_true(struct.unpack("<hh", scaled) == (10_000, -10_000),
+                "Fight Night PCM volume scaling is not symmetric")
+    assert_true(probe.fight_night_decision_reaction(["Judges' vote: Red 2, Blue 1"])
+                == "controversial_decision",
+                "A split judges' vote does not select the decision-boo family")
+    assert_true(probe.fight_night_decision_reaction(["Judges' vote: Red 3, Blue 0"])
+                == "decision",
+                "A unanimous judges' vote does not select respectful applause")
+    probe.fighter_event_connection = game.SeedMixin.fighter_event_connection.__get__(probe)
+
+    def crowd_fighter(name, hometown, birth_region):
+        return SimpleNamespace(
+            name=name, hometown=hometown, birth_region=birth_region, residence="",
+            fighting_base="", training_location="", cultural_connections=[], regional_popularity={},
+        )
+
+    hometown_fighter = crowd_fighter("Toronto Local", "Toronto", "Canada")
+    nearby_fighter = crowd_fighter("Canadian Visitor", "Vancouver", "Canada")
+    neutral_fighter = crowd_fighter("International Visitor", "Tokyo", "Japan")
+    hometown_profile = probe.fight_night_local_crowd_profile(
+        (hometown_fighter, neutral_fighter), "Canada", "Toronto"
+    )
+    nearby_profile = probe.fight_night_local_crowd_profile(
+        (nearby_fighter, neutral_fighter), "Canada", "Toronto"
+    )
+    neutral_profile = probe.fight_night_local_crowd_profile(
+        (neutral_fighter,), "Canada", "Toronto"
+    )
+    assert_true(hometown_profile["level"] == "Hometown" and hometown_profile["gain"] == 1.20,
+                "An exact hometown appearance does not receive the full crowd-audio lift")
+    assert_true(1.0 < nearby_profile["gain"] < hometown_profile["gain"],
+                "A nearby home-market appearance does not receive a smaller crowd-audio lift")
+    assert_true(neutral_profile["gain"] == 1.0 and not neutral_profile["summary"],
+                "A neutral fighter incorrectly receives a local crowd-audio lift")
+    played = []
+    playback_finished = threading.Event()
+    probe.rules = {
+        "fight_night_audio_enabled": True,
+        "fight_night_audio_volume": 55,
+        "fight_night_audio_output": probe.AUDIO_DEFAULT,
+    }
+
+    def capture_playback(entry, volume, device_index=None):
+        played.append((entry, volume, device_index))
+        playback_finished.set()
+
+    probe._play_crowd_audio_entry = capture_playback
+    assert_true(probe.play_fight_night_sound("knockdown", hometown_profile["gain"]),
+                "A mapped Fight Night crowd cue was not accepted for playback")
+    assert_true(playback_finished.wait(2.0) and played[0][0]["family"] == "knockdown_gasp_roar",
+                "Fight Night did not send the mastered knockdown asset to playback")
+    assert_true(abs(played[0][1] - 0.66) < 0.001,
+                "Fight Night did not apply hometown gain to the user's playback volume")
+
+
 def main():
     game = load_game_module()
     assert_release_documentation_policy(game)
+    assert_crowd_audio_pack()
+    assert_crowd_audio_runtime(game)
     root = tk.Tk()
     root.withdraw()
     try:

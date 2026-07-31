@@ -9,6 +9,7 @@
 # Treat these as binary so Git never tries to normalise or diff them.
 *.png binary
 *.ico binary
+*.wav binary
 *.gz binary
 *.exe binary
 *.zip binary

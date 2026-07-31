@@ -1212,7 +1212,7 @@ class EventMixin:
             "delay": max(300, min(3000, self.fight_timer_delay.get() if hasattr(self, "fight_timer_delay") else 1600)),
             "running": False, "finished": False, "after_id": None, "phase": "", "result_shown": False,
             "metrics_rows_remaining": 0, "scorecard_buffer": [], "holding_scorecards": False,
-            "momentum": "", "close_armed": False,
+            "momentum": "", "close_armed": False, "walkout_played": False,
             "auto": bool(self.rules.get("live_auto_play_card", False)),
         }
         fight_logs = package.get("fight_logs", [{"heading": "Event Report", "lines": package["log"]}])
@@ -1350,6 +1350,10 @@ class EventMixin:
             current_moment_label.config(text=summary)
             return summary
 
+        def play_crowd(cue):
+            profile = state.get("crowd_profile", {}) or {}
+            return self.play_fight_night_sound(cue, profile.get("gain", 1.0))
+
         def append_line(value):
             value = str(value or "").strip("\n")
             if not value:
@@ -1391,10 +1395,10 @@ class EventMixin:
                     clock_label.config(text=f"{int(self.rules.get('round_length', 5))}:00")
             elif value.startswith(("Corner read:", "Mat-side read:", "Broadcast read:", "Fight-night readiness:")):
                 tag = "analysis"
-            elif "referee" in lowered or "official" in lowered:
-                tag = "referee"
             elif any(k in lowered for k in ("taps to", "has to tap", "gets the tap", "and it's all over", "unconscious", "stops the fight", "by ko", "by tko", "by submission", "technical fall", "secures the pin", "referee has seen enough", "stoppage comes")):
                 tag = "finish"
+            elif "referee" in lowered or "official" in lowered:
+                tag = "referee"
             elif any(k in lowered for k in ("drops", "hits the mat", "stumbles badly", "knocked down", "wobbl", "buckl", "rocked", "hurt")):
                 tag = "knockdown"
             elif "cut" in lowered or "swelling" in lowered:
@@ -1419,13 +1423,28 @@ class EventMixin:
             # affect fight simulation or event timing, and can be disabled in
             # Game Settings.
             if is_phase_start:
-                self.play_fight_night_sound("round_start")
+                phase = str(phase_match.group(1)).upper()
+                play_crowd(
+                    "opening" if phase in ("ROUND 1", "PERIOD 1", "MATCH CLOCK") else "round_start"
+                )
             elif tag == "finish":
-                self.play_fight_night_sound("finish")
+                play_crowd("finish")
             elif tag == "knockdown":
-                self.play_fight_night_sound("knockdown")
+                play_crowd("knockdown")
+            elif tag == "round" and " summary:" in lowered:
+                play_crowd("round_end")
+            elif clock_match and any(phrase in lowered for phrase in (
+                "deep submission", "submission threat", "choke threat", "armbar threat",
+                "triangle threat", "locks the choke", "locks on", "nearly taps",
+            )):
+                play_crowd("submission")
+            elif clock_match and any(phrase in lowered for phrase in (
+                "stalls", "inactive", "inactivity", "stand-up", "restarts them at range",
+                "little action", "crowd grows restless",
+            )):
+                play_crowd("inactivity")
             elif clock_match and any(word in lowered for word in ("lands", "connects", "drives", "slams", "elbow")):
-                self.play_fight_night_sound("impact")
+                play_crowd("impact")
             # Keep the shared scoreboard live for MMA rounds, boxing/kickboxing/
             # Thai rounds, wrestling periods and BJJ matches.
             if value.startswith("R") and "Scores " in value:
@@ -1458,7 +1477,7 @@ class EventMixin:
             if not buffered:
                 return
             append_line("OFFICIAL SCORECARDS - RESULT CONFIRMED")
-            self.play_fight_night_sound("decision")
+            play_crowd(self.fight_night_decision_reaction(buffered))
             for card_line in buffered[1:]:
                 append_line(card_line)
 
@@ -1468,6 +1487,7 @@ class EventMixin:
             if stripped == "Official scorecards:":
                 state["holding_scorecards"] = True
                 state["scorecard_buffer"] = [stripped]
+                play_crowd("decision_pending")
                 phase_label.config(text="DECISION PENDING")
                 current_moment_label.config(text="The judges are finalising their cards...")
                 round_read_label.config(text="Exact totals remain sealed until the official decision is announced.")
@@ -1567,8 +1587,10 @@ class EventMixin:
             stakes = log.get("special_belt") or ("Interim championship" if log.get("interim") else "Championship" if log.get("divisional_title") or log.get("title") else "Featured bout")
             rivalry = self.rivalry_heat_between(a, b) if hasattr(self, "rivalry_heat_between") else 0
             rivalry_copy = f" Rivalry heat {rivalry}/100." if rivalry else ""
+            local_copy = str((state.get("crowd_profile", {}) or {}).get("summary", "") or "")
+            local_copy = f" {local_copy}" if local_copy else ""
             return (f"{stakes}: {a.style} from {a.camp or 'independent camp'} meets {b.style} from {b.camp or 'independent camp'}. "
-                    f"Recent form {a.name}: {form_text(a)} | {b.name}: {form_text(b)}. Odds {self.matchup_odds(a, b)}.{rivalry_copy}")
+                    f"Recent form {a.name}: {form_text(a)} | {b.name}: {form_text(b)}. Odds {self.matchup_odds(a, b)}.{rivalry_copy}{local_copy}")
 
         def broadcast_rundown(index, log):
             """Give each bout a concise place in the event broadcast."""
@@ -1659,6 +1681,7 @@ class EventMixin:
             state["phase"] = ""
             state["result_shown"] = False
             state["close_armed"] = False
+            state["walkout_played"] = False
             if state["fight"] >= len(fight_logs):
                 finish_live_event()
                 return
@@ -1669,7 +1692,16 @@ class EventMixin:
                 fight_list.selection_set(state["fight"])
                 fight_list.see(state["fight"])
             log = fight_logs[state["fight"]]
-            self.play_fight_night_sound("bout_start")
+            a_fighter = self.result_fighter(log.get("a", ""), log.get("a_id", ""), log.get("sport", ""), log.get("weight", ""))
+            b_fighter = self.result_fighter(log.get("b", ""), log.get("b_id", ""), log.get("sport", ""), log.get("weight", ""))
+            state["crowd_profile"] = self.fight_night_local_crowd_profile(
+                (a_fighter, b_fighter), package.get("region", ""), package.get("city", "")
+            )
+            if state.get("auto"):
+                state["walkout_played"] = True
+                play_crowd("walkout")
+            else:
+                play_crowd("pre_fight")
             heading = log.get("heading", log.get("fight", "Bout"))
             title_label.config(text=f"LIVE FIGHT: {heading[:70]}")
             stage = f" - {log.get('tournament_stage')}" if log.get("tournament_stage") else ""
@@ -1813,6 +1845,9 @@ class EventMixin:
                 start_next_fight()
             if state["finished"]:
                 return
+            if not state.get("walkout_played"):
+                state["walkout_played"] = True
+                play_crowd("walkout")
             state["running"] = True
             state["close_armed"] = False
             status_label.config(text="Live playback running", fg=self.colors["muted"])

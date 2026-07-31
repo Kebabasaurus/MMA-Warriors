@@ -166,7 +166,7 @@ behavior; add a true global constant or path anchor to `constants.py`.
 | `persistence.py` | `PersistenceMixin`: serialization, load/apply, slots/folders, database import/export, crash recovery | All persistent model/state changes need a compatibility path here |
 | `awards.py` | `AwardsMixin`: season tracking and end-of-year awards | Decisive player and AI fights must both call `record_season_result` |
 | `media.py` | `MediaMixin`: media desk, stories, broadcaster/media-rights state and presentation | Persistent media fields need save defaults and `media_system_test.py` coverage |
-| `audio.py` | `FightNightAudioMixin`: optional fight-night sound and playback lifecycle | The game must still work when audio files or playback support are unavailable |
+| `audio.py` | `FightNightAudioMixin`: optional fight-night sound, manifest-driven crowd variants, and playback lifecycle | Crowd WAVs live under `assets/crowd_audio`; the game must still work through procedural fallbacks when assets or playback support are unavailable |
 | `real_sport_profiles.py` | Authored real-sport fighter/profile data | Keep data deterministic and consistent with seeding rules |
 | `database_editor.py` | Standalone universe database editor | Has its own executable, spec, build script, and UI audit |
 
@@ -809,6 +809,23 @@ build widget with flexible geometry
   hard draft viability floor.
 - Do not bypass `perform_weigh_in`, season tracking, or other shared mechanics for a new fight path.
 - Do not trim global fight commentary in a way that can delete round structure or the official result.
+- Treat `assets/crowd_audio/manifest.json` as the runtime source of cue intent for the integrated
+  crowd pack. Keep audio optional, respect suggested gain, and use multiple reactions
+  sparingly rather than allowing ambience to mask commentary. Preserve the source provenance and
+  Gregor Quendel CC BY 4.0 credit in `assets/crowd_audio/LICENSES.md`. Rebuild mastered assets through
+  `tools/build_crowd_audio_pack.py`; do not add generated noise beds or unlicensed recordings. Keep
+  isolated gasp/"ooh" vocals below the sustained crowd bed so reactions accent rather than mask the
+  fight commentary; the manifest's `mix_controls` records the accepted vocal-balance limits. Each of
+  the 12 trigger families has three source-distinct variants. Preserve the accepted revised-pack cue
+  as Variant 1 and name additions `_02`, `_03`, and so on so random playback can group files by
+  `family` without breaking the stable base filename. The player must avoid immediate variant
+  repeats, retain per-family cooldowns and a simultaneous-cue ceiling, and fall back procedurally if
+  a manifest entry cannot be decoded. A manifest `loop` flag means the asset is safe for a future
+  sustained ambience channel; current event triggers deliberately play one bounded pass so a bed
+  cannot continue across the wrong fight phase. Derive local crowd gain through
+  `fighter_event_connection`: exact hometowns receive the largest bounded lift, followed by national
+  home, adopted home, and training-base connections. Keep this effect presentation-only; it must not
+  alter fight mechanics or create a second geographic-proximity model in `audio.py`.
 
 ## 17. Current Product Direction
 

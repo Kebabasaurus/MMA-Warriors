@@ -1,0 +1,643 @@
+{
+  "format": "PCM WAV, stereo, 16-bit, 44100 Hz",
+  "origin": "Edited and mastered from the licensed real crowd recordings listed in LICENSES.md.",
+  "builder": "tools/build_crowd_audio_pack.py",
+  "mix_controls": {
+    "clean_strike_target_rms_db": -20.0,
+    "clean_strike_peak_ceiling_db": -7.0,
+    "knockdown_gasp_layer_gain": 0.55
+  },
+  "variants_per_family": 3,
+  "sources": [
+    {
+      "id": "gregor_quendel_crowd",
+      "title": "Free Crowd Cheering Sounds",
+      "creator": "Gregor Quendel",
+      "license": "CC BY 4.0",
+      "url": "https://opengameart.org/content/free-crowd-cheering-sounds"
+    },
+    {
+      "id": "soundbiter_crowd_cheering",
+      "title": "Crowd Cheering",
+      "creator": "SoundBiterSFX / VoiceBosch",
+      "license": "CC0 1.0",
+      "url": "https://freesound.org/people/SoundBiterSFX/sounds/730908/"
+    },
+    {
+      "id": "howardv_crowd_booing",
+      "title": "crowd booing",
+      "creator": "HowardV",
+      "license": "CC0 1.0",
+      "url": "https://freesound.org/people/HowardV/sounds/264378/"
+    },
+    {
+      "id": "radiocounseling_crowd_gasp",
+      "title": "Crowd gasp.wav",
+      "creator": "RadioCounseling",
+      "license": "CC0 1.0",
+      "url": "https://freesound.org/people/RadioCounseling/sounds/635110/"
+    },
+    {
+      "id": "evdawg_cheering_applause",
+      "title": "Crowd Cheering and Applause",
+      "creator": "Ev-Dawg",
+      "license": "CC0 1.0",
+      "url": "https://freesound.org/people/Ev-Dawg/sounds/360620/"
+    },
+    {
+      "id": "itmightgetloud_excited",
+      "title": "Millerntor Stadium Crowd Reaction Excited 01",
+      "creator": "itmightgetloud / Philipp Feit",
+      "license": "CC0 1.0",
+      "url": "https://freesound.org/people/itmightgetloud/sounds/829453/"
+    },
+    {
+      "id": "itmightgetloud_goal",
+      "title": "Millerntor Stadium Crowd Reaction Goal 01",
+      "creator": "itmightgetloud / Philipp Feit",
+      "license": "CC0 1.0",
+      "url": "https://freesound.org/people/itmightgetloud/sounds/829455/"
+    },
+    {
+      "id": "itmightgetloud_ambience",
+      "title": "Millerntor Stadium Crowd Reaction General Ambience 01",
+      "creator": "itmightgetloud / Philipp Feit",
+      "license": "CC0 1.0",
+      "url": "https://freesound.org/people/itmightgetloud/sounds/829454/"
+    },
+    {
+      "id": "trp_outrage_boo",
+      "title": "Crowd, large outrage then booing reaction, hockey game, 2011.wav",
+      "creator": "TRP",
+      "license": "CC0 1.0",
+      "url": "https://freesound.org/people/TRP/sounds/577098/"
+    },
+    {
+      "id": "dr_skitz_gasp",
+      "title": "gasp.wav",
+      "creator": "dr_skitz",
+      "license": "CC0 1.0",
+      "url": "https://freesound.org/people/dr_skitz/sounds/353924/"
+    },
+    {
+      "id": "dr_skitz_boo",
+      "title": "boo.wav",
+      "creator": "dr_skitz",
+      "license": "CC0 1.0",
+      "url": "https://freesound.org/people/dr_skitz/sounds/353925/"
+    },
+    {
+      "id": "sounds_exciting_cheer",
+      "title": "Crowd Cheering",
+      "creator": "SoundsExciting",
+      "license": "CC0 1.0",
+      "url": "https://freesound.org/people/SoundsExciting/sounds/365132/"
+    },
+    {
+      "id": "bansemer_applause",
+      "title": "Large crowd applause.wav",
+      "creator": "Bansemer",
+      "license": "CC0 1.0",
+      "url": "https://freesound.org/people/Bansemer/sounds/160493/"
+    },
+    {
+      "id": "cognito_stadium_applause",
+      "title": "applause.wav",
+      "creator": "cognito perceptu",
+      "license": "CC0 1.0",
+      "url": "https://freesound.org/people/cognito%20perceptu/sounds/57587/"
+    },
+    {
+      "id": "d_jones_goal_reaction",
+      "title": "19 Football Crowd - Reaction To Goal.flac",
+      "creator": "D.jones",
+      "license": "CC0 1.0",
+      "url": "https://freesound.org/people/D.jones/sounds/528799/"
+    },
+    {
+      "id": "foolboy_crowd_cheer",
+      "title": "Crowd Cheer",
+      "creator": "FoolBoyMedia",
+      "license": "CC0 1.0",
+      "url": "https://freesound.org/people/FoolBoyMedia/sounds/397434/"
+    },
+    {
+      "id": "mrrap_disappointed_oh",
+      "title": "crowd oh - disappointed.mp3",
+      "creator": "mrrap4food",
+      "license": "CC0 1.0",
+      "url": "https://freesound.org/people/mrrap4food/sounds/619007/"
+    }
+  ],
+  "cues": [
+    {
+      "id": "pre_fight_arena_murmur",
+      "family": "pre_fight_arena_murmur",
+      "variant": 1,
+      "phase": "before",
+      "duration": 10.0,
+      "loop": true,
+      "suggested_gain_db": -4,
+      "trigger": "Low venue bed while the next bout is being introduced.",
+      "file": "pre_fight_arena_murmur.wav",
+      "sources": [
+        "gregor_quendel_crowd"
+      ]
+    },
+    {
+      "id": "pre_fight_arena_murmur_02",
+      "family": "pre_fight_arena_murmur",
+      "variant": 2,
+      "phase": "before",
+      "duration": 10.0,
+      "loop": true,
+      "suggested_gain_db": -4,
+      "trigger": "Low venue bed while the next bout is being introduced.",
+      "file": "pre_fight_arena_murmur_02.wav",
+      "sources": [
+        "itmightgetloud_ambience"
+      ]
+    },
+    {
+      "id": "pre_fight_arena_murmur_03",
+      "family": "pre_fight_arena_murmur",
+      "variant": 3,
+      "phase": "before",
+      "duration": 10.0,
+      "loop": true,
+      "suggested_gain_db": -4,
+      "trigger": "Low venue bed while the next bout is being introduced.",
+      "file": "pre_fight_arena_murmur_03.wav",
+      "sources": [
+        "gregor_quendel_crowd"
+      ]
+    },
+    {
+      "id": "walkout_crowd_swell",
+      "family": "walkout_crowd_swell",
+      "variant": 1,
+      "phase": "before",
+      "duration": 5.0,
+      "loop": false,
+      "suggested_gain_db": -2,
+      "trigger": "Fighter walkout, champion entrance, or hometown reveal.",
+      "file": "walkout_crowd_swell.wav",
+      "sources": [
+        "gregor_quendel_crowd"
+      ]
+    },
+    {
+      "id": "walkout_crowd_swell_02",
+      "family": "walkout_crowd_swell",
+      "variant": 2,
+      "phase": "before",
+      "duration": 5.0,
+      "loop": false,
+      "suggested_gain_db": -2,
+      "trigger": "Fighter walkout, champion entrance, or hometown reveal.",
+      "file": "walkout_crowd_swell_02.wav",
+      "sources": [
+        "itmightgetloud_excited"
+      ]
+    },
+    {
+      "id": "walkout_crowd_swell_03",
+      "family": "walkout_crowd_swell",
+      "variant": 3,
+      "phase": "before",
+      "duration": 5.0,
+      "loop": false,
+      "suggested_gain_db": -2,
+      "trigger": "Fighter walkout, champion entrance, or hometown reveal.",
+      "file": "walkout_crowd_swell_03.wav",
+      "sources": [
+        "foolboy_crowd_cheer"
+      ]
+    },
+    {
+      "id": "opening_bell_roar",
+      "family": "opening_bell_roar",
+      "variant": 1,
+      "phase": "before",
+      "duration": 3.5,
+      "loop": false,
+      "suggested_gain_db": -3,
+      "trigger": "Opening bell or the final referee instruction before Round 1.",
+      "file": "opening_bell_roar.wav",
+      "sources": [
+        "soundbiter_crowd_cheering"
+      ]
+    },
+    {
+      "id": "opening_bell_roar_02",
+      "family": "opening_bell_roar",
+      "variant": 2,
+      "phase": "before",
+      "duration": 3.5,
+      "loop": false,
+      "suggested_gain_db": -3,
+      "trigger": "Opening bell or the final referee instruction before Round 1.",
+      "file": "opening_bell_roar_02.wav",
+      "sources": [
+        "sounds_exciting_cheer"
+      ]
+    },
+    {
+      "id": "opening_bell_roar_03",
+      "family": "opening_bell_roar",
+      "variant": 3,
+      "phase": "before",
+      "duration": 3.5,
+      "loop": false,
+      "suggested_gain_db": -3,
+      "trigger": "Opening bell or the final referee instruction before Round 1.",
+      "file": "opening_bell_roar_03.wav",
+      "sources": [
+        "itmightgetloud_excited"
+      ]
+    },
+    {
+      "id": "clean_strike_ooh",
+      "family": "clean_strike_ooh",
+      "variant": 1,
+      "phase": "during",
+      "duration": 1.6,
+      "loop": false,
+      "suggested_gain_db": -3,
+      "trigger": "A clearly landed high-impact strike that does not cause a knockdown.",
+      "file": "clean_strike_ooh.wav",
+      "sources": [
+        "radiocounseling_crowd_gasp"
+      ]
+    },
+    {
+      "id": "clean_strike_ooh_02",
+      "family": "clean_strike_ooh",
+      "variant": 2,
+      "phase": "during",
+      "duration": 1.6,
+      "loop": false,
+      "suggested_gain_db": -3,
+      "trigger": "A clearly landed high-impact strike that does not cause a knockdown.",
+      "file": "clean_strike_ooh_02.wav",
+      "sources": [
+        "dr_skitz_gasp"
+      ]
+    },
+    {
+      "id": "clean_strike_ooh_03",
+      "family": "clean_strike_ooh",
+      "variant": 3,
+      "phase": "during",
+      "duration": 1.6,
+      "loop": false,
+      "suggested_gain_db": -3,
+      "trigger": "A clearly landed high-impact strike that does not cause a knockdown.",
+      "file": "clean_strike_ooh_03.wav",
+      "sources": [
+        "mrrap_disappointed_oh"
+      ]
+    },
+    {
+      "id": "knockdown_gasp_roar",
+      "family": "knockdown_gasp_roar",
+      "variant": 1,
+      "phase": "during",
+      "duration": 3.2,
+      "loop": false,
+      "suggested_gain_db": 0,
+      "trigger": "A knockdown, major slam, or sudden near-finish momentum swing.",
+      "file": "knockdown_gasp_roar.wav",
+      "sources": [
+        "radiocounseling_crowd_gasp",
+        "gregor_quendel_crowd"
+      ]
+    },
+    {
+      "id": "knockdown_gasp_roar_02",
+      "family": "knockdown_gasp_roar",
+      "variant": 2,
+      "phase": "during",
+      "duration": 3.2,
+      "loop": false,
+      "suggested_gain_db": 0,
+      "trigger": "A knockdown, major slam, or sudden near-finish momentum swing.",
+      "file": "knockdown_gasp_roar_02.wav",
+      "sources": [
+        "dr_skitz_gasp",
+        "itmightgetloud_goal"
+      ]
+    },
+    {
+      "id": "knockdown_gasp_roar_03",
+      "family": "knockdown_gasp_roar",
+      "variant": 3,
+      "phase": "during",
+      "duration": 3.2,
+      "loop": false,
+      "suggested_gain_db": 0,
+      "trigger": "A knockdown, major slam, or sudden near-finish momentum swing.",
+      "file": "knockdown_gasp_roar_03.wav",
+      "sources": [
+        "mrrap_disappointed_oh",
+        "itmightgetloud_excited"
+      ]
+    },
+    {
+      "id": "submission_attempt_swell",
+      "family": "submission_attempt_swell",
+      "variant": 1,
+      "phase": "during",
+      "duration": 4.5,
+      "loop": false,
+      "suggested_gain_db": -3,
+      "trigger": "A deep submission attempt; fade early when the hold is escaped.",
+      "file": "submission_attempt_swell.wav",
+      "sources": [
+        "gregor_quendel_crowd"
+      ]
+    },
+    {
+      "id": "submission_attempt_swell_02",
+      "family": "submission_attempt_swell",
+      "variant": 2,
+      "phase": "during",
+      "duration": 4.5,
+      "loop": false,
+      "suggested_gain_db": -3,
+      "trigger": "A deep submission attempt; fade early when the hold is escaped.",
+      "file": "submission_attempt_swell_02.wav",
+      "sources": [
+        "itmightgetloud_excited"
+      ]
+    },
+    {
+      "id": "submission_attempt_swell_03",
+      "family": "submission_attempt_swell",
+      "variant": 3,
+      "phase": "during",
+      "duration": 4.5,
+      "loop": false,
+      "suggested_gain_db": -3,
+      "trigger": "A deep submission attempt; fade early when the hold is escaped.",
+      "file": "submission_attempt_swell_03.wav",
+      "sources": [
+        "gregor_quendel_crowd"
+      ]
+    },
+    {
+      "id": "inactivity_boos",
+      "family": "inactivity_boos",
+      "variant": 1,
+      "phase": "during",
+      "duration": 4.0,
+      "loop": false,
+      "suggested_gain_db": -5,
+      "trigger": "Sustained inactivity, repeated stalling, or a referee warning.",
+      "file": "inactivity_boos.wav",
+      "sources": [
+        "howardv_crowd_booing"
+      ]
+    },
+    {
+      "id": "inactivity_boos_02",
+      "family": "inactivity_boos",
+      "variant": 2,
+      "phase": "during",
+      "duration": 4.0,
+      "loop": false,
+      "suggested_gain_db": -5,
+      "trigger": "Sustained inactivity, repeated stalling, or a referee warning.",
+      "file": "inactivity_boos_02.wav",
+      "sources": [
+        "trp_outrage_boo"
+      ]
+    },
+    {
+      "id": "inactivity_boos_03",
+      "family": "inactivity_boos",
+      "variant": 3,
+      "phase": "during",
+      "duration": 4.0,
+      "loop": false,
+      "suggested_gain_db": -5,
+      "trigger": "Sustained inactivity, repeated stalling, or a referee warning.",
+      "file": "inactivity_boos_03.wav",
+      "sources": [
+        "dr_skitz_boo"
+      ]
+    },
+    {
+      "id": "round_end_applause",
+      "family": "round_end_applause",
+      "variant": 1,
+      "phase": "during",
+      "duration": 4.0,
+      "loop": false,
+      "suggested_gain_db": -4,
+      "trigger": "The horn after an entertaining or competitive round.",
+      "file": "round_end_applause.wav",
+      "sources": [
+        "evdawg_cheering_applause"
+      ]
+    },
+    {
+      "id": "round_end_applause_02",
+      "family": "round_end_applause",
+      "variant": 2,
+      "phase": "during",
+      "duration": 4.0,
+      "loop": false,
+      "suggested_gain_db": -4,
+      "trigger": "The horn after an entertaining or competitive round.",
+      "file": "round_end_applause_02.wav",
+      "sources": [
+        "cognito_stadium_applause"
+      ]
+    },
+    {
+      "id": "round_end_applause_03",
+      "family": "round_end_applause",
+      "variant": 3,
+      "phase": "during",
+      "duration": 4.0,
+      "loop": false,
+      "suggested_gain_db": -4,
+      "trigger": "The horn after an entertaining or competitive round.",
+      "file": "round_end_applause_03.wav",
+      "sources": [
+        "bansemer_applause"
+      ]
+    },
+    {
+      "id": "knockout_eruption",
+      "family": "knockout_eruption",
+      "variant": 1,
+      "phase": "after",
+      "duration": 6.0,
+      "loop": false,
+      "suggested_gain_db": 0,
+      "trigger": "KO, TKO, dramatic submission, or tournament-winning finish.",
+      "file": "knockout_eruption.wav",
+      "sources": [
+        "soundbiter_crowd_cheering",
+        "gregor_quendel_crowd"
+      ]
+    },
+    {
+      "id": "knockout_eruption_02",
+      "family": "knockout_eruption",
+      "variant": 2,
+      "phase": "after",
+      "duration": 6.0,
+      "loop": false,
+      "suggested_gain_db": 0,
+      "trigger": "KO, TKO, dramatic submission, or tournament-winning finish.",
+      "file": "knockout_eruption_02.wav",
+      "sources": [
+        "itmightgetloud_goal"
+      ]
+    },
+    {
+      "id": "knockout_eruption_03",
+      "family": "knockout_eruption",
+      "variant": 3,
+      "phase": "after",
+      "duration": 6.0,
+      "loop": false,
+      "suggested_gain_db": 0,
+      "trigger": "KO, TKO, dramatic submission, or tournament-winning finish.",
+      "file": "knockout_eruption_03.wav",
+      "sources": [
+        "d_jones_goal_reaction",
+        "sounds_exciting_cheer"
+      ]
+    },
+    {
+      "id": "decision_tension_murmur",
+      "family": "decision_tension_murmur",
+      "variant": 1,
+      "phase": "after",
+      "duration": 6.0,
+      "loop": true,
+      "suggested_gain_db": -7,
+      "trigger": "Scorecard wait or other short official-result delay.",
+      "file": "decision_tension_murmur.wav",
+      "sources": [
+        "gregor_quendel_crowd"
+      ]
+    },
+    {
+      "id": "decision_tension_murmur_02",
+      "family": "decision_tension_murmur",
+      "variant": 2,
+      "phase": "after",
+      "duration": 6.0,
+      "loop": true,
+      "suggested_gain_db": -7,
+      "trigger": "Scorecard wait or other short official-result delay.",
+      "file": "decision_tension_murmur_02.wav",
+      "sources": [
+        "itmightgetloud_ambience"
+      ]
+    },
+    {
+      "id": "decision_tension_murmur_03",
+      "family": "decision_tension_murmur",
+      "variant": 3,
+      "phase": "after",
+      "duration": 6.0,
+      "loop": true,
+      "suggested_gain_db": -7,
+      "trigger": "Scorecard wait or other short official-result delay.",
+      "file": "decision_tension_murmur_03.wav",
+      "sources": [
+        "gregor_quendel_crowd"
+      ]
+    },
+    {
+      "id": "controversial_decision_boos",
+      "family": "controversial_decision_boos",
+      "variant": 1,
+      "phase": "after",
+      "duration": 6.0,
+      "loop": false,
+      "suggested_gain_db": -3,
+      "trigger": "A split decision, unpopular winner, or strongly disputed scorecard.",
+      "file": "controversial_decision_boos.wav",
+      "sources": [
+        "howardv_crowd_booing"
+      ]
+    },
+    {
+      "id": "controversial_decision_boos_02",
+      "family": "controversial_decision_boos",
+      "variant": 2,
+      "phase": "after",
+      "duration": 6.0,
+      "loop": false,
+      "suggested_gain_db": -3,
+      "trigger": "A split decision, unpopular winner, or strongly disputed scorecard.",
+      "file": "controversial_decision_boos_02.wav",
+      "sources": [
+        "trp_outrage_boo"
+      ]
+    },
+    {
+      "id": "controversial_decision_boos_03",
+      "family": "controversial_decision_boos",
+      "variant": 3,
+      "phase": "after",
+      "duration": 6.0,
+      "loop": false,
+      "suggested_gain_db": -3,
+      "trigger": "A split decision, unpopular winner, or strongly disputed scorecard.",
+      "file": "controversial_decision_boos_03.wav",
+      "sources": [
+        "dr_skitz_boo"
+      ]
+    },
+    {
+      "id": "respectful_postfight_applause",
+      "family": "respectful_postfight_applause",
+      "variant": 1,
+      "phase": "after",
+      "duration": 6.0,
+      "loop": false,
+      "suggested_gain_db": -4,
+      "trigger": "Post-fight interview, retiring fighter, or losing fighter salute.",
+      "file": "respectful_postfight_applause.wav",
+      "sources": [
+        "evdawg_cheering_applause"
+      ]
+    },
+    {
+      "id": "respectful_postfight_applause_02",
+      "family": "respectful_postfight_applause",
+      "variant": 2,
+      "phase": "after",
+      "duration": 6.0,
+      "loop": false,
+      "suggested_gain_db": -4,
+      "trigger": "Post-fight interview, retiring fighter, or losing fighter salute.",
+      "file": "respectful_postfight_applause_02.wav",
+      "sources": [
+        "cognito_stadium_applause"
+      ]
+    },
+    {
+      "id": "respectful_postfight_applause_03",
+      "family": "respectful_postfight_applause",
+      "variant": 3,
+      "phase": "after",
+      "duration": 6.0,
+      "loop": false,
+      "suggested_gain_db": -4,
+      "trigger": "Post-fight interview, retiring fighter, or losing fighter salute.",
+      "file": "respectful_postfight_applause_03.wav",
+      "sources": [
+        "bansemer_applause"
+      ]
+    }
+  ]
+}

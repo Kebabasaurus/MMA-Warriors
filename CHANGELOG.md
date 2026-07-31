@@ -2,6 +2,16 @@
 
 ## 3.0.5 - 2026-07-31
 
+### Fight Night Audio
+
+- Added and integrated a 36-file crowd-audio pack, edited and mastered from licensed real field recordings, with three distinct variants for each of 12 pre-fight, live-fight, finish, and decision trigger families.
+- Fight Night now rotates non-repeating variants for arena buildup, walkouts, opening roars, clean strikes, knockdowns, submission danger, inactivity, round endings, finishes, decision tension, split-card boos, and respectful post-fight applause.
+- Playback honors the manifest's per-cue gain, limits simultaneous reactions and repeat frequency so commentary stays clear, and falls back to the existing procedural cues when an asset or playback service is unavailable.
+- Hometown fighters now receive the strongest audible crowd lift, while national, adopted-home, and training-base appearances receive smaller nearby-market boosts; the Fight Night introduction identifies the active local connection.
+- Included source and license documentation, a reproducible mastering tool, and a cue manifest with suggested triggers, loop capability, duration, playback gain, and provenance.
+- Reduced the clean-strike vocal reaction by 3 dB and attenuated the gasp layer inside the knockdown roar so short crowd exclamations no longer overpower the broader arena response.
+- Preserved every accepted revised-pack mix as Variant 1 and added alternate-source Variants 2 and 3, including modern large-stadium ambience, goal eruptions, hockey outrage, group gasps, boos, cheers, and applause.
+
 ### World Locations
 
 - Added Belleville and Kingston, Ontario to Canada's event-city and generated-fighter hometown pool.
