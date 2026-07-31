@@ -14,6 +14,53 @@ from models import Fighter, Gym, Promotion
 
 
 class UIMixin:
+    @staticmethod
+    def wcag_relative_luminance(color):
+        """Return the WCAG 2.x relative luminance for a #RRGGBB color."""
+        value = color.lstrip("#")
+        channels = [int(value[index:index + 2], 16) / 255.0 for index in (0, 2, 4)]
+        linear = [channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4 for channel in channels]
+        return (0.2126 * linear[0]) + (0.7152 * linear[1]) + (0.0722 * linear[2])
+
+    @classmethod
+    def wcag_contrast_ratio(cls, foreground, background):
+        """Return the WCAG contrast ratio between two #RRGGBB colors."""
+        light, dark = sorted(
+            (cls.wcag_relative_luminance(foreground), cls.wcag_relative_luminance(background)),
+            reverse=True,
+        )
+        return (light + 0.05) / (dark + 0.05)
+
+    @classmethod
+    def accessible_tab_text(cls, background, preferred=None):
+        """Keep branded text when it passes AA, otherwise choose a safe neutral."""
+        if preferred and cls.wcag_contrast_ratio(preferred, background) >= 4.5:
+            return preferred
+        candidates = ("#ffffff", "#111111")
+        return max(candidates, key=lambda color: cls.wcag_contrast_ratio(color, background))
+
+    @classmethod
+    def tab_style_palette(cls, colors):
+        """Build readable notebook states from the active game's theme colors."""
+        inactive_bg = colors["button"]
+        hover_bg = colors["panel_dark"]
+        accents = (colors["red"], colors["gold"])
+        selected_bg = max(accents, key=lambda color: cls.wcag_contrast_ratio(color, inactive_bg))
+        selected_fg = cls.accessible_tab_text(selected_bg)
+        disabled_bg = inactive_bg
+        return {
+            "inactive_bg": inactive_bg,
+            "inactive_fg": cls.accessible_tab_text(inactive_bg, colors["button_text"]),
+            "hover_bg": hover_bg,
+            "hover_fg": cls.accessible_tab_text(hover_bg),
+            "selected_bg": selected_bg,
+            "selected_fg": selected_fg,
+            "selected_border": selected_fg,
+            "focus_border": selected_bg,
+            "disabled_bg": disabled_bg,
+            "disabled_fg": cls.accessible_tab_text(disabled_bg, colors["muted"]),
+        }
+
     def configure_style(self):
         style = ttk.Style()
         style.theme_use("clam")
@@ -211,9 +258,47 @@ class UIMixin:
         self.root.option_add("*TCombobox*Listbox.foreground", input_fg)
         self.root.option_add("*TCombobox*Listbox.selectBackground", self.colors["red"])
         self.root.option_add("*TCombobox*Listbox.selectForeground", "#ffffff")
-        style.configure("TNotebook", background=self.colors["chrome"], borderwidth=0)
-        style.configure("TNotebook.Tab", font=("Tahoma", 8, "bold"), padding=(18, 5), background="#777268", foreground="#111111")
-        style.map("TNotebook.Tab", background=[("selected", self.colors["paper"])])
+        # Every visible notebook shares these state-aware colors.  In ttk,
+        # "selected" is the current/active tab while "active" is pointer hover.
+        # The selected tab also gains a high-contrast outline and raised edge, so state is
+        # not communicated by color alone.
+        self.tab_colors = self.tab_style_palette(self.colors)
+        style.configure("TNotebook", background=self.colors["chrome"], borderwidth=0, tabmargins=(0, 2, 0, 0))
+        style.configure(
+            "TNotebook.Tab",
+            font=("Tahoma", 9, "bold"),
+            padding=(16, 6),
+            background=self.tab_colors["inactive_bg"],
+            foreground=self.tab_colors["inactive_fg"],
+            bordercolor=self.colors["line"],
+            lightcolor=self.colors["line"],
+            darkcolor=self.colors["chrome"],
+            focuscolor=self.tab_colors["focus_border"],
+            borderwidth=2,
+            relief="flat",
+        )
+        style.map(
+            "TNotebook.Tab",
+            background=[
+                ("disabled", self.tab_colors["disabled_bg"]),
+                ("selected", self.tab_colors["selected_bg"]),
+                ("active", self.tab_colors["hover_bg"]),
+            ],
+            foreground=[
+                ("disabled", self.tab_colors["disabled_fg"]),
+                ("selected", self.tab_colors["selected_fg"]),
+                ("active", self.tab_colors["hover_fg"]),
+            ],
+            bordercolor=[
+                ("selected", self.tab_colors["selected_border"]),
+                ("focus", self.tab_colors["focus_border"]),
+                ("active", self.colors["gold"]),
+            ],
+            lightcolor=[("selected", self.tab_colors["selected_border"])],
+            darkcolor=[("selected", self.tab_colors["selected_border"])],
+            relief=[("selected", "raised"), ("active", "raised")],
+            expand=[("selected", (1, 1, 1, 0))],
+        )
         style.configure("Hidden.TNotebook", background=self.colors["chrome"], borderwidth=0)
         style.layout("Hidden.TNotebook.Tab", [])
         style.configure("Treeview", font=("Tahoma", 8), background=self.colors["tree"], fieldbackground=self.colors["tree"], foreground=self.colors["text"], rowheight=22, borderwidth=0)

@@ -21,6 +21,7 @@ Backups/
 backup/
 
 # Temporary/editor files
+.idea/
 *.tmp
 *.bak
 *.old
