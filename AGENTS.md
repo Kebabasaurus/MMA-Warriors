@@ -336,6 +336,12 @@ locations), and add smoke coverage for both the booking selector and identity po
 database's `regions[*].areas` list describes larger tracked areas such as Ontario; do not duplicate
 individual cities there merely to make them available for events.
 
+Curated fighter identity edits in the shipped database must keep the full record in
+`fighters.all_fighters` synchronized with its compatibility tuple in `fighters.player_roster`,
+`fighters.free_agents`, or `fighters.promotions`. For example, Brett Akey's Belleville hometown is
+stored in both his `all_fighters` record and his `free_agents` tuple. Validate the database and
+retain a named identity assertion in `smoke_test.py` after changing either representation.
+
 ### Company ownership invariant
 
 During a normal player career, the player company is represented by player-owned fields such as

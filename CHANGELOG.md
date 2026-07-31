@@ -15,6 +15,7 @@
 ### World Locations
 
 - Added Belleville and Kingston, Ontario to Canada's event-city and generated-fighter hometown pool.
+- Updated Brett Akey's authored hometown from the province-level Ontario label to Belleville.
 
 ### Fight Night Commentary
 

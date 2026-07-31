@@ -804,7 +804,7 @@ def main():
             ("Jon Jones", "Rochester", "American"),
             ("Tom Aspinall CW", "Salford", "British"),
             ("Matthew Green", "Birmingham", "British"),
-            ("Brett Akey", "Ontario", "Canadian"),
+            ("Brett Akey", "Belleville", "Canadian"),
             ("Markell Holmes", "Arkansas", "American"),
         ):
             assert_true(name in real_identities and real_identities[name].hometown == city,
