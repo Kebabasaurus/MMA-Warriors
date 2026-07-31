@@ -10,7 +10,7 @@ ASSET_DIR = BUNDLE_DIR / "assets" if (BUNDLE_DIR / "assets").exists() else APP_D
 APP_ICON_ICO = ASSET_DIR / "app_icon.ico"
 APP_ICON_PNG = ASSET_DIR / "app_icon.png"
 GAME_NAME = "MMA Warriors"
-GAME_VERSION = "3.0.4"
+GAME_VERSION = "3.0.5"
 GAME_TITLE = f"{GAME_NAME} v{GAME_VERSION}"
 GAME_START_YEAR = 2026
 CALENDAR_MONTHS = (
@@ -67,6 +67,12 @@ ROLLING_SAVE_SLOT_COUNT = 2
 # never vanish from the results database simply because its replay aged out.
 RESULT_INDEX_LIMIT = 100000
 GLOBAL_RESULT_REPLAY_LIMIT = 2000
+# Detailed fight commentary is bounded per round so long main events do not
+# crowd out later rounds.  The compactor keeps the opening and closing action
+# around one omission marker; structural broadcast lines are never buffered.
+FIGHT_COMMENTARY_ROUND_LINE_LIMIT = 24
+FIGHT_COMMENTARY_ROUND_HEAD_LINES = 14
+FIGHT_COMMENTARY_ROUND_TAIL_LINES = 8
 WEIGHTS = ["Flyweight", "Bantamweight", "Featherweight", "Lightweight", "Welterweight", "Middleweight", "Light Heavyweight", "Heavyweight"]
 SCOUTING_SEARCH_FOCUSES = ("Free Agent Pool", "Rival Rosters", "Regional Prospects", "Young Prospects", "Any Market")
 SCOUTING_RECOMMENDATION_MODES = ("Balanced", "Aggressive", "Strict", "Prospect Focus", "Value Focus", "Roster Need")

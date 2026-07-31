@@ -12,6 +12,9 @@ from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parent
 MAIN = ROOT / "main.py"
+README = ROOT / "README.md"
+CHANGELOG = ROOT / "CHANGELOG.md"
+AGENT_GUIDE = ROOT / "AGENTS.md"
 
 
 def load_game_module():
@@ -26,8 +29,31 @@ def assert_true(condition, message):
         raise AssertionError(message)
 
 
+def assert_release_documentation_policy(game):
+    """Keep release metadata and the required change package synchronized."""
+    readme = README.read_text(encoding="utf-8")
+    changelog = CHANGELOG.read_text(encoding="utf-8")
+    agent_guide = AGENT_GUIDE.read_text(encoding="utf-8")
+    version = game.GAME_VERSION
+
+    assert_true(f"## Version {version}" in readme,
+                "README version does not match constants.GAME_VERSION")
+    assert_true(f"## {version} -" in changelog,
+                "CHANGELOG has no current-release section matching constants.GAME_VERSION")
+    assert_true("## Developer Change Contract" in readme,
+                "README is missing the mandatory developer change contract")
+    assert_true("### Mandatory change package" in agent_guide,
+                "AGENTS.md is missing the mandatory change-package instructions")
+    for required_file in ("CHANGELOG.md", "README.md", "AGENTS.md"):
+        assert_true(required_file in readme and required_file in agent_guide,
+                    f"The documented change contract does not include {required_file}")
+    assert_true("Build Database Editor.bat" in readme,
+                "README does not document the separate Database Editor build")
+
+
 def main():
     game = load_game_module()
+    assert_release_documentation_policy(game)
     root = tk.Tk()
     root.withdraw()
     try:
@@ -35,6 +61,18 @@ def main():
         app = game.FightEmpireApp(root, startup_progress=lambda value, text: startup_updates.append((value, text)))
         assert_true(startup_updates and startup_updates[-1][0] == 100, "Startup progress did not reach its ready state")
         assert_true(all(a[0] <= b[0] for a, b in zip(startup_updates, startup_updates[1:])), "Startup progress moved backwards")
+        original_company_name, original_company_pop = app.player_company_name, app.company_pop
+        app.player_company_name = "International Championship Fighting Alliance"
+        app.company_pop = 99
+        app.refresh_header()
+        assert_true(app.stat_company.cget("text") == "Promotion: International Championship Fighting Alliance",
+                    "Long promotion name was not retained in the responsive header")
+        assert_true(app.stat_pop.cget("text") == "Popularity: 99",
+                    "Promotion popularity was not kept in its own stable header field")
+        assert_true(app.stat_company.winfo_manager() == "grid" and int(app.statusbar.columnconfigure(2)["weight"]) == 1,
+                    "Promotion header field does not expand with the window")
+        app.player_company_name, app.company_pop = original_company_name, original_company_pop
+        app.refresh_header()
         original_theme = app.theme_name
         for theme_name in app.themes:
             app.theme_name = theme_name
@@ -1344,6 +1382,91 @@ def main():
             assert_true(stats is not None and "head_damage" in stats, "Fight metrics do not store genuine head damage")
             assert_true(all(isinstance(stats.get(key), int) for key in ("knockdowns", "head_damage", "body_damage", "leg_damage", "cuts")), "Fight metrics contain non-integer combat statistics")
             assert_true(stats["damage_taken"] >= stats["head_damage"] + stats["body_damage"] + stats["leg_damage"], "Location damage exceeds aggregate damage")
+
+        # Long five-round bouts used to slice the entire commentary list at 95
+        # lines, deleting Round 4 summaries and Round 5 introductions. Force a
+        # verbose decision through both five-round routes and verify that the
+        # per-round compactor retains every playback boundary.
+        random_state = random.getstate()
+        original_resolve_exchange = app.resolve_exchange
+        original_fighter_presence_line = app.fighter_presence_line
+        original_check_fight_stoppage = app.check_fight_stoppage
+        original_check_corner_stoppage = app.check_corner_stoppage
+
+        def verbose_resolve_exchange(actor, defender, action, state, round_stats):
+            result = original_resolve_exchange(actor, defender, action, state, round_stats)
+            return f"{result or 'Both fighters reset in open space.'} QA exchange {state['round']}-{state['tick']}."
+
+        app.resolve_exchange = verbose_resolve_exchange
+        app.fighter_presence_line = lambda actor, defender, state: f"QA broadcast detail {state['round']}-{state['tick']}."
+        app.check_fight_stoppage = lambda *args: None
+        app.check_corner_stoppage = lambda *args: None
+        try:
+            assert_true(
+                game.FIGHT_COMMENTARY_ROUND_HEAD_LINES + game.FIGHT_COMMENTARY_ROUND_TAIL_LINES + 1
+                <= game.FIGHT_COMMENTARY_ROUND_LINE_LIMIT,
+                "Fight commentary compactor configuration exceeds its per-round limit",
+            )
+            for flags in ({"main": False, "title": True}, {"main": True, "title": False}):
+                verbose_pair = tuple(game.Fighter(**asdict(fighter)) for fighter in pair)
+                random.seed(22095)
+                _winner, _loser, verbose_method, verbose_round, verbose_lines = app.simulate_fight(
+                    verbose_pair[0], verbose_pair[1], flags
+                )
+                assert_true(verbose_method in ("Decision", "Draw") and verbose_round == 5,
+                            "Forced five-round commentary probe did not reach the scorecards")
+                for expected_round in range(1, 6):
+                    intro_prefix = f"Round {expected_round}:"
+                    summary_prefix = f"Round {expected_round} summary:"
+                    assert_true(sum(line.startswith(intro_prefix) for line in verbose_lines) == 1,
+                                f"Five-round commentary lost or duplicated the Round {expected_round} introduction")
+                    assert_true(sum(line.startswith(summary_prefix) for line in verbose_lines) == 1,
+                                f"Five-round commentary lost or duplicated the Round {expected_round} summary")
+                assert_true(sum(line.startswith("Between rounds:") for line in verbose_lines) == 4,
+                            "Five-round commentary lost a between-round transition")
+                assert_true("Official scorecards:" in verbose_lines and "FIGHT METRICS" in verbose_lines,
+                            "Five-round commentary lost its scorecards or fight metrics")
+                assert_true(sum("middle exchanges are summarized" in line for line in verbose_lines) == 5,
+                            "Verbose five-round commentary did not compact each round independently")
+                timestamped_lines = sum(line.startswith("  [") for line in verbose_lines)
+                assert_true(
+                    timestamped_lines <= 5 * (
+                        game.FIGHT_COMMENTARY_ROUND_HEAD_LINES + game.FIGHT_COMMENTARY_ROUND_TAIL_LINES
+                    ),
+                    "Five-round commentary exceeded its configured action-line bound",
+                )
+
+            def late_round_five_stoppage(actor, defender, state):
+                if state["round"] == 5 and state["tick"] == state["ticks_per_round"]:
+                    return actor, defender, "TKO", "Regression late Round 5 stoppage preserved."
+                return None
+
+            app.check_fight_stoppage = late_round_five_stoppage
+            stoppage_pair = tuple(game.Fighter(**asdict(fighter)) for fighter in pair)
+            random.seed(22105)
+            _winner, _loser, stoppage_method, stoppage_round, stoppage_lines = app.simulate_fight(
+                stoppage_pair[0], stoppage_pair[1], {"main": True, "title": False}
+            )
+            assert_true(stoppage_method == "TKO" and stoppage_round == 5,
+                        "Late-stoppage commentary probe did not finish in Round 5")
+            assert_true(all(sum(line.startswith(f"Round {round_number}:") for line in stoppage_lines) == 1 for round_number in range(1, 6)),
+                        "Late-stoppage commentary lost a round introduction")
+            assert_true(all(sum(line.startswith(f"Round {round_number} summary:") for line in stoppage_lines) == 1 for round_number in range(1, 5)),
+                        "Late-stoppage commentary lost a completed-round summary")
+            assert_true(not any(line.startswith("Round 5 summary:") for line in stoppage_lines),
+                        "Late Round 5 stoppage incorrectly produced a Round 5 score summary")
+            assert_true(sum(line.startswith("Between rounds:") for line in stoppage_lines) == 4,
+                        "Late-stoppage commentary lost a between-round transition")
+            assert_true(sum("Regression late Round 5 stoppage preserved." in line for line in stoppage_lines) == 1,
+                        "Round 5 finish detail was lost or duplicated during commentary compaction")
+            assert_true(any(line.startswith("Broadcast recap:") for line in stoppage_lines) and "FIGHT METRICS" in stoppage_lines,
+                        "Late-stoppage commentary lost its recap or fight metrics")
+        finally:
+            random.setstate(random_state)
+            app.resolve_exchange = original_resolve_exchange
+            app.fighter_presence_line = original_fighter_presence_line
+            app.check_fight_stoppage = original_check_fight_stoppage
+            app.check_corner_stoppage = original_check_corner_stoppage
 
         app.sim_gender_filter.set(pair[0].gender)
         app.sim_weight_filter.set(pair[0].weight)

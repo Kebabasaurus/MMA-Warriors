@@ -2,6 +2,17 @@
 
 ## 3.0.5 - 2026-07-31
 
+### Fight Night Commentary
+
+- Fixed long five-round fights occasionally losing late-round introductions, transitions, summaries, or action commentary when the fight log exceeded its global line limit.
+- Replaced global fight-log truncation with per-round commentary compaction that preserves the opening and closing exchanges while always retaining round boundaries, finishes, scorecards, recaps, and fight metrics.
+- Applied the fix to both championship fights and non-title five-round main events.
+- Added regression coverage for full-distance title and non-title main events, commentary bounds, and a final-tick Round 5 stoppage.
+
+### Interface Polish
+
+- Reworked the top status bar so long promotion names use the flexible space available in maximized windows, while popularity, stability, cash, date, and advance controls remain separate and fully readable.
+
 ### Contract Negotiations
 
 - Rebalanced free-agent contract evaluation so base purse and annualized compensation matter more than raw contract length.
@@ -15,20 +26,28 @@
 - Added automated per-theme contrast checks and a documented tab palette/state guide.
 - The main game window now opens maximized, while retaining its responsive fallback geometry for smaller displays and test environments.
 
-### Starting Promotion Selection
+### Developer Workflow
 
-- Removed the broken duplicate `Create Your Own Promotion` button from the starting screen.
-- Consolidated established, custom, and Spectator Mode starts through the Starting Promotion dropdown and the single `Start New Game With Selected Promotion` action.
-- Preserved the existing `Create New Promotion...` setup and roster-draft workflow behind the dropdown selection.
+- Made synchronized `CHANGELOG.md`, `README.md`, and `AGENTS.md` updates a required part of every implementation improvement or fix.
+- Required focused regression coverage for behavior changes, with documented reproducible manual verification only when reliable automation is not practical.
+- Added smoke coverage that keeps runtime version metadata and the documented change contract synchronized across the project guides.
+- Corrected the README build instructions to distinguish the portable game build from the separately validated Database Editor build.
 
 ## 3.0.4 - 2026-07-30
 
-### Championship Integrity
+### Veteran Career Integrity
 
-- Fixed regional champions being booked in ordinary development bouts between title defenses. Regional titleholders now only compete when the belt is on the line; if no suitable challenger is ready, they sit out.
-- Added a regression scenario covering the regional title-defense cadence and title-history flags.
 - Reworked late-career decline so it tapers after meaningful losses from a fighter's peak rather than reducing long-serving veterans into implausibly low-rated active fighters.
 - Retirement reviews now account for the ability a fighter has lost from their career peak, while a hard review at age 46 prevents indefinitely active veterans.
+
+## 3.0.3 - 2026-07-30
+
+### Regional Championship Booking
+
+- Fixed regional champions being booked in ordinary development bouts between title defenses. Regional titleholders now only compete when the belt is on the line; if no suitable challenger is ready, they sit out.
+- Ranked vacant-title participants and defending challengers by divisional merit instead of promoting whichever ordinary development pairing happened to be drawn first.
+- Preserved championship stakes in feeder-promotion fight logs so fighter histories correctly identify title bouts.
+- Added regression coverage for champion-only defenses, title cadence, contender selection, and archived title flags.
 
 ## 3.0.2 - 2026-07-30
 
