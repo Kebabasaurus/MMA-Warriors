@@ -322,6 +322,27 @@ def main():
         app.special_belts = original_special_belts
         assert_true(app.contract_time_remaining_label(1) == "1 mo", "Contract screen does not show readable time remaining")
         assert_true(app.contract_time_remaining_label(14) == "1y 2mo", "Long contract duration is not compact and readable")
+        minimum_24 = app.contract_duration_offer_score(24, 1, 20000)
+        minimum_70 = app.contract_duration_offer_score(70, 1, 20000)
+        assert_true(minimum_70 == minimum_24 == 0,
+                    "Long contract duration still improves a minimum-compensation offer")
+        competitive_24 = app.contract_duration_offer_score(24, 20000, 20000, signing_bonus=10000, finish_bonus_pct=15)
+        competitive_36 = app.contract_duration_offer_score(36, 20000, 20000, signing_bonus=10000, finish_bonus_pct=15)
+        competitive_48 = app.contract_duration_offer_score(48, 20000, 20000, signing_bonus=10000, finish_bonus_pct=15)
+        competitive_60 = app.contract_duration_offer_score(60, 20000, 20000, signing_bonus=10000, finish_bonus_pct=15)
+        competitive_70 = app.contract_duration_offer_score(70, 20000, 20000, signing_bonus=10000, finish_bonus_pct=15)
+        assert_true(competitive_36 > competitive_24,
+                    "A competitively paid longer contract no longer provides meaningful security value")
+        assert_true(competitive_70 - competitive_24 < 900,
+                    "A 70-month term still outweighs meaningful improvements to base compensation")
+        assert_true(competitive_60 <= competitive_48 and competitive_70 == competitive_60,
+                    "Contract duration still gains acceptance value beyond its realistic cap")
+        prospect_24 = app.contract_duration_offer_score(24, 4000, 4000, signing_bonus=2000, finish_bonus_pct=15)
+        prospect_36 = app.contract_duration_offer_score(36, 4000, 4000, signing_bonus=2000, finish_bonus_pct=15)
+        assert_true(0 < prospect_24 < prospect_36 < 4000,
+                    "Contract duration can outweigh base compensation for inexpensive fighters")
+        assert_true(app.normalized_contract_months(70) == 60,
+                    "Player contract terms can still bypass the 60-month validation cap")
         assert_true(app.contract_expiry_date_label(1) == app.format_game_date(app.month + 1, 1),
                     "Contract expiry date does not match the monthly contract tick")
         original_scheduled_events = list(app.scheduled_events)
