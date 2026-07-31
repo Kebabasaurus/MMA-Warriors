@@ -6,6 +6,7 @@ import tempfile
 import tkinter as tk
 from dataclasses import asdict
 from pathlib import Path
+from tkinter import ttk
 from types import SimpleNamespace
 
 
@@ -34,6 +35,39 @@ def main():
         app = game.FightEmpireApp(root, startup_progress=lambda value, text: startup_updates.append((value, text)))
         assert_true(startup_updates and startup_updates[-1][0] == 100, "Startup progress did not reach its ready state")
         assert_true(all(a[0] <= b[0] for a, b in zip(startup_updates, startup_updates[1:])), "Startup progress moved backwards")
+        original_theme = app.theme_name
+        for theme_name in app.themes:
+            app.theme_name = theme_name
+            app.configure_style()
+            palette = app.tab_colors
+            style = ttk.Style(root)
+            state_specs = {
+                "inactive": (),
+                "hover": ("active",),
+                "selected": ("selected",),
+                "disabled": ("disabled",),
+            }
+            for state in ("inactive", "hover", "selected", "disabled"):
+                ratio = app.wcag_contrast_ratio(palette[f"{state}_fg"], palette[f"{state}_bg"])
+                assert_true(ratio >= 4.5, f"{theme_name} {state} tab contrast fell below WCAG AA: {ratio:.2f}:1")
+                actual_fg = style.lookup("TNotebook.Tab", "foreground", state_specs[state])
+                actual_bg = style.lookup("TNotebook.Tab", "background", state_specs[state])
+                actual_ratio = app.wcag_contrast_ratio(actual_fg, actual_bg)
+                assert_true(actual_ratio >= 4.5, f"{theme_name} rendered {state} tab contrast fell below WCAG AA: {actual_ratio:.2f}:1")
+            selected_hover_bg = style.lookup("TNotebook.Tab", "background", ("selected", "active"))
+            selected_hover_fg = style.lookup("TNotebook.Tab", "foreground", ("selected", "active"))
+            assert_true(
+                (selected_hover_bg, selected_hover_fg) == (palette["selected_bg"], palette["selected_fg"]),
+                f"{theme_name} hover state overrides the selected-tab treatment",
+            )
+            state_contrast = app.wcag_contrast_ratio(palette["selected_bg"], palette["inactive_bg"])
+            assert_true(state_contrast >= 3.0, f"{theme_name} selected and inactive tab surfaces are too similar: {state_contrast:.2f}:1")
+            assert_true(palette["selected_border"] != palette["selected_bg"], f"{theme_name} selected tab lacks its secondary border cue")
+            focus_contrast = app.wcag_contrast_ratio(palette["focus_border"], palette["inactive_bg"])
+            assert_true(focus_contrast >= 3.0, f"{theme_name} keyboard-focus border is too subtle: {focus_contrast:.2f}:1")
+        app.theme_name = original_theme
+        app.theme_name_var.set(original_theme)
+        app.configure_style()
         peak_probe = game.Fighter("Retired Peak Probe", "Lightweight", 36, 12, 5, 62, 62, 62, 62, 62, 25, 0, 60, 8000)
         peak_probe.annual_overalls = {"2026": "74", "2027": 79}
         peak_probe.bout_rating_history = [{"self_overall": 86}, {"self_overall": 81}]
