@@ -304,9 +304,21 @@ class UniverseDatabaseEditor:
         style.configure("Treeview", background=colors["inset"], fieldbackground=colors["inset"], foreground=colors["text"], rowheight=25, bordercolor=colors["line"])
         style.map("Treeview", background=[("selected", "#1c5a70")], foreground=[("selected", "#ffffff")])
         style.configure("Treeview.Heading", background=colors["panel"], foreground=colors["text"], font=("Tahoma", 9, "bold"), relief="flat")
-        style.configure("TNotebook", background=colors["bg"], borderwidth=0)
-        style.configure("TNotebook.Tab", background=colors["panel"], foreground=colors["muted"], padding=(10, 6))
-        style.map("TNotebook.Tab", background=[("selected", "#1c405a")], foreground=[("selected", "#ffffff")])
+        style.configure("TNotebook", background=colors["bg"], borderwidth=0, tabmargins=(0, 2, 0, 0))
+        style.configure(
+            "TNotebook.Tab", background=colors["panel"], foreground=colors["text"],
+            font=("Tahoma", 9, "bold"), padding=(12, 7), borderwidth=2,
+            bordercolor=colors["line"], lightcolor=colors["line"], darkcolor=colors["bg"], relief="flat",
+        )
+        style.map(
+            "TNotebook.Tab",
+            background=[("selected", colors["accent"]), ("active", "#193956")],
+            foreground=[("selected", "#062116"), ("active", "#ffffff")],
+            bordercolor=[("selected", "#062116"), ("focus", "#a5f3ce"), ("active", colors["accent"])],
+            lightcolor=[("selected", "#062116")], darkcolor=[("selected", "#062116")],
+            relief=[("selected", "raised"), ("active", "raised")],
+            expand=[("selected", (1, 1, 1, 0))],
+        )
 
     def build_ui(self):
         header = ttk.Frame(self.root)

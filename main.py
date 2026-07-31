@@ -326,6 +326,13 @@ if __name__ == "__main__":
         splash.close()
         splash = None
         root.deiconify()
+        # The management UI is designed for a maximized desktop workspace.
+        # Keep the responsive fallback geometry above for tests and platforms
+        # that do not expose Windows' "zoomed" window state.
+        try:
+            root.state("zoomed")
+        except tk.TclError:
+            pass
         root.lift()
         root.focus_force()
     except Exception as exc:
