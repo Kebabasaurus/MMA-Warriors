@@ -849,7 +849,10 @@ build widget with flexible geometry
   cannot continue across the wrong fight phase. Derive local crowd gain through
   `fighter_event_connection`: exact hometowns receive the largest bounded lift, followed by national
   home, adopted home, and training-base connections. Keep this effect presentation-only; it must not
-  alter fight mechanics or create a second geographic-proximity model in `audio.py`.
+  alter fight mechanics or create a second geographic-proximity model in `audio.py`. The live Fight
+  Night viewer and Game Settings share `fight_night_audio_volume`; route both through
+  `set_fight_night_audio_volume` so drag-time changes apply to the next cue, malformed legacy values
+  repair safely, and saved volume remains clamped to 0-100.
 
 ## 17. Current Product Direction
 

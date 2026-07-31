@@ -3330,7 +3330,7 @@ class ViewMixin:
         self.market_scout_text.config(state="disabled")
 
     def open_game_settings_window(self):
-        """Persistent gameplay settings for player information and AI market pace."""
+        """Persistent gameplay, market, replay, and Fight Night audio settings."""
         window = tk.Toplevel(self.root)
         window.title("Game Settings")
         window.geometry("620x650")
@@ -3379,7 +3379,7 @@ class ViewMixin:
         if selected_output not in audio_labels:
             selected_output = self.AUDIO_DEFAULT
         audio_output_var = tk.StringVar(value=selected_output)
-        audio_volume_var = tk.IntVar(value=int(self.rules.get("fight_night_audio_volume", 55)))
+        audio_volume_var = tk.IntVar(value=self.fight_night_audio_volume())
         audio_row = ttk.Frame(body, style="Inset.TFrame")
         audio_row.pack(fill="x", padx=12, pady=(0, 4))
         ttk.Label(audio_row, text="Output", style="Inset.TLabel").pack(side="left", padx=(8, 6), pady=6)
@@ -3404,7 +3404,7 @@ class ViewMixin:
         def preview_audio():
             self.rules["fight_night_audio_enabled"] = bool(audio_enabled_var.get())
             self.rules["fight_night_audio_output"] = audio_output_var.get()
-            self.rules["fight_night_audio_volume"] = max(0, min(100, int(audio_volume_var.get())))
+            self.set_fight_night_audio_volume(audio_volume_var.get())
             self.play_fight_night_sound("preview")
 
         ttk.Button(body, text="Test Selected Output", command=preview_audio).pack(anchor="w", padx=12, pady=(0, 4))
@@ -3424,7 +3424,7 @@ class ViewMixin:
             self.rules["global_result_replay_limit"] = max(0, replay_limit)
             self.rules["fight_night_audio_enabled"] = bool(audio_enabled_var.get())
             self.rules["fight_night_audio_output"] = audio_output_var.get()
-            self.rules["fight_night_audio_volume"] = max(0, min(100, int(audio_volume_var.get())))
+            self.set_fight_night_audio_volume(audio_volume_var.get())
             window.destroy()
         ttk.Button(footer, text="Apply", style="Accent.TButton", command=apply).pack(side="left")
         ttk.Button(footer, text="Cancel", command=window.destroy).pack(side="right")
@@ -8540,10 +8540,7 @@ class ViewMixin:
         self.rules.setdefault("ui_owner_goals_collapsed", False)
         self.rules.setdefault("ui_show_details_collapsed", False)
         self.rules.setdefault("ui_matchup_insight_collapsed", True)
-        self.rules.setdefault("fight_night_audio_enabled", True)
-        self.rules.setdefault("fight_night_audio_output", "System default")
-        self.rules.setdefault("fight_night_audio_volume", 55)
-        self.rules["fight_night_audio_volume"] = max(0, min(100, int(self.rules.get("fight_night_audio_volume", 55))))
+        self.ensure_audio_defaults()
         self.rules.setdefault("scouting_search_focus", "Free Agent Pool")
         self.rules.setdefault("scouting_recommendation_mode", "Balanced")
         if self.rules["scouting_search_focus"] not in SCOUTING_SEARCH_FOCUSES:

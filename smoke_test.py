@@ -101,6 +101,20 @@ def assert_crowd_audio_pack():
 def assert_crowd_audio_runtime(game):
     """Fight Night resolves every family, rotates variants, and can scale PCM safely."""
     probe = object.__new__(game.FightNightAudioMixin)
+    probe.rules = {}
+    probe.ensure_audio_defaults()
+    assert_true(probe.fight_night_audio_volume() == 55,
+                "Legacy-shaped rules do not receive the default Fight Night volume")
+    assert_true(probe.set_fight_night_audio_volume(-20) == 0,
+                "Fight Night volume does not clamp at silence")
+    assert_true(probe.set_fight_night_audio_volume(47.6) == 48,
+                "Fight Night volume does not normalize live slider values")
+    assert_true(probe.set_fight_night_audio_volume(140) == 100,
+                "Fight Night volume does not clamp at 100 percent")
+    assert_true(probe.set_fight_night_audio_volume("invalid") == 55,
+                "Malformed saved Fight Night volume does not repair to the default")
+    assert_true(probe.set_fight_night_audio_volume(float("inf")) == 55,
+                "Infinite saved Fight Night volume does not repair to the default")
     manifest_families = {
         cue["family"]
         for cue in json.loads((CROWD_AUDIO_DIR / "manifest.json").read_text(encoding="utf-8"))["cues"]
@@ -177,6 +191,20 @@ def assert_crowd_audio_runtime(game):
                 "Fight Night did not send the mastered knockdown asset to playback")
     assert_true(abs(played[0][1] - 0.66) < 0.001,
                 "Fight Night did not apply hometown gain to the user's playback volume")
+    played.clear()
+    playback_finished.clear()
+    probe._fight_night_last_sound_at = 0.0
+    probe._fight_night_last_family_at = {}
+    probe.set_fight_night_audio_volume(25)
+    assert_true(probe.play_fight_night_sound("decision"),
+                "A cue was not accepted after changing the live volume")
+    assert_true(playback_finished.wait(2.0) and abs(played[0][1] - 0.25) < 0.001,
+                "The next Fight Night cue did not use the adjusted live volume")
+    probe._fight_night_last_sound_at = 0.0
+    probe._fight_night_last_family_at = {}
+    probe.set_fight_night_audio_volume(0)
+    assert_true(not probe.play_fight_night_sound("decision"),
+                "Zero Fight Night volume did not silence new cues")
 
 
 def main():
@@ -2139,12 +2167,15 @@ def main():
         app.rules["ui_owner_goals_collapsed"] = True
         app.rules["ui_show_details_collapsed"] = True
         app.rules["ui_matchup_insight_collapsed"] = True
+        app.set_fight_night_audio_volume(37)
         serialized_preferences = app.serialize_world()["rules"]
         assert_true(serialized_preferences["live_auto_play_card"] is True and serialized_preferences["live_follow_commentary"] is False,
                     "Fight-night viewer preferences are not persisted with the save")
         assert_true(serialized_preferences["ui_owner_goals_collapsed"] is True and serialized_preferences["ui_show_details_collapsed"] is True
                     and serialized_preferences["ui_matchup_insight_collapsed"] is True,
                     "Inbox or Matchmaking disclosure preferences did not persist with the save")
+        assert_true(serialized_preferences["fight_night_audio_volume"] == 37,
+                    "The live Fight Night volume does not persist with the save")
 
         rival_fighter = next(fighter for promo in app.promotions for fighter in promo.roster if not fighter.retired)
         saved_reports = dict(app.scouting_reports)

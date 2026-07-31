@@ -29,6 +29,7 @@ except Exception:
 
 
 class FightNightAudioMixin:
+    DEFAULT_FIGHT_NIGHT_AUDIO_VOLUME = 55
     AUDIO_DEFAULT = "System default"
     _SAMPLE_RATE = 44100
     _CROWD_AUDIO_DIR = ASSET_DIR / "crowd_audio"
@@ -95,7 +96,27 @@ class FightNightAudioMixin:
     def ensure_audio_defaults(self):
         self.rules.setdefault("fight_night_audio_enabled", True)
         self.rules.setdefault("fight_night_audio_output", self.AUDIO_DEFAULT)
-        self.rules.setdefault("fight_night_audio_volume", 55)
+        self.rules["fight_night_audio_volume"] = self.normalize_fight_night_audio_volume(
+            self.rules.get("fight_night_audio_volume", self.DEFAULT_FIGHT_NIGHT_AUDIO_VOLUME)
+        )
+
+    def normalize_fight_night_audio_volume(self, value):
+        """Return a safe whole-number percentage for UI, saves, and playback."""
+        try:
+            value = round(float(value))
+        except (TypeError, ValueError, OverflowError):
+            value = self.DEFAULT_FIGHT_NIGHT_AUDIO_VOLUME
+        return max(0, min(100, int(value)))
+
+    def set_fight_night_audio_volume(self, value):
+        """Apply and persist a volume change from any Fight Night control."""
+        volume = self.normalize_fight_night_audio_volume(value)
+        self.rules["fight_night_audio_volume"] = volume
+        return volume
+
+    def fight_night_audio_volume(self):
+        self.ensure_audio_defaults()
+        return int(self.rules["fight_night_audio_volume"])
 
     def fight_night_audio_status(self):
         self.ensure_audio_defaults()
@@ -531,7 +552,7 @@ class FightNightAudioMixin:
         self.ensure_audio_defaults()
         if not self.rules.get("fight_night_audio_enabled", True):
             return False
-        volume = max(0, min(100, int(self.rules.get("fight_night_audio_volume", 55)))) / 100
+        volume = self.fight_night_audio_volume() / 100
         context_gain = max(0.75, min(1.20, float(context_gain or 1.0)))
         volume *= context_gain
         if volume <= 0:

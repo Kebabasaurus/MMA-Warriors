@@ -2045,6 +2045,25 @@ class EventMixin:
         fight_list.bind("<Double-1>", review_selected_bout)
         if package.get("tournament_brackets"):
             ttk.Button(controls3, text="View Bracket", command=lambda: self.open_event_tournament_bracket(package, window)).pack(side="left", padx=4)
+        self.ensure_audio_defaults()
+        live_audio_volume_var = tk.DoubleVar(value=self.fight_night_audio_volume())
+        live_audio_volume_label = tk.StringVar(value=f"{self.fight_night_audio_volume()}%")
+
+        def apply_live_audio_volume(value=None):
+            volume = self.set_fight_night_audio_volume(
+                live_audio_volume_var.get() if value is None else value
+            )
+            live_audio_volume_label.set(f"{volume}%")
+
+        ttk.Label(controls3, text="Audio", style="Panel.TLabel").pack(side="left", padx=(12, 3))
+        ttk.Scale(
+            controls3, from_=0, to=100, variable=live_audio_volume_var,
+            orient="horizontal", length=120, command=apply_live_audio_volume,
+        ).pack(side="left", padx=2)
+        ttk.Label(
+            controls3, textvariable=live_audio_volume_label,
+            style="Panel.TLabel", width=4, anchor="e",
+        ).pack(side="left", padx=(2, 4))
         status_label = tk.Label(controls3, text="Ready", bg=self.colors["chrome"], fg=self.colors["muted"], font=("Tahoma", 9, "bold"), anchor="w")
         status_label.pack(side="left", fill="x", expand=True, padx=12)
         close_button = ttk.Button(controls3, text="Close", style="Accent.TButton", command=close_window)

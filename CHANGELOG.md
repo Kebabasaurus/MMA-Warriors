@@ -4,6 +4,7 @@
 
 ### Fight Night Audio
 
+- Added a 0-100 volume slider directly to the live Fight Night viewer; changes take effect on the next cue, persist with the career, and share the same normalized setting as Game Settings.
 - Added and integrated a 36-file crowd-audio pack, edited and mastered from licensed real field recordings, with three distinct variants for each of 12 pre-fight, live-fight, finish, and decision trigger families.
 - Fight Night now rotates non-repeating variants for arena buildup, walkouts, opening roars, clean strikes, knockdowns, submission danger, inactivity, round endings, finishes, decision tension, split-card boos, and respectful post-fight applause.
 - Playback honors the manifest's per-cue gain, limits simultaneous reactions and repeat frequency so commentary stays clear, and falls back to the existing procedural cues when an asset or playback service is unavailable.
