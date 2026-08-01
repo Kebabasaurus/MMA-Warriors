@@ -1,7 +1,7 @@
 @echo off
 setlocal
 set "APP_DIR=%~dp0"
-set "BUNDLED_PY=C:\Users\Tanks\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
+set "LOCAL_PY=%APP_DIR%.venv\Scripts\python.exe"
 set "PACKAGE_DIR=%APP_DIR%dist\MMA Warriors"
 set "RUNTIME_BACKUP=%APP_DIR%build\package_runtime_backup"
 
@@ -15,8 +15,8 @@ if not errorlevel 1 (
     exit /b 1
 )
 
-if exist "%BUNDLED_PY%" (
-    set "PY=%BUNDLED_PY%"
+if exist "%LOCAL_PY%" (
+    set "PY=%LOCAL_PY%"
 ) else (
     where py >nul 2>nul
     if not errorlevel 1 (

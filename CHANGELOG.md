@@ -1,5 +1,57 @@
 # Changelog
 
+## Unreleased - brett-Dev
+
+### Save, Load & Results Integrity
+
+- Made career loads transactional: a read, migration, or apply failure restores the complete live
+  career instead of leaving a partially replaced hybrid state.
+- Made Results Database migration idempotent. Repeated Quick Loads no longer manufacture `|2`,
+  `|3`, and later copies of the same completed card, while genuinely distinct same-week cards keep
+  separate entries. Existing duplicated index rows are repaired on load.
+- Made world serialization observational by moving champion/division repair out of the save writer;
+  saving no longer adds fighters or consumes simulation RNG.
+- A metadata-sidecar write problem is now logged as a recoverable cache warning after the primary
+  save succeeds, rather than incorrectly reporting that the whole save failed.
+
+### Contracts, Events & Financial Pressure
+
+- Rejected negative or out-of-range contract money, percentage, PPV, and guarantee inputs before
+  they can change cash or roster state. Terms remain normalized to the supported 1-60 month range.
+- Player promotions now pay the full purse they negotiated. The hidden company-size discount was
+  removed, and win, finish, PPV, and guarantee obligations use the same projection, payout, event
+  report, and finance-ledger calculation.
+- Guaranteed fights now advance on every official player bout, including draws, and unfinished
+  commitments remain visible. Expired contracts leave or use the explicit paid auto-renew workflow;
+  valuable fighters no longer silently receive a free random extension.
+- Outside non-exclusive draws now use the shared draw-result path instead of being recorded as a
+  loss. Event booking and conflict checks retain fighter IDs so duplicate display names remain
+  independently bookable.
+- Negative company cash now creates escalating, persistent financial-pressure consequences through
+  stability, morale, and inbox warnings, and clears the streak after recovery.
+
+### Scouting, World Data & UI
+
+- Fixed Basic Dossier crashing after charging the player when Staff had not been opened. Lazy screen
+  refreshes now tolerate unbuilt widgets, and successful scouting state stays synchronized.
+- Added a player setting for automatic idle-scout assignments and clearer assignment messaging;
+  academy guidance now recognizes an already-hired scout.
+- Restored the Regions screen to the active dark palette and clears stale Results detail when a
+  filter changes the visible card set.
+- Corrected the Eurasian Fight Circuit's World Hub level label, repaired geographically incorrect
+  regional team lists, and made opening gym membership/capacity balance prevent elite rooms from
+  starting at several times their intended load.
+
+### Balance, Tests & Portability
+
+- Reworked the Simulation Lab audit around competitive low/mid/high-band matchups with overall gaps
+  of six or less, per-tier finish rates, and restored RNG/name state. Its lightweight business
+  stress figures are explicitly labelled synthetic rather than real player-event finance.
+- Added focused regression suites for persistence, contracts/finance, scouting/world data, audit
+  isolation, and portable batch-file path rules.
+- Removed developer-specific `C:\Users\...` interpreter paths from the launcher, shipping tests,
+  and build scripts. They now prefer the repository `.venv` and fall back to `py` or `python`.
+
 ## Unreleased - Matt-Dev
 
 ### Fight Excitement

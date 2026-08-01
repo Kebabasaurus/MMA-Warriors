@@ -291,11 +291,17 @@ class PersistenceMixin:
     def write_save_metadata_sidecar(self, path, metadata):
         """Persist tiny save-list metadata without opening the full world file."""
         if not isinstance(metadata, dict) or not metadata:
-            return
+            return False
         try:
             atomic_write_json_compact(self.save_metadata_sidecar_path(path), metadata)
+            return True
         except Exception:
             LOGGER.exception("Could not write save metadata sidecar for %s", path)
+            # The sidecar is only a save-manager acceleration cache.  The
+            # primary save has already been written successfully and remains
+            # authoritative, so a cache failure must not become a false
+            # whole-save failure.
+            return False
 
     def save_metadata_file_signature(self, path):
         path = Path(path)
@@ -801,14 +807,9 @@ class PersistenceMixin:
                         log["b_id"] = fighter.fighter_id
 
     def serialize_world(self):
-        # KNOWN ISSUE: this fills thin divisions by generating fighters, so
-        # saving consumes simulation RNG and can add roster members. Removing
-        # it breaks the save/load round trip, because apply_world_data tops up
-        # on load and the two sides would no longer agree on roster size.
-        # Fixing it properly means moving division top-up out of both save and
-        # load and onto a single simulation step; left alone deliberately
-        # rather than destabilising the round trip.
-        self.ensure_all_company_champions()
+        # Serialization is deliberately read-only. Champion/division repair
+        # belongs to explicit world progression, never to Save or Load actions
+        # that should not add fighters or consume RNG.
         return {
             "player_company_name": self.player_company_name,
             "spectator_mode": getattr(self, "spectator_mode", False),
@@ -940,7 +941,72 @@ class PersistenceMixin:
         finally:
             self.close_busy_overlay(busy)
 
+    @staticmethod
+    def _is_runtime_ui_value(value):
+        """Return whether an attribute belongs to the live Tk presentation."""
+        if isinstance(value, (tk.Misc, tk.Variable)) or hasattr(value, "tk"):
+            return True
+        if isinstance(value, dict):
+            return any(
+                isinstance(item, (tk.Misc, tk.Variable)) or hasattr(item, "tk")
+                for item in value.values()
+            )
+        if isinstance(value, (list, tuple)):
+            return any(
+                isinstance(item, (tk.Misc, tk.Variable)) or hasattr(item, "tk")
+                for item in value[:32]
+            )
+        return False
+
+    def _sync_loaded_ui_state(self):
+        """Apply a successfully committed load to live Tk controls."""
+        try:
+            if hasattr(self, "theme_name_var"):
+                self.theme_name_var.set(self.theme_name)
+                self.configure_style()
+                self.retheme_plain_widgets(self.root)
+            if hasattr(self, "engine_vars"):
+                for key, var in self.engine_vars.items():
+                    var.set(self.engine_settings.get(key, 1.0))
+            if hasattr(self, "fight_timer_delay"):
+                self.fight_timer_delay.set(max(120, min(3000, int(getattr(self, "_loaded_fight_timer_delay", 2150)))))
+            self.set_player_event_location_default()
+        except Exception:
+            # The domain state is already valid and committed.  A stale lazy
+            # widget must not turn that successful load into a destructive
+            # rollback or a misleading load failure.
+            LOGGER.exception("Loaded world committed, but a UI control could not be synchronized")
+
     def apply_world_data(self, data):
+        """Validate and migrate a save off to the side, then commit atomically.
+
+        The old loader assigned hundreds of fields directly to the live app.
+        A late migration error therefore left a hybrid of the old and new
+        careers.  The staging instance has the same domain helpers but no live
+        Tk widgets, so failures leave ``self`` untouched.
+        """
+        staged = self.__class__.__new__(self.__class__)
+        ui_keys = set()
+        for key, value in self.__dict__.items():
+            if self._is_runtime_ui_value(value):
+                ui_keys.add(key)
+                continue
+            try:
+                staged.__dict__[key] = deepcopy(value)
+            except Exception:
+                staged.__dict__[key] = value
+        rng_state = random.getstate()
+        try:
+            staged._apply_world_data_unchecked(deepcopy(data))
+        except Exception:
+            random.setstate(rng_state)
+            raise
+        for key, value in staged.__dict__.items():
+            if key not in ui_keys:
+                self.__dict__[key] = value
+        self._sync_loaded_ui_state()
+
+    def _apply_world_data_unchecked(self, data):
         if hasattr(self, "editor_current_dirty"):
             self.editor_current_dirty = False
         self.active_save_name = self.normalized_save_name(data.get("active_save_name", getattr(self, "active_save_name", "Game 1")))
@@ -954,10 +1020,6 @@ class PersistenceMixin:
         self.player_reputation = data.get("player_reputation", "Regional Player Company")
         self.company_show_personality = data.get("company_show_personality", "Balanced")
         self.theme_name = data.get("theme_name", getattr(self, "theme_name", "Fight Night"))
-        if hasattr(self, "theme_name_var"):
-            self.theme_name_var.set(self.theme_name)
-            self.configure_style()
-            self.retheme_plain_widgets(self.root)
         self.cash = data.get("cash", 275_000)
         self.company_pop = data.get("company_pop", 38)
         self.company_stability = data.get("company_stability", max(5, min(99, self.cash // 5000)))
@@ -1047,9 +1109,6 @@ class PersistenceMixin:
         self.media_market_history = data.get("media_market_history", []) or []
         self.media_market_last_month = data.get("media_market_last_month", 0)
         self.engine_settings = data.get("engine_settings", self.seed_engine_settings())
-        if hasattr(self, "engine_vars"):
-            for key, var in self.engine_vars.items():
-                var.set(self.engine_settings.get(key, 1.0))
         self.ensure_finance_defaults()
         self.staff = data.get("staff", self.seed_staff())
         self.staff_candidates = data.get("staff_candidates", self.seed_staff_candidates())
@@ -1086,13 +1145,15 @@ class PersistenceMixin:
         self.belt_history = self.normalize_belt_history(data.get("belt_history", self.blank_belt_history()))
         self.closed_divisions = set(data.get("closed_divisions", []))
         self.player_managed_divisions = set(data.get("player_managed_divisions", self.closed_divisions))
+        current_delay = 2150
         if hasattr(self, "fight_timer_delay"):
-            saved_delay = int(data.get("fight_timer_delay", self.fight_timer_delay.get()))
-            # 950 ms was the old shipped default. Move old-default saves to the
-            # more readable live-fight pace, while respecting deliberate custom speeds.
-            if saved_delay == 950:
-                saved_delay = 2150
-            self.fight_timer_delay.set(max(120, min(3000, saved_delay)))
+            current_delay = self.fight_timer_delay.get()
+        saved_delay = int(data.get("fight_timer_delay", current_delay))
+        # 950 ms was the old shipped default. Move old-default saves to the
+        # more readable live-fight pace, while respecting deliberate custom speeds.
+        if saved_delay == 950:
+            saved_delay = 2150
+        self._loaded_fight_timer_delay = max(120, min(3000, saved_delay))
         self.rules = data.get("rules", {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "active_fighter_target": 1200})
         self.rules.setdefault("scouting_mode", True)
         if self.spectator_mode:
@@ -1229,10 +1290,8 @@ class PersistenceMixin:
                 ),
             })
             self.change_journal = self.change_journal[-400:]
-        self.ensure_all_company_champions()
         self.rebalance_ai_finance_model()
         self.maintain_inbox()
-        self.set_player_event_location_default()
 
     def set_player_event_location_default(self):
         """Start the next player card in the active promotion's home market."""

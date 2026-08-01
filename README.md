@@ -9,6 +9,24 @@ MMA Warriors is a deep Windows desktop promotion-management simulation. Choose a
 
 Every career lives inside a persistent MMA world. Fighters age, improve or decline, move between promotions, chase titles, suffer injuries, join gyms, build rivalries, and eventually retire. Rival companies sign athletes, run events, spend money, and pursue their own identities, so your decisions reshape a living competitive landscape instead of a static roster.
 
+## Unreleased - brett-Dev Stabilization
+
+The current development build hardens the systems exercised by an end-to-end custom-promotion QA
+career. Loads are transactional, repeated loads do not duplicate Results cards, and saving no longer
+changes roster/champion state or advances simulation randomness. Contract inputs reject negative or
+out-of-range values, agreed purses are paid in full, bonuses and PPV clauses share one forecast and
+payout calculation, guarantees advance on official bouts, and expired deals cannot renew for free.
+
+Scouting actions are safe before the Staff screen is first opened, automatic idle-scout work is a
+player setting, and academy guidance follows the live staff state. Regional team data and the
+Eurasian circuit label are corrected, opening gym loads are capacity-aware, and Regions follows the
+active dark theme. Negative company cash now creates visible stability and morale pressure instead
+of functioning as consequence-free credit.
+
+The Simulation Lab audit now emphasizes realistic matchups within six overall points and reports
+low-, mid-, and high-tier finish rates. Its gate/profit output remains a labelled synthetic stress
+test; use completed career events and the Finance ledger for the actual player economy.
+
 ## Run The Game
 
 Double-click:
@@ -59,6 +77,12 @@ Run Smoke Tests.bat
 ```
 
 The test launcher runs `smoke_test.py`, `stability_test.py`, and `media_system_test.py`. The smoke test checks release-document/version synchronization, startup, the reusable please-wait overlay and save-load phase wiring, responsive Inbox and Matchmaking panel order, compact wide/medium/narrow Show Details placement and field wiring, Matchmaking table-view coverage and selection preservation, direct fighter comparison, responsive booking actions, startup sash sizing and player-adjusted sash preservation, visible action footers, disclosure-state persistence, filter-aware mail counts, discovery-cue contrast across every theme, the responsive long-name header, contract-duration scoring, core promotions, roster sizes, gyms, save/load serialization, and full five-round commentary integrity. The stability playtest additionally completes normal and retirement events, verifies two-year retirement-card thresholds, popularity ordering, weight-safe matchmaking, weekly card caps and contract-expiry releases, opens every major UI viewer, exercises academy scouting, all-eligible showcase matchmaking, cooldowns, structured amateur history, adult-weight graduation, and child-sport pathways, round-trips a progressed world through JSON, and advances several independent worlds while watching for Tk callback errors. The media test covers editable outlets, player and AI offers/contracts, campaign limits, audience reporting, old-save migration, and a save/load round trip.
+
+The launcher also runs `persistence_regression_test.py`, `contracts_finance_regression_test.py`,
+`ui_data_regression_test.py`, and `qa_tooling_regression_test.py` for transactional persistence and
+Results-index idempotence, contract/finance boundaries, lazy scouting UI and world-data validation,
+audit isolation, and portable batch paths. These focused checks run before the longer stability
+playtest and protect the exact failure modes found by hands-on QA.
 
 The current development model is documented in [`docs/FIGHTER_DEVELOPMENT_GUIDE.md`](docs/FIGHTER_DEVELOPMENT_GUIDE.md); current clinch, cage, ground, and damage mechanics are documented in [`docs/FIGHT_DAMAGE_AND_CLINCH_AUDIT.md`](docs/FIGHT_DAMAGE_AND_CLINCH_AUDIT.md); shared per-theme tab colors and WCAG ratios are documented in [`TAB_ACCESSIBILITY.md`](TAB_ACCESSIBILITY.md).
 

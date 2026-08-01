@@ -2845,14 +2845,17 @@ class SeedMixin:
                         global_names.add(fighter.name)
             if male_only:
                 self.install_eurasian_headliner(roster, global_names, name, region)
+            strategy = self.seed_promotion_strategy(name, "Regional Development")
+            if male_only:
+                strategy["description"] = EURASIAN_FIGHT_CIRCUIT_DESCRIPTION
             promotion = Promotion(
                 name=name, region=region, size=24, cash=0, roster=roster,
-                reputation=EURASIAN_FIGHT_CIRCUIT_DESCRIPTION if male_only else "Regional Feeder",
+                reputation="Regional Feeder",
                 reputation_score=24, stability=70,
                 show_history=[], belts=self.blank_belts(), interim_belts=self.blank_belts(), belt_history=self.blank_belt_history(),
                 rules={"rounds": 3, "title_rounds": 3, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 4, "allow_mixed_gender": False, "active_fighter_target": 1200},
                 broadcasters=[], weight_classes=list(WEIGHTS), show_personality="Regional Development", is_regional_feeder=True,
-                strategy=self.seed_promotion_strategy(name, "Regional Development"),
+                strategy=strategy,
                 executive=self.seed_promotion_executive(name),
                 era_history=[],
             )
@@ -3046,6 +3049,21 @@ class SeedMixin:
             "Middle East": ["Bahrain", "United Arab Emirates", "Saudi Arabia", "Qatar"],
             "Africa": ["South Africa", "Nigeria", "Egypt", "Kenya"],
         }
+        regional_teams = {
+            "USA": ["American Top Team", "AKA", "Kill Cliff FC"],
+            "Canada": ["Tristar", "Niagara Top Team", "Northstar Combat"],
+            "Brazil": ["Nova Uniao", "Chute Boxe", "Brazilian Top Team"],
+            "Mexico": ["Lobo Gym", "Mexico City Combat", "Entram Gym"],
+            "UK": ["SBG Ireland", "NexGen MMA", "London Shootfighters"],
+            "Europe": ["Allstars Training Center", "MMA Factory Paris", "UFD Gym"],
+            "Russia": ["Dagestan Fight School", "Red Fury Team", "Akhmat Fight Club"],
+            "Japan": ["Krazy Bee", "Shootbox Japan", "Paraestra Tokyo"],
+            "South Korea": ["Korean Top Team", "Busan Team MAD"],
+            "Australia": ["City Kickboxing", "Freestyle Fighting Gym", "Sydney Elite MMA"],
+            "Asia": ["Tiger Muay Thai", "Evolve MMA", "Team Lakay"],
+            "Middle East": ["KHK MMA", "Abu Dhabi Combat Team", "Dubai Fight Lab"],
+            "Africa": ["Team CIT", "Lagos Fight House", "Atlas Combat Club"],
+        }
         return {
             region: {
                 "economy": random.choice(economies),
@@ -3053,7 +3071,7 @@ class SeedMixin:
                 "drug_accuracy": random.choice([35, 50, 65, 80, 95]),
                 "mma_love": random.randint(35, 85),
                 "promo_benefit": REGION_PROMO_BENEFITS.get(region, {"media": 1.0, "gate": 1.0, "morale": 1}),
-                "teams": random.sample(CAMPS, k=min(3, len(CAMPS))),
+                "teams": list(regional_teams.get(region, [])),
                 "areas": areas,
                 "last_major_show": "No major shows yet",
                 "fan_identity": {
@@ -3216,6 +3234,17 @@ class SeedMixin:
             gym = gym_lookup.get(fighter.camp)
             if gym:
                 gym.member_count += 1
+        # The opening universe contains thousands of authored and generated
+        # fighters. Do not begin a career with famous camps at 200-400% load,
+        # which would suppress their training before the player acts. Later
+        # roster movement remains subject to the normal crowding model.
+        if int(getattr(self, "month", 2) or 2) == 1 and int(getattr(self, "week", 1) or 1) == 1:
+            for gym in gyms:
+                if gym.name == "Independent" or gym.capacity >= 500:
+                    continue
+                minimum_capacity = (max(0, gym.member_count) * 100 + 134) // 135
+                if minimum_capacity > gym.capacity:
+                    gym.capacity = minimum_capacity
 
     def seed_finance(self):
         return {

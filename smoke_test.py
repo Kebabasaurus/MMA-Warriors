@@ -2238,14 +2238,14 @@ def main():
         app.scouting_reports = saved_reports
 
         assert_true(app.player_bout_purse_factor({"tier": "Main Card"}) == 1.0, "Main-card player purse factor changed")
-        assert_true(app.player_bout_purse_factor({"tier": "Prelims"}) == 0.75, "Player prelim purse reduction missing")
-        assert_true(app.player_bout_purse_factor({"tier": "Early Prelims"}) == 0.55, "Player early-prelim purse reduction missing")
+        assert_true(app.player_bout_purse_factor({"tier": "Prelims"}) == 1.0, "Player prelim purse was discounted")
+        assert_true(app.player_bout_purse_factor({"tier": "Early Prelims"}) == 1.0, "Player early-prelim purse was discounted")
         finance_probe = app.calculate_event_finance(
             45, 55_000, {"venue": "Regional Arena", "broadcaster": "No Coverage", "fights": []}, [],
             contracted_fighter_pay=100_000,
         )
-        assert_true(finance_probe["tier_purse_savings"] > 0 and finance_probe["contracted_fighter_pay"] > finance_probe["fighter_pay"],
-                    "Player lower-card savings are not reflected in event finance")
+        assert_true(finance_probe["tier_purse_savings"] == 0 and finance_probe["contracted_fighter_pay"] == finance_probe["fighter_pay"] == 100_000,
+                    "Player event finance did not preserve the full supplied purse")
 
         import persistence
         load_events = []
