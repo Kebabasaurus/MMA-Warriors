@@ -140,6 +140,9 @@ class Fighter:
     # frame. Unlike a bad cut, it applies every bout until they move again.
     division_size_penalty: int = 0
     division_size_note: str = ""
+    # Month-by-month trail of the frame settling into its division: filling out
+    # when moving up, recomposing down when the body allows it.
+    division_fit_log: list = None
     elo_rating: int = 1500
     career_sig_strikes: int = 0
     career_takedowns: int = 0

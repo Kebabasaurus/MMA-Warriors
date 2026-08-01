@@ -646,7 +646,93 @@ class ViewMixin:
         messagebox.showinfo("Division reopened", "The division is open and remains empty until you sign fighters. Reopening is free; the title stays vacant until you build it.")
         return True
 
+    def refresh_sport_contracts(self):
+        """Mirror the MMA contract warnings for child-promotion athletes."""
+        if not hasattr(self, "sport_contracts_tree"):
+            return
+        self.sport_contracts_tree.delete(*self.sport_contracts_tree.get_children())
+        self.sport_contracts_rows = {}
+        rows = self.player_combat_contract_rows()
+        expiring = expired = 0
+        payroll = 0
+        for index, row in enumerate(rows):
+            fighter = row["fighter"]
+            months = row["months"]
+            payroll += row["purse"]
+            if months <= 0:
+                tag, expired = "expired", expired + 1
+            elif months == 1:
+                tag, expiring = "final", expiring + 1
+            elif months <= 3:
+                tag, expiring = "soon", expiring + 1
+            else:
+                tag = ""
+            row_id = f"sportcontract:{index}"
+            self.sport_contracts_rows[row_id] = row
+            self.sport_contracts_tree.insert(
+                "", "end", iid=row_id, tags=(tag,) if tag else (),
+                values=(
+                    fighter.name, row["sport"], row["division"], fighter.gender[:1], fighter.age,
+                    f"{self.combat_sport_display_rating(fighter, row['sport']):.1f}", fighter.record,
+                    "EXPIRED" if months <= 0 else f"{months} mo", f"${row['purse']:,}", row["status"],
+                ),
+            )
+        if not rows:
+            self.sport_contracts_alert.config(
+                text="No combat sport athletes under contract. Open a child promotion from the Combat Sports window to start signing."
+            )
+        elif expired:
+            self.sport_contracts_alert.config(text=f"{expired} combat sport contract(s) have EXPIRED and need renewing or releasing.")
+        elif expiring:
+            self.sport_contracts_alert.config(text=f"{expiring} combat sport contract(s) expire within three months.")
+        else:
+            self.sport_contracts_alert.config(text="All combat sport contracts are secure.")
+        self.sport_contracts_summary.config(text=f"{len(rows)} athletes | Per-bout payroll ${payroll:,}")
+
+    def selected_sport_contract_row(self):
+        selected = self.sport_contracts_tree.selection() if hasattr(self, "sport_contracts_tree") else []
+        if not selected:
+            messagebox.showinfo("Combat Sport Contracts", "Select an athlete first.")
+            return None
+        return getattr(self, "sport_contracts_rows", {}).get(selected[0])
+
+    def renew_selected_sport_contract(self):
+        row = self.selected_sport_contract_row()
+        if not row:
+            return
+        fighter, sport = row["fighter"], row["sport"]
+        terms = self.combat_sport_contract_terms(sport, fighter)
+        offer = self.prompt_combat_sport_offer(sport, fighter, terms)
+        if offer is None:
+            return
+        ok, note = self.renew_player_combat_contract(sport, fighter.name, purse=offer["purse"], months=offer["months"])
+        if not ok:
+            messagebox.showwarning("Renewal Declined", note)
+            return
+        messagebox.showinfo("Contract Renewed", note)
+        self.refresh_all()
+
+    def release_selected_sport_contract(self):
+        row = self.selected_sport_contract_row()
+        if not row:
+            return
+        fighter, sport = row["fighter"], row["sport"]
+        if not messagebox.askyesno(
+            "Release Athlete",
+            f"Release {fighter.name} from your {sport} division?\n\n"
+            f"They return to the wider {sport} circuit and any title they hold is vacated.\n\n"
+            f"This cannot be undone.",
+        ):
+            return
+        ok, note = self.release_player_combat_athlete(sport, fighter)
+        if not ok:
+            messagebox.showwarning("Release Failed", note)
+            return
+        messagebox.showinfo("Athlete Released", note)
+        self.refresh_all()
+
     def refresh_contracts(self):
+        self.refresh_sport_contracts()
         if not hasattr(self, "contracts_tree"):
             return
         self.contracts_tree.delete(*self.contracts_tree.get_children())
@@ -942,6 +1028,47 @@ class ViewMixin:
         appointed = "appointed" in str(entry.get("action", "")).lower() or "status normalized" in str(entry.get("note", "")).lower()
         origin = "Appointed inaugural champion" if appointed else "Won championship"
         return f"{origin} - {self.format_game_date_text(entry.get('date', ''))}"
+
+    def fighter_title_lineage(self, fighter):
+        """Every championship event in this fighter's career, current or long past.
+
+        fighter_title_reign_origin only ever speaks for a reigning champion, so a
+        belt that was vacated, lost, or won in a division the fighter has since
+        left disappeared from their profile completely. A vacated title is still
+        a title they held, and the lineage is where that has to show.
+        """
+        histories = [(self.player_company_name, self.normalize_belt_history(getattr(self, "belt_history", None) or {}))]
+        for promo in getattr(self, "promotions", []) or []:
+            histories.append((promo.name, self.normalize_belt_history(getattr(promo, "belt_history", None) or {})))
+        rows = []
+        seen = set()
+        for promo_name, history in histories:
+            for key, entries in (history or {}).items():
+                for entry in entries or []:
+                    if not isinstance(entry, dict) or entry.get("fighter") != fighter.name:
+                        continue
+                    date = str(entry.get("date", ""))
+                    action = str(entry.get("action", ""))
+                    marker = (promo_name, key, date, action, str(entry.get("note", "")))
+                    if marker in seen:
+                        continue
+                    seen.add(marker)
+                    rows.append({
+                        "date": date, "action": action, "division": key,
+                        "promotion": promo_name, "note": str(entry.get("note", "")),
+                        "sort": self.result_lineage_date_key(date),
+                    })
+        rows.sort(key=lambda row: row["sort"], reverse=True)
+        return rows
+
+    def fighter_title_lineage_lines(self, fighter, limit=8):
+        """Readable championship lineage, vacancies included."""
+        lines = []
+        for row in self.fighter_title_lineage(fighter)[:limit]:
+            date = self.format_game_date_text(row["date"]) or row["date"]
+            detail = f" — {row['note']}" if row["note"] else ""
+            lines.append(f"{date}: {row['action']} ({row['division']}, {row['promotion']}){detail}")
+        return lines
 
     def fighter_profile_text(self, fighter):
         company = fighter.sport_employer if getattr(fighter, "sport_employer", "") else next((name for name, candidate in self.all_database_fighters_with_companies() if candidate.name == fighter.name), "Unknown")
@@ -1959,7 +2086,11 @@ class ViewMixin:
             ("Major Injury", self.serious_injury_status(fighter)),
             ("Career Goal", f"{fighter.career_goal or 'Undeclared'} ({getattr(fighter, 'career_goal_progress', 0)}%)"),
             ("Career Story", (lambda arc: f"{arc.get('title', arc.get('type'))} ({self.career_arc_state(fighter)[1]}%)" if arc else "No active story")(self.active_career_arc(fighter))),
-            ("Walk Weight", f"{fighter.walk_weight or self.default_walk_weight(fighter)} lb"), ("Last Scale", f"{fighter.scale_weight or '-'} lb"), ("Cut Penalty", fighter.weight_cut_penalty),
+            ("Walk Weight", (lambda walk, limit: f"{walk} lb ({walk - limit:+d} vs {fighter.weight} limit)" if limit else f"{walk} lb")(
+                fighter.walk_weight or self.default_walk_weight(fighter), WEIGHT_LIMITS.get(fighter.weight, 0))),
+            ("Camp Cut", (lambda walk, limit: f"{max(0, walk - limit)} lb to make weight" if limit else "No limit to make")(
+                fighter.walk_weight or self.default_walk_weight(fighter), WEIGHT_LIMITS.get(fighter.weight, 0))),
+            ("Last Scale", f"{fighter.scale_weight or '-'} lb"), ("Cut Penalty", fighter.weight_cut_penalty),
             ("Division Fit", getattr(fighter, "division_size_note", "") or (f"Undersized penalty {getattr(fighter, 'division_size_penalty', 0)}/14" if getattr(fighter, "division_size_penalty", 0) else "Natural division fit")),
         ] if stats_visible else [
             ("Contract", "Terms private"), ("Market Access", "Under contract with another promotion"),
@@ -2232,6 +2363,22 @@ class ViewMixin:
             division_log.pack(fill="x", padx=8, pady=(0, 8))
             division_log.insert("end", "DIVISION HISTORY\n" + "\n".join(self.format_game_date_text(item) for item in fighter.weight_class_history[-3:]))
             division_log.config(state="disabled")
+        lineage_lines = self.fighter_title_lineage_lines(fighter)
+        if lineage_lines:
+            lineage_log = tk.Text(history_frame, wrap="word", height=5, bg=self.colors["panel_dark"], fg=self.colors["gold"], font=("Tahoma", 9), padx=10, pady=8)
+            lineage_log.pack(fill="x", padx=8, pady=(0, 8))
+            lineage_log.insert("end", "TITLE LINEAGE\n" + "\n".join(lineage_lines))
+            lineage_log.config(state="disabled")
+        fit_log = [entry for entry in (getattr(fighter, "division_fit_log", None) or []) if isinstance(entry, dict)]
+        if fit_log:
+            acclimation_log = tk.Text(history_frame, wrap="word", height=4, bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 9), padx=10, pady=8)
+            acclimation_log.pack(fill="x", padx=8, pady=(0, 8))
+            first, last = fit_log[0], fit_log[-1]
+            drift = int(last.get("walk", 0) or 0) - int(first.get("walk", 0) or 0)
+            trend = f"{drift:+d} lb overall" if drift else "frame steady"
+            lines = [f"{entry.get('date', '')}: {entry.get('note', '')}" for entry in fit_log[-4:]]
+            acclimation_log.insert("end", f"DIVISION ACCLIMATION ({trend})\n" + "\n".join(lines))
+            acclimation_log.config(state="disabled")
         if fighter.career_achievements:
             achievement_log = tk.Text(history_frame, wrap="word", height=3, bg=self.colors["panel_dark"], fg=self.colors["gold"], font=("Tahoma", 9), padx=10, pady=8)
             achievement_log.pack(fill="x", padx=8, pady=(0, 8))
@@ -4367,10 +4514,35 @@ class ViewMixin:
             selected = tree.selection()
             if not selected:
                 messagebox.showinfo("Combat Sports", "Select a sport first."); return
-            ok, result = self.open_player_combat_division(selected[0])
+            sport = selected[0]
+            # Opening a division spends real money and cannot be undone, so it
+            # asks first. Selecting a sport used to launch the whole promotion
+            # the moment the window was opened.
+            if sport not in getattr(self, "player_combat_divisions", {}):
+                cost = self.combat_division_startup_cost(sport)
+                brand = {"Brazilian Jiu-Jitsu": "BJJ"}.get(sport, sport)
+                if self.cash < cost:
+                    messagebox.showwarning(
+                        "Division Unavailable",
+                        f"Establishing a {sport} division costs ${cost:,}.\nYou currently have ${self.cash:,}.",
+                        parent=window,
+                    )
+                    return
+                if not messagebox.askyesno(
+                    f"Open a {sport} division?",
+                    f"Launch {self.player_company_name} {brand} as a child promotion?\n\n"
+                    f"Startup investment:  ${cost:,}\n"
+                    f"Cash after launch:   ${self.cash - cost:,}\n\n"
+                    f"The promotion starts with no athletes. You sign its roster from the {sport} "
+                    f"market, book its matchups, and run its cards yourself.\n\n"
+                    f"This cannot be undone.",
+                    parent=window,
+                ):
+                    return
+            ok, result = self.open_player_combat_division(sport)
             if ok:
                 redraw()
-                self.open_player_combat_division_window(selected[0])
+                self.open_player_combat_division_window(sport)
             else: messagebox.showwarning("Division Unavailable", result)
         def manage():
             selected = tree.selection()
@@ -4449,6 +4621,59 @@ class ViewMixin:
         footer = ttk.Frame(window, style="Chrome.TFrame"); footer.pack(fill="x", padx=10, pady=(0, 10))
         ttk.Button(footer, text="Open Selected Athlete", command=open_ranked_athlete).pack(side="left")
         ttk.Button(footer, text="Close", command=window.destroy).pack(side="right")
+
+    def prompt_combat_sport_offer(self, sport, fighter, terms, parent=None):
+        """Negotiate purse and length before a sport signing or renewal.
+
+        Signing used to be a single button that paid a fee and produced a deal
+        with no term at all, so athletes could never expire, be renewed, or be
+        negotiated with.
+        """
+        dialog = tk.Toplevel(parent or self.root)
+        dialog.title(f"Contract Offer - {fighter.name}")
+        dialog.configure(bg=self.colors["chrome"])
+        dialog.transient(parent or self.root)
+        dialog.resizable(False, False)
+        result = {}
+        ttk.Label(dialog, text=f"{fighter.name} — {sport}", style="ScreenTitle.TLabel").pack(anchor="w", padx=12, pady=(10, 2))
+        ttk.Label(
+            dialog, style="Inset.TLabel", justify="left",
+            text=(f"{self.combat_sport_competition_class(sport, fighter)} | Age {fighter.age} | "
+                  f"Rating {terms['rating']:.1f} | Record {fighter.record}\n"
+                  f"Signing fee ${terms['fee']:,} (paid on agreement)\n"
+                  f"They expect about ${terms['purse']:,} per bout over {terms['months']} months."),
+        ).pack(anchor="w", padx=12, pady=(0, 8))
+        form = ttk.Frame(dialog, style="Inset.TFrame")
+        form.pack(fill="x", padx=12, pady=(0, 8))
+        purse_var = tk.IntVar(value=terms["purse"])
+        months_var = tk.IntVar(value=terms["months"])
+        ttk.Label(form, text="Purse per bout ($)", style="Inset.TLabel").grid(row=0, column=0, sticky="w", padx=6, pady=4)
+        ttk.Spinbox(form, from_=0, to=500000, increment=250, textvariable=purse_var, width=12).grid(row=0, column=1, sticky="w", padx=6, pady=4)
+        ttk.Label(form, text="Contract length (months)", style="Inset.TLabel").grid(row=1, column=0, sticky="w", padx=6, pady=4)
+        ttk.Spinbox(form, from_=1, to=48, textvariable=months_var, width=12).grid(row=1, column=1, sticky="w", padx=6, pady=4)
+        feedback = tk.StringVar(value="Adjust the terms, then test or send the offer.")
+        ttk.Label(dialog, textvariable=feedback, style="Inset.TLabel", justify="left", wraplength=420).pack(fill="x", padx=12, pady=(0, 8))
+
+        def evaluate():
+            _ok, message = self.combat_sport_offer_response(sport, fighter, purse_var.get(), months_var.get())
+            feedback.set(message)
+
+        def send():
+            accepted, message = self.combat_sport_offer_response(sport, fighter, purse_var.get(), months_var.get())
+            if not accepted:
+                feedback.set(message)
+                return
+            result.update({"purse": int(purse_var.get()), "months": int(months_var.get())})
+            dialog.destroy()
+
+        actions = ttk.Frame(dialog, style="Chrome.TFrame")
+        actions.pack(fill="x", padx=12, pady=(0, 12))
+        ttk.Button(actions, text="Send Offer", style="Accent.TButton", command=send).pack(side="left")
+        ttk.Button(actions, text="Test Reaction", command=evaluate).pack(side="left", padx=6)
+        ttk.Button(actions, text="Cancel", command=dialog.destroy).pack(side="right")
+        dialog.grab_set()
+        self.root.wait_window(dialog)
+        return result or None
 
     def open_player_combat_division_window(self, sport):
         division = getattr(self, "player_combat_divisions", {}).get(sport)
@@ -4608,7 +4833,7 @@ class ViewMixin:
         market_division_box = ttk.Combobox(market_filters, textvariable=market_division_var, values=("All",), state="readonly", width=18)
         market_division_box.pack(side="left", padx=(0, 10), pady=4)
         ttk.Label(market_filters, text="Source", style="Inset.TLabel").pack(side="left", padx=(0, 3), pady=4)
-        market_source_box = ttk.Combobox(market_filters, textvariable=market_source_var, values=("All", "Youth & Free Agents", "Flagship Prospects"), state="readonly", width=19)
+        market_source_box = ttk.Combobox(market_filters, textvariable=market_source_var, values=("All", "Free Agents", "Youth Prospects", "Flagship Prospects"), state="readonly", width=19)
         market_source_box.pack(side="left", padx=(0, 10), pady=4)
         market_count_var = tk.StringVar(value="")
         ttk.Label(market_filters, textvariable=market_count_var, style="Inset.TLabel").pack(side="right", padx=6, pady=4)
@@ -4860,10 +5085,13 @@ class ViewMixin:
             market_row_fighters.clear()
             youth = self.player_combat_signable_youth(sport)
             youth.sort(key=lambda fighter: (self.combat_sport_competition_class(sport, fighter), fighter.gender, -self.combat_sport_display_rating(fighter, sport)))
+            veterans = self.player_combat_signable_free_agents(sport)
+            veterans.sort(key=lambda fighter: (self.combat_sport_competition_class(sport, fighter), fighter.gender, -self.combat_sport_display_rating(fighter, sport)))
             prospects = [fighter for fighter in self.combat_sport_ranked(sport, world.get("promotion", ""))[10:] if fighter.sport_employer == world.get("promotion", "") and not fighter.retired]
             prospects.sort(key=lambda fighter: (fighter.age >= 20, self.combat_sport_competition_class(sport, fighter), -self.combat_sport_display_rating(fighter, sport), fighter.age))
-            market_rows = [(fighter, "Youth & Free Agents", "youth") for fighter in youth]
-            market_rows.extend((fighter, "Flagship Prospects", "flagship") for fighter in prospects[:max(0, 80 - len(youth))])
+            market_rows = [(fighter, "Free Agents", "freeagent") for fighter in veterans]
+            market_rows.extend((fighter, "Youth Prospects", "youth") for fighter in youth)
+            market_rows.extend((fighter, "Flagship Prospects", "flagship") for fighter in prospects[:max(0, 90 - len(youth) - len(veterans))])
             market_search_text = market_search_var.get().strip().lower()
             visible_market = 0
             for fighter, source_label, source_key in market_rows:
@@ -5087,8 +5315,23 @@ class ViewMixin:
                 set_status("Select an athlete from the market first.", "warn")
                 return
             source, _, fighter_id = selected[0].partition(":")
-            if source == "youth":
-                ok, note, _fighter = self.sign_player_combat_youth(sport, fighter_id)
+            if source in ("youth", "freeagent"):
+                fighter = market_row_fighters.get(selected[0])
+                if fighter is None:
+                    set_status("That athlete is no longer available.", "warn")
+                    redraw()
+                    return
+                terms = self.combat_sport_contract_terms(sport, fighter)
+                offer = self.prompt_combat_sport_offer(sport, fighter, terms, window)
+                if offer is None:
+                    return
+                accepted, response = self.combat_sport_offer_response(sport, fighter, offer["purse"], offer["months"])
+                if not accepted:
+                    set_status(response, "warn")
+                    return
+                ok, note, _fighter = self.sign_player_combat_youth(
+                    sport, fighter_id, purse=offer["purse"], months=offer["months"],
+                )
                 if not ok:
                     set_status(note, "bad")
                     return

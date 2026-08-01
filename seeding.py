@@ -810,7 +810,7 @@ class SeedMixin:
             roster.append(prospect)
         self.ensure_roster_division_depth(roster, self.player_region, self.player_company_name, self.company_pop, player_owned=True)
         closed_divisions = self.bamma_initial_closed_divisions()
-        self.reassign_bamma_closed_division_fighters(roster, closed_divisions)
+        self.reassign_closed_division_fighters(roster, closed_divisions)
         self.ensure_bamma_womens_division_depth(roster)
         self.seed_relationships(roster)
         self.belts, self.interim_belts, self.belt_history = self.ensure_company_champions(
@@ -826,11 +826,31 @@ class SeedMixin:
             for weight in ("Middleweight", "Light Heavyweight", "Heavyweight")
         }
 
-    def reassign_bamma_closed_division_fighters(self, roster, closed_divisions):
-        """Keep BAMMA's opening women roster in divisions the promotion runs."""
+    def reassign_closed_division_fighters(self, roster, closed_divisions):
+        """Keep an opening roster inside the divisions the promotion actually runs.
+
+        Applies to whichever promotion the player starts with, not one company:
+        any promotion can open with divisions closed. The fighter moves to the
+        nearest division that is still open for their gender rather than a
+        hardcoded class, because dropping a heavyweight into welterweight moved
+        them ninety pounds and left a frame that fitted neither.
+        """
         for fighter in roster:
-            if self.belt_key(fighter.gender, fighter.weight) in closed_divisions:
-                fighter.weight = "Welterweight"
+            if self.belt_key(fighter.gender, fighter.weight) not in closed_divisions:
+                continue
+            try:
+                index = WEIGHTS.index(fighter.weight)
+            except ValueError:
+                index = len(WEIGHTS) // 2
+            options = sorted(
+                (
+                    candidate for candidate in WEIGHTS
+                    if self.belt_key(fighter.gender, candidate) not in closed_divisions
+                ),
+                key=lambda candidate: abs(WEIGHTS.index(candidate) - index),
+            )
+            if options:
+                self.assign_fighter_division(fighter, options[0], reset_walk_weight=True)
 
     def ensure_bamma_womens_division_depth(self, roster):
         """Guarantee viable fresh-start depth in BAMMA's women's divisions."""
@@ -2595,9 +2615,13 @@ class SeedMixin:
         promotions.extend(self.seed_regional_feeder_promotions(global_names))
         return promotions
 
-    def create_regional_feeder_fighter(self, region, used_names, gender, feeder_name=""):
+    def create_regional_feeder_fighter(self, region, used_names, gender, feeder_name="", weight=None):
+        # The division has to be known here, not patched on afterwards: the
+        # generator derives walk weight from whatever class the fighter is
+        # built in, so a caller that overwrote .weight later left behind a
+        # frame belonging to a completely unrelated division.
         pre_universe = bool(getattr(self, "_seeding_universe", False))
-        fighter = self.create_generated_fighter(2, 22, 40, 70, gender=gender, region=region, apply_entry_balance=False, pre_universe=pre_universe)
+        fighter = self.create_generated_fighter(2, 22, 40, 70, weight=weight, gender=gender, region=region, apply_entry_balance=False, pre_universe=pre_universe)
         fighter.age = weighted_table_pick(REGIONAL_FEEDER_AGE_TABLE)
         fighter.record_w = random.randint(0, 6) if pre_universe else 0
         fighter.record_l = random.randint(0, min(4, fighter.record_w + 1)) if pre_universe else 0
@@ -2811,8 +2835,7 @@ class SeedMixin:
                     division_counts = (("Male", male_count), ("Female", 3))
                 for gender, count in division_counts:
                     for _ in range(count):
-                        fighter = self.create_regional_feeder_fighter(region, global_names, gender, feeder_name=name)
-                        fighter.weight = weight
+                        fighter = self.create_regional_feeder_fighter(region, global_names, gender, feeder_name=name, weight=weight)
                         fighter.region = region
                         fighter.nationality = self.infer_nationality(fighter.name, region)
                         fighter.camp = name

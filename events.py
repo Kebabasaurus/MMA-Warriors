@@ -158,36 +158,88 @@ class EventMixin:
             self.event_venue_box.configure(values=self.available_event_venues())
         self.refresh_all()
 
+    def fight_has_title_stakes(self, fight):
+        """True when a belt is genuinely on the line in this booking."""
+        if not isinstance(fight, dict):
+            return False
+        return bool(
+            fight.get("divisional_title", fight.get("title") and not fight.get("special_belt"))
+            or fight.get("special_belt")
+        )
+
+    def strip_fight_title_stakes(self, fight, reason):
+        """Take a belt off the line once the bout can no longer legitimately carry it."""
+        if not self.fight_has_title_stakes(fight):
+            return False
+        fight["title"] = False
+        fight["divisional_title"] = False
+        fight["interim"] = False
+        fight["special_belt"] = ""
+        fight["title_stripped_reason"] = reason
+        return True
+
     def repair_booking_conflicts(self):
         """Guarantee no fighter is booked on two un-run events at once.
 
-        Scans scheduled events in date order; the first booking wins, and any
-        later slot for the same fighter is turned into a TBA so the card survives.
-        Protects legacy saves and any edge case that slipped past the UI guards.
+        Championship bouts claim their fighters first, whatever the date. This
+        used to be a plain date-ordered pass where the earliest booking always
+        won, which silently pulled a champion out of their own title defence to
+        honour an ordinary undercard booking made a week earlier -- the belt
+        stayed on the line, a free agent was signed into the empty corner on
+        fight night, and the champion's record showed the other, non-title bout
+        instead. A belt match is also the harder booking to remake.
+
+        Any bout that still loses a fighter has its stakes removed rather than
+        left advertising a belt nobody present can win, and interim status is
+        recomputed for the title fights that survive.
+
+        Runs on load, so it also protects legacy saves and anything that slipped
+        past the UI guards.
         """
         seen = set()
         conflicts = []
-        for event in sorted(self.scheduled_events, key=lambda e: (e.get("month", 1), e.get("week", 1))):
-            event_names = set()
-            for fight in event.get("fights", []):
-                participants = self.event_fight_participants(fight)
-                for index, name in enumerate(participants):
-                    if name == "TBA":
-                        continue
-                    if name in seen or name in event_names:
-                        if fight.get("tournament"):
-                            fight.setdefault("tournament_entrants", participants)[index] = "TBA"
-                            fight["fighters"] = list(fight["tournament_entrants"][:1] + fight["tournament_entrants"][-1:])
-                        else:
-                            fight.setdefault("fighters", participants)[index] = "TBA"
-                        fight["tba_weight"] = fight.get("tba_weight", self._safe_weight(name))
-                        fight["tba_gender"] = fight.get("tba_gender", self._safe_gender(name))
-                        conflicts.append(name)
+        downgraded = []
+        events = sorted(self.scheduled_events, key=lambda e: (e.get("month", 1), e.get("week", 1)))
+        claimed_per_event = {}
+        title_bouts = [(event, fight) for event in events for fight in event.get("fights", [])
+                       if self.fight_has_title_stakes(fight)]
+        other_bouts = [(event, fight) for event in events for fight in event.get("fights", [])
+                       if not self.fight_has_title_stakes(fight)]
+        for event, fight in title_bouts + other_bouts:
+            event_names = claimed_per_event.setdefault(id(event), set())
+            participants = self.event_fight_participants(fight)
+            for index, name in enumerate(participants):
+                if name == "TBA":
+                    continue
+                if name in seen or name in event_names:
+                    if fight.get("tournament"):
+                        fight.setdefault("tournament_entrants", participants)[index] = "TBA"
+                        fight["fighters"] = list(fight["tournament_entrants"][:1] + fight["tournament_entrants"][-1:])
                     else:
-                        event_names.add(name)
-            seen.update(event_names)
+                        fight.setdefault("fighters", participants)[index] = "TBA"
+                    fight["tba_weight"] = fight.get("tba_weight", self._safe_weight(name))
+                    fight["tba_gender"] = fight.get("tba_gender", self._safe_gender(name))
+                    conflicts.append(name)
+                    if self.strip_fight_title_stakes(fight, f"{name} was double-booked and freed from this card"):
+                        downgraded.append((event.get("name", "a scheduled card"), name))
+                else:
+                    event_names.add(name)
+                    seen.add(name)
+        # A title bout that kept both corners may still have changed shape, so
+        # its interim status is settled against the belts as they stand now.
+        for _event, fight in title_bouts:
+            if not self.fight_has_title_stakes(fight):
+                continue
+            named = [self.get_fighter(name) for name in self.event_fight_participants(fight) if name != "TBA"]
+            divisional = bool(fight.get("divisional_title", fight.get("title") and not fight.get("special_belt")))
+            fight["interim"] = self.divisional_title_is_interim([f for f in named if f], divisional)
         for name in sorted(set(conflicts)):
-            self.news.insert(0, f"Booking conflict resolved: {name} was double-booked and freed from the later event.")
+            self.news.insert(0, f"Booking conflict resolved: {name} was double-booked and freed from the lower-priority card.")
+        for event_name, name in downgraded:
+            note = (f"{event_name} lost its championship sanction: {name} was double-booked and could not "
+                    f"appear, so the bout goes ahead without the belt.")
+            self.news.insert(0, note)
+            self.inbox.append({"subject": "Title Fight Downgraded", "body": note, "type": "Booking", "resolved": False})
         return conflicts
 
     def _safe_weight(self, name):
@@ -1771,7 +1823,9 @@ class EventMixin:
             b_outcome = "draw" if draw else "win" if log.get("b") == winner_name else "loss" if winner_name else "unknown"
             scorecards = log.get("scorecards", "") or "No scorecards required"
             excitement = int(round(float(log.get("excitement", 0) or 0)))
-            contender = "Bonus contender" if excitement >= 62 else "Solid performance" if excitement >= 45 else "Low bonus contention"
+            # Per-fight scores spread far wider than card averages (roughly
+            # 11-84), so this reads the individual-bout range, not the event one.
+            contender = "Bonus contender" if excitement >= 58 else "Solid performance" if excitement >= 44 else "Low bonus contention"
             result_winner_label.config(text="OFFICIAL DRAW" if draw else f"WINNER: {winner_name}" if winner_name else "OFFICIAL RESULT")
             result_detail_label.config(text=(f"{result or 'Official result'}  |  Time: {finish_time}\n"
                 f"Records: {log.get('a', 'Red')} {a_record} -> {next_record(a_record, a_outcome)}   |   "
@@ -2982,8 +3036,13 @@ class EventMixin:
             if fight.get("interim") and not fight.get("special_belt"):
                 label = "INTERIM " + label
             lines = [f"{label}: {a.name} vs {b.name} ({a.weight})", f"Odds: {self.matchup_odds(a, b)}"]
-            red_form = f"{a.name}: camp {fight.get('red_camp', fight.get('camp_weeks', 8))}w, morale {a.morale}, fatigue {a.fatigue}, cut penalty {getattr(a, 'weight_cut_penalty', 0)}"
-            blue_form = f"{b.name}: camp {fight.get('blue_camp', fight.get('camp_weeks', 8))}w, morale {b.morale}, fatigue {b.fatigue}, cut penalty {getattr(b, 'weight_cut_penalty', 0)}"
+            # Camp length lives on the fighter, not the booking. These read
+            # 'red_camp'/'blue_camp'/'camp_weeks' off the fight dict, which
+            # nothing has ever written, so every corner read fell through to the
+            # hardcoded default and reported an 8-week camp for everyone --
+            # including short-notice replacements who had no camp at all.
+            red_form = f"{a.name}: camp {getattr(a, 'camp_weeks', 0)}w, morale {a.morale}, fatigue {a.fatigue}, cut penalty {getattr(a, 'weight_cut_penalty', 0)}"
+            blue_form = f"{b.name}: camp {getattr(b, 'camp_weeks', 0)}w, morale {b.morale}, fatigue {b.fatigue}, cut penalty {getattr(b, 'weight_cut_penalty', 0)}"
             lines.append(f"Corner read: {red_form} | {blue_form}")
             lines.extend(commentary)
             if method == "Draw":
@@ -3156,12 +3215,27 @@ class EventMixin:
                 return False, f"Unsafe cut: {walk} lb walk weight needs {required_cut:.0f} lb off; their frame and cutting skill support about {sustainable_cut:.0f} lb."
             risk = "manageable" if required_cut <= sustainable_cut - 3 else "demanding"
             return True, f"{risk.title()} cut: {walk} lb to the {target_limit} lb limit requires {required_cut:.0f} lb; sustainable estimate {sustainable_cut:.0f} lb."
-        penalty = self.division_size_penalty_for(fighter, target_weight)
+        # Moving up still has to be a weight the fighter can actually make. This
+        # branch used to measure frame fit only, so a 227lb featherweight was
+        # waved into lightweight as an "undersized" move: he cannot make 155
+        # either, and moving up one class does not fix a frame that belongs
+        # three classes higher.
+        required_cut = max(0, walk - target_limit)
+        sustainable_cut = 9 + cut_skill * 0.16 + conditioning * 0.04 - max(0, natural_size - 55) * 0.12
+        if required_cut > sustainable_cut + 2:
+            return False, (
+                f"Still overweight for {target_weight}: {walk} lb walk weight needs {required_cut:.0f} lb off to make "
+                f"{target_limit} lb, and their frame and cutting skill support about {sustainable_cut:.0f} lb. "
+                f"This fighter needs a heavier division, not this one."
+            )
+        parts = self.division_size_penalty_parts(fighter, target_weight)
+        penalty = parts["penalty"]
         if penalty <= 1:
             return True, f"Natural move up: {walk} lb frame can add toward the {target_limit} lb limit over a full camp."
         severity = "manageable" if penalty <= 4 else "clear" if penalty <= 8 else "major"
-        return True, (f"Undersized move accepted: {walk} lb walk weight is light for {target_weight}. "
-                      f"This creates a {severity} permanent division-fit disadvantage ({penalty}/14) in physical exchanges, initiative, starting condition, and odds.")
+        return True, (f"Undersized move accepted: {self.division_fit_reason(parts, target_weight)}. "
+                      f"This creates a {severity} division-fit disadvantage ({penalty}/14) in physical exchanges, "
+                      f"initiative, starting condition, and odds; it eases as they grow into the division.")
 
     def natural_walk_weight_for(self, fighter, weight):
         """The frame a fighter needs to be a natural fit in a division.
@@ -3185,10 +3259,81 @@ class EventMixin:
             spread = max(8, spread - 4)
         return limit + max(4, spread // 3)
 
-    def division_size_penalty_for(self, fighter, target_weight):
-        """Return the durable cost of competing below the division's natural size."""
-        if fighter.weight not in WEIGHT_LIMITS or target_weight not in WEIGHT_LIMITS:
+    def plausible_walk_weight_band(self, fighter, weight):
+        """The believable walk-weight range for a division.
+
+        Built from the same limit and spread constants as default_walk_weight so
+        the generator and the validator cannot drift apart. This exists to catch
+        frames that belong to a different division entirely -- a 295lb flyweight
+        -- without touching the ordinary big-for-the-class fighter, who is a
+        legitimate and interesting part of the game.
+        """
+        if weight not in WEIGHT_LIMITS:
+            return 0, 999
+        limit = WEIGHT_LIMITS[weight]
+        if weight == "Heavyweight":
+            # There is no weight to make at heavyweight, so the only question is
+            # whether the frame is too small to belong there at all.
+            return limit - 45, 295
+        spread = 10 if limit <= 135 else 15 if limit <= 170 else 22 if limit <= 205 else 35
+        if getattr(fighter, "gender", "Male") == "Female":
+            spread = max(8, spread - 4)
+        # The generator's own ceiling is limit + spread + 6 (the largest natural
+        # size adjustment). Allow headroom above it for fighters who have grown
+        # into the class, and room underneath for the genuinely undersized.
+        return limit - 12, limit + spread + 12
+
+    def assign_fighter_division(self, fighter, weight, *, reset_walk_weight=False):
+        """Set a fighter's division and keep their frame honest. The only
+        supported way to write fighter.weight.
+
+        Walk weight used to be derived inside the generator from a randomly
+        rolled division and then left behind when the caller overwrote .weight,
+        which is how a fighter built as a heavyweight ended up defending a
+        flyweight belt on a 295lb frame. Routing every division change through
+        one place means the frame and the class cannot silently disagree again.
+        """
+        weight = self.game_weight_class(weight)
+        if weight not in WEIGHT_LIMITS:
+            return getattr(fighter, "weight", "")
+        fighter.weight = weight
+        if reset_walk_weight:
+            fighter.walk_weight = self.default_walk_weight(fighter)
+        else:
+            self.repair_walk_weight_for_division(fighter)
+        return weight
+
+    def repair_walk_weight_for_division(self, fighter, force=False):
+        """Pull an impossible frame back into its division's believable band.
+
+        Returns how many pounds the frame was out by, or zero when it was
+        already credible for the class.
+        """
+        weight = getattr(fighter, "weight", "")
+        if weight not in WEIGHT_LIMITS:
             return 0
+        walk = int(getattr(fighter, "walk_weight", 0) or 0)
+        if not walk:
+            fighter.walk_weight = self.default_walk_weight(fighter)
+            return 0
+        low, high = self.plausible_walk_weight_band(fighter, weight)
+        if not force and low <= walk <= high:
+            return 0
+        gap = (low - walk) if walk < low else max(0, walk - high)
+        fighter.walk_weight = self.default_walk_weight(fighter)
+        return gap
+
+    def division_size_penalty_parts(self, fighter, target_weight):
+        """Break the division-fit penalty into its two independent causes.
+
+        The penalty is the sum of a frame that is light for the class and a
+        naturally small build. Reporting only the total produced messages that
+        blamed the wrong one: a 227lb lightweight was told his walk weight was
+        "light for Lightweight" when every point of it came from his build.
+        """
+        empty = {"penalty": 0, "size": 0.0, "frame": 0.0, "walk": 0, "expected": 0, "cause": "none"}
+        if fighter.weight not in WEIGHT_LIMITS or target_weight not in WEIGHT_LIMITS:
+            return empty
         walk = fighter.walk_weight or self.default_walk_weight(fighter)
         natural_size = self.ds(fighter, "natural_size", 50)
         # Measured against the division being entered rather than the direction
@@ -3196,50 +3341,134 @@ class EventMixin:
         # lightweight's frame is exactly as undersized as one who climbed up to
         # it, and previously came away with no penalty at all.
         expected_walk = self.natural_walk_weight_for(fighter, target_weight)
-        size_gap = max(0, expected_walk - walk)
-        frame_gap = max(0, 55 - natural_size)
-        return max(0, min(14, round(size_gap / 4.5 + frame_gap / 16)))
+        size_term = max(0, expected_walk - walk) / 4.5
+        frame_term = max(0, 55 - natural_size) / 16
+        penalty = max(0, min(14, round(size_term + frame_term)))
+        if not penalty:
+            cause = "none"
+        elif size_term >= frame_term * 2:
+            cause = "weight"
+        elif frame_term >= size_term * 2:
+            cause = "build"
+        else:
+            cause = "both"
+        return {"penalty": penalty, "size": size_term, "frame": frame_term,
+                "walk": int(walk), "expected": int(expected_walk), "cause": cause}
+
+    def division_fit_reason(self, parts, target_weight):
+        """Name the cause of a division-fit penalty rather than assuming weight."""
+        if parts["cause"] == "weight":
+            return (f"{parts['walk']} lb walk weight is light for {target_weight}, "
+                    f"which wants about {parts['expected']} lb")
+        if parts["cause"] == "build":
+            return (f"a naturally small build for {target_weight}, "
+                    f"even carrying a {parts['walk']} lb walk weight")
+        return (f"a {parts['walk']} lb walk weight and a naturally small build "
+                f"for {target_weight}")
+
+    def division_size_penalty_for(self, fighter, target_weight):
+        """Return the durable cost of competing below the division's natural size."""
+        return self.division_size_penalty_parts(fighter, target_weight)["penalty"]
+
+    def record_division_fit_step(self, fighter, weight, direction, moved, walk, penalty):
+        """Keep a readable trail of how a frame settled into its division."""
+        if direction == "up":
+            detail = f"filled out {moved} lb to {walk} lb"
+        elif direction == "down":
+            detail = f"trimmed {moved} lb to {walk} lb"
+        else:
+            detail = f"settled at {walk} lb"
+        entry = {
+            "month": int(getattr(self, "month", 0)),
+            "date": self.format_game_date(),
+            "weight": weight,
+            "walk": int(walk),
+            "penalty": int(penalty),
+            "direction": direction or "hold",
+            "note": f"{weight}: {detail}, division fit {int(penalty)}/14",
+        }
+        log = list(getattr(fighter, "division_fit_log", None) or [])
+        log.append(entry)
+        fighter.division_fit_log = log[-24:]
 
     def acclimatize_division_fit(self, fighter):
-        """A fighter competing above their natural size slowly grows into the
-        division. Their frame fills out (walk weight creeps up toward the class)
-        and the durable division-fit penalty eases over months of competing and
-        training there, until only a small residual remains for genuinely small
-        frames. Called once per month from roster development."""
-        penalty = int(getattr(fighter, "division_size_penalty", 0) or 0)
-        if penalty <= 0 or getattr(fighter, "retired", False):
+        """Let a frame settle into the division the fighter actually competes in.
+
+        Growing up is the common path and stays deliberately loose: a fighter
+        competing above their natural size fills out toward the class over
+        months of training and eating for it, and the division-fit penalty eases
+        as they do.
+
+        Coming down is the rare path and has to be earned by the body. A fighter
+        carrying more than their division wants can recompose toward it, but
+        only with the cutting skill, conditioning and build to support it, at
+        roughly half the speed and a third of the frequency. Most oversized
+        fighters never fully arrive, which is intended -- they should be moving
+        up instead, and the annual division review will suggest exactly that.
+
+        Called once per month from roster development.
+        """
+        if getattr(fighter, "retired", False):
             return
         weight = getattr(fighter, "weight", "")
         if weight not in WEIGHT_LIMITS:
             return
+        penalty = int(getattr(fighter, "division_size_penalty", 0) or 0)
+        walk = fighter.walk_weight or self.default_walk_weight(fighter)
+        expected_walk = self.natural_walk_weight_for(fighter, weight)
+        _low, ceiling = self.plausible_walk_weight_band(fighter, weight)
+        # Nothing to grow into and nothing to trim: leave the fighter alone.
+        if penalty <= 0 and walk <= ceiling:
+            return
         natural_size = self.ds(fighter, "natural_size", 50)
         conditioning = self.ds(fighter, "conditioning", fighter.cardio)
-        # Younger fighters with growing frames adapt faster; veterans barely.
-        chance = 0.16 + max(0, 30 - fighter.age) * 0.012
-        if fighter.age >= 34:
-            chance *= 0.45
-        chance += (natural_size - 50) * 0.002 + max(0, conditioning - 55) * 0.001
-        if random.random() > max(0.03, min(0.5, chance)):
-            return
-        expected_walk = self.natural_walk_weight_for(fighter, weight)
-        walk = fighter.walk_weight or self.default_walk_weight(fighter)
+        cut_skill = self.ds(fighter, "weight_cutting", fighter.cardio)
+        moved = 0
+        direction = ""
         if walk < expected_walk:
-            walk = min(expected_walk, walk + random.randint(2, 5))
+            # Younger fighters with growing frames adapt faster; veterans barely.
+            chance = 0.16 + max(0, 30 - fighter.age) * 0.012
+            if fighter.age >= 34:
+                chance *= 0.45
+            chance += (natural_size - 50) * 0.002 + max(0, conditioning - 55) * 0.001
+            if random.random() > max(0.03, min(0.5, chance)):
+                return
+            moved = min(expected_walk - walk, random.randint(2, 5))
+            walk += moved
             fighter.walk_weight = walk
-        # Recompute the durable penalty from the (now larger) frame, and only ever
-        # let it ease downward — at least one point per successful month of growth.
-        size_gap = max(0, expected_walk - walk)
-        frame_gap = max(0, 55 - natural_size)
-        floor = max(0, min(14, round(size_gap / 4.5 + frame_gap / 16)))
-        new_penalty = max(floor, penalty - 1)
-        if new_penalty >= penalty:
+            direction = "up"
+        elif walk > ceiling:
+            # Recomposition is real but slow, and a naturally large frame will
+            # not hold a smaller division no matter how disciplined the athlete.
+            chance = 0.05 + max(0, cut_skill - 55) * 0.0022 + max(0, conditioning - 55) * 0.0018
+            chance += max(0, 50 - natural_size) * 0.0025
+            chance -= max(0, fighter.age - 31) * 0.006
+            if random.random() > max(0.01, min(0.22, chance)):
+                return
+            moved = min(walk - ceiling, random.randint(1, 3))
+            walk -= moved
+            fighter.walk_weight = walk
+            direction = "down"
+        else:
             return
-        fighter.division_size_penalty = new_penalty
-        fighter.division_size_note = (
-            f"Fully adapted to {weight}: natural division fit." if new_penalty == 0
-            else f"Adapting to {weight}: division-fit penalty eased to {new_penalty}/14."
-        )
-        if new_penalty == 0 and fighter in getattr(self, "roster", []):
+        # Recompute the durable penalty from the frame as it now stands, and only
+        # ever let it ease downward — at least one point per successful month.
+        floor = self.division_size_penalty_for(fighter, weight)
+        new_penalty = min(penalty, max(floor, penalty - 1)) if penalty else floor
+        eased = new_penalty < penalty
+        if eased:
+            fighter.division_size_penalty = new_penalty
+            fighter.division_size_note = (
+                f"Fully adapted to {weight}: natural division fit." if new_penalty == 0
+                else f"Adapting to {weight}: division-fit penalty eased to {new_penalty}/14."
+            )
+        elif direction == "down":
+            fighter.division_size_note = (
+                f"Recomposing toward {weight}: walk weight down to {walk} lb."
+            )
+        if moved or eased:
+            self.record_division_fit_step(fighter, weight, direction, moved, walk, new_penalty)
+        if eased and new_penalty == 0 and fighter in getattr(self, "roster", []):
             self.inbox.append({
                 "subject": f"Division Fit — {fighter.name}",
                 "body": f"{fighter.name} has fully grown into {weight}; the size disadvantage from the move up is gone.",
@@ -3249,13 +3478,23 @@ class EventMixin:
     def complete_weight_class_move(self, fighter, target_weight, reason):
         """Apply a validated move; shared by the player UI and world simulation."""
         old_weight = fighter.weight
+        # A real move keeps the frame the fighter actually has -- that is the
+        # whole point of moving -- so the walk weight is carried across intact
+        # and only repaired if it was never credible for either division.
         fighter.weight = target_weight
+        self.repair_walk_weight_for_division(fighter)
         fighter.scale_weight = 0.0
         fighter.weight_cut_penalty = 0
-        fighter.division_size_penalty = self.division_size_penalty_for(fighter, target_weight)
+        parts = self.division_size_penalty_parts(fighter, target_weight)
+        fighter.division_size_penalty = parts["penalty"]
         fighter.division_size_note = (
-            f"Undersized for {target_weight}: division-fit penalty {fighter.division_size_penalty}/14."
-            if fighter.division_size_penalty else "Natural division fit."
+            f"Moved to {target_weight} with {self.division_fit_reason(parts, target_weight)}: "
+            f"division-fit penalty {parts['penalty']}/14."
+            if parts["penalty"] else "Natural division fit."
+        )
+        self.record_division_fit_step(
+            fighter, target_weight, "", 0,
+            fighter.walk_weight or self.default_walk_weight(fighter), parts["penalty"],
         )
         fighter.missed_weight = False
         fighter.camp_weeks = 0
@@ -3334,6 +3573,17 @@ class EventMixin:
                     lines.append(f"Tournament alternate {replacement.name} entered the field on short notice.")
                 fight["tournament_entrants"] = entrants
                 fight["fighters"] = [entrants[0], entrants[-1]]
+            # Fill an outstanding TBA before the scale rather than after it.
+            # Weigh-ins ran before the opponent existed, so any bout still
+            # holding a TBA slot fell through the len(fighters) < 2 guard below
+            # and skipped the scale completely: no weight was recorded for
+            # either corner, a miss could not be detected, and a blown cut could
+            # never downgrade a title bout to catchweight. resolve_fight_fighters
+            # is a no-op once both corners are named, so the later call in
+            # prepare_event_result still returns the same pair.
+            if not fight.get("tournament") and "TBA" in fight.get("fighters", []):
+                if any(name != "TBA" for name in fight.get("fighters", [])):
+                    self.resolve_fight_fighters(fight)
             names = [name for name in self.event_fight_participants(fight) if name != "TBA"]
             fighters = [self.get_fighter(name) for name in names if any(r.name == name for r in self.roster)]
             if len(fighters) < 2:
@@ -3838,7 +4088,12 @@ class EventMixin:
         stability_before = int(package.get("starting_stability", package.get("projected_stability", 0)))
         pop_after = int(package.get("projected_pop", pop_before))
         stability_after = int(package.get("projected_stability", stability_before))
-        grade = "A" if excitement >= 78 else "B" if excitement >= 64 else "C" if excitement >= 50 else "D" if excitement >= 38 else "F"
+        # Calibrated to the range a real card actually produces. Averaging a
+        # whole card pulls hard toward the middle, so event scores land roughly
+        # 33-59 with a median near 47. The old A/B cutoffs of 78 and 64 sat
+        # above the maximum a card could reach and were literally unobtainable,
+        # while the F cutoff caught the median show.
+        grade = "A" if excitement >= 53 else "B" if excitement >= 49 else "C" if excitement >= 44 else "D" if excitement >= 40 else "F"
 
         metrics = tk.Frame(overview, bg=self.colors["panel"])
         metrics.pack(fill="x", padx=12, pady=(4, 6))

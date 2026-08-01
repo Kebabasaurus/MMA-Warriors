@@ -2039,13 +2039,60 @@ class WorldMixin:
             base.append("White House South Lawn")
         return base
 
-    def fight_excitement(self, a, b, winner, loser, method, round_no, fight, hype):
-        finish = 12 if "KO" in method or "TKO" in method or "Submission" in method else 2
-        late = round_no * (3 if fight.get("main") or fight.get("title") else 2)
+    def fight_excitement(self, a, b, winner, loser, method, round_no, fight, hype=None):
+        """Score the fight itself on 1-99, from what happened in the cage.
+
+        Promotional heat sets a floor, but the bout decides the number. This was
+        roughly three-quarters hype: who was fighting moved the score more than
+        what they did, so Fight of the Night went to the biggest names rather
+        than the best fight. It also paid more for later rounds than for a
+        finish, so a five-round decision outscored a first-round knockout.
+
+        Nothing here rewards when a fight happens. A fight is exciting or it is
+        not, and the round it ends in does not change that.
+
+        hype defaults to fight_hype so every caller is on one scale. The AI and
+        regional paths used to pass raw combined popularity instead, which ran
+        about fourteen points hot and made AI cards look far better than the
+        player's for no gameplay reason.
+        """
+        if hype is None:
+            hype = self.fight_hype(a, b, fight)
+        stats_a = getattr(a, "last_fight_stats", None) or {}
+        stats_b = getattr(b, "last_fight_stats", None) or {}
+
+        def stat(source, key):
+            try:
+                return max(0, int(source.get(key, 0) or 0))
+            except (TypeError, ValueError):
+                return 0
+
+        finished = "KO" in method or "TKO" in method or "Submission" in method
+        finish = 18 if finished else 0
+
+        # Real drama from the engine: knocking someone down and hunting a
+        # finish are the moments people remember.
+        knockdowns = stat(stats_a, "knockdowns") + stat(stats_b, "knockdowns")
+        sub_attempts = stat(stats_a, "sub_att") + stat(stats_b, "sub_att")
+        drama = min(16, knockdowns * 6) + min(8, sub_attempts * 2.5)
+
+        # Output per round rather than total, so a short violent fight is not
+        # punished for finishing early.
+        sig_a, sig_b = stat(stats_a, "sig"), stat(stats_b, "sig")
+        rounds = max(1, stat(stats_a, "rounds") or round_no)
+        pace = min(12, (sig_a + sig_b) / rounds / 4.0)
+
+        # A shootout beats a shutout: reward both fighters landing.
+        competitive = (min(sig_a, sig_b) / max(1, sig_a, sig_b)) * 10 if (sig_a or sig_b) else 0
+
         upset = 0 if method == "Draw" else 9 if loser.overall > winner.overall + 4 else 0
         danger_styles = max(0, a.power + b.power + a.submissions + b.submissions - 260) * 0.05
-        close_match = max(0, 16 - abs(a.overall - b.overall))
-        return max(1, min(99, round(hype * 0.36 + finish + late + upset + danger_styles + close_match)))
+        # Halved: with normal matchmaking this sat at 15-16 almost every bout,
+        # so it was a flat offset rather than a discriminator.
+        close_match = max(0, 16 - abs(a.overall - b.overall)) * 0.5
+        return max(1, min(99, round(
+            hype * 0.22 + finish + drama + pace + competitive + upset + danger_styles + close_match
+        )))
 
     def regional_market_score(self, region):
         data = self.regions.get(region, {})
@@ -2084,7 +2131,7 @@ class WorldMixin:
         casual = fanbase.get("casual_reach", 30)
         local_lift = min(0.18, home_pull * 0.030)
         finish_lift = min(0.09, finishes * 0.018) if any(word in preference.lower() for word in ("action", "finish", "aggressive")) else min(0.04, finishes * 0.008)
-        technical_lift = min(0.06, max(0, excitement_score - 55) / 400) if any(word in preference.lower() for word in ("technical", "skill", "respect")) else 0
+        technical_lift = min(0.06, max(0, excitement_score - 47) / 400) if any(word in preference.lower() for word in ("technical", "skill", "respect")) else 0
         home_lift = (core - 42) / 700 if region == fanbase.get("home_region", self.player_region) else 0
         intensity = max(15, min(100, round(love * 0.58 + core * 0.2 + casual * 0.12 + home_pull * 7 + hometown_fighters * 4 + excitement_score * 0.12)))
         mood = "Electric" if intensity >= 78 else "Loud" if intensity >= 62 else "Engaged" if intensity >= 46 else "Reserved"
@@ -2103,7 +2150,9 @@ class WorldMixin:
         atmosphere = finance.get("atmosphere", {}) or {}
         attendance_ratio = finance.get("attendance", 0) / max(1, finance.get("venue_capacity", 1))
         excitement = package.get("average_excitement", 50)
-        core_delta = (2 if excitement >= 62 else -1 if excitement < 42 else 0) + (1 if attendance_ratio >= 0.9 else 0)
+        # Top and bottom fifth of real card averages, rather than a 62 that a
+        # card average could not reach.
+        core_delta = (2 if excitement >= 50 else -1 if excitement < 43 else 0) + (1 if attendance_ratio >= 0.9 else 0)
         casual_delta = (2 if attendance_ratio >= 0.9 else 0) + (1 if package.get("profit", 0) > 0 else -1)
         fanbase["core_support"] = max(5, min(100, fanbase.get("core_support", 42) + core_delta))
         fanbase["casual_reach"] = max(5, min(100, fanbase.get("casual_reach", 30) + casual_delta))
@@ -3985,7 +4034,7 @@ class WorldMixin:
             a_record, b_record = a.record, b.record
             a_rating, b_rating = self.bout_rating_snapshot(a), self.bout_rating_snapshot(b)
             winner, loser, method, round_no, lines = self.simulate_fight(a, b, fight)
-            excitement = self.fight_excitement(a, b, winner, loser, method, round_no, fight, a.popularity + b.popularity)
+            excitement = self.fight_excitement(a, b, winner, loser, method, round_no, fight)
             if method == "Draw":
                 self.apply_draw_result(a, b, fight)
                 result_line = f"{a.name} vs {b.name} - Draw (R{round_no})"
@@ -7460,10 +7509,17 @@ class WorldMixin:
                     and fighter.gender == gender
                     and self.combat_sport_competition_class(sport, fighter) == label
                 )
-                deficits.extend((count, random.random(), gender, label) for _ in range(max(0, 4 - count)))
+                deficits.extend((count, random.random(), gender, label) for _ in range(max(0, 6 - count)))
         deficits.sort(key=lambda item: (item[0], item[1]))
         additions = 0
-        for _count, _tie, gender, label in deficits[:12]:
+        # A forced call (division launch, or the manual refresh button) fills
+        # every deficit in one pass. Boxing alone spans 34 gender/division
+        # combinations; a fixed per-pass cap of 24 left more than half of them
+        # short of even four signable prospects no matter how many times the
+        # launch loop ran. The regular two-month cadence still paces itself so
+        # normal play does not receive a market dump.
+        batch = deficits if force else deficits[:24]
+        for _count, _tie, gender, label in batch:
             prospect = self.generate_combat_sport_prospect(
                 sport, world, age_range=(18, 19), gender=gender, division_label=label,
             )
@@ -7483,35 +7539,244 @@ class WorldMixin:
             division["last_card_summary"] = note
         return additions
 
-    def sign_player_combat_youth(self, sport, fighter_id):
-        """Move one private-market recruit into the player's active sport roster."""
+    def combat_division_startup_cost(self, sport):
+        """Up-front investment to launch a child promotion in a combat sport."""
+        return 120000
+
+    def player_combat_signable_free_agents(self, sport):
+        """Established unsigned athletes available to a player sport division.
+
+        Deliberately separate from the MMA free-agent pool. A boxer between
+        promotions has nothing to do with the MMA market, and sharing one list
+        would let either side poach from the other. These sit outside the
+        simulated sport ladder in exactly the same way the youth market does.
+        """
+        division = getattr(self, "player_combat_divisions", {}).get(sport)
+        if not division:
+            return []
+        veterans = []
+        retained = []
+        for entry in division.get("signable_free_agents", []):
+            if isinstance(entry, Fighter):
+                entry = {"fighter": asdict(entry), "created_month": self.month}
+            elif isinstance(entry, dict) and "fighter" not in entry:
+                entry = {"fighter": dict(entry), "created_month": self.month}
+            if not isinstance(entry, dict) or not isinstance(entry.get("fighter"), dict):
+                continue
+            created_month = max(1, int(entry.get("created_month", self.month) or self.month))
+            data = dict(entry["fighter"])
+            starting_age = max(20, int(entry.get("starting_age", data.get("age", 26)) or 26))
+            data["age"] = starting_age + max(0, self.month - created_month) // 12
+            # An unsigned veteran does not wait forever: they age out of the
+            # market or take a deal elsewhere rather than accumulating.
+            if data["age"] > 38 or self.month - created_month > 30:
+                continue
+            try:
+                fighter = Fighter(**data)
+            except (TypeError, ValueError):
+                continue
+            retained.append({"fighter": asdict(fighter), "created_month": created_month, "starting_age": starting_age})
+            veterans.append(fighter)
+        division["signable_free_agents"] = retained
+        return veterans
+
+    def ensure_player_combat_free_agent_depth(self, sport, world, force=False):
+        """Keep a credible spread of experienced free agents in every division.
+
+        The market previously offered nothing but 18- and 19-year-olds, so a
+        division could show a single name and there was no way to sign anyone
+        who could compete immediately.
+        """
+        division = getattr(self, "player_combat_divisions", {}).get(sport)
+        if not division:
+            return 0
+        last_intake = int(division.get("last_free_agent_market_month", -99) or -99)
+        if not force and self.month - last_intake < 2:
+            return 0
+        available = self.player_combat_signable_free_agents(sport)
+        deficits = []
+        for gender in ("Male", "Female"):
+            for label, _limit in self.combat_sport_weight_ladder(sport, gender):
+                count = sum(
+                    1 for fighter in available
+                    if not fighter.retired and fighter.gender == gender
+                    and self.combat_sport_competition_class(sport, fighter) == label
+                )
+                deficits.extend((count, random.random(), gender, label) for _ in range(max(0, 3 - count)))
+        deficits.sort(key=lambda item: (item[0], item[1]))
+        additions = 0
+        batch = deficits if force else deficits[:18]
+        for _count, _tie, gender, label in batch:
+            veteran = self.generate_combat_sport_prospect(
+                sport, world, age_range=(22, 33), gender=gender, division_label=label,
+            )
+            veteran.sport_employer = ""
+            veteran.contract_type = f"Unsigned {sport} Free Agent"
+            veteran.exclusive = False
+            veteran.contract_months = 0
+            # An established athlete arrives with a real career behind them.
+            experience = max(0, veteran.age - 20)
+            wins = random.randint(experience, experience * 2 + 3)
+            losses = random.randint(0, max(1, experience))
+            veteran.record_w, veteran.record_l, veteran.record_d = wins, losses, 0
+            veteran.multi_sport_records = {sport: f"{wins}-{losses}-0"}
+            veteran.popularity = max(veteran.popularity, min(55, 8 + wins * 2 + random.randint(0, 12)))
+            division.setdefault("signable_free_agents", []).append({
+                "fighter": asdict(veteran),
+                "created_month": self.month,
+                "starting_age": veteran.age,
+            })
+            additions += 1
+        division["last_free_agent_market_month"] = self.month
+        return additions
+
+    def combat_sport_contract_terms(self, sport, fighter):
+        """What this athlete expects from a deal: signing fee, purse and length."""
+        rating = self.combat_sport_display_rating(fighter, sport)
+        fee = max(8000, fighter.popularity * 450 + round(rating) * 260)
+        purse = max(1500, round((rating * 90 + fighter.popularity * 120) / 250) * 250)
+        # Prospects sign longer, established names keep their options open.
+        length = 24 if fighter.age < 22 else 18 if fighter.age < 27 else 12
+        return {"fee": fee, "purse": purse, "months": length, "rating": rating}
+
+    def combat_sport_offer_response(self, sport, fighter, purse, months):
+        """Judge a player offer against what the athlete expects."""
+        terms = self.combat_sport_contract_terms(sport, fighter)
+        wanted = terms["purse"]
+        ratio = purse / max(1, wanted)
+        # A short deal is worth less to an athlete who wants security, and a
+        # long one is worth less to a name who expects to outgrow it quickly.
+        drift = (months - terms["months"]) / 24
+        appeal = ratio + (drift if fighter.age < 22 else -drift) * 0.18
+        if appeal >= 0.98:
+            return True, f"{fighter.name} accepts ${purse:,} per bout over {months} months."
+        if appeal >= 0.88:
+            return False, (f"{fighter.name} is close but wants nearer ${wanted:,} per bout "
+                           f"on a {terms['months']}-month deal.")
+        return False, (f"{fighter.name} rejects the offer outright. They expect around "
+                       f"${wanted:,} per bout over {terms['months']} months.")
+
+    def sign_player_combat_youth(self, sport, fighter_id, purse=None, months=None):
+        """Move one private-market athlete into the player's active sport roster.
+
+        Covers both the youth pipeline and the separate sport free-agent pool;
+        neither touches the MMA free-agent market.
+        """
         division = getattr(self, "player_combat_divisions", {}).get(sport)
         world = getattr(self, "combat_sport_worlds", {}).get(sport)
         if not division or not world:
             return False, "That sport division is not open.", None
-        recruits = {fighter.fighter_id: fighter for fighter in self.player_combat_signable_youth(sport)}
-        fighter = recruits.get(fighter_id)
+        pools = (("signable_youth", self.player_combat_signable_youth(sport)),
+                 ("signable_free_agents", self.player_combat_signable_free_agents(sport)))
+        fighter = None
+        pool_key = ""
+        for key, members in pools:
+            match = next((candidate for candidate in members if candidate.fighter_id == fighter_id), None)
+            if match is not None:
+                fighter, pool_key = match, key
+                break
         if not fighter:
-            return False, "That recruit is no longer available.", None
-        cost = max(8000, fighter.popularity * 450 + round(self.combat_sport_display_rating(fighter, sport)) * 260)
+            return False, "That athlete is no longer available.", None
+        terms = self.combat_sport_contract_terms(sport, fighter)
+        purse = terms["purse"] if purse is None else max(0, int(purse))
+        months = terms["months"] if months is None else max(1, int(months))
+        cost = terms["fee"]
         if self.cash < cost:
             return False, f"Need ${cost:,} to sign {fighter.name}.", None
         self.cash -= cost
-        self.record_finance_transaction(f"Combat-sport youth signing: {fighter.name}", costs=cost)
-        division["signable_youth"] = [
-            entry for entry in division.get("signable_youth", [])
+        self.record_finance_transaction(f"Combat-sport signing: {fighter.name}", costs=cost)
+        division[pool_key] = [
+            entry for entry in division.get(pool_key, [])
             if str((entry.get("fighter", entry) if isinstance(entry, dict) else {}).get("fighter_id", "")) != fighter_id
         ]
         fighter.sport_employer = self.player_company_name
         fighter.contract_type = f"{sport} Player Deal"
         fighter.exclusive = True
+        fighter.contract_months = months
+        fighter.purse = purse
         fighter.fight_history = fighter.fight_history or []
-        fighter.fight_history.insert(0, f"Month {self.month}: Signed with {self.player_company_name}'s {sport} division.")
+        fighter.fight_history.insert(
+            0,
+            f"Month {self.month}: Signed a {months}-month deal with {self.player_company_name}'s {sport} division.",
+        )
         world.setdefault("roster", []).append(fighter)
         division["roster"] = list(dict.fromkeys(division.get("roster", []) + [fighter.name]))
-        note = f"{self.player_company_name} signed {fighter.name} to its {sport} division for ${cost:,}."
+        note = (f"{self.player_company_name} signed {fighter.name} to its {sport} division: "
+                f"${cost:,} fee, ${purse:,} per bout over {months} months.")
         self.news.insert(0, note)
         return True, note, fighter
+
+    def player_combat_contract_rows(self):
+        """Every player sport-athlete contract, newest expiry first."""
+        rows = []
+        for sport, division in (getattr(self, "player_combat_divisions", {}) or {}).items():
+            world = getattr(self, "combat_sport_worlds", {}).get(sport, {})
+            for fighter in world.get("roster", []) or []:
+                if getattr(fighter, "sport_employer", "") != self.player_company_name or fighter.retired:
+                    continue
+                if fighter.name not in (division.get("roster", []) or []):
+                    continue
+                months = max(0, int(getattr(fighter, "contract_months", 0) or 0))
+                rows.append({
+                    "sport": sport, "fighter": fighter, "months": months,
+                    "purse": int(getattr(fighter, "purse", 0) or 0),
+                    "division": self.combat_sport_competition_class(sport, fighter),
+                    "status": "EXPIRED" if months <= 0 else ("Expiring" if months <= 3 else "Active"),
+                })
+        rows.sort(key=lambda row: (row["months"], row["sport"], row["fighter"].name))
+        return rows
+
+    def tick_player_combat_contracts(self):
+        """Run down sport contracts each month and warn before they lapse."""
+        expired = []
+        for row in self.player_combat_contract_rows():
+            fighter, sport = row["fighter"], row["sport"]
+            months = max(0, int(getattr(fighter, "contract_months", 0) or 0))
+            if months <= 0:
+                continue
+            months -= 1
+            fighter.contract_months = months
+            if months == 0:
+                expired.append((sport, fighter))
+                self.inbox.append({
+                    "subject": f"Sport Contract Expired - {fighter.name}",
+                    "body": (f"{fighter.name}'s {sport} deal with your division has expired. Renew them from the "
+                             f"Contracts screen or they will leave for the wider {sport} circuit."),
+                    "type": "Contract", "fighter": fighter.name, "resolved": False,
+                })
+            elif months in (1, 2, 3):
+                subject = f"Sport Contract Expiring - {fighter.name}"
+                if not any(m.get("subject") == subject and not m.get("resolved", False) for m in self.inbox):
+                    self.inbox.append({
+                        "subject": subject,
+                        "body": (f"{fighter.name}'s {sport} deal expires in {months} month(s). "
+                                 f"Renew from the Contracts screen to keep them."),
+                        "type": "Contract", "fighter": fighter.name, "resolved": False,
+                    })
+        return expired
+
+    def renew_player_combat_contract(self, sport, fighter_name, purse=None, months=None):
+        """Re-sign an athlete already on a player sport roster."""
+        world = getattr(self, "combat_sport_worlds", {}).get(sport, {})
+        fighter = next((f for f in world.get("roster", []) or [] if f.name == fighter_name), None)
+        if not fighter or getattr(fighter, "sport_employer", "") != self.player_company_name:
+            return False, f"{fighter_name} is not contracted to your {sport} division."
+        terms = self.combat_sport_contract_terms(sport, fighter)
+        purse = terms["purse"] if purse is None else max(0, int(purse))
+        months = terms["months"] if months is None else max(1, int(months))
+        accepted, message = self.combat_sport_offer_response(sport, fighter, purse, months)
+        if not accepted:
+            return False, message
+        fighter.contract_months = months
+        fighter.purse = purse
+        fighter.fight_history = list(fighter.fight_history or [])
+        fighter.fight_history.insert(0, f"Month {self.month}: Re-signed for {months} months at ${purse:,} per bout.")
+        for message_row in self.inbox:
+            if message_row.get("fighter") == fighter.name and "Sport Contract" in str(message_row.get("subject", "")):
+                message_row["resolved"] = True
+        note = f"{fighter.name} re-signed with your {sport} division for {months} months at ${purse:,} per bout."
+        self.news.insert(0, note)
+        return True, note
 
     def replenish_combat_sport_world(self, sport, world):
         promotion = world.get("promotion", "")
@@ -7796,12 +8061,17 @@ class WorldMixin:
                 "auto_cards": False, "auto_card_min_bouts": 5, "auto_card_status": "Off - manual cards only.", "last_card_month": 0,
             }
             self.player_combat_divisions = divisions
+            # force=True fills every deficit in one pass now, not a capped batch,
+            # so a single call reaches the full per-division target regardless
+            # of how many divisions the sport carries.
             self.ensure_player_combat_signable_depth(sport, world, force=True)
+            self.ensure_player_combat_free_agent_depth(sport, world, force=True)
             self.news.insert(0, f"{promotion_name} launched as a child promotion. Sign specialists, book matchups and run its first card after the ${startup_cost:,} startup investment.")
         elif "last_youth_market_month" not in divisions[sport]:
             # Existing saves receive one controlled intake when first opened;
             # subsequent additions obey the normal two-month cadence.
             self.ensure_player_combat_signable_depth(sport, world, force=True)
+            self.ensure_player_combat_free_agent_depth(sport, world, force=True)
         return True, divisions[sport]
 
     def has_unresolved_title_shot_inbox(self, fighter):
@@ -7834,6 +8104,7 @@ class WorldMixin:
 
     def review_contract_promises(self):
         self.reconcile_title_shot_alerts()
+        self.tick_player_combat_contracts()
         for fighter in self.roster:
             if not getattr(fighter, "promise_deadline_month", 0) or fighter.promise_deadline_month >= self.month:
                 continue
@@ -9486,8 +9757,7 @@ class WorldMixin:
             bout = {"main": is_main, "title": is_title, "tier": entry.get("tier", "Main Card"), "region": promo.region, "city": event_city}
             winner, loser, method, round_no, _lines = self.simulate_fight(a, b, bout)
             bout["_scorecards"] = self.scorecard_summary_from_lines(_lines)
-            hype_seed = a.popularity + b.popularity + (40 if is_title else 0) + (25 if is_grudge else 0)
-            ai_excitement = self.fight_excitement(a, b, winner, loser, method, round_no, bout, hype_seed)
+            ai_excitement = self.fight_excitement(a, b, winner, loser, method, round_no, bout)
             self.record_season_result(winner, loser, method, round_no, bout, ai_excitement, promo.name)
             if is_main and is_title:
                 label = "MAIN EVENT - TITLE FIGHT"
@@ -10108,7 +10378,6 @@ class WorldMixin:
             )
 
         reserved_title_fights = []
-        reserved_title_keys = set()
         for (gender, weight), fighters in by_division.items():
             key = self.belt_key(gender, weight)
             champion_name = self.ai_primary_title_holder_name(promo, gender, weight)
@@ -10133,7 +10402,6 @@ class WorldMixin:
                 challenger = max(fighters, key=regional_contender_rank)
                 fighters.remove(challenger)
                 reserved_title_fights.append((champion, challenger))
-                reserved_title_keys.add(key)
                 continue
             # An empty belt is settled by the division's two leading contenders,
             # and settled promptly: a vacancy does not wait on the defense
@@ -10152,7 +10420,6 @@ class WorldMixin:
             fighters.remove(first)
             fighters.remove(second)
             reserved_title_fights.append((first, second))
-            reserved_title_keys.add(key)
 
         # A shared bout budget used to drain itself on whichever divisions
         # happened to appear first in roster order, starving every division
@@ -10208,11 +10475,18 @@ class WorldMixin:
         # A regional title starts only when two fighters have built enough of a
         # record to contest it. Existing champions defend at a measured cadence;
         # state repair must never create an appointed feeder champion.
-        # Every championship bout is now chosen above, where the contenders can
-        # be ranked before the development slate is built. Flagging one here as
-        # well re-opened the door to an ordinary pairing being promoted into a
-        # title fight simply because it was drawn first.
-        title_flags = [self.belt_key(a.gender, a.weight) in reserved_title_keys for a, _b in fights]
+        # Every championship bout is chosen above, where the contenders can be
+        # ranked before the development slate is built.
+        #
+        # This has to match the reserved PAIR, not the division. Matching on the
+        # belt key flagged every other bout in that division as a title fight
+        # too, and each one then ran set_primary_champion: the belt ended up on
+        # whoever won the last development bout of the night rather than the
+        # actual championship contest, changing hands on cards where no title
+        # fight was even scheduled and leaving the real champion to fight
+        # ordinary bouts while still recognised as holder.
+        reserved_pairs = {(id(a), id(b)) for a, b in reserved_title_fights}
+        title_flags = [(id(a), id(b)) in reserved_pairs for a, b in fights]
 
         # Development cards run on a weekday like any other, so their bouts are
         # dated and count toward a prospect's turnaround the same way.
@@ -10818,8 +11092,7 @@ class WorldMixin:
                     self.news.insert(0, f"Second chance: {fighter.name} joins {promo.name} to rebuild their record and market value.")
                 promo.roster.append(fighter)
                 continue
-            fighter = self.create_regional_feeder_fighter(promo.region, self.active_fighter_names(), intake_gender)
-            fighter.weight = intake_weight
+            fighter = self.create_regional_feeder_fighter(promo.region, self.active_fighter_names(), intake_gender, weight=intake_weight)
             fighter.camp = promo.name
             fighter.feeder_origin = promo.name
             fighter.market_origin = "Regional youth intake"
@@ -10924,7 +11197,7 @@ class WorldMixin:
                 a_rating, b_rating = self.bout_rating_snapshot(a), self.bout_rating_snapshot(b)
                 fight = {"main": False, "title": False, "tier": "Independent Showcase", "region": a.region}
                 winner, loser, method, round_no, lines = self.simulate_fight(a, b, fight)
-                excitement = self.fight_excitement(a, b, winner, loser, method, round_no, fight, a.popularity + b.popularity)
+                excitement = self.fight_excitement(a, b, winner, loser, method, round_no, fight)
                 if method == "Draw":
                     self.apply_draw_result(a, b, fight)
                     result_line = f"{a.name} vs {b.name} - Draw (R{round_no})"
@@ -11101,7 +11374,7 @@ class WorldMixin:
                 "region": a.region,
             }
             winner, loser, method, round_no, lines = self.simulate_fight(a, b, fight)
-            excitement = self.fight_excitement(a, b, winner, loser, method, round_no, fight, a.popularity + b.popularity)
+            excitement = self.fight_excitement(a, b, winner, loser, method, round_no, fight)
             retiring_before = [fighter.name for fighter in (a, b) if fighter.retirement_pending]
             if method == "Draw":
                 self.apply_draw_result(a, b, fight)
