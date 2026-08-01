@@ -2554,7 +2554,14 @@ class UIMixin:
                                   values=["All", "Expiring (<=3 mo)", "Final month", "Non-Exclusive"])
         filter_box.pack(side="left", padx=4)
         filter_box.bind("<<ComboboxSelected>>", lambda _e: self.refresh_contracts())
-        panel, inner = self.section(self.contracts_tab, "CONTRACT OVERVIEW")
+        contracts_notebook = ttk.Notebook(self.contracts_tab)
+        contracts_notebook.pack(fill="both", expand=True)
+        mma_contracts_tab = ttk.Frame(contracts_notebook, style="Chrome.TFrame")
+        sport_contracts_tab = ttk.Frame(contracts_notebook, style="Chrome.TFrame")
+        contracts_notebook.add(mma_contracts_tab, text="MMA Roster")
+        contracts_notebook.add(sport_contracts_tab, text="Combat Sports")
+        self.sport_contracts_tab = sport_contracts_tab
+        panel, inner = self.section(mma_contracts_tab, "CONTRACT OVERVIEW")
         panel.pack(fill="both", expand=True)
         self.contracts_tree = ttk.Treeview(inner, columns=("name", "gender", "weight", "rank", "pop", "ovr", "remaining", "expiry", "purse", "type", "morale", "status"), show="headings", selectmode="extended")
         for col, text, width in (("name", "Fighter", 160), ("gender", "G", 34), ("weight", "Division", 96), ("rank", "Rank", 52), ("pop", "Pop", 46), ("ovr", "OVR", 46), ("remaining", "Time Left", 72), ("expiry", "Expiry", 92), ("purse", "Purse", 88), ("type", "Type", 96), ("morale", "Morale", 58), ("status", "Status", 118)):
@@ -2577,6 +2584,47 @@ class UIMixin:
         ttk.Label(buttons, text="Rows: red = expired, orange = final month, yellow = expiring soon", style="Inset.TLabel").pack(side="left", padx=12)
         self.contracts_summary = ttk.Label(buttons, text="", style="Inset.TLabel")
         self.contracts_summary.pack(side="right", padx=8)
+
+        # Child-promotion athletes carry real terms now, so they get the same
+        # expiry warnings and renewal flow as the MMA roster rather than sitting
+        # on invisible open-ended deals.
+        self.sport_contracts_alert = tk.Label(
+            sport_contracts_tab, text="", font=("Tahoma", 10, "bold"), anchor="w",
+            bg=self.colors["chrome"], fg=self.colors["gold"],
+        )
+        self.sport_contracts_alert.pack(fill="x", padx=2, pady=(4, 4))
+        sport_panel, sport_inner = self.section(sport_contracts_tab, "COMBAT SPORT CONTRACTS")
+        sport_panel.pack(fill="both", expand=True)
+        self.sport_contracts_tree = ttk.Treeview(
+            sport_inner,
+            columns=("name", "sport", "division", "gender", "age", "rating", "record", "remaining", "purse", "status"),
+            show="headings", selectmode="extended",
+        )
+        for col, text, width in (
+            ("name", "Athlete", 165), ("sport", "Sport", 120), ("division", "Division", 120), ("gender", "G", 34),
+            ("age", "Age", 46), ("rating", "Sport RTG", 74), ("record", "Record", 74),
+            ("remaining", "Time Left", 78), ("purse", "Purse", 88), ("status", "Status", 96),
+        ):
+            self.sport_contracts_tree.heading(col, text=text)
+            self.sport_contracts_tree.column(col, width=width, anchor="center")
+        self.sport_contracts_tree.column("name", anchor="w")
+        self.sport_contracts_tree.column("sport", anchor="w")
+        self.sport_contracts_tree.column("division", anchor="w")
+        self.sport_contracts_tree.tag_configure("expired", background="#5c1a1a", foreground="#ffffff")
+        self.sport_contracts_tree.tag_configure("final", background="#7a2f12", foreground="#ffffff")
+        self.sport_contracts_tree.tag_configure("soon", background="#6b5a1e", foreground="#ffffff")
+        self.make_tree_sortable(self.sport_contracts_tree)
+        self.sport_contracts_tree.pack(fill="both", expand=True)
+        sport_buttons = ttk.Frame(sport_inner, style="Inset.TFrame")
+        sport_buttons.pack(fill="x", pady=(6, 0))
+        ttk.Button(sport_buttons, text="Negotiate Renewal", style="Accent.TButton",
+                   command=self.renew_selected_sport_contract).pack(side="left", padx=4)
+        ttk.Button(sport_buttons, text="Release Athlete",
+                   command=self.release_selected_sport_contract).pack(side="left", padx=4)
+        ttk.Label(sport_buttons, text="Rows: red = expired, orange = final month, yellow = expiring soon",
+                  style="Inset.TLabel").pack(side="left", padx=12)
+        self.sport_contracts_summary = ttk.Label(sport_buttons, text="", style="Inset.TLabel")
+        self.sport_contracts_summary.pack(side="right", padx=8)
 
     def build_booking_tab(self):
         self.booking_tab._force_viewport_width = True
