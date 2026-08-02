@@ -147,7 +147,7 @@ class FightEmpireApp(
         self.super_event_offers = []
         self.super_event_history = []
         self.super_event_project = None
-        self.theme_name = "UFC"
+        self.theme_name = "Dark Mode"
         self.player_company_name = PLAYER_PROMOTION_NAME
         self.spectator_mode = False
         # Save files are isolated by game slot.  Persistence keeps legacy flat

@@ -463,7 +463,7 @@ class AdminMixin:
 
     def find_fighter_anywhere(self, name):
         for fighter in self.all_database_fighters(include_retired=True):
-            if fighter.name == name:
+            if fighter.name == name or getattr(fighter, "fighter_id", "") == name:
                 return fighter
         return None
 
@@ -538,27 +538,51 @@ class AdminMixin:
             self.open_live_fight_window(event, package, apply_results=False, on_complete=lambda: self.sim_result.config(text=lines[-1]))
 
     def run_simulation_audit(self):
+        """Audit competitive fight outcomes without mutating the active career.
+
+        The old audit paired two fighters drawn from the full 42-92 skill span.
+        That made severe mismatches common, inflated finishes, and then presented
+        the mixed result as if it described normal matchmaking. Keep the useful
+        synthetic business stress test, but build the fight sample inside named
+        ability bands and prefer an opponent no more than six overall points away.
+        """
         self.apply_engine_settings()
         runs = max(10, min(1000, self.audit_runs.get()))
         methods = {}
+        tier_methods = {"Low": {}, "Mid": {}, "High": {}}
+        matchup_gaps = []
         gates = []
         profits = []
         hypes = []
         builds = []
         upsets = 0
         original_state = random.getstate()
+        original_name_counts = dict(getattr(self, "name_counts", {}))
         for index in range(runs):
             fights = []
             for _ in range(random.randint(7, 11)):
-                a = self.create_generated_fighter(12, 80, 42, 92)
-                b = self.create_generated_fighter(12, 80, 42, 92)
-                b.weight = a.weight
-                b.gender = a.gender
+                tier, minimum, maximum = random.choice((
+                    ("Low", 45, 62), ("Mid", 63, 76), ("High", 78, 92),
+                ))
+                a = self.create_generated_fighter(12, 80, minimum, maximum)
+                # Choose the closest of several same-band candidates. This keeps
+                # the audit representative of cards a competent matchmaker would
+                # actually book while still retaining natural style variation.
+                candidates = [
+                    self.create_generated_fighter(
+                        12, 80, minimum, maximum, weight=a.weight, gender=a.gender,
+                    )
+                    for _candidate in range(6)
+                ]
+                b = min(candidates, key=lambda fighter: abs(fighter.overall - a.overall))
+                gap = abs(a.overall - b.overall)
+                matchup_gaps.append(gap)
                 fight = {"fighters": [a.name, b.name], "title": False, "main": False, "tier": random.choice(CARD_TIERS)}
                 hype = self.fight_hype(a, b, fight)
                 build = self.match_build_score(a, b, fight)
                 winner, loser, method, _round, _lines = self.simulate_fight(a, b, fight)
                 methods[method] = methods.get(method, 0) + 1
+                tier_methods[tier][method] = tier_methods[tier].get(method, 0) + 1
                 if loser.overall > winner.overall + 5:
                     upsets += 1
                 fights.append((winner, loser, fight, method, hype, build))
@@ -580,20 +604,28 @@ class AdminMixin:
             hypes.append(total_hype / max(1, len(fights)))
             builds.append(total_build)
         random.setstate(original_state)
+        self.name_counts = original_name_counts
         def avg(values):
             return round(sum(values) / max(1, len(values)))
         report = [
             f"Audit events: {runs}",
-            f"Average gate: ${avg(gates):,}",
-            f"Average profit: ${avg(profits):,}",
+            f"Synthetic audit gate: ${avg(gates):,} (not the player event-finance model)",
+            f"Synthetic audit profit: ${avg(profits):,} (not the player event-finance model)",
             f"Average matchup hype: {avg(hypes)}",
             f"Average fight build: {avg(builds)}",
+            f"Competitive matchup coverage: {sum(gap <= 6 for gap in matchup_gaps)}/{len(matchup_gaps)} ({round(sum(gap <= 6 for gap in matchup_gaps) / max(1, len(matchup_gaps)) * 100, 1)}%) at OVR gap <= 6",
             f"Upsets: {upsets} ({round(upsets / max(1, sum(methods.values())) * 100, 1)}% of fights)",
             "",
             "Methods:",
         ]
         for method, count in sorted(methods.items(), key=lambda item: -item[1]):
             report.append(f"- {method}: {count} ({round(count / max(1, sum(methods.values())) * 100, 1)}%)")
+        report.extend(["", "Competitive finish rate by generated tier:"])
+        for tier in ("Low", "Mid", "High"):
+            tier_total = sum(tier_methods[tier].values())
+            decisions = tier_methods[tier].get("Decision", 0) + tier_methods[tier].get("Draw", 0)
+            finish_rate = round((tier_total - decisions) / max(1, tier_total) * 100, 1)
+            report.append(f"- {tier}: {finish_rate}% finishes across {tier_total} fights")
         self.audit_text.config(state="normal")
         self.audit_text.delete("1.0", "end")
         self.audit_text.insert("end", "\n".join(report))

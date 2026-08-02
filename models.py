@@ -42,6 +42,8 @@ class Fighter:
     combat_background: str = "Mixed martial arts"
     sport_employer: str = ""
     sport_weight_class: str = ""
+    loaned_from_company: str = ""
+    loaned_to_promotion: str = ""
     multi_sport_records: dict = None
     crossover_history: list = None
     birth_country: str = ""
@@ -140,6 +142,9 @@ class Fighter:
     # frame. Unlike a bad cut, it applies every bout until they move again.
     division_size_penalty: int = 0
     division_size_note: str = ""
+    # Month-by-month trail of the frame settling into its division: filling out
+    # when moving up, recomposing down when the body allows it.
+    division_fit_log: list = None
     elo_rating: int = 1500
     career_sig_strikes: int = 0
     career_takedowns: int = 0
@@ -164,6 +169,7 @@ class Fighter:
     award_count: int = 0
     rivalry_history: list = None
     win_bonus: int = 0
+    finish_bonus_pct: int = 0
     ppv_points: int = 0
     champions_clause: bool = False
     title_shot_clause: bool = False
@@ -341,3 +347,10 @@ class Promotion:
     closed_divisions: list = None
     closed_division_policy_set: bool = False
     regional_division_activity: dict = None
+    is_child_promotion: bool = False
+    parent_company: str = ""
+    child_strategy: str = "Balanced"
+    parent_profit_share: int = 0
+    startup_capital: int = 0
+    initial_roster_budget: int = 0
+    loaned_fighter_ids: list = None

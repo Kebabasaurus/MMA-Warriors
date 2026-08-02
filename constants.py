@@ -10,8 +10,51 @@ ASSET_DIR = BUNDLE_DIR / "assets" if (BUNDLE_DIR / "assets").exists() else APP_D
 APP_ICON_ICO = ASSET_DIR / "app_icon.ico"
 APP_ICON_PNG = ASSET_DIR / "app_icon.png"
 GAME_NAME = "MMA Warriors"
-GAME_VERSION = "3.0.5"
+GAME_VERSION = "3.0.6"
 GAME_TITLE = f"{GAME_NAME} v{GAME_VERSION}"
+AI_CHILD_PROMOTION_MIN_CAPITAL = 1_000_000
+AI_CHILD_PROMOTION_MAX_CAPITAL = 25_000_000
+AI_CHILD_PROMOTION_STRATEGIES = ("Balanced", "Youth Prospects", "Big Names", "Merit & Contenders")
+STAFF_ROLE_EFFECTS = {
+    "Scout": {
+        "label": "Scouting",
+        "summary": "Improves report confidence, prospect discovery, regional searches, and academy lead quality.",
+        "metric": "Report confidence and scouting capacity",
+    },
+    "Doctor": {
+        "label": "Medical",
+        "summary": "Shortens post-fight layoffs, lowers event medical costs, and protects fighters from accumulated damage.",
+        "metric": "Recovery time and medical cost",
+    },
+    "Marketing": {
+        "label": "Promotion",
+        "summary": "Raises fight hype, media upside, sponsorship value, and the reach of promotional campaigns.",
+        "metric": "Hype and commercial reach",
+    },
+    "Matchmaker": {
+        "label": "Matchmaking",
+        "summary": "Improves matchup quality, competitiveness, contender logic, and the commercial ceiling of cards.",
+        "metric": "Card build and matchup quality",
+    },
+    "Drug Testing Officer": {
+        "label": "Compliance",
+        "summary": "Improves test detection quality and reduces the operating cost of a reliable testing program.",
+        "metric": "Detection accuracy and testing cost",
+    },
+    "Broadcast Producer": {
+        "label": "Broadcast",
+        "summary": "Improves commentary and broadcast reach while making live production more efficient.",
+        "metric": "Broadcast quality and production cost",
+    },
+    "Talent Relations": {
+        "label": "Talent Relations",
+        "summary": "Improves fighter negotiations, trust, contract terms, and the chance of retaining valuable talent.",
+        "metric": "Negotiation leverage and roster trust",
+    },
+}
+STAFF_CONTRACT_DEFAULT_MONTHS = 24
+STAFF_CONTRACT_MIN_MONTHS = 1
+STAFF_CONTRACT_MAX_MONTHS = 60
 GAME_START_YEAR = 2026
 CALENDAR_MONTHS = (
     "January", "February", "March", "April", "May", "June",
@@ -67,9 +110,8 @@ ROLLING_SAVE_SLOT_COUNT = 2
 # never vanish from the results database simply because its replay aged out.
 RESULT_INDEX_LIMIT = 100000
 GLOBAL_RESULT_REPLAY_LIMIT = 2000
-# Detailed fight commentary is bounded per round so long main events do not
-# crowd out later rounds.  The compactor keeps the opening and closing action
-# around one omission marker; structural broadcast lines are never buffered.
+# Retained for compatibility with older tuning/save tooling. Fight commentary
+# is streamed in full; the live viewer may use these values for future pacing.
 FIGHT_COMMENTARY_ROUND_LINE_LIMIT = 24
 FIGHT_COMMENTARY_ROUND_HEAD_LINES = 14
 FIGHT_COMMENTARY_ROUND_TAIL_LINES = 8

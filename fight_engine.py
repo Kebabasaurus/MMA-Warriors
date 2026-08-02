@@ -109,33 +109,20 @@ class FightEngineMixin:
         lines = [f"Tale of the tape: {a.style} / {a.stance} / {a.behaviour} / {a.trait} vs {b.style} / {b.stance} / {b.behaviour} / {b.trait}. Rules: {max_rounds}x{self.rules['round_length']}. Scale: {a_scale} vs {b_scale}."]
         lines.extend(self.commentary_opening_context(a, b, fight, state))
 
-        recent_commentary = []
         round_commentary = []
 
         def add_fight_line(line):
             clean = line.strip()
             if not clean:
                 return
-            # Compare the spoken call, not its clock.  Normalising both fighter
-            # names also catches the same template repeated with the corners
-            # reversed a few beats later.
-            memory_key = clean.split("] ", 1)[1] if clean.startswith("[") and "] " in clean else clean
-            for fighter_name in sorted((a.name, b.name), key=len, reverse=True):
-                memory_key = memory_key.replace(fighter_name, "{fighter}")
-            if memory_key in recent_commentary:
-                return
+            # Keep every generated call. The player may choose a full play-by-
+            # play watch, so repeated templates and clocked exchanges are still
+            # meaningful commentary rather than disposable duplicates.
             round_commentary.append(line)
-            recent_commentary.append(memory_key)
-            del recent_commentary[:-18]
 
         def flush_round_commentary():
-            """Bound action calls without deleting round or result structure."""
-            if len(round_commentary) <= FIGHT_COMMENTARY_ROUND_LINE_LIMIT:
-                lines.extend(round_commentary)
-            else:
-                lines.extend(round_commentary[:FIGHT_COMMENTARY_ROUND_HEAD_LINES])
-                lines.append("  ...some middle exchanges are summarized; the live call resumes late in the round.")
-                lines.extend(round_commentary[-FIGHT_COMMENTARY_ROUND_TAIL_LINES:])
+            """Flush the complete round call without dropping play-by-play."""
+            lines.extend(round_commentary)
             round_commentary.clear()
 
         for round_no in range(1, max_rounds + 1):
@@ -1459,7 +1446,8 @@ class FightEngineMixin:
         if extra_templates:
             templates.setdefault(category, []).extend(extra_templates)
         template = random.choice(templates.get(category, ["{A} continues to work against {B}."]))
-        return template.format(A=actor.name, B=defender.name, **context)
+        display_name = getattr(self, "fighter_display_name", lambda fighter: fighter.name)
+        return template.format(A=display_name(actor), B=display_name(defender), **context)
 
     def mma_striking_commentary_expansion(self):
         """Additional reachable striking situations for the live MMA broadcast."""

@@ -810,7 +810,7 @@ class SeedMixin:
             roster.append(prospect)
         self.ensure_roster_division_depth(roster, self.player_region, self.player_company_name, self.company_pop, player_owned=True)
         closed_divisions = self.bamma_initial_closed_divisions()
-        self.reassign_bamma_closed_division_fighters(roster, closed_divisions)
+        self.reassign_closed_division_fighters(roster, closed_divisions)
         self.ensure_bamma_womens_division_depth(roster)
         self.seed_relationships(roster)
         self.belts, self.interim_belts, self.belt_history = self.ensure_company_champions(
@@ -826,11 +826,31 @@ class SeedMixin:
             for weight in ("Middleweight", "Light Heavyweight", "Heavyweight")
         }
 
-    def reassign_bamma_closed_division_fighters(self, roster, closed_divisions):
-        """Keep BAMMA's opening women roster in divisions the promotion runs."""
+    def reassign_closed_division_fighters(self, roster, closed_divisions):
+        """Keep an opening roster inside the divisions the promotion actually runs.
+
+        Applies to whichever promotion the player starts with, not one company:
+        any promotion can open with divisions closed. The fighter moves to the
+        nearest division that is still open for their gender rather than a
+        hardcoded class, because dropping a heavyweight into welterweight moved
+        them ninety pounds and left a frame that fitted neither.
+        """
         for fighter in roster:
-            if self.belt_key(fighter.gender, fighter.weight) in closed_divisions:
-                fighter.weight = "Welterweight"
+            if self.belt_key(fighter.gender, fighter.weight) not in closed_divisions:
+                continue
+            try:
+                index = WEIGHTS.index(fighter.weight)
+            except ValueError:
+                index = len(WEIGHTS) // 2
+            options = sorted(
+                (
+                    candidate for candidate in WEIGHTS
+                    if self.belt_key(fighter.gender, candidate) not in closed_divisions
+                ),
+                key=lambda candidate: abs(WEIGHTS.index(candidate) - index),
+            )
+            if options:
+                self.assign_fighter_division(fighter, options[0], reset_walk_weight=True)
 
     def ensure_bamma_womens_division_depth(self, roster):
         """Guarantee viable fresh-start depth in BAMMA's women's divisions."""
@@ -2595,9 +2615,13 @@ class SeedMixin:
         promotions.extend(self.seed_regional_feeder_promotions(global_names))
         return promotions
 
-    def create_regional_feeder_fighter(self, region, used_names, gender, feeder_name=""):
+    def create_regional_feeder_fighter(self, region, used_names, gender, feeder_name="", weight=None):
+        # The division has to be known here, not patched on afterwards: the
+        # generator derives walk weight from whatever class the fighter is
+        # built in, so a caller that overwrote .weight later left behind a
+        # frame belonging to a completely unrelated division.
         pre_universe = bool(getattr(self, "_seeding_universe", False))
-        fighter = self.create_generated_fighter(2, 22, 40, 70, gender=gender, region=region, apply_entry_balance=False, pre_universe=pre_universe)
+        fighter = self.create_generated_fighter(2, 22, 40, 70, weight=weight, gender=gender, region=region, apply_entry_balance=False, pre_universe=pre_universe)
         fighter.age = weighted_table_pick(REGIONAL_FEEDER_AGE_TABLE)
         fighter.record_w = random.randint(0, 6) if pre_universe else 0
         fighter.record_l = random.randint(0, min(4, fighter.record_w + 1)) if pre_universe else 0
@@ -2811,8 +2835,7 @@ class SeedMixin:
                     division_counts = (("Male", male_count), ("Female", 3))
                 for gender, count in division_counts:
                     for _ in range(count):
-                        fighter = self.create_regional_feeder_fighter(region, global_names, gender, feeder_name=name)
-                        fighter.weight = weight
+                        fighter = self.create_regional_feeder_fighter(region, global_names, gender, feeder_name=name, weight=weight)
                         fighter.region = region
                         fighter.nationality = self.infer_nationality(fighter.name, region)
                         fighter.camp = name
@@ -2822,14 +2845,17 @@ class SeedMixin:
                         global_names.add(fighter.name)
             if male_only:
                 self.install_eurasian_headliner(roster, global_names, name, region)
+            strategy = self.seed_promotion_strategy(name, "Regional Development")
+            if male_only:
+                strategy["description"] = EURASIAN_FIGHT_CIRCUIT_DESCRIPTION
             promotion = Promotion(
                 name=name, region=region, size=24, cash=0, roster=roster,
-                reputation=EURASIAN_FIGHT_CIRCUIT_DESCRIPTION if male_only else "Regional Feeder",
+                reputation="Regional Feeder",
                 reputation_score=24, stability=70,
                 show_history=[], belts=self.blank_belts(), interim_belts=self.blank_belts(), belt_history=self.blank_belt_history(),
                 rules={"rounds": 3, "title_rounds": 3, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 4, "allow_mixed_gender": False, "active_fighter_target": 1200},
                 broadcasters=[], weight_classes=list(WEIGHTS), show_personality="Regional Development", is_regional_feeder=True,
-                strategy=self.seed_promotion_strategy(name, "Regional Development"),
+                strategy=strategy,
                 executive=self.seed_promotion_executive(name),
                 era_history=[],
             )
@@ -3023,6 +3049,21 @@ class SeedMixin:
             "Middle East": ["Bahrain", "United Arab Emirates", "Saudi Arabia", "Qatar"],
             "Africa": ["South Africa", "Nigeria", "Egypt", "Kenya"],
         }
+        regional_teams = {
+            "USA": ["American Top Team", "AKA", "Kill Cliff FC"],
+            "Canada": ["Tristar", "Niagara Top Team", "Northstar Combat"],
+            "Brazil": ["Nova Uniao", "Chute Boxe", "Brazilian Top Team"],
+            "Mexico": ["Lobo Gym", "Mexico City Combat", "Entram Gym"],
+            "UK": ["SBG Ireland", "NexGen MMA", "London Shootfighters"],
+            "Europe": ["Allstars Training Center", "MMA Factory Paris", "UFD Gym"],
+            "Russia": ["Dagestan Fight School", "Red Fury Team", "Akhmat Fight Club"],
+            "Japan": ["Krazy Bee", "Shootbox Japan", "Paraestra Tokyo"],
+            "South Korea": ["Korean Top Team", "Busan Team MAD"],
+            "Australia": ["City Kickboxing", "Freestyle Fighting Gym", "Sydney Elite MMA"],
+            "Asia": ["Tiger Muay Thai", "Evolve MMA", "Team Lakay"],
+            "Middle East": ["KHK MMA", "Abu Dhabi Combat Team", "Dubai Fight Lab"],
+            "Africa": ["Team CIT", "Lagos Fight House", "Atlas Combat Club"],
+        }
         return {
             region: {
                 "economy": random.choice(economies),
@@ -3030,7 +3071,7 @@ class SeedMixin:
                 "drug_accuracy": random.choice([35, 50, 65, 80, 95]),
                 "mma_love": random.randint(35, 85),
                 "promo_benefit": REGION_PROMO_BENEFITS.get(region, {"media": 1.0, "gate": 1.0, "morale": 1}),
-                "teams": random.sample(CAMPS, k=min(3, len(CAMPS))),
+                "teams": list(regional_teams.get(region, [])),
                 "areas": areas,
                 "last_major_show": "No major shows yet",
                 "fan_identity": {
@@ -3193,6 +3234,17 @@ class SeedMixin:
             gym = gym_lookup.get(fighter.camp)
             if gym:
                 gym.member_count += 1
+        # The opening universe contains thousands of authored and generated
+        # fighters. Do not begin a career with famous camps at 200-400% load,
+        # which would suppress their training before the player acts. Later
+        # roster movement remains subject to the normal crowding model.
+        if int(getattr(self, "month", 2) or 2) == 1 and int(getattr(self, "week", 1) or 1) == 1:
+            for gym in gyms:
+                if gym.name == "Independent" or gym.capacity >= 500:
+                    continue
+                minimum_capacity = (max(0, gym.member_count) * 100 + 134) // 135
+                if minimum_capacity > gym.capacity:
+                    gym.capacity = minimum_capacity
 
     def seed_finance(self):
         return {
@@ -3231,10 +3283,10 @@ class SeedMixin:
 
     def seed_staff(self):
         return [
-            {"name": "Dana Holt", "role": "Matchmaker", "skill": 72, "salary": 8500, "morale": 76, "specialty": "Contender logic", "reputation": 68},
-            {"name": "Maya Quinn", "role": "Scout", "skill": 68, "salary": 6200, "morale": 80, "specialty": "Prospect eye", "reputation": 62},
-            {"name": "Reed Wallace", "role": "Doctor", "skill": 64, "salary": 7000, "morale": 70, "specialty": "Injury prevention", "reputation": 59},
-            {"name": "Felix Park", "role": "Marketing", "skill": 60, "salary": 5800, "morale": 74, "specialty": "Regional campaigns", "reputation": 56},
+            {"name": "Dana Holt", "role": "Matchmaker", "skill": 72, "salary": 8500, "morale": 76, "specialty": "Contender logic", "reputation": 68, "contract_months": 24},
+            {"name": "Maya Quinn", "role": "Scout", "skill": 68, "salary": 6200, "morale": 80, "specialty": "Prospect eye", "reputation": 62, "contract_months": 24},
+            {"name": "Reed Wallace", "role": "Doctor", "skill": 64, "salary": 7000, "morale": 70, "specialty": "Injury prevention", "reputation": 59, "contract_months": 24},
+            {"name": "Felix Park", "role": "Marketing", "skill": 60, "salary": 5800, "morale": 74, "specialty": "Regional campaigns", "reputation": 56, "contract_months": 24},
         ]
 
     def create_starting_scout(self, region=None, company_scale="Regional"):
@@ -3278,7 +3330,12 @@ class SeedMixin:
             "Broadcast Producer": ["Live production", "Story packages"],
             "Talent Relations": ["Contract trust", "Veteran management"],
         }
-        return {"name": name, "role": role, "skill": skill, "salary": max(3500, salary), "morale": random.randint(55, 92), "specialty": random.choice(specialties[role]), "reputation": random.randint(40, min(94, skill + 8))}
+        return {
+            "name": name, "role": role, "skill": skill, "salary": max(3500, salary),
+            "morale": random.randint(55, 92), "specialty": random.choice(specialties[role]),
+            "reputation": random.randint(40, min(94, skill + 8)),
+            "contract_months": random.randint(12, 36), "contract_type": "Exclusive",
+        }
 
     def seed_staff_candidates(self):
         return [self.create_staff_candidate() for _ in range(14)]

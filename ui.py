@@ -164,7 +164,16 @@ class UIMixin:
     def configure_style(self):
         style = ttk.Style()
         style.theme_use("clam")
+        if not getattr(self, "_treeview_sort_binding", False):
+            self.root.bind_class("Treeview", "<Button-1>", self._sort_unregistered_treeview_heading, add="+")
+            self._treeview_sort_binding = True
         self.themes = {
+            "Dark Mode": {
+                "chrome": "#080a0d", "chrome2": "#12161b", "paper": "#171b20", "panel": "#20262d",
+                "panel_dark": "#2b343e", "line": "#3d4a56", "cream": "#252d35", "red": "#b51f2a",
+                "gold": "#e0b457", "text": "#edf2f6", "muted": "#aab6c1", "tree": "#10151a",
+                "tree_head": "#323e4a", "button": "#29333d", "button_text": "#f5f7f9",
+            },
             "Fight Night": {
                 "chrome": "#0b0d10", "chrome2": "#151b22", "paper": "#171a1f", "panel": "#20252d",
                 "panel_dark": "#2d3540", "line": "#384553", "cream": "#252b34", "red": "#9b1f2b",
@@ -1246,6 +1255,29 @@ class UIMixin:
             label = tree.heading(col, "text")
             tree.heading(col, text=label, command=lambda c=col: self.sort_treeview(tree, c))
 
+    def _sort_unregistered_treeview_heading(self, event):
+        """Give secondary and popup tables the same sortable headings as tabs.
+
+        The main dashboard calls ``make_tree_sortable`` explicitly. A number of
+        detail windows are built later and historically missed that call, so a
+        class binding supplies a safe fallback for any Treeview heading that
+        has not already registered its own sorter.
+        """
+        tree = event.widget
+        if tree.identify_region(event.x, event.y) != "heading" or hasattr(tree, "_sort_reverse"):
+            return
+        column_ref = tree.identify_column(event.x)
+        try:
+            column_index = int(column_ref.lstrip("#")) - 1
+        except (TypeError, ValueError):
+            return
+        columns = list(tree["columns"])
+        if not (0 <= column_index < len(columns)):
+            return
+        self.make_tree_sortable(tree)
+        self.sort_treeview(tree, columns[column_index])
+        return "break"
+
     @staticmethod
     def _parse_duration_months(text):
         """Turn a contract 'Time Left' label ('10 mo', '1y', '3y 10mo') into total months."""
@@ -1350,7 +1382,7 @@ class UIMixin:
         ttk.Button(folder_row, text="Move Selected", command=self.move_selected_save_to_folder).grid(row=1, column=3, sticky="ew", padx=3, pady=(4, 0))
         for column in (1, 3):
             folder_row.columnconfigure(column, weight=1)
-        self.save_slot_list = tk.Listbox(save_inner, font=("Tahoma", 9), bg="#c9c9c9")
+        self.save_slot_list = tk.Listbox(save_inner, font=("Tahoma", 9), bg=self.colors["tree"], fg=self.colors["text"])
         self.save_slot_list.pack(fill="both", expand=True)
         row = ttk.Frame(save_inner, style="Inset.TFrame")
         row.pack(fill="x", pady=6)
@@ -1385,7 +1417,7 @@ class UIMixin:
         self.save_manager_status.pack(fill="x", padx=4, pady=(0, 4))
         db_panel, db_inner = self.section(body, "DATABASE / WORLD")
         db_panel.pack(side="left", fill="both", expand=True)
-        self.database_list = tk.Listbox(db_inner, font=("Tahoma", 9), bg="#c9c9c9")
+        self.database_list = tk.Listbox(db_inner, font=("Tahoma", 9), bg=self.colors["tree"], fg=self.colors["text"])
         self.database_list.pack(fill="both", expand=True)
         dbrow = ttk.Frame(db_inner, style="Inset.TFrame")
         dbrow.pack(fill="x", pady=(6, 2))
@@ -1862,6 +1894,7 @@ class UIMixin:
         ttk.Button(company_actions, text="Staff", command=lambda: self.open_selected_company_section("Staff")).pack(side="left", padx=2)
         ttk.Button(company_actions, text="Read Last Card", command=self.view_selected_company_card).pack(side="left", padx=8)
         ttk.Button(company_actions, text="Watch Last Card", command=self.watch_selected_company_card).pack(side="left", padx=2)
+        ttk.Button(company_actions, text="MMA Child Promotions", command=self.open_child_promotion_manager).pack(side="left", padx=8)
         self.return_to_spectator_button = ttk.Button(company_actions, text="Return to Spectator", command=self.return_to_spectator_mode)
         self.return_to_spectator_button.pack(side="right", padx=4)
         self.take_control_company_button = ttk.Button(company_actions, text="Take Control Of Selected Company", command=self.take_control_selected_company)
@@ -1875,7 +1908,18 @@ class UIMixin:
         region_panel.pack(side="left", fill="y", padx=(0, 6))
         region_panel.configure(width=240)
         region_panel.pack_propagate(False)
-        self.region_list = tk.Listbox(region_inner, font=("Tahoma", 9), bg="#c9c9c9")
+        self.region_list = tk.Listbox(
+            region_inner,
+            font=("Tahoma", 9),
+            bg=self.colors["tree"],
+            fg=self.colors["text"],
+            selectbackground=self.colors["red"],
+            selectforeground="#ffffff",
+            activestyle="none",
+            highlightbackground=self.colors["line"],
+            highlightcolor=self.colors["line"],
+            relief="flat",
+        )
         self.region_list.pack(fill="both", expand=True)
         self.region_list.bind("<<ListboxSelect>>", lambda _e: self.refresh_region_profile())
         info_panel, info = self.section(body, "REGION PROFILE")
@@ -1928,6 +1972,7 @@ class UIMixin:
             self.results_tree.column(col, width=width, anchor="center")
         self.results_tree.column("event", anchor="w")
         self.results_tree.column("headline", anchor="w")
+        self.results_tree.bind("<<TreeviewSelect>>", lambda _e: self.show_selected_result_detail())
         self.make_tree_sortable(self.results_tree)
         self.results_tree.pack(fill="both", expand=True)
         self.results_tree.bind("<Double-1>", lambda _e: self.open_selected_result())
@@ -2135,20 +2180,29 @@ class UIMixin:
         ttk.Button(self.medical_decision_bar, text="Retirement Bout", command=lambda: self.apply_inbox_medical_decision("retire")).pack(side="left", padx=3, pady=5)
 
     def build_staff_tab(self):
-        self.screen_header(self.staff_tab, "STAFF / SCOUTING / DRUG TESTING", "Hire staff, assign scouting, manage testing, and post-show bonuses")
+        self.screen_header(self.staff_tab, "STAFF / SCOUTING / DRUG TESTING", "Hire, fire, and negotiate staff while tracking the effect of each department")
         staff_panel, staff = self.section(self.staff_tab, "STAFF")
-        staff_panel.pack(fill="x", pady=(0, 6))
-        self.staff_tree = ttk.Treeview(staff, columns=("name", "role", "skill", "salary", "morale"), show="headings", height=5)
-        for col, text, width in (("name", "Name", 160), ("role", "Role", 110), ("skill", "Skill", 60), ("salary", "Salary", 90), ("morale", "Morale", 70)):
+        staff_panel.pack(fill="both", expand=True, pady=(0, 6))
+        staff_notebook = ttk.Notebook(staff)
+        staff_notebook.pack(fill="both", expand=True)
+        staff_roster_page = ttk.Frame(staff_notebook, style="Chrome.TFrame")
+        staff_expiry_page = ttk.Frame(staff_notebook, style="Chrome.TFrame")
+        staff_notebook.add(staff_roster_page, text="Roster & Market")
+        staff_notebook.add(staff_expiry_page, text="Expiring Contracts")
+        self.staff_contract_notebook = staff_notebook
+        self.staff_tree = ttk.Treeview(staff_roster_page, columns=("name", "role", "skill", "salary", "remaining", "expiry", "morale"), show="headings", height=5)
+        for col, text, width in (("name", "Name", 150), ("role", "Role", 112), ("skill", "Skill", 55), ("salary", "Salary", 84), ("remaining", "Time Left", 78), ("expiry", "Expiry", 92), ("morale", "Morale", 62)):
             self.staff_tree.heading(col, text=text)
             self.staff_tree.column(col, width=width, anchor="center")
+        self.staff_tree.column("name", anchor="w")
         self.make_tree_sortable(self.staff_tree)
         self.staff_tree.pack(fill="x")
         self.staff_tree.bind("<Double-1>", lambda _event: self.open_selected_staff_profile())
-        self.staff_candidate_tree = ttk.Treeview(staff, columns=("name", "role", "skill", "salary", "morale"), show="headings", height=5)
-        for col, text, width in (("name", "Candidate", 160), ("role", "Role", 130), ("skill", "Skill", 60), ("salary", "Salary", 90), ("morale", "Morale", 70)):
+        self.staff_candidate_tree = ttk.Treeview(staff_roster_page, columns=("name", "role", "skill", "salary", "term", "morale"), show="headings", height=5)
+        for col, text, width in (("name", "Candidate", 150), ("role", "Role", 126), ("skill", "Skill", 55), ("salary", "Ask / mo", 84), ("term", "Term", 66), ("morale", "Morale", 62)):
             self.staff_candidate_tree.heading(col, text=text)
             self.staff_candidate_tree.column(col, width=width, anchor="center")
+        self.staff_candidate_tree.column("name", anchor="w")
         self.make_tree_sortable(self.staff_candidate_tree)
         self.staff_candidate_tree.pack(fill="x", pady=(6, 0))
         self.staff_candidate_tree.bind("<Double-1>", lambda _event: self.open_selected_staff_profile(candidate=True))
@@ -2156,19 +2210,38 @@ class UIMixin:
         staff_buttons.pack(fill="x", pady=4)
         for col, (text, command) in enumerate((
             ("Hire Candidate", self.hire_staff),
+            ("Negotiate Selected", self.negotiate_selected_staff),
+            ("Fire Selected", self.fire_selected_staff),
             ("Scouting Centre", lambda: self.select_tab("scouting")),
             ("Run Drug Tests", self.run_drug_tests),
             ("Hire Commentator", self.hire_commentator),
             ("View Staff Profile", self.open_selected_staff_profile),
             ("Fighting Academy", self.open_academy_window),
         )):
-            ttk.Button(staff_buttons, text=text, command=command).grid(row=col // 3, column=col % 3, sticky="ew", padx=3, pady=2)
-        for col in range(3):
+            ttk.Button(staff_buttons, text=text, command=command).grid(row=col // 4, column=col % 4, sticky="ew", padx=3, pady=2)
+        for col in range(4):
             staff_buttons.columnconfigure(col, weight=1)
+        self.staff_expiry_tree = ttk.Treeview(staff_expiry_page, columns=("name", "role", "skill", "salary", "remaining", "expiry", "status"), show="headings", height=9)
+        for col, text, width in (("name", "Staff Member", 170), ("role", "Role", 140), ("skill", "Skill", 62), ("salary", "Salary / mo", 90), ("remaining", "Time Left", 86), ("expiry", "Expiry", 100), ("status", "Status", 120)):
+            self.staff_expiry_tree.heading(col, text=text)
+            self.staff_expiry_tree.column(col, width=width, anchor="center")
+        self.staff_expiry_tree.column("name", anchor="w")
+        self.staff_expiry_tree.tag_configure("expired", background="#5c1a1a", foreground="#ffffff")
+        self.staff_expiry_tree.tag_configure("final", background="#7a2f12", foreground="#ffffff")
+        self.staff_expiry_tree.tag_configure("soon", background="#6b5a1e", foreground="#ffffff")
+        self.make_tree_sortable(self.staff_expiry_tree)
+        self.staff_expiry_tree.pack(fill="both", expand=True, padx=6, pady=6)
+        self.staff_expiry_tree.bind("<Double-1>", lambda _event: self.negotiate_selected_staff(expiry=True))
+        expiry_buttons = ttk.Frame(staff_expiry_page, style="Inset.TFrame")
+        expiry_buttons.pack(fill="x", padx=6, pady=(0, 6))
+        ttk.Button(expiry_buttons, text="Negotiate Selected", style="Accent.TButton", command=lambda: self.negotiate_selected_staff(expiry=True)).pack(side="left", padx=4)
+        ttk.Button(expiry_buttons, text="Fire Selected", command=lambda: self.fire_selected_staff(expiry=True)).pack(side="left", padx=4)
+        self.staff_expiry_summary = ttk.Label(expiry_buttons, text="", style="Inset.TLabel")
+        self.staff_expiry_summary.pack(side="right", padx=8)
         bonus_panel, bonus = self.section(self.staff_tab, "POST-SHOW BONUSES / STAFF EFFECTS")
-        bonus_panel.pack(fill="both", expand=True)
+        bonus_panel.pack(fill="x")
         self.staff_text = tk.Text(bonus, wrap="word", font=("Tahoma", 9), bg=self.colors["cream"], fg=self.colors["text"], insertbackground=self.colors["text"])
-        self.staff_text.pack(fill="both", expand=True)
+        self.staff_text.pack(fill="both", expand=True, ipady=4)
 
     def build_scouting_tab(self):
         self.screen_header(self.scouting_tab, "SCOUTING", "Evaluate fighters, observe upcoming bouts, search regions, and turn uncertain reports into recruitment decisions")
@@ -2360,6 +2433,15 @@ class UIMixin:
 
         self.scouting_status_var = tk.StringVar(value="Select a scout and a search brief. Fighter evaluations are started from fighter profiles.")
         ttk.Label(bonus, textvariable=self.scouting_status_var, style="Inset.TLabel", anchor="w").pack(fill="x", padx=8, pady=(0, 4))
+        self.scouting_auto_assign_var = tk.BooleanVar(value=self.rules.get("auto_assign_idle_scouts", True))
+        auto_assign = ttk.Checkbutton(
+            bonus,
+            text="Automatically give idle staff scouts a free Basic Dossier assignment",
+            variable=self.scouting_auto_assign_var,
+            command=self.set_idle_scout_auto_assignment,
+        )
+        auto_assign.pack(fill="x", padx=8, pady=(0, 4))
+        self.attach_tooltip(auto_assign, "When enabled, an idle hired scout may proactively choose one public-market target. The assignment is labelled Auto Basic and costs no extra fee.")
         self.scouting_assignment_tree = ttk.Treeview(bonus, columns=("type", "target", "scout", "status", "due", "confidence", "advice", "cost"), show="headings", height=7, selectmode="browse")
         for col, text, width in (("type", "Assignment", 120), ("target", "Target / Region", 190), ("scout", "Scout", 145), ("status", "Status", 82), ("due", "Due", 82), ("confidence", "Confidence", 78), ("advice", "Scout Advice", 135), ("cost", "Cost", 78)):
             self.scouting_assignment_tree.heading(col, text=text)
@@ -2554,7 +2636,14 @@ class UIMixin:
                                   values=["All", "Expiring (<=3 mo)", "Final month", "Non-Exclusive"])
         filter_box.pack(side="left", padx=4)
         filter_box.bind("<<ComboboxSelected>>", lambda _e: self.refresh_contracts())
-        panel, inner = self.section(self.contracts_tab, "CONTRACT OVERVIEW")
+        contracts_notebook = ttk.Notebook(self.contracts_tab)
+        contracts_notebook.pack(fill="both", expand=True)
+        mma_contracts_tab = ttk.Frame(contracts_notebook, style="Chrome.TFrame")
+        sport_contracts_tab = ttk.Frame(contracts_notebook, style="Chrome.TFrame")
+        contracts_notebook.add(mma_contracts_tab, text="MMA Roster")
+        contracts_notebook.add(sport_contracts_tab, text="Combat Sports")
+        self.sport_contracts_tab = sport_contracts_tab
+        panel, inner = self.section(mma_contracts_tab, "CONTRACT OVERVIEW")
         panel.pack(fill="both", expand=True)
         self.contracts_tree = ttk.Treeview(inner, columns=("name", "gender", "weight", "rank", "pop", "ovr", "remaining", "expiry", "purse", "type", "morale", "status"), show="headings", selectmode="extended")
         for col, text, width in (("name", "Fighter", 160), ("gender", "G", 34), ("weight", "Division", 96), ("rank", "Rank", 52), ("pop", "Pop", 46), ("ovr", "OVR", 46), ("remaining", "Time Left", 72), ("expiry", "Expiry", 92), ("purse", "Purse", 88), ("type", "Type", 96), ("morale", "Morale", 58), ("status", "Status", 118)):
@@ -2577,6 +2666,47 @@ class UIMixin:
         ttk.Label(buttons, text="Rows: red = expired, orange = final month, yellow = expiring soon", style="Inset.TLabel").pack(side="left", padx=12)
         self.contracts_summary = ttk.Label(buttons, text="", style="Inset.TLabel")
         self.contracts_summary.pack(side="right", padx=8)
+
+        # Child-promotion athletes carry real terms now, so they get the same
+        # expiry warnings and renewal flow as the MMA roster rather than sitting
+        # on invisible open-ended deals.
+        self.sport_contracts_alert = tk.Label(
+            sport_contracts_tab, text="", font=("Tahoma", 10, "bold"), anchor="w",
+            bg=self.colors["chrome"], fg=self.colors["gold"],
+        )
+        self.sport_contracts_alert.pack(fill="x", padx=2, pady=(4, 4))
+        sport_panel, sport_inner = self.section(sport_contracts_tab, "COMBAT SPORT CONTRACTS")
+        sport_panel.pack(fill="both", expand=True)
+        self.sport_contracts_tree = ttk.Treeview(
+            sport_inner,
+            columns=("name", "sport", "division", "gender", "age", "rating", "record", "remaining", "purse", "status"),
+            show="headings", selectmode="extended",
+        )
+        for col, text, width in (
+            ("name", "Athlete", 165), ("sport", "Sport", 120), ("division", "Division", 120), ("gender", "G", 34),
+            ("age", "Age", 46), ("rating", "Sport RTG", 74), ("record", "Record", 74),
+            ("remaining", "Time Left", 78), ("purse", "Purse", 88), ("status", "Status", 96),
+        ):
+            self.sport_contracts_tree.heading(col, text=text)
+            self.sport_contracts_tree.column(col, width=width, anchor="center")
+        self.sport_contracts_tree.column("name", anchor="w")
+        self.sport_contracts_tree.column("sport", anchor="w")
+        self.sport_contracts_tree.column("division", anchor="w")
+        self.sport_contracts_tree.tag_configure("expired", background="#5c1a1a", foreground="#ffffff")
+        self.sport_contracts_tree.tag_configure("final", background="#7a2f12", foreground="#ffffff")
+        self.sport_contracts_tree.tag_configure("soon", background="#6b5a1e", foreground="#ffffff")
+        self.make_tree_sortable(self.sport_contracts_tree)
+        self.sport_contracts_tree.pack(fill="both", expand=True)
+        sport_buttons = ttk.Frame(sport_inner, style="Inset.TFrame")
+        sport_buttons.pack(fill="x", pady=(6, 0))
+        ttk.Button(sport_buttons, text="Negotiate Renewal", style="Accent.TButton",
+                   command=self.renew_selected_sport_contract).pack(side="left", padx=4)
+        ttk.Button(sport_buttons, text="Release Athlete",
+                   command=self.release_selected_sport_contract).pack(side="left", padx=4)
+        ttk.Label(sport_buttons, text="Rows: red = expired, orange = final month, yellow = expiring soon",
+                  style="Inset.TLabel").pack(side="left", padx=12)
+        self.sport_contracts_summary = ttk.Label(sport_buttons, text="", style="Inset.TLabel")
+        self.sport_contracts_summary.pack(side="right", padx=8)
 
     def build_booking_tab(self):
         self.booking_tab._force_viewport_width = True
