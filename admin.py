@@ -463,7 +463,7 @@ class AdminMixin:
 
     def find_fighter_anywhere(self, name):
         for fighter in self.all_database_fighters(include_retired=True):
-            if fighter.name == name:
+            if fighter.name == name or getattr(fighter, "fighter_id", "") == name:
                 return fighter
         return None
 

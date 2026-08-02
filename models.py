@@ -42,6 +42,8 @@ class Fighter:
     combat_background: str = "Mixed martial arts"
     sport_employer: str = ""
     sport_weight_class: str = ""
+    loaned_from_company: str = ""
+    loaned_to_promotion: str = ""
     multi_sport_records: dict = None
     crossover_history: list = None
     birth_country: str = ""
@@ -344,3 +346,10 @@ class Promotion:
     closed_divisions: list = None
     closed_division_policy_set: bool = False
     regional_division_activity: dict = None
+    is_child_promotion: bool = False
+    parent_company: str = ""
+    child_strategy: str = "Balanced"
+    parent_profit_share: int = 0
+    startup_capital: int = 0
+    initial_roster_budget: int = 0
+    loaned_fighter_ids: list = None

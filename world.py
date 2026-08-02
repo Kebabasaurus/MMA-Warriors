@@ -109,15 +109,129 @@ class WorldMixin:
         """Small but persistent player-staff impact; quality never becomes an auto-win."""
         return max(-2.0, min(12.0, (self.staff_skill(role) - 50) * 0.16 * scale))
 
+    def staff_negotiation_discount(self, role="Talent Relations", base=2600):
+        """Translate a bounded staff effect into a fair, visible cash discount."""
+        base = max(0, int(base or 0))
+        quality = max(0.0, self.staff_effect(role))
+        return round(base * min(1.0, quality / 12.0))
+
+    def staff_role_info(self, role):
+        return STAFF_ROLE_EFFECTS.get(role, {
+            "label": role or "Operations",
+            "summary": "Supports the promotion's daily operations.",
+            "metric": "General operations",
+        })
+
+    def staff_contract_remaining(self, member):
+        return max(0, int(member.get("contract_months", STAFF_CONTRACT_DEFAULT_MONTHS) or 0))
+
+    def staff_contract_status(self, member):
+        months = self.staff_contract_remaining(member)
+        if months <= 0:
+            return "EXPIRED"
+        if months == 1:
+            return "Final month"
+        if months <= 3:
+            return "Expiring soon"
+        return "Active"
+
+    def staff_contract_expiry_label(self, member):
+        months = self.staff_contract_remaining(member)
+        if months <= 0:
+            return "Expired"
+        return self.format_game_date(self.month + months, 1)
+
+    def staff_contract_target(self, member, existing=False):
+        """Return the monthly salary a staff member considers a fair deal."""
+        salary = max(3500, int(member.get("salary", 3500) or 3500))
+        reputation = max(0, int(member.get("reputation", 50) or 50))
+        scarcity = 1.08 if sum(1 for item in self.staff if item.get("role") == member.get("role")) <= 1 else 1.0
+        loyalty = 0.97 if existing else 1.0
+        return max(3500, round(salary * (1.02 + reputation / 1800) * scarcity * loyalty / 100) * 100)
+
+    def staff_contract_offer_score(self, member, salary, months, existing=False):
+        target = self.staff_contract_target(member, existing=existing)
+        salary_score = max(0.0, min(72.0, (int(salary) / max(1, target)) * 58))
+        term_score = min(18.0, max(0, int(months)) / 3.2)
+        relationship = 8.0 if existing else 0.0
+        reputation = max(0, min(8.0, int(member.get("reputation", 50) or 50) / 12))
+        heat = max(0.0, int(member.get("negotiation_heat", 0) or 0) / 12)
+        return max(0.0, min(100.0, salary_score + term_score + relationship + reputation - heat))
+
+    def apply_staff_contract(self, member, salary, months, existing=False):
+        salary = max(3500, int(salary))
+        months = max(STAFF_CONTRACT_MIN_MONTHS, min(STAFF_CONTRACT_MAX_MONTHS, int(months)))
+        member["salary"] = salary
+        member["contract_months"] = months
+        member["contract_start_month"] = self.month
+        member["contract_expiry_month"] = self.month + months
+        member["contract_type"] = "Exclusive"
+        member["negotiation_heat"] = max(0, int(member.get("negotiation_heat", 0) or 0) - 12)
+        member["morale"] = min(100, int(member.get("morale", 65) or 65) + 4)
+        return member
+
+    def staff_member_busy(self, member):
+        if member.get("role") != "Scout" or not hasattr(self, "scout_workload"):
+            return False
+        return self.scout_workload(member.get("name", "")) > 0
+
+    def check_staff_contract_warnings(self):
+        """Create actionable inbox warnings before staff deals lapse."""
+        for member in getattr(self, "staff", []):
+            months = self.staff_contract_remaining(member)
+            if months not in (3, 1):
+                continue
+            when = "one month" if months == 1 else "three months"
+            self.inbox.append({
+                "subject": f"Staff Contract Expiring - {member.get('name', 'Staff')}",
+                "body": (f"{member.get('name', 'Staff')} ({member.get('role', 'Operations')}) has {when} left on a "
+                         f"${int(member.get('salary', 0) or 0):,}/month deal. Open Staff and negotiate before they leave."),
+                "type": "Staff", "resolved": False,
+            })
+            self.news.insert(0, f"Staff contract notice: {member.get('name', 'Staff')} expires in {when}.")
+
+    def update_staff_contracts(self):
+        """Tick staff terms and release expired staff after active assignments finish."""
+        departing = []
+        for member in list(getattr(self, "staff", [])):
+            months = self.staff_contract_remaining(member) - 1
+            member["contract_months"] = months
+            if months > 0:
+                continue
+            if self.staff_member_busy(member):
+                member["contract_months"] = 1
+                self.inbox.append({
+                    "subject": f"Staff Deal Extended - {member.get('name', 'Scout')}",
+                    "body": f"{member.get('name', 'Scout')}'s contract reached expiry while an active scouting assignment was running. The deal is held for one month so the report can finish.",
+                    "type": "Staff", "resolved": False,
+                })
+                continue
+            departing.append(member)
+        for member in departing:
+            self.staff.remove(member)
+            self.inbox.append({
+                "subject": f"Staff Contract Ended - {member.get('name', 'Staff')}",
+                "body": f"{member.get('name', 'Staff')} ({member.get('role', 'Operations')}) left after their staff contract expired.",
+                "type": "Staff", "resolved": False,
+            })
+            self.news.insert(0, f"{member.get('name', 'Staff')} left after their staff contract expired.")
+        self.finance["staff_payroll"] = sum(int(item.get("salary", 0) or 0) for item in getattr(self, "staff", []))
+
     def ensure_staff_profiles(self):
         specialty_by_role = {
             "Scout": "Prospect eye", "Doctor": "Injury prevention", "Marketing": "Regional campaigns",
             "Matchmaker": "Contender logic", "Drug Testing Officer": "Compliance",
             "Broadcast Producer": "Live production", "Talent Relations": "Contract trust",
         }
+        current_month = max(1, int(getattr(self, "month", 1) or 1))
         for member in getattr(self, "staff", []) + getattr(self, "staff_candidates", []):
             member.setdefault("specialty", specialty_by_role.get(member.get("role"), "Operations"))
             member.setdefault("reputation", max(35, min(95, member.get("skill", 50) + random.randint(-8, 6))))
+            member.setdefault("contract_months", STAFF_CONTRACT_DEFAULT_MONTHS)
+            member.setdefault("contract_type", "Exclusive")
+            member.setdefault("contract_start_month", max(1, current_month - 1))
+            member.setdefault("contract_expiry_month", current_month + self.staff_contract_remaining(member))
+            member.setdefault("negotiation_heat", 0)
             if member.get("role") == "Scout":
                 skill = member.get("skill", 50)
                 for key, offset in (("fighter_judging", 0), ("potential_judging", -2), ("efficiency", 1), ("regional_knowledge", -3), ("networking", -1), ("reliability", 2), ("negotiation", -4), ("professionalism", 1)):
@@ -129,14 +243,276 @@ class WorldMixin:
         promo.strategy.setdefault("growth_ceiling", self.seed_promotion_strategy(promo.name, getattr(promo, "show_personality", "Balanced")).get("growth_ceiling", 76))
         return promo.strategy
 
+    def is_child_promotion(self, promo):
+        return bool(getattr(promo, "is_child_promotion", False))
+
+    def child_promotion_strategy_profile(self, strategy):
+        return {
+            "Youth Prospects": {"mode": "Prospect Rebuild", "personality": "Prospect Builder", "star": 24, "prospect": 94, "merit": 52},
+            "Big Names": {"mode": "Star Chasing", "personality": "Star Builder", "star": 94, "prospect": 35, "merit": 48},
+            "Merit & Contenders": {"mode": "Contender Cycle", "personality": "Seasonal", "star": 54, "prospect": 46, "merit": 94},
+            "Balanced": {"mode": "Balanced", "personality": "Balanced", "star": 58, "prospect": 58, "merit": 60},
+        }.get(strategy, {"mode": "Balanced", "personality": "Balanced", "star": 58, "prospect": 58, "merit": 60})
+
+    def child_promotion_loaned(self, promo, fighter):
+        loaned_ids = set(getattr(promo, "loaned_fighter_ids", None) or [])
+        return str(getattr(fighter, "fighter_id", "")) in loaned_ids or getattr(fighter, "loaned_to_promotion", "") == promo.name
+
+    def repair_child_promotion_state(self):
+        """Normalize child metadata and rebuild the protected-loan index after loading."""
+        for promo in getattr(self, "promotions", []):
+            if not self.is_child_promotion(promo):
+                continue
+            promo.parent_company = str(getattr(promo, "parent_company", "") or self.player_company_name)
+            promo.child_strategy = getattr(promo, "child_strategy", "Balanced") or "Balanced"
+            if promo.child_strategy not in AI_CHILD_PROMOTION_STRATEGIES:
+                promo.child_strategy = "Balanced"
+            try:
+                promo.parent_profit_share = max(0, min(100, int(getattr(promo, "parent_profit_share", 0) or 0)))
+            except (TypeError, ValueError):
+                promo.parent_profit_share = 0
+            promo.loaned_fighter_ids = list(dict.fromkeys(str(item) for item in (getattr(promo, "loaned_fighter_ids", None) or []) if item))
+            actual = []
+            for fighter in getattr(promo, "roster", []):
+                if self.child_promotion_loaned(promo, fighter):
+                    fighter.loaned_from_company = promo.parent_company
+                    fighter.loaned_to_promotion = promo.name
+                    actual.append(fighter.fighter_id)
+            promo.loaned_fighter_ids = list(dict.fromkeys(actual))
+            self.set_child_promotion_settings(promo, promo.child_strategy, promo.parent_profit_share, announce=False)
+
+    def set_child_promotion_settings(self, promo, strategy="Balanced", profit_share=0, announce=True):
+        if not self.is_child_promotion(promo):
+            return False, "That promotion is not a player-owned MMA child promotion."
+        if strategy not in AI_CHILD_PROMOTION_STRATEGIES:
+            return False, "Choose a valid child-promotion strategy."
+        try:
+            share = max(0, min(100, int(profit_share)))
+        except (TypeError, ValueError):
+            return False, "Profit share must be a number from 0 to 100."
+        profile = self.child_promotion_strategy_profile(strategy)
+        promo.child_strategy = strategy
+        promo.parent_profit_share = share
+        promo.show_personality = profile["personality"]
+        ai_strategy = self.promotion_strategy(promo)
+        ai_strategy.update({
+            "current_mode": profile["mode"], "star_focus": profile["star"],
+            "prospect_focus": profile["prospect"], "merit_focus": profile["merit"],
+            "child_strategy": strategy, "parent_profit_share": share,
+        })
+        if announce:
+            note = f"{promo.name} strategy set to {strategy}; parent profit share is {share}%."
+            self.news.insert(0, note)
+            promo.show_history = list(promo.show_history or [])
+            promo.show_history.insert(0, note)
+            promo.show_history = promo.show_history[:12]
+        return True, note if announce else strategy
+
+    def launch_ai_child_promotion(self, capital, strategy="Balanced", profit_share=0, name=""):
+        """Launch a player-funded MMA promotion that the normal AI manages."""
+        if getattr(self, "spectator_mode", False):
+            return False, "Spectator Mode cannot launch a child promotion."
+        try:
+            capital = int(capital)
+        except (TypeError, ValueError):
+            return False, "Startup capital must be a whole-dollar amount."
+        if capital < AI_CHILD_PROMOTION_MIN_CAPITAL:
+            return False, f"Child promotions require at least ${AI_CHILD_PROMOTION_MIN_CAPITAL:,}."
+        if capital > AI_CHILD_PROMOTION_MAX_CAPITAL:
+            return False, f"Startup capital cannot exceed ${AI_CHILD_PROMOTION_MAX_CAPITAL:,}."
+        if self.cash < capital:
+            return False, f"Your company needs ${capital:,}, but has only ${self.cash:,}."
+        if strategy not in AI_CHILD_PROMOTION_STRATEGIES:
+            return False, "Choose a valid child-promotion strategy."
+        try:
+            share = max(0, min(100, int(profit_share)))
+        except (TypeError, ValueError):
+            return False, "Profit share must be a number from 0 to 100."
+        requested_name = str(name or "").strip()
+        if not requested_name:
+            requested_name = f"{self.player_company_name} Development"
+        used_names = {self.player_company_name, *(promo.name for promo in self.promotions)}
+        promotion_name = requested_name
+        suffix = 2
+        while promotion_name in used_names:
+            promotion_name = f"{requested_name} {suffix}"
+            suffix += 1
+        profile = self.child_promotion_strategy_profile(strategy)
+        size = max(28, min(78, 30 + capital // 1_000_000 * 2))
+        company_pop = max(25, min(68, int(getattr(self, "company_pop", 38))))
+        promotion = Promotion(
+            promotion_name, self.player_region, size, capital, [],
+            reputation="Regional", reputation_score=company_pop, stability=62,
+            show_history=[], belts={}, interim_belts={}, belt_history={},
+            rules={"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 3, "active_fighter_target": 120},
+            broadcasters=self.promotion_broadcasters(promotion_name, size), weight_classes=list(WEIGHTS),
+            show_personality=profile["personality"], is_child_promotion=True,
+            parent_company=self.player_company_name, child_strategy=strategy,
+            parent_profit_share=share,
+            startup_capital=capital, initial_roster_budget=capital, loaned_fighter_ids=[],
+            strategy=self.seed_promotion_strategy(promotion_name, profile["personality"]),
+            executive=self.seed_promotion_executive(promotion_name), era_history=[],
+        )
+        self.promotions.append(promotion)
+        self.set_child_promotion_settings(promotion, strategy, profit_share, announce=False)
+        self.cash -= capital
+        self.record_finance_transaction(f"Launch MMA child promotion: {promotion.name}", costs=capital)
+        signed = self.seed_child_promotion_roster(promotion, capital)
+        promotion.initial_roster_budget = capital
+        headline = f"{promotion.name} launched with ${capital:,} startup capital, {len(signed)} initial fighters, and a {strategy.lower()} strategy."
+        self.news.insert(0, headline)
+        self.record_world_story("MMA Child Promotion", headline, f"Parent company: {promotion.parent_company}. Profit share: {promotion.parent_profit_share}%.", [promotion.name, self.player_company_name], [fighter.name for fighter in signed[:10]], importance=4)
+        return True, promotion
+
+    def seed_child_promotion_roster(self, promo, capital):
+        """Spend launch capital on a broad, strategy-shaped opening roster."""
+        strategy = getattr(promo, "child_strategy", "Balanced")
+        target = max(12, min(64, capital // 125_000))
+        available = [fighter for fighter in self.free_agents if not fighter.retired and not fighter.retirement_pending and not fighter.injured and not fighter.ai_offer_company and fighter.primary_discipline == "MMA"]
+        counts = {}
+        def value(fighter):
+            key = (fighter.gender, fighter.weight)
+            need = max(0, 4 - counts.get(key, 0)) * 90
+            if strategy == "Youth Prospects":
+                return need + max(0, fighter.potential - fighter.overall) * 5 + max(0, 29 - fighter.age) * 4 + fighter.overall * 0.35
+            if strategy == "Big Names":
+                return need + fighter.popularity * 4 + fighter.star_quality * 1.5 + fighter.overall * 1.2
+            if strategy == "Merit & Contenders":
+                return need + fighter.overall * 2 + fighter.elo_rating * 0.04 + fighter.record_w * 0.7
+            return need + fighter.overall + fighter.popularity * 0.8 + max(0, fighter.potential - fighter.overall) * 1.5
+        signed = []
+        while available and len(signed) < target:
+            fighter = max(available, key=value)
+            available.remove(fighter)
+            purse = max(2_500, self.ai_market_purse(promo, fighter))
+            signing = max(5_000, round(purse * (0.42 if fighter.age <= 28 else 0.65) / 500) * 500)
+            if promo.cash < signing + purse:
+                continue
+            self.free_agents.remove(fighter)
+            promo.cash -= signing
+            fighter.purse = purse
+            fighter.contract_months = random.randint(12, 28) if fighter.age <= 30 else random.randint(8, 18)
+            fighter.exclusive = True
+            fighter.contract_type = "Exclusive"
+            fighter.free_agent_months = 0
+            fighter.champion = False
+            fighter.interim_champion = False
+            fighter.camp = promo.name
+            self.clear_ai_contract_offer(fighter)
+            promo.roster.append(fighter)
+            counts[(fighter.gender, fighter.weight)] = counts.get((fighter.gender, fighter.weight), 0) + 1
+            signed.append(fighter)
+        return signed
+
+    def child_promotion_by_name(self, name):
+        return next((promo for promo in self.promotions if promo.name == name and self.is_child_promotion(promo)
+                     and getattr(promo, "parent_company", "") == self.player_company_name), None)
+
+    def loan_fighter_to_child_promotion(self, child_name, fighter_id):
+        promo = self.child_promotion_by_name(child_name)
+        fighter = next((item for item in self.roster if str(getattr(item, "fighter_id", "")) == str(fighter_id)), None)
+        if not promo or not fighter:
+            return False, "Select a player-roster fighter and a child promotion."
+        if fighter.retired or fighter.injured or fighter.retirement_pending:
+            return False, f"{fighter.name} is not available to loan."
+        if getattr(fighter, "loaned_to_promotion", ""):
+            return False, f"{fighter.name} is already on loan."
+        if fighter.name in self.scheduled_fighter_names(include_booked=True):
+            return False, f"{fighter.name} is already committed to a fight."
+        self.roster.remove(fighter)
+        promo.roster.append(fighter)
+        fighter.loaned_from_company = self.player_company_name
+        fighter.loaned_to_promotion = promo.name
+        promo.loaned_fighter_ids = list(dict.fromkeys([*(promo.loaned_fighter_ids or []), fighter.fighter_id]))
+        fighter.fight_history = list(fighter.fight_history or [])
+        fighter.fight_history.insert(0, f"Month {self.month}: Loaned by {self.player_company_name} to {promo.name}.")
+        note = f"{fighter.name} loaned to {promo.name}; the child AI cannot release them."
+        self.news.insert(0, note)
+        return True, note
+
+    def recall_fighter_from_child_promotion(self, child_name, fighter_id):
+        promo = self.child_promotion_by_name(child_name)
+        fighter = next((item for item in (promo.roster if promo else []) if str(getattr(item, "fighter_id", "")) == str(fighter_id)), None)
+        if not promo or not fighter or not self.child_promotion_loaned(promo, fighter):
+            return False, "That fighter is not a loaned member of this child promotion."
+        if fighter.champion or fighter.interim_champion:
+            promo.belts, promo.interim_belts, promo.belt_history = self.vacate_fighter_belts(fighter, promo.roster, promo.belts or {}, promo.interim_belts or {}, promo.belt_history or {}, "Recalled by parent company.")
+        promo.roster.remove(fighter)
+        promo.loaned_fighter_ids = [item for item in (promo.loaned_fighter_ids or []) if str(item) != str(fighter.fighter_id)]
+        fighter.loaned_from_company = ""
+        fighter.loaned_to_promotion = ""
+        if fighter not in self.roster:
+            self.roster.append(fighter)
+        note = f"{fighter.name} recalled from {promo.name} to {self.player_company_name}."
+        self.news.insert(0, note)
+        return True, note
+
+    def take_fighter_from_child_promotion(self, child_name, fighter_id):
+        """Move any child-roster fighter to the parent, with a simple buyout for AI signings."""
+        promo = self.child_promotion_by_name(child_name)
+        fighter = next((item for item in (promo.roster if promo else []) if str(getattr(item, "fighter_id", "")) == str(fighter_id)), None)
+        if not promo or not fighter:
+            return False, "That fighter is not on the selected child-promotion roster."
+        if self.child_promotion_loaned(promo, fighter):
+            return self.recall_fighter_from_child_promotion(child_name, fighter_id)
+        buyout = max(25_000, round((fighter.purse * 3 + fighter.popularity * 1_000) / 500) * 500)
+        if self.cash < buyout:
+            return False, f"Taking {fighter.name} requires a ${buyout:,} transfer fee."
+        if fighter.champion or fighter.interim_champion:
+            promo.belts, promo.interim_belts, promo.belt_history = self.vacate_fighter_belts(fighter, promo.roster, promo.belts or {}, promo.interim_belts or {}, promo.belt_history or {}, "Transferred to the parent company.")
+        self.cash -= buyout
+        promo.cash += buyout
+        promo.roster.remove(fighter)
+        fighter.loaned_from_company = ""
+        fighter.loaned_to_promotion = ""
+        fighter.contract_type = "Exclusive"
+        fighter.exclusive = True
+        fighter.camp = self.player_company_name
+        if fighter.contract_months <= 0:
+            fighter.contract_months = random.randint(12, 24) if fighter.age <= 32 else random.randint(8, 18)
+        if fighter not in self.roster:
+            self.roster.append(fighter)
+        note = f"{fighter.name} transferred from {promo.name} to {self.player_company_name} for ${buyout:,}."
+        self.news.insert(0, note)
+        self.record_world_story("Child Promotion Transfer", note, "The parent company exercised its right to bring a child-promotion fighter into the main roster.", [promo.name, self.player_company_name], [fighter.name], importance=3)
+        return True, note
+
+    def distribute_child_promotion_profit(self, promo, profit):
+        if not self.is_child_promotion(promo) or profit <= 0:
+            return 0
+        share = max(0, min(100, int(getattr(promo, "parent_profit_share", 0) or 0)))
+        distribution = min(max(0, int(profit * share / 100)), max(0, promo.cash))
+        if not distribution:
+            return 0
+        promo.cash -= distribution
+        self.cash += distribution
+        self.record_finance_transaction(
+            f"Child promotion profit share: {promo.name}", revenue=distribution,
+        )
+        strategy = self.promotion_strategy(promo)
+        strategy["parent_distributions"] = int(strategy.get("parent_distributions", 0) or 0) + distribution
+        strategy["last_parent_distribution"] = {"month": self.month, "amount": distribution, "share": share}
+        promo.finance = promo.finance or {}
+        promo.finance["parent_distributions"] = int(promo.finance.get("parent_distributions", 0) or 0) + distribution
+        return distribution
+
     def update_ai_promotion_strategy(self, promo):
         strategy = self.promotion_strategy(promo)
         executive = getattr(promo, "executive", None) or self.seed_promotion_executive(promo.name)
         promo.executive = executive
+        if self.is_child_promotion(promo):
+            child_strategy = getattr(promo, "child_strategy", "Balanced") or "Balanced"
+            profile = self.child_promotion_strategy_profile(child_strategy)
+            strategy.update({
+                "child_strategy": child_strategy, "star_focus": profile["star"],
+                "prospect_focus": profile["prospect"], "merit_focus": profile["merit"],
+            })
         reserve = max(120_000, promo.size * 8_500)
         prior = strategy.get("current_mode", "Balanced")
         if promo.cash < reserve or promo.stability < 35:
             mode = "Financial Recovery"
+        elif self.is_child_promotion(promo):
+            mode = self.child_promotion_strategy_profile(getattr(promo, "child_strategy", "Balanced"))["mode"]
         elif promo.reputation_score < 38 and strategy.get("prospect_focus", 50) >= 65:
             mode = "Prospect Rebuild"
         elif promo.momentum >= 5 and strategy.get("star_focus", 50) >= 65:
@@ -360,6 +736,7 @@ class WorldMixin:
         roster.sort(key=lambda fighter: (fighter.champion, fighter.interim_champion, fighter.popularity + fighter.overall, fighter.potential), reverse=True)
         retain_count = min(len(roster), max(4, round(len(roster) * random.uniform(0.16, 0.28))))
         retained = set(fighter.name for fighter in roster[:retain_count])
+        retained.update(fighter.name for fighter in roster if self.child_promotion_loaned(promo, fighter))
         released = []
         for fighter in list(promo.roster):
             if getattr(fighter, "retired", False) or fighter.name in retained:
@@ -1466,6 +1843,8 @@ class WorldMixin:
     def retire_after_final_fight_if_due(self, fighter, company_name=""):
         if not getattr(fighter, "retirement_pending", False) or getattr(fighter, "retired", False):
             return False
+        if getattr(fighter, "loaned_to_promotion", ""):
+            return False
         # Completing a multi-fight comeback opens a new decision: renew or take
         # one farewell bout.  Do not consume that farewell bout in the same
         # result resolution that completed the comeback commitment.
@@ -1529,7 +1908,8 @@ class WorldMixin:
         elif fighter.trait == "Slow Healer":
             adjustment -= 2
         if any(member is fighter for member in getattr(self, "roster", [])):
-            adjustment += 1 if self.staff_skill("Doctor") >= 74 else 0
+            doctor_effect = max(0.0, self.staff_effect("Doctor"))
+            adjustment += min(2, int(doctor_effect / 3.0))
         if fighter.injured:
             base += fighter.injured * 4
         layoff_weeks = max(2, base - adjustment)
@@ -2191,6 +2571,8 @@ class WorldMixin:
         sponsor_deals = self.finance["sponsor_deals"]
         commentators = self.finance.get("commentators", [])
         commentary_quality = round(sum(c["quality"] + c["chemistry"] for c in commentators) / max(1, len(commentators)) / 2)
+        broadcast_staff_lift = self.staff_effect("Broadcast Producer", 1.55)
+        commentary_quality = max(0, min(100, round(commentary_quality + broadcast_staff_lift)))
         championship_value = 0
         for _winner, _loser, fight, _method in results:
             if fight.get("title"):
@@ -2204,7 +2586,7 @@ class WorldMixin:
         if hasattr(self, "media_contract_eligibility") and rights_eligible:
             rights_eligible = self.media_contract_eligibility(rights, event)[0]
         rights_reach = rights.get("reach", 0) if rights_eligible else 0
-        media_reach = best_broadcaster["reach"] + rights_reach + championship_value // 2 + commentary_quality // 8
+        media_reach = best_broadcaster["reach"] + rights_reach + championship_value // 2 + commentary_quality // 8 + round(max(0, broadcast_staff_lift) * 0.55)
         if not best_broadcaster["reach"] and not rights_reach:
             media_reach = max(2, championship_value // 4)
         broadcast_income = round(total_hype * media_reach * self.finance["broadcast_cut"] * (38 + build_score * 0.68 + championship_value * 0.7) * media_heat * (1 + commentary_quality / 650) * spectacle_multiplier)
@@ -2217,9 +2599,10 @@ class WorldMixin:
         setup_cost = int(super_event.get("remaining_setup_cost", 0) or 0)
         security_cost = int(super_event.get("security_cost", 0) or 0)
         production = self.finance["production_base"] + bout_count * 5200 + best_broadcaster["fee"] + commentator_pay + venue_ops + setup_cost + security_cost
-        medical = self.finance["medical_base"] + bout_count * 1900
+        production = max(self.finance["production_base"], production - round(max(0, broadcast_staff_lift) * 700))
+        medical = max(self.finance["medical_base"], self.finance["medical_base"] + bout_count * 1900 - round(max(0, self.staff_effect("Doctor", 1.1)) * 260))
         marketing = self.finance["marketing_budget"] + round(max(0, build_score - 48) * 1100)
-        drug_testing = 0 if self.rules["drug_testing"] == "None" else bout_count * 2 * self.finance["drug_test_cost"]
+        drug_testing = 0 if self.rules["drug_testing"] == "None" else round(bout_count * 2 * self.finance["drug_test_cost"] * (1 - max(0, self.staff_effect("Drug Testing Officer", 0.7)) / 180))
         bonuses = self.post_show_bonuses["fight"]
         for _winner, _loser, _fight, method in results:
             if "KO" in method or "TKO" in method:
@@ -2587,7 +2970,7 @@ class WorldMixin:
 
     def academy_defaults(self):
         return {
-            "schema_version": 4,
+            "schema_version": 5,
             "owned": False, "level": 0, "capacity": 0, "prospects": [], "talent_pool": [],
             "weekly_cost": 0, "auto_train": True, "network_weeks": 0, "network_active": False,
             "network_region": "", "network_scout": "", "network_scout_skill": 0,
@@ -2598,7 +2981,8 @@ class WorldMixin:
             "lost_leads": [], "last_alumni_review_month": 0,
             "network_potential_skill": 0, "network_networking": 0, "network_reliability": 0,
             "network_leads_found": 0, "last_showcase_week": -99, "last_showcase_recap": "",
-            "development_events": [],
+            "development_events": [], "active_challenge": {}, "challenge_history": [],
+            "challenge_count": 0, "last_challenge_week": -99,
         }
 
     def repair_academy(self, academy=None):
@@ -2624,7 +3008,12 @@ class WorldMixin:
             # any existing records or development.
             academy["showcase_weeks"] = max(6, int(academy.get("showcase_weeks", 8) or 8))
         academy["auto_card_min_bouts"] = max(1, min(12, int(academy.get("auto_card_min_bouts", 2) or 2)))
-        academy["schema_version"] = 4
+        academy["challenge_history"] = list(academy.get("challenge_history", []))[:40]
+        academy["challenge_count"] = max(0, int(academy.get("challenge_count", 0) or 0))
+        academy["last_challenge_week"] = int(academy.get("last_challenge_week", -99) or -99)
+        if not isinstance(academy.get("active_challenge"), dict):
+            academy["active_challenge"] = {}
+        academy["schema_version"] = 5
         return academy
 
     def academy_philosophy_fields(self, academy=None):
@@ -3509,6 +3898,100 @@ class WorldMixin:
             self.news.insert(0, academy["last_scout_report"])
         return academy["last_scout_report"]
 
+    def create_academy_challenge(self, academy=None):
+        """Create a player-facing development decision for a signed prospect.
+
+        Challenges are deliberately infrequent and persistent. They turn the
+        academy from a passive weekly queue into a small coaching story without
+        interrupting the normal calendar with a modal dialog.
+        """
+        academy = academy or getattr(self, "academy", {})
+        prospects = [item for item in academy.get("prospects", []) if not item.get("injured")]
+        if not prospects or academy.get("active_challenge"):
+            return None
+        prospect = random.choice(prospects)
+        focus, _reason, fields = self.academy_focus_recommendation(prospect)
+        challenge_types = [
+            ("breakthrough", "Breakthrough Camp", f"{prospect['name']} is close to a breakthrough in {focus}. Do you push for a defining camp or protect the long build?"),
+            ("pressure", "Pressure Test", f"{prospect['name']} needs experience against a live opponent. Do you accept a difficult test or keep developing in the gym?"),
+            ("mentor", "Mentor's Choice", f"The coaching staff disagree about {prospect['name']}. A specialist wants to sharpen {fields[0].replace('_', ' ')}, while the head coach prefers a broader plan."),
+        ]
+        challenge_type, title, prompt = random.choice(challenge_types)
+        challenge = {
+            "id": f"academy-challenge-{self.month}-{self.week}-{academy.get('challenge_count', 0) + 1}",
+            "type": challenge_type, "title": title, "prompt": prompt,
+            "prospect_id": prospect.get("prospect_id", ""), "prospect_name": prospect.get("name", "Unknown Prospect"),
+            "created_month": self.month, "created_week": self.week,
+            "expires_week": self.calendar_week_index() + 6,
+            "focus": focus,
+        }
+        academy["active_challenge"] = challenge
+        academy["last_challenge_week"] = self.calendar_week_index()
+        academy["challenge_count"] = academy.get("challenge_count", 0) + 1
+        academy["last_scout_report"] = f"Academy decision available: {title} for {prospect['name']}."
+        if not getattr(self, "spectator_mode", False):
+            self.inbox.append({
+                "subject": f"Academy Decision - {title}", "body": prompt,
+                "type": "Academy", "fighter": prospect.get("name", ""), "resolved": False,
+            })
+        return challenge
+
+    def resolve_academy_challenge(self, choice, academy=None):
+        """Resolve the active academy challenge and return (ok, message)."""
+        academy = academy or getattr(self, "academy", {})
+        challenge = academy.get("active_challenge") or {}
+        if not challenge:
+            return False, "There is no active academy decision."
+        prospect = next((item for item in academy.get("prospects", [])
+                         if item.get("prospect_id") == challenge.get("prospect_id")
+                         or item.get("name") == challenge.get("prospect_name")), None)
+        if not prospect:
+            academy["active_challenge"] = {}
+            return False, "The prospect attached to this decision is no longer in the academy."
+        self.repair_academy_prospect(prospect)
+        choice = str(choice or "").lower()
+        result = ""
+        if choice == "camp":
+            cost = 25_000 + max(0, academy.get("level", 1) - 1) * 5_000
+            if self.cash < cost:
+                return False, f"The specialist camp needs ${cost:,}."
+            self.cash -= cost
+            academy["operating_spend"] = academy.get("operating_spend", 0) + cost
+            self.record_finance_transaction(f"Academy challenge camp: {prospect['name']}", costs=cost)
+            fields = self.academy_training_fields(challenge.get("focus", "Balanced"), prospect)
+            for field in fields[:2]:
+                prospect[field] = min(prospect.get("potential", 99), prospect.get(field, 40) + 1)
+            prospect["development"] = prospect.get("development", 0) + 2
+            prospect["confidence"] = min(99, prospect.get("confidence", 55) + 5)
+            prospect["fatigue"] = min(100, prospect.get("fatigue", 0) + 8)
+            prospect["last_development"] = f"Specialist camp focused on {challenge.get('focus', 'balanced development')}"
+            result = f"{prospect['name']} completed a specialist camp and gained confidence and development."
+        elif choice == "test":
+            if prospect.get("fatigue", 0) >= 60 or prospect.get("injured", 0):
+                return False, f"{prospect['name']} is not healthy enough for a pressure test."
+            guest = self.create_academy_guest_opponent(prospect)
+            line = self.simulate_academy_amateur_bout(prospect, guest, prospect.get("amateur_weight", "Youth Openweight"))
+            academy["reputation"] = min(100, academy.get("reputation", 10) + 1)
+            result = f"Pressure test complete: {line}"
+        elif choice == "mentor":
+            prospect["plan"] = challenge.get("focus", "Balanced") if challenge.get("focus") not in ("Automatic", "Balanced") else "Balanced"
+            prospect["coachability"] = min(99, prospect.get("coachability", 55) + 4)
+            prospect["confidence"] = min(99, prospect.get("confidence", 55) + 2)
+            prospect["fatigue"] = max(0, prospect.get("fatigue", 0) - 6)
+            result = f"The staff aligned around {prospect['name']}'s {prospect['plan']} plan."
+        else:
+            return False, "Choose a valid academy decision."
+        record = dict(challenge)
+        record.update({"choice": choice, "resolved_month": self.month, "resolved_week": self.week, "result": result})
+        academy["challenge_history"] = ([record] + academy.get("challenge_history", []))[:40]
+        academy["active_challenge"] = {}
+        academy["last_scout_report"] = result
+        academy.setdefault("development_events", []).insert(0, {"month": self.month, "week": self.week, "note": result})
+        academy["development_events"] = academy["development_events"][:80]
+        self.news.insert(0, f"Academy decision: {result}")
+        self.record_academy_progress(prospect, f"Academy decision: {choice}")
+        return True, result
+
     def process_academy_week(self):
         academy = self.repair_academy(getattr(self, "academy", {}))
         if not academy.get("owned") or getattr(self, "spectator_mode", False):
@@ -3549,6 +4032,14 @@ class WorldMixin:
                 academy["network_leads_found"] = academy.get("network_leads_found", 0) + added
                 academy["last_scout_report"] = f"{academy.get('network_region', self.player_region)} network produced {added} youth lead(s). Leads expire after 2-3 weeks."
         self.run_academy_showcase_if_due(academy)
+        if academy.get("active_challenge") and self.calendar_week_index() >= academy["active_challenge"].get("expires_week", 0):
+            expired = academy["active_challenge"].get("prospect_name", "the prospect")
+            academy["challenge_history"] = ([dict(academy["active_challenge"], choice="deferred", resolved_month=self.month, resolved_week=self.week, result="Decision window expired; the coaching staff kept the standard plan.")] + academy.get("challenge_history", []))[:40]
+            academy["active_challenge"] = {}
+            academy["last_scout_report"] = f"The academy decision window for {expired} expired; staff kept the standard plan."
+        if not academy.get("active_challenge") and self.calendar_week_index() - academy.get("last_challenge_week", -99) >= 8:
+            if random.random() < 0.70:
+                self.create_academy_challenge(academy)
         self.update_academy_alumni(academy)
 
     def all_scoutable_fighters(self):
@@ -4664,9 +5155,11 @@ class WorldMixin:
             ("World balance metrics", self.update_world_metric_interactions),
             ("Media market and contracts", self.process_media_month),
             ("Contract warnings", self.check_contract_warnings),
+            ("Staff contract warnings", self.check_staff_contract_warnings),
             ("Contract promises", self.review_contract_promises),
             ("Player renewals", self.auto_renew_player_contracts),
             ("Player contracts", self.update_contracts),
+            ("Staff contracts", self.update_staff_contracts),
             ("AI contracts", self.update_ai_contracts),
             ("Retirement reviews", self.process_retirements),
             ("Promotion rankings", self.refresh_promotion_rankings),
@@ -8268,7 +8761,7 @@ class WorldMixin:
             fighter.annual_overalls[year] = max(fighter.annual_overalls.get(year, 0), fighter.overall)
             self.update_fighter_peak_overall(fighter)
             fighter.rank_score = self.rank_value(fighter)
-            if fighter.contract_months > 0:
+            if fighter.contract_months > 0 and not getattr(fighter, "loaned_to_promotion", ""):
                 fighter.contract_months -= 1
             # Surface notable development so prospects don't improve invisibly.
             if player_roster and fighter.overall > before and (fighter.age <= 26 or fighter.age > fighter.prime_end) and random.random() < 0.3:
@@ -9900,9 +10393,11 @@ class WorldMixin:
         strategic_reinvestment = round(max(0, revenue - projected_cost) * reinvestment_rate)
         event_profit = revenue - projected_cost - strategic_reinvestment
         promo.cash += event_profit
+        parent_distribution = self.distribute_child_promotion_profit(promo, event_profit)
         strategy["last_event_finance"] = {
             "month": self.month, "revenue": revenue, "cost": projected_cost,
-            "profit": event_profit, "margin": round(event_profit / max(1, projected_cost), 3),
+            "profit": event_profit, "parent_distribution": parent_distribution,
+            "margin": round(event_profit / max(1, projected_cost), 3),
         }
         margin = event_profit / max(1, projected_cost)
         stability_target = strategy.get("stability_target", max(58, min(86, round(50 + commercial_strength * 0.38))))
@@ -11442,6 +11937,8 @@ class WorldMixin:
         for promo in [item for item in self.promotions if not getattr(item, "is_regional_feeder", False)]:
             belt_holders = self.promotion_belt_holders(promo)
             for fighter in list(promo.roster):
+                if self.child_promotion_loaned(promo, fighter):
+                    continue
                 if fighter.contract_months > 0:
                     continue
                 # A declared retiree may finish an already-booked farewell bout,
@@ -11529,7 +12026,7 @@ class WorldMixin:
 
             candidates = []
             for fighter in active:
-                if (fighter.champion or fighter.interim_champion or fighter.name in belt_holders or fighter.retirement_pending
+                if (self.child_promotion_loaned(promo, fighter) or fighter.champion or fighter.interim_champion or fighter.name in belt_holders or fighter.retirement_pending
                         or fighter.name in scheduled or fighter.age <= 24 and fighter.potential >= fighter.overall + 8):
                     continue
                 depth = counts.get((fighter.gender, fighter.weight), 0)
@@ -11673,6 +12170,7 @@ class WorldMixin:
                         continue
                     replaceable = [fighter for fighter in incumbents
                                    if not fighter.champion and not fighter.interim_champion and fighter.name not in belt_holders
+                                   and not self.child_promotion_loaned(promo, fighter)
                                    and fighter.name not in scheduled and not fighter.retirement_pending
                                    and not (fighter.age <= 24 and fighter.potential >= fighter.overall + 8)]
                     if not replaceable:
@@ -11762,6 +12260,9 @@ class WorldMixin:
 
     def ai_division_target(self, promo, gender=None):
         """Sustainable contracted depth per gender/weight bucket for an AI company."""
+        if self.is_child_promotion(promo):
+            capital = max(AI_CHILD_PROMOTION_MIN_CAPITAL, int(getattr(promo, "startup_capital", 0) or AI_CHILD_PROMOTION_MIN_CAPITAL))
+            return max(5, min(12, 5 + capital // 5_000_000))
         # Regional circuits are deliberately smaller, but still need enough
         # bodies across all sixteen buckets to rotate opponents and run varied
         # development cards.
@@ -11811,6 +12312,10 @@ class WorldMixin:
 
     def ai_roster_target(self, promo):
         """Roster capacity is tied to the divisions a company must actually book."""
+        if self.is_child_promotion(promo):
+            weights = list(getattr(promo, "weight_classes", None) or WEIGHTS)
+            open_divisions = sum(1 for gender in ("Male", "Female") for weight in weights if self.promotion_division_open(promo, gender, weight))
+            return max(24, min(192, open_divisions * self.ai_division_target(promo)))
         if getattr(promo, "is_regional_feeder", False):
             return 70
         weights = list(getattr(promo, "weight_classes", None) or WEIGHTS)

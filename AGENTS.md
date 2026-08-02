@@ -183,6 +183,7 @@ not the active implementation. Do not copy fixes into them.
 - `Run Smoke Tests.bat`: runs smoke, stability, and media-system suites.
 - `Launch MMA Warriors.bat`: starts the source game.
 - `Build Portable.bat`: tests and builds the portable game package.
+- `Build Portable.bat`: tests, validates the universe database, and builds both the game executable and the standalone database editor into `dist\\MMA Warriors`.
 - `Build Database Editor.bat`: builds the standalone database editor.
 - `Portable Check.bat`: checks the packaged runtime.
 - `README.md`: player, source-run, test, and build instructions.
@@ -344,6 +345,11 @@ retain a named identity assertion in `smoke_test.py` after changing either repre
 
 ### Company ownership invariant
 
+When `take_control_of_company()` transfers an AI promotion to the player, it must reconcile stale zero-month AI contracts first. Those fighters remain in the inherited roster and receive fresh 12-24 month exclusive contracts; a takeover must never mass-release a company's roster merely because legacy AI contract terms reached zero.
+
+The MMA Child Promotions manager in `views.py` is an operations screen, not just a launch dialog. Keep its promotion table synchronized with child cash, stability, roster size, protected loans, parent distributions, and AI mode. Roster filters must only change display; loan, recall, and parent-transfer actions must continue to use fighter IDs and the world-layer ownership rules.
+The manager must list only child promotions whose `parent_company` matches the active player company. Its child-roster status filter must not be applied to the separate parent-roster loan source. Parent profit-share transfers must use the normal finance transaction recorder, and taking an expired AI-signed child fighter must assign a fresh contract rather than a one-month stub.
+
 During a normal player career, the player company is represented by player-owned fields such as
 `self.player_company_name`, `self.roster`, `self.cash`, and `self.company_pop`. It must not also be
 present in `self.promotions`, or it will be simulated twice.
@@ -392,6 +398,27 @@ Regional feeder promotions are also first-class world objects:
 Feeders have `is_regional_feeder=True`, do not use the normal commercial-finance simulation, and
 support young-prospect generation, development cards, and pathways. The Eurasian circuit has
 authored male-only behavior; preserve its origin and roster-depth rules.
+
+### Player-funded MMA child promotions
+
+MMA child promotions are ordinary AI-managed `Promotion` objects with
+`is_child_promotion=True`, `parent_company`, `child_strategy`, `parent_profit_share`, and
+`loaned_fighter_ids`. They are launched from the Companies screen with player-selected startup
+capital; the launch budget funds an opening MMA free-agent roster, after which the existing AI
+card, contract, development, finance, and market systems manage the child normally.
+
+The supported child identities are `Balanced`, `Youth Prospects`, `Big Names`, and
+`Merit & Contenders`. The identity updates the child's persistent AI focus and card personality;
+do not create a second matchmaking engine for it. Positive event profit distributes the configured
+0-100% share to the parent company and records the transfer in the child's strategy/finance data.
+
+Loans move a fighter from the player roster into the child roster while preserving the parent
+contract. The fighter's `loaned_from_company`/`loaned_to_promotion` fields and the child's
+`loaned_fighter_ids` index must stay synchronized. Child contract expiry, roster cuts, upgrade
+replacements, distressed buyouts, retirement removal, and save repair must protect loaned fighters;
+only the parent loan manager can recall them; the parent may also take an AI-signed child fighter by
+paying the transfer fee. New fields require safe load defaults and a round-trip regression in
+`smoke_test.py`.
 
 ### How game-AI promotions decide
 
@@ -502,14 +529,16 @@ The fight engine must model the bout rather than pick a desired result and work 
 ### Round count
 
 The event data decides championship pacing. A fight marked `title` or `main` uses the configured
-five-round path when the active rules provide five title rounds; ordinary fights use the normal
-round count. Test title and non-title five-round main events because both are supported.
+`title_rounds` value, including player-selected six- and seven-round settings; ordinary fights use
+the normal `rounds` count. Never hard-code five introductions or four transitions in the watcher.
+Test title and non-title five-round main events plus an extended configured title fight.
 
 ### Commentary structure
 
 Five-round fights generate enough text to exceed a Tk text widget's comfortable live-display size.
-The engine therefore compacts only ordinary action calls within each round. Structural lines must
-always survive:
+The engine and watcher retain every generated action call and the original round-summary telemetry.
+The Text widget must be scrollable and can pace the stream, but it must not deduplicate calls or
+insert omission markers. Structural lines must always survive:
 
 - tale of the tape and opening context;
 - every round introduction;
@@ -518,16 +547,26 @@ always survive:
 - stoppage and official-result lines; and
 - decision scores.
 
+The live watcher may redact exact judge cards until the official result, but it must not replace or
+shorten the round-summary line itself. Apply any display name cleanup before inserting a line into
+the Tk `Text` widget; post-insert formatting cannot repair text that was already presented or alter
+its tags. `stability_test.py` must advance a real five-round title viewer through each round and
+verify all five original summaries, the scorecard reveal, metrics, and official result remain visible.
+
 `FIGHT_COMMENTARY_ROUND_LINE_LIMIT`, `FIGHT_COMMENTARY_ROUND_HEAD_LINES`, and
-`FIGHT_COMMENTARY_ROUND_TAIL_LINES` define the per-round action budget. If the budget is exceeded,
-keep the opening and late-round calls with a single summary marker between them. Do not slice the
-finished global commentary list; that was the source of missing rounds.
+`FIGHT_COMMENTARY_ROUND_TAIL_LINES` are retained for compatibility with older tuning tools; they
+are not an omission budget. Never deduplicate or slice the finished global commentary list. If a
+long fight is difficult to follow, use the viewer's pacing, scrolling, or round navigation while
+keeping every stored line available.
 
 Required regression scenarios include:
 
 1. a five-round title decision with all five introductions and summaries;
 2. a non-title five-round main-event decision with the same structure; and
 3. a late round-five finish with the round-five introduction and official result preserved.
+
+4. a configured seven-round title decision with all seven summaries, transitions, scorecards,
+   metrics, and the official result preserved.
 
 ### Outcome calibration
 
@@ -587,6 +626,37 @@ The gym viewer is accessible from the World Hub. If gym fields change, inspect a
 Season statistics are fed by `record_season_result` for every decisive player and AI fight.
 `run_end_of_year_awards` runs at the year rollover and appends to `awards_history`. Adding a new fight
 path without season tracking silently biases awards toward whichever path still records results.
+
+### Staff employment and effects
+
+Staff are dictionary records in `self.staff` and `self.staff_candidates`, seeded in `seeding.py` and
+repaired by `WorldMixin.ensure_staff_profiles()`. New or migrated records carry a role, skill,
+salary, morale, `contract_months`, `contract_type`, `contract_start_month`,
+`contract_expiry_month`, and negotiation heat. Old saves must receive those defaults without losing
+the existing staff member.
+
+`constants.STAFF_ROLE_EFFECTS` is the player-facing source of truth for the seven staff roles:
+Scout, Doctor, Marketing, Matchmaker, Drug Testing Officer, Broadcast Producer, and Talent
+Relations. Every listed role needs both a readable explanation in the Staff screen and a simulation
+hook. Staff quality and morale flow through `staff_skill()` and `staff_effect()`; do not add a role
+that only changes a label. Current hooks cover scouting and academy reports, recovery and medical
+costs, hype and commercial reach, matchup/card quality, drug-test accuracy and cost, broadcast
+quality/reach/production cost, and fighter negotiation leverage. Point effects and cash-valued
+negotiation benefits are separate: use `staff_effect()` for bounded gameplay points and
+`staff_negotiation_discount()` when converting Talent Relations quality into a dollar discount.
+Manual drug testing must use the same compliance discount model as event accounting.
+
+Monthly world progression checks staff expiry warnings before decrementing contracts. Expired staff
+leave payroll and the roster unless an active Scout assignment is still using them; a busy Scout is
+held for one month so the assignment can finish. Hiring, renewal, and firing use the Staff screen's
+negotiation/severance actions, and firing a busy Scout is blocked. The Expiring Contracts tab is a
+filtered operational view, not a second staff list: actions must resolve the selected staff member
+by identity and continue to use the world-layer contract rules.
+
+When changing staff behavior, update `constants.py`, seeding, world progression, persistence/load
+repair, `ui.py`, and `views.py` together. Add smoke coverage for role descriptions, offer scoring,
+legacy migration, expiry removal, and round-trip persistence. Review the fighter Contracts tab as
+the parallel player-facing negotiation pattern so staff and fighter contract UX remain consistent.
 
 ## 12. UI, Themes, and Accessibility
 
@@ -660,7 +730,7 @@ focus styling should meet the rules in `TAB_ACCESSIBILITY.md`. Derive tab colors
 
 Known themes are:
 
-- Base: `Fight Night`, `Classic Green`, `Light Office`.
+- Base: `Dark Mode`, `Fight Night`, `Classic Green`, `Light Office`.
 - Promotion: `BAMMA`, `UFC`, `PFL`, `Cage Warriors`, `ONE Championship`, `RIZIN`, `KSW`, `LFA`,
   `Oktagon`, `BRAVE`, `ACA`.
 - Combat sport: `Boxing`, `Kickboxing`, `Muay Thai`, `Wrestling`, `BJJ`.
@@ -670,10 +740,28 @@ Known themes are:
 When changing shared UI, verify representative dark, light, promotion, and special themes, not only
 the currently selected theme.
 
+`Dark Mode` is the default startup theme. Plain Tk list controls must use `self.colors["tree"]`
+and `self.colors["text"]` at construction time and remain covered by `retheme_plain_widgets` so
+theme changes never expose a light-gray native control.
+
+The academy's `active_challenge` and `challenge_history` are persistent coaching decisions. New
+challenge choices must resolve through world-layer methods, update the prospect's development and
+finance/amateur ledgers, and be repaired with safe defaults for older saves. The academy window
+must expose the active decision without interrupting calendar advancement with an unconditional
+modal prompt.
+
+Every `ttk.Treeview` is sortable by heading. Main tabs may call `make_tree_sortable` explicitly for
+custom behavior, but secondary and popup tables rely on the shared Treeview class fallback in
+`ui.py`; do not add a new column table with permanently static headings.
+
 ## 13. Data Quality
 
-- Avoid duplicate fighters across companies unless intentionally labeled as a historical/younger
-  variant, for example `Tom Aspinall CW`.
+- Avoid duplicate fighters across companies unless intentionally represented as a historical/younger
+  or market snapshot. Keep each object on its own durable `fighter_id`; source markers such as
+  `Legend`, `FA`, and `BAMMA` are internal seed metadata and must not be baked into the primary
+  player-facing name. Use company, market, division, or profile context when the player needs to
+  distinguish same-name snapshots. Audit the opening world for duplicate IDs and normalized base
+  names before changing seeded records.
 - Never create names with a `2` suffix as a collision workaround.
 - Keep male and female fighters correctly gendered.
 - When adding women whose names are absent from `FEMALE_FIRST_NAMES`, update `infer_gender`.

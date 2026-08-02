@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import random
+import re
 import struct
 import sys
 import tempfile
@@ -53,6 +54,9 @@ def assert_release_documentation_policy(game):
                     f"The documented change contract does not include {required_file}")
     assert_true("Build Database Editor.bat" in readme,
                 "README does not document the separate Database Editor build")
+    portable_build = (ROOT / "Build Portable.bat").read_text(encoding="utf-8")
+    assert_true("MMA Warriors Database Editor.exe" in portable_build and "database_editor.py" in portable_build,
+                "Portable build script does not package the Database Editor")
 
 
 def assert_crowd_audio_pack():
@@ -265,6 +269,18 @@ def main():
         assert_true(getattr(app, "_busy_overlay", None) is None, "The please-wait overlay was not cleared after work")
         assert_true(root.cget("cursor") == original_cursor, "The main-window cursor was not restored after the overlay closed")
         original_theme = app.theme_name
+        assert_true(original_theme == "Dark Mode", "New games should start in the explicit Dark Mode theme")
+        assert_true("Dark Mode" in app.themes, "Explicit Dark Mode theme is missing")
+        unsorted_tree = ttk.Treeview(app.root, columns=("name", "overall"), show="headings")
+        unsorted_tree.heading("name", text="Name")
+        unsorted_tree.heading("overall", text="Overall")
+        unsorted_tree.insert("", "end", values=("Low", 60))
+        unsorted_tree.insert("", "end", values=("High", 90))
+        app.make_tree_sortable(unsorted_tree)
+        assert_true(bool(unsorted_tree.heading("overall", "command")), "Treeview headings do not expose a sort command")
+        app.sort_treeview(unsorted_tree, "overall")
+        assert_true(unsorted_tree.item(unsorted_tree.get_children()[0], "values")[1] == "60", "Treeview numeric sorting did not order overalls")
+        unsorted_tree.destroy()
         for theme_name in app.themes:
             app.theme_name = theme_name
             app.configure_style()
@@ -395,6 +411,19 @@ def main():
         app.take_control_of_company("Cage Warriors")
         assert_true((app.player_region, app.event_region.get(), app.event_city.get()) == ("UK", "UK", "London"),
                     "A UK promotion did not default its booking location to the UK home market")
+        takeover_contract_probe = app.player_company_as_promotion()
+        takeover_contract_probe.name = "Takeover Contract Probe"
+        stale_takeover_fighter = app.create_generated_fighter(weight="Lightweight", gender="Male")
+        stale_takeover_fighter.contract_months = 0
+        active_takeover_fighter = app.create_generated_fighter(weight="Welterweight", gender="Male")
+        active_takeover_fighter.contract_months = 12
+        takeover_contract_probe.roster = [stale_takeover_fighter, active_takeover_fighter]
+        app.promotions.append(takeover_contract_probe)
+        app.take_control_of_company(takeover_contract_probe.name)
+        assert_true(stale_takeover_fighter in app.roster and 12 <= stale_takeover_fighter.contract_months <= 24,
+                    "Promotion takeover did not renew a stale inherited AI contract")
+        assert_true(active_takeover_fighter in app.roster and active_takeover_fighter.contract_months == 12,
+                    "Promotion takeover did not preserve an active AI contract")
         for fighter in bamma_as_ai.roster:
             if fighter.gender == "Male" and fighter.weight == "Lightweight" and not fighter.champion:
                 fighter.ranking_position = 999
@@ -412,6 +441,24 @@ def main():
                     "Top-five contenders were not protected from wide routine rank gaps")
         app.start_company_choice.set(game.PLAYER_PROMOTION_NAME)
         app.new_game()
+        all_objects = app.all_fighter_objects()
+        fighter_ids = [fighter.fighter_id for fighter in all_objects]
+        assert_true(len(fighter_ids) == len(set(fighter_ids)),
+                    "Opening world contains duplicate fighter identities")
+        source_marked = [fighter for fighter in all_objects if re.search(r"\s+(?:Legend|FA|BAMMA)$", fighter.name, re.IGNORECASE)]
+        assert_true(len(source_marked) == 57,
+                    "Opening world source-marker audit changed unexpectedly; inspect seeded snapshots before changing labels")
+        assert_true(all(not re.search(r"\s+(?:Legend|FA|BAMMA)$", app.fighter_display_name(fighter), re.IGNORECASE)
+                        for fighter in source_marked),
+                    "Synthetic fighter source markers still leak into the primary display name")
+        display_probe = next(fighter for fighter in source_marked if fighter.name.endswith(" BAMMA"))
+        display_line = app.display_fighter_names_in_text(
+            f"{display_probe.name} def. Opponent", {"a": display_probe.name, "a_id": display_probe.fighter_id},
+        )
+        assert_true("BAMMA" not in display_line and display_line.startswith(app.fighter_display_name(display_probe)),
+                    "Fight replay presentation still exposes a synthetic source marker")
+        assert_true(app.clean_display_fighter_name("Frankie Edgar Legend (C)") == "Frankie Edgar",
+                    "Display-name cleanup did not remove source and champion markers together")
         addin_names = {row[0] for row, _gender in app.bamma_initial_addin_data()}
         opening_roster_names = [fighter.name for fighter in app.roster]
         all_opening_names = [fighter.name for fighter in app.all_database_fighters()]
@@ -1203,6 +1250,50 @@ def main():
         app.refresh_assistant()
         assert_true(set(app.assistant_kpis) == {"show", "card", "contracts", "divisions", "runway", "medical"},
                     "Weekly command centre KPI set is incomplete")
+        child_cash_before = app.cash
+        app.cash = max(app.cash, 5_000_000)
+        child_ok, child_probe = app.launch_ai_child_promotion(
+            1_000_000, "Youth Prospects", 35, "Smoke AI Development",
+        )
+        assert_true(child_ok and child_probe.is_child_promotion,
+                    "MMA AI child promotion could not be launched")
+        assert_true(child_probe.child_strategy == "Youth Prospects" and child_probe.parent_profit_share == 35,
+                    "MMA child promotion settings were not applied")
+        assert_true(child_probe.roster and child_probe.startup_capital == 1_000_000,
+                    "MMA child promotion did not spend startup capital on an opening roster")
+        parent_candidate = next(fighter for fighter in app.roster if not fighter.retirement_pending and not fighter.injured)
+        loan_ok, _loan_note = app.loan_fighter_to_child_promotion(child_probe.name, parent_candidate.fighter_id)
+        assert_true(loan_ok and parent_candidate not in app.roster and parent_candidate in child_probe.roster,
+                    "Player fighter could not be loaned into the MMA child promotion")
+        parent_candidate.contract_months = 0
+        app.update_ai_contracts()
+        assert_true(parent_candidate in child_probe.roster and parent_candidate.loaned_to_promotion == child_probe.name,
+                    "AI contract review removed a protected loaned fighter")
+        distribution_before = app.cash
+        child_probe.cash += 100_000
+        assert_true(app.distribute_child_promotion_profit(child_probe, 100_000) == 35_000 and app.cash == distribution_before + 35_000,
+                    "MMA child promotion profit share did not return the configured percentage to the parent")
+        assert_true(any("Child promotion profit share: Smoke AI Development" in row.get("label", "") and row.get("revenue") == 35_000 for row in app.finance.get("week_transactions", [])),
+                    "MMA child promotion profit share did not enter the parent finance ledger")
+        child_save = app.serialize_world()
+        saved_child = next(row for row in child_save["promotions"] if row["name"] == child_probe.name)
+        assert_true(saved_child["is_child_promotion"] and saved_child["parent_profit_share"] == 35 and saved_child["loaned_fighter_ids"],
+                    "MMA child-promotion and loan state did not serialize")
+        app.apply_world_data(child_save)
+        child_probe = next(promo for promo in app.promotions if promo.name == "Smoke AI Development")
+        assert_true(child_probe.is_child_promotion and child_probe.loaned_fighter_ids,
+                    "MMA child-promotion and loan state did not survive save/load")
+        loaded_parent_candidate = next(fighter for fighter in child_probe.roster if fighter.fighter_id == parent_candidate.fighter_id)
+        recall_ok, _recall_note = app.recall_fighter_from_child_promotion(child_probe.name, loaded_parent_candidate.fighter_id)
+        assert_true(recall_ok and any(fighter.fighter_id == loaded_parent_candidate.fighter_id for fighter in app.roster) and not loaded_parent_candidate.loaned_to_promotion,
+                    "Loaned MMA fighter could not be recalled to the parent company")
+        child_signed_fighter = next(fighter for fighter in child_probe.roster if not app.child_promotion_loaned(child_probe, fighter))
+        child_signed_fighter.contract_months = 0
+        take_ok, _take_note = app.take_fighter_from_child_promotion(child_probe.name, child_signed_fighter.fighter_id)
+        minimum_take_months = 12 if child_signed_fighter.age <= 32 else 8
+        assert_true(take_ok and any(fighter.fighter_id == child_signed_fighter.fighter_id for fighter in app.roster) and minimum_take_months <= child_signed_fighter.contract_months <= 24,
+                    "Parent company could not take an AI-signed fighter onto a fresh contract")
+        app.cash = max(app.cash, child_cash_before)
         unscouted_probe = app.free_agents[0]
         app.scouting_reports.pop(unscouted_probe.name, None)
         windows_before = set(root.winfo_children())
@@ -1736,6 +1827,35 @@ def main():
         assert_true(all(getattr(fighter, "camp_focus", "") for fighter in app.roster[:25]), "Fighter camp-focus profiles missing")
         assert_true(all(getattr(fighter, "camp_intensity", "") for fighter in app.roster[:25]), "Fighter camp-intensity profiles missing")
         assert_true(all("specialty" in member and "reputation" in member for member in app.staff), "Staff specialization profiles missing")
+        assert_true(all(member.get("contract_months", 0) > 0 and member.get("contract_type") for member in app.staff), "Staff contracts were not seeded")
+        assert_true(set(game.STAFF_ROLE_EFFECTS) == {"Scout", "Doctor", "Marketing", "Matchmaker", "Drug Testing Officer", "Broadcast Producer", "Talent Relations"}, "Staff effect guide is missing a staff role")
+        legacy_staff = {"name": "Legacy Staff", "role": "Doctor", "skill": 60, "salary": 6000, "morale": 70}
+        staff_before = app.staff
+        app.staff = [legacy_staff]
+        app.ensure_staff_profiles()
+        assert_true(legacy_staff.get("contract_months", 0) > 0 and legacy_staff.get("contract_expiry_month"), "Legacy staff record did not receive safe contract defaults")
+        assert_true(app.staff_contract_offer_score(legacy_staff, 9000, 24, existing=True) > app.staff_contract_offer_score(legacy_staff, 3500, 1, existing=True), "Better staff offer terms did not improve negotiation score")
+        legacy_staff["contract_months"] = 1
+        app.update_staff_contracts()
+        assert_true(not app.staff, "Expired staff contract was not removed after its term ended")
+        app.staff = staff_before
+        app.ensure_staff_profiles()
+        talent_probe = {"name": "Talent Relations Probe", "role": "Talent Relations", "skill": 80, "morale": 80, "salary": 10000, "reputation": 70}
+        app.staff = [talent_probe]
+        assert_true(900 < app.staff_negotiation_discount("Talent Relations", 2600) < 2600, "Talent Relations negotiation discount did not scale from staff quality")
+        app.staff = staff_before
+        app.ensure_staff_profiles()
+        staff_round_trip_before = [
+            (member.get("name"), member.get("salary"), member.get("contract_months"), member.get("contract_expiry_month"))
+            for member in app.staff
+        ]
+        staff_round_trip_data = app.serialize_world()
+        app.apply_world_data(staff_round_trip_data)
+        staff_round_trip_after = [
+            (member.get("name"), member.get("salary"), member.get("contract_months"), member.get("contract_expiry_month"))
+            for member in app.staff
+        ]
+        assert_true(staff_round_trip_after == staff_round_trip_before, "Staff salary and contract terms did not survive save/load")
         app.record_world_story("Test", "Smoke-test chronicle entry")
         assert_true(app.world_chronicle and app.world_chronicle[0]["type"] == "Test", "World chronicle did not record an entry")
         legacy_probe = app.roster[0]
@@ -1884,8 +2004,8 @@ def main():
 
         # Long five-round bouts used to slice the entire commentary list at 95
         # lines, deleting Round 4 summaries and Round 5 introductions. Force a
-        # verbose decision through both five-round routes and verify that the
-        # per-round compactor retains every playback boundary.
+        # verbose decision through both five-round routes and verify that every
+        # generated play-by-play line survives.
         random_state = random.getstate()
         original_resolve_exchange = app.resolve_exchange
         original_fighter_presence_line = app.fighter_presence_line
@@ -1901,11 +2021,6 @@ def main():
         app.check_fight_stoppage = lambda *args: None
         app.check_corner_stoppage = lambda *args: None
         try:
-            assert_true(
-                game.FIGHT_COMMENTARY_ROUND_HEAD_LINES + game.FIGHT_COMMENTARY_ROUND_TAIL_LINES + 1
-                <= game.FIGHT_COMMENTARY_ROUND_LINE_LIMIT,
-                "Fight commentary compactor configuration exceeds its per-round limit",
-            )
             for flags in ({"main": False, "title": True}, {"main": True, "title": False}):
                 verbose_pair = tuple(game.Fighter(**asdict(fighter)) for fighter in pair)
                 random.seed(22095)
@@ -1925,14 +2040,12 @@ def main():
                             "Five-round commentary lost a between-round transition")
                 assert_true("Official scorecards:" in verbose_lines and "FIGHT METRICS" in verbose_lines,
                             "Five-round commentary lost its scorecards or fight metrics")
-                assert_true(sum("middle exchanges are summarized" in line for line in verbose_lines) == 5,
-                            "Verbose five-round commentary did not compact each round independently")
+                assert_true(not any("middle exchanges are summarized" in line for line in verbose_lines),
+                            "Verbose five-round commentary still dropped middle exchanges")
                 timestamped_lines = sum(line.startswith("  [") for line in verbose_lines)
                 assert_true(
-                    timestamped_lines <= 5 * (
-                        game.FIGHT_COMMENTARY_ROUND_HEAD_LINES + game.FIGHT_COMMENTARY_ROUND_TAIL_LINES
-                    ),
-                    "Five-round commentary exceeded its configured action-line bound",
+                    timestamped_lines > 5 * game.FIGHT_COMMENTARY_ROUND_LINE_LIMIT,
+                    "Verbose five-round commentary did not retain the complete play-by-play",
                 )
 
             def late_round_five_stoppage(actor, defender, state):
@@ -1957,7 +2070,7 @@ def main():
             assert_true(sum(line.startswith("Between rounds:") for line in stoppage_lines) == 4,
                         "Late-stoppage commentary lost a between-round transition")
             assert_true(sum("Regression late Round 5 stoppage preserved." in line for line in stoppage_lines) == 1,
-                        "Round 5 finish detail was lost or duplicated during commentary compaction")
+                        "Round 5 finish detail was lost or duplicated during commentary playback")
             assert_true(any(line.startswith("Broadcast recap:") for line in stoppage_lines) and "FIGHT METRICS" in stoppage_lines,
                         "Late-stoppage commentary lost its recap or fight metrics")
         finally:

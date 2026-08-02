@@ -81,14 +81,30 @@ if errorlevel 1 (
     exit /b 1
 )
 
+%PY% "%APP_DIR%database_editor.py" --validate "%APP_DIR%Databases\Default Universe.universe.json"
+if errorlevel 1 (
+    echo Database validation failed. The portable package was not completed.
+    pause
+    exit /b 1
+)
+
+%PY% -m PyInstaller --noconfirm --clean --distpath "%APP_DIR%output_database_editor" --workpath "%APP_DIR%build_database_editor" "%APP_DIR%MMA Warriors Database Editor.spec"
+if errorlevel 1 (
+    echo Database Editor build failed. The portable package was not completed.
+    pause
+    exit /b 1
+)
+
 for %%D in (Saves Databases Logs) do (
     if not exist "%PACKAGE_DIR%\%%D" mkdir "%PACKAGE_DIR%\%%D"
     if exist "%RUNTIME_BACKUP%\%%D" xcopy /E /I /Y "%RUNTIME_BACKUP%\%%D" "%PACKAGE_DIR%\%%D" >nul
 )
 copy /Y "%APP_DIR%README.md" "%PACKAGE_DIR%\README.md" >nul
 copy /Y "%APP_DIR%Portable Check.bat" "%PACKAGE_DIR%\Portable Check.bat" >nul
+copy /Y "%APP_DIR%output_database_editor\MMA Warriors Database Editor.exe" "%PACKAGE_DIR%\MMA Warriors Database Editor.exe" >nul
 
 echo.
 echo Build complete:
 echo %PACKAGE_DIR%\MMA Warriors.exe
+echo %PACKAGE_DIR%\MMA Warriors Database Editor.exe
 pause

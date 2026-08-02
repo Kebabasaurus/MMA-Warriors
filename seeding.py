@@ -3254,10 +3254,10 @@ class SeedMixin:
 
     def seed_staff(self):
         return [
-            {"name": "Dana Holt", "role": "Matchmaker", "skill": 72, "salary": 8500, "morale": 76, "specialty": "Contender logic", "reputation": 68},
-            {"name": "Maya Quinn", "role": "Scout", "skill": 68, "salary": 6200, "morale": 80, "specialty": "Prospect eye", "reputation": 62},
-            {"name": "Reed Wallace", "role": "Doctor", "skill": 64, "salary": 7000, "morale": 70, "specialty": "Injury prevention", "reputation": 59},
-            {"name": "Felix Park", "role": "Marketing", "skill": 60, "salary": 5800, "morale": 74, "specialty": "Regional campaigns", "reputation": 56},
+            {"name": "Dana Holt", "role": "Matchmaker", "skill": 72, "salary": 8500, "morale": 76, "specialty": "Contender logic", "reputation": 68, "contract_months": 24},
+            {"name": "Maya Quinn", "role": "Scout", "skill": 68, "salary": 6200, "morale": 80, "specialty": "Prospect eye", "reputation": 62, "contract_months": 24},
+            {"name": "Reed Wallace", "role": "Doctor", "skill": 64, "salary": 7000, "morale": 70, "specialty": "Injury prevention", "reputation": 59, "contract_months": 24},
+            {"name": "Felix Park", "role": "Marketing", "skill": 60, "salary": 5800, "morale": 74, "specialty": "Regional campaigns", "reputation": 56, "contract_months": 24},
         ]
 
     def create_starting_scout(self, region=None, company_scale="Regional"):
@@ -3301,7 +3301,12 @@ class SeedMixin:
             "Broadcast Producer": ["Live production", "Story packages"],
             "Talent Relations": ["Contract trust", "Veteran management"],
         }
-        return {"name": name, "role": role, "skill": skill, "salary": max(3500, salary), "morale": random.randint(55, 92), "specialty": random.choice(specialties[role]), "reputation": random.randint(40, min(94, skill + 8))}
+        return {
+            "name": name, "role": role, "skill": skill, "salary": max(3500, salary),
+            "morale": random.randint(55, 92), "specialty": random.choice(specialties[role]),
+            "reputation": random.randint(40, min(94, skill + 8)),
+            "contract_months": random.randint(12, 36), "contract_type": "Exclusive",
+        }
 
     def seed_staff_candidates(self):
         return [self.create_staff_candidate() for _ in range(14)]

@@ -987,6 +987,13 @@ class PersistenceMixin:
             row.setdefault("closed_division_policy_set", False)
             row.setdefault("special_belts", {})
             row.setdefault("regional_division_activity", {})
+            row.setdefault("is_child_promotion", False)
+            row.setdefault("parent_company", "")
+            row.setdefault("child_strategy", "Balanced")
+            row.setdefault("parent_profit_share", 0)
+            row.setdefault("startup_capital", 0)
+            row.setdefault("initial_roster_budget", 0)
+            row.setdefault("loaned_fighter_ids", [])
             for fighter in row["roster"]:
                 fighter.weight = self.game_weight_class(fighter.weight)
                 self.ensure_detailed_skills(fighter)
@@ -1041,6 +1048,8 @@ class PersistenceMixin:
             self.ensure_fighter_business_stats(fighter)
         self.repair_premature_retirements()
         self.ensure_fighter_ids()
+        if hasattr(self, "repair_child_promotion_state"):
+            self.repair_child_promotion_state()
         self.backfill_archived_fight_log_ids()
         self.finance = data.get("finance", self.seed_finance())
         self.media_companies = data.get("media_companies", []) or []
@@ -2164,7 +2173,7 @@ class PersistenceMixin:
         self.cash = promo.cash
         self.company_pop = promo.reputation_score
         self.company_stability = promo.stability
-        self.roster = promo.roster
+        self.roster = self.reconcile_taken_over_roster(promo)
         self.academy = self.repair_academy(promo.academy or self.academy_defaults()) if hasattr(self, "repair_academy") else (promo.academy or {})
         self.closed_divisions = set(getattr(promo, "closed_divisions", None) or [])
         self.player_managed_divisions = set()
@@ -2199,6 +2208,33 @@ class PersistenceMixin:
         self.news.insert(0, f"You are now controlling {self.player_company_name}.")
         self.refresh_all()
         self.write_log()
+
+    def reconcile_taken_over_roster(self, promo):
+        """Renew stale AI contracts before an AI roster becomes player-owned."""
+        roster = list(getattr(promo, "roster", []) or [])
+        if not roster:
+            return roster
+        renewed = []
+        for fighter in roster:
+            if int(getattr(fighter, "contract_months", 0) or 0) > 0:
+                continue
+            # Imported/legacy AI rosters can have zero-month deals even though
+            # the fighters are still part of the promotion's active plan.
+            # A takeover is a change of ownership, not a mass release.
+            fighter.contract_months = random.randint(12, 24)
+            fighter.exclusive = True
+            fighter.contract_type = "Exclusive"
+            fighter.ai_offer_company = ""
+            fighter.ai_offer_purse = 0
+            fighter.ai_offer_months = 0
+            fighter.ai_offer_signing_bonus = 0
+            fighter.ai_offer_deadline_month = 0
+            renewed.append(fighter)
+        if renewed:
+            names = ", ".join(fighter.name for fighter in renewed[:8])
+            suffix = " and more" if len(renewed) > 8 else ""
+            self.news.insert(0, f"Takeover contract reset: {len(renewed)} inherited AI deal(s) renewed for the player company ({names}{suffix}).")
+        return roster
 
     def safe_filename(self, value):
         cleaned = "".join(ch if ch.isalnum() or ch in (" ", "_", "-") else "_" for ch in value).strip()

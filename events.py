@@ -1353,10 +1353,10 @@ class EventMixin:
             draw_momentum_bar()
 
         def round_summary_presentation(value):
-            """Turn engine telemetry into a readable broadcast summary.
+            """Update live telemetry without replacing the stored commentary.
 
-            Exact judge cards stay in the underlying log.  The live viewer only
-            presents a bounded broadcast lean until the official result exists.
+            Exact judge cards stay sealed until the official result, but every
+            stored round-summary line remains visible in the commentary stream.
             """
             current_log = fight_logs[state["fight"]] if 0 <= state["fight"] < len(fight_logs) else {}
             a_name, b_name = current_log.get("a", ""), current_log.get("b", "")
@@ -1370,10 +1370,7 @@ class EventMixin:
             )
             match = re.match(pattern, value, re.IGNORECASE)
             if not match:
-                # Never leak the three exact round cards if an older/newer log
-                # format cannot be fully parsed.
-                value = re.sub(r"judge cards\s+.*?\.\s*Metrics", "judges' cards sealed. Metrics", value, flags=re.IGNORECASE)
-                return re.sub(r"Live score\s+.*?(?=(?:Gas|Stamina):|$)", "Unofficial broadcast lean updated. ", value, flags=re.IGNORECASE)
+                return value
             phase = match.group(1).title()
             numbers = [int(round(float(number))) for number in match.groups()[1:11]]
             a_impact, a_control, a_danger, b_impact, b_control, b_danger, a_score, b_score, gas_a, gas_b = numbers
@@ -1385,22 +1382,11 @@ class EventMixin:
             }
             set_condition(gas_a, gas_b)
             refresh_live_stats(state["round_values"])
-            margin = a_score - b_score
-            if abs(margin) <= 1:
-                lean = "TOO CLOSE TO CALL"
-            elif abs(margin) <= 3:
-                lean = f"SLIGHT LEAN: {a_name if margin > 0 else b_name}"
-            else:
-                lean = f"LEAN: {a_name if margin > 0 else b_name}"
-            score_label.config(text=f"Unofficial broadcast read: {lean}  |  Official judges sealed")
-            summary = (
-                f"{phase}: {a_name} impact {a_impact}, control {a_control}, threat {a_danger}; "
-                f"{b_name} impact {b_impact}, control {b_control}, threat {b_danger}. "
-                f"Momentum: {momentum}. {lean}."
-            )
-            round_read_label.config(text=summary + " Official cards remain private.")
-            current_moment_label.config(text=summary)
-            return summary
+            score_label.config(text=f"Round read: {a_name} {a_score}, {b_name} {b_score}  |  Official judges sealed")
+            display_value = self.display_fighter_names_in_text(value, current_log)
+            round_read_label.config(text=display_value + " Exact cards remain private.")
+            current_moment_label.config(text=display_value)
+            return value
 
         def play_crowd(cue):
             profile = state.get("crowd_profile", {}) or {}
@@ -1410,11 +1396,10 @@ class EventMixin:
             value = str(value or "").strip("\n")
             if not value:
                 return
+            raw_value = value
+            current_log = fight_logs[state["fight"]] if 0 <= state["fight"] < len(fight_logs) else {}
             value = round_summary_presentation(value)
-            if not state.get("result_shown") and "Live score" in value:
-                value = re.sub(r"Live score\s+.*?(?=(?:Gas|Stamina):|$)", "Unofficial broadcast lean updated. ", value, flags=re.IGNORECASE)
-            if not state.get("result_shown") and value.startswith("R") and "Scores " in value:
-                value = re.sub(r"Scores\s+.*?(?=\.|$)", "Judges' round read sealed", value)
+            value = self.display_fighter_names_in_text(value, current_log)
             # Old archived commentary can contain float-valued metric fields.
             # Fight telemetry is count/time data, so the presentation is always
             # normalized to whole numbers in the end-of-bout box score.
@@ -1508,20 +1493,18 @@ class EventMixin:
                 fight_read_label.config(text=value.replace("Result: ", "").split(" | ")[-1])
                 current_moment_label.config(text=value.replace("Result: ", ""))
                 round_read_label.config(text="Official result confirmed. Full scorecards and fight metrics are shown below.")
-            current_log = fight_logs[state["fight"]] if 0 <= state["fight"] < len(fight_logs) else {}
             a_name, b_name = current_log.get("a", ""), current_log.get("b", "")
             if a_name and b_name:
                 condition_match = re.search(
-                    rf"(?:Gas|Stamina):\s*{re.escape(a_name)}\s+([\d.]+),\s*{re.escape(b_name)}\s+([\d.]+)", value, re.IGNORECASE,
+                    rf"(?:Gas|Stamina):\s*{re.escape(a_name)}\s+([\d.]+),\s*{re.escape(b_name)}\s+([\d.]+)", raw_value, re.IGNORECASE,
                 )
                 if not condition_match and value.startswith(("Corner read:", "Mat-side read:")):
                     condition_match = re.search(
-                        rf"{re.escape(a_name)}\s+stamina\s+([\d.]+).*?{re.escape(b_name)}\s+stamina\s+([\d.]+)", value, re.IGNORECASE,
+                        rf"{re.escape(a_name)}\s+stamina\s+([\d.]+).*?{re.escape(b_name)}\s+stamina\s+([\d.]+)", raw_value, re.IGNORECASE,
                     )
                 if condition_match:
                     set_condition(float(condition_match.group(1)), float(condition_match.group(2)))
                     refresh_live_stats()
-
         def reveal_scorecards():
             buffered = list(state.get("scorecard_buffer", []))
             state["scorecard_buffer"] = []
@@ -1579,6 +1562,7 @@ class EventMixin:
             log = fight_logs[index]
             result = log.get("result") or ("CANCELLED" if log.get("cancelled") else "")
             if result and fight_list.size() > index:
+                result = self.display_fighter_names_in_text(result, log)
                 fight_list.delete(index)
                 fight_list.insert(index, f"{index + 1}. DONE - {result[:31]}")
             event_progress["value"] = index + 1
@@ -1819,6 +1803,9 @@ class EventMixin:
                 except (TypeError, ValueError):
                     return record or "-"
             draw, winner_name = self.live_fight_official_outcome(log)
+            winner_fighter = self.result_fighter(winner_name, "", log.get("sport", ""), log.get("weight", "")) if winner_name else None
+            display_result = self.display_fighter_names_in_text(result or "Official result", log)
+            display_winner = self.fighter_display_name(winner_fighter) if winner_fighter else winner_name
             a_outcome = "draw" if draw else "win" if log.get("a") == winner_name else "loss" if winner_name else "unknown"
             b_outcome = "draw" if draw else "win" if log.get("b") == winner_name else "loss" if winner_name else "unknown"
             scorecards = log.get("scorecards", "") or "No scorecards required"
@@ -1826,10 +1813,10 @@ class EventMixin:
             # Per-fight scores spread far wider than card averages (roughly
             # 11-84), so this reads the individual-bout range, not the event one.
             contender = "Bonus contender" if excitement >= 58 else "Solid performance" if excitement >= 44 else "Low bonus contention"
-            result_winner_label.config(text="OFFICIAL DRAW" if draw else f"WINNER: {winner_name}" if winner_name else "OFFICIAL RESULT")
-            result_detail_label.config(text=(f"{result or 'Official result'}  |  Time: {finish_time}\n"
-                f"Records: {log.get('a', 'Red')} {a_record} -> {next_record(a_record, a_outcome)}   |   "
-                f"{log.get('b', 'Blue')} {b_record} -> {next_record(b_record, b_outcome)}\n"
+            result_winner_label.config(text="OFFICIAL DRAW" if draw else f"WINNER: {display_winner}" if winner_name else "OFFICIAL RESULT")
+            result_detail_label.config(text=(f"{display_result}  |  Time: {finish_time}\n"
+                f"Records: {self.fighter_display_name(self.result_fighter(log.get('a', ''), log.get('a_id', ''), log.get('sport', ''), log.get('weight', ''))) if self.result_fighter(log.get('a', ''), log.get('a_id', ''), log.get('sport', ''), log.get('weight', '')) else log.get('a', 'Red')} {a_record} -> {next_record(a_record, a_outcome)}   |   "
+                f"{self.fighter_display_name(self.result_fighter(log.get('b', ''), log.get('b_id', ''), log.get('sport', ''), log.get('weight', ''))) if self.result_fighter(log.get('b', ''), log.get('b_id', ''), log.get('sport', ''), log.get('weight', '')) else log.get('b', 'Blue')} {b_record} -> {next_record(b_record, b_outcome)}\n"
                 f"{scorecards}  |  {contender} (excitement {excitement})\n"
                 "Medical clearance, morale, popularity, and any suspension are applied after the card and explained in End of Event."))
             result_ribbon.pack(fill="x", padx=6, pady=(4, 5))
@@ -2134,10 +2121,10 @@ class EventMixin:
             return
         signing_bonus = fighter.purse * 2
         if self.cash < signing_bonus:
-            messagebox.showwarning("Not enough cash", f"Signing {fighter.name} requires a ${signing_bonus:,} bonus.")
+            messagebox.showwarning("Not enough cash", f"Signing {self.fighter_display_name(fighter)} requires a ${signing_bonus:,} bonus.")
             return
         self.cash -= signing_bonus
-        self.record_finance_transaction(f"Signing bonus: {fighter.name}", costs=signing_bonus)
+        self.record_finance_transaction(f"Signing bonus: {self.fighter_display_name(fighter)}", costs=signing_bonus)
         self.free_agents.remove(fighter)
         self.clear_ai_contract_offer(fighter)
         # AI roster caps prevent market hoarding; player-controlled promotions
@@ -2145,8 +2132,8 @@ class EventMixin:
         fighter.contract_months = random.randint(10, 24)
         fighter.morale = min(100, fighter.morale + 8)
         self.roster.append(fighter)
-        self.event_log.append(f"Signed {fighter.name} to a {fighter.contract_months}-month ${fighter.purse:,}/fight contract.")
-        self.news.insert(0, f"{self.player_company_name} signed {fighter.name}, a {fighter.style} {fighter.weight} with {fighter.trait.lower()} reputation.")
+        self.event_log.append(f"Signed {self.fighter_display_name(fighter)} to a {fighter.contract_months}-month ${fighter.purse:,}/fight contract.")
+        self.news.insert(0, f"{self.player_company_name} signed {self.fighter_display_name(fighter)}, a {fighter.style} {fighter.weight} with {fighter.trait.lower()} reputation.")
         self.refresh_all()
         self.write_log()
 
@@ -2160,7 +2147,7 @@ class EventMixin:
         report = self.scouting_report_for(fighter)
         ratings_known = existing or not self.rules.get("scouting_mode", False) or report.get("reveal", 0) >= 100
         window = tk.Toplevel(self.root)
-        window.title(f"Negotiate - {fighter.name}")
+        window.title(f"Negotiate - {self.fighter_display_name(fighter)}")
         window.geometry("660x600")
         window.minsize(600, 560)
         window.configure(bg=self.colors["chrome"])
@@ -2220,13 +2207,13 @@ class EventMixin:
             wants.append("clear terms")
         if not wants:
             wants.append("fair money")
-        relation_discount = self.staff_effect("Talent Relations", 2600)
+        relation_discount = self.staff_negotiation_discount("Talent Relations", 2600)
         state = {"attempts": 3, "target": ask + fighter.popularity * 420 + fighter.professionalism * 180 - relation_discount + (12000 if comeback else 0),
                  "rival_bid": 0}
 
         header = ttk.Frame(window, style="Header.TFrame")
         header.pack(fill="x", padx=8, pady=(8, 0))
-        ttk.Label(header, text=f"NEGOTIATION: {fighter.name}", style="ScreenTitle.TLabel").pack(side="left", padx=10, pady=5)
+        ttk.Label(header, text=f"NEGOTIATION: {self.fighter_display_name(fighter)}", style="ScreenTitle.TLabel").pack(side="left", padx=10, pady=5)
         body = ttk.Frame(window, style="Panel.TFrame")
         body.pack(fill="both", expand=True, padx=8, pady=8)
         rival_text = ("A comeback requires a convincing financial and career package; the fighter stays retired if talks fail."
@@ -2266,7 +2253,7 @@ class EventMixin:
         summary.pack(side="left", fill="both", expand=True, padx=(0, 10), pady=10)
         name_row = tk.Frame(summary, bg=self.colors["panel_dark"])
         name_row.pack(fill="x")
-        tk.Label(name_row, text=fighter.name.upper(), bg=self.colors["panel_dark"], fg=self.colors["gold"],
+        tk.Label(name_row, text=self.fighter_display_name(fighter).upper(), bg=self.colors["panel_dark"], fg=self.colors["gold"],
                  font=("Impact", 18), anchor="w").pack(side="left")
         tk.Label(name_row, text=f"Age {fighter.age} | {fighter.gender} {fighter.weight}", bg=self.colors["panel_dark"], fg=self.colors["muted"],
                  font=("Tahoma", 9, "bold"), anchor="e").pack(side="right", padx=(8, 0))
@@ -2463,7 +2450,7 @@ class EventMixin:
 
         def submit():
             if source_promotion is not None and fighter not in source_promotion.roster:
-                result_label.config(text=f"{fighter.name} has already left {source_promotion.name}. No money was charged.")
+                result_label.config(text=f"{self.fighter_display_name(fighter)} has already left {source_promotion.name}. No money was charged.")
                 submit_button.config(state="disabled")
                 if hasattr(self, "refresh_regional_prospects"):
                     self.refresh_regional_prospects()
@@ -2471,7 +2458,7 @@ class EventMixin:
             if source_promotion is not None:
                 assessment = self.regional_candidate_assessment(fighter, source_promotion)
                 if not assessment["eligible"]:
-                    result_label.config(text=f"{fighter.name} is not eligible to sign yet: {assessment['explanation']}.")
+                    result_label.config(text=f"{self.fighter_display_name(fighter)} is not eligible to sign yet: {assessment['explanation']}.")
                     submit_button.config(state="disabled")
                     if hasattr(self, "refresh_regional_prospects"):
                         self.refresh_regional_prospects()
@@ -2498,7 +2485,7 @@ class EventMixin:
                     # The transfer and payment are one decision. If the feeder
                     # no longer owns the fighter, stop before touching cash.
                     if fighter not in source_promotion.roster:
-                        result_label.config(text=f"{fighter.name} is no longer available from {source_promotion.name}. No money was charged.")
+                        result_label.config(text=f"{self.fighter_display_name(fighter)} is no longer available from {source_promotion.name}. No money was charged.")
                         submit_button.config(state="disabled")
                         return
                     self.capture_regional_record(fighter)
@@ -2601,7 +2588,7 @@ class EventMixin:
             # A rival can enter the bidding when talks drag, raising the bar.
             if not existing and not comeback and not active_offer_purse and state["attempts"] == 1 and fighter.popularity > 45 and random.random() < 0.6:
                 state["rival_bid"] = round(ask * random.uniform(0.15, 0.4))
-                result_label.config(text=f"{rival.name} has entered the bidding! {fighter.name} now wants more to stay. Attempts left: {state['attempts']}")
+                result_label.config(text=f"{rival.name} has entered the bidding! {self.fighter_display_name(fighter)} now wants more to stay. Attempts left: {state['attempts']}")
                 refresh_meter()
                 return
             if state["attempts"] <= 0:
@@ -2615,9 +2602,9 @@ class EventMixin:
                         fighter, rival, rival_purse, rival_term, rival_bonus,
                         source="Won the bidding after player negotiations broke down",
                     )
-                    result_label.config(text=(f"{fighter.name} signed with {rival.name} instead." if signed else f"{rival.name}'s bid collapsed: {detail}"))
+                    result_label.config(text=(f"{self.fighter_display_name(fighter)} signed with {rival.name} instead." if signed else f"{rival.name}'s bid collapsed: {detail}"))
                 else:
-                    result_label.config(text=(f"{fighter.name} stays retired. The comeback package was not convincing enough." if comeback else f"{fighter.name}'s camp walks away. They wanted a stronger package."))
+                    result_label.config(text=(f"{self.fighter_display_name(fighter)} stays retired. The comeback package was not convincing enough." if comeback else f"{self.fighter_display_name(fighter)}'s camp walks away. They wanted a stronger package."))
                 submit_button.config(state="disabled")
                 return
             if unmet:
@@ -2647,7 +2634,7 @@ class EventMixin:
         self.open_contract_negotiation(fighter, existing=False)
         return
         window = tk.Toplevel(self.root)
-        window.title(f"Negotiate - {fighter.name}")
+        window.title(f"Negotiate - {self.fighter_display_name(fighter)}")
         window.geometry("520x360")
         window.configure(bg=self.colors["chrome"])
 
@@ -2659,7 +2646,7 @@ class EventMixin:
 
         header = ttk.Frame(window, style="Header.TFrame")
         header.pack(fill="x", padx=8, pady=(8, 0))
-        ttk.Label(header, text=f"NEGOTIATION: {fighter.name}", style="ScreenTitle.TLabel").pack(side="left", padx=10, pady=5)
+        ttk.Label(header, text=f"NEGOTIATION: {self.fighter_display_name(fighter)}", style="ScreenTitle.TLabel").pack(side="left", padx=10, pady=5)
         body = ttk.Frame(window, style="Panel.TFrame")
         body.pack(fill="both", expand=True, padx=8, pady=8)
         info = (
@@ -2708,7 +2695,7 @@ class EventMixin:
                 window.destroy()
             else:
                 fighter.negotiation_heat = min(100, fighter.negotiation_heat + 14)
-                result_label.config(text=f"{fighter.name} rejected the offer. {rival.name}'s bid is stronger.")
+                result_label.config(text=f"{self.fighter_display_name(fighter)} rejected the offer. {rival.name}'s bid is stronger.")
 
         ttk.Button(body, text="Submit Offer", style="Accent.TButton", command=submit_offer).pack(side="left", padx=12, pady=12)
         ttk.Button(body, text="Walk Away", command=window.destroy).pack(side="right", padx=12, pady=12)

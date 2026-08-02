@@ -104,6 +104,70 @@ def event_for(app, pair, name):
     return event
 
 
+def exercise_extended_title_live_watch(app, root):
+    """Advance a configured seven-round title fight without losing lines."""
+    pair = ready_pair(app)
+    require(pair, "Could not find a legal title-fight pairing")
+    a, b = pair
+    previous_title_rounds = app.rules.get("title_rounds", 5)
+    app.rules["title_rounds"] = 7
+    fight = {"fighters": [a.name, b.name], "main": True, "title": True, "interim": False, "tier": "Main Event"}
+    event = {
+        "name": "Stability Extended Title Event", "venue": "Regional Arena",
+        "region": app.player_region, "city": "Las Vegas", "month": app.month,
+        "week": app.week, "broadcaster": app.broadcasters[0]["name"], "fights": [fight],
+    }
+    app.assign_event_camps(event)
+    original_stoppage = app.check_fight_stoppage
+    original_corner_stoppage = app.check_corner_stoppage
+    try:
+        # The watcher regression is about the complete extended presentation;
+        # keep the fixture on the decision path so every boundary is exercised.
+        app.check_fight_stoppage = lambda *args, **kwargs: None
+        app.check_corner_stoppage = lambda *args, **kwargs: None
+        package = app.prepare_event_result(event)
+    finally:
+        app.check_fight_stoppage = original_stoppage
+        app.check_corner_stoppage = original_corner_stoppage
+    log = package["fight_logs"][0]
+    require(log.get("title") and len([line for line in log["lines"] if line.startswith("Round ") and "summary:" not in line.lower()]) == 7,
+            "Extended title-fight fixture did not produce seven round introductions")
+    require(sum(" summary:" in line.lower() for line in log["lines"]) == 7,
+            "Extended title-fight fixture did not produce seven round summaries")
+
+    app.open_live_fight_window(event, package, apply_results=False)
+    root.update_idletasks()
+    live_window = next(
+        child for child in root.winfo_children()
+        if isinstance(child, tk.Toplevel)
+        and any(widget.winfo_class() == "TButton" and widget.cget("text") == "Next Round" for widget in descendants(child))
+    )
+    commentary = next(widget for widget in descendants(live_window) if widget.winfo_class() == "Text")
+    next_round = next(widget for widget in descendants(live_window) if widget.winfo_class() == "TButton" and widget.cget("text") == "Next Round")
+    for round_no in range(1, 8):
+        next_round.invoke()
+        root.update_idletasks()
+        rendered = commentary.get("1.0", "end-1c")
+        raw_summary = next(line for line in log["lines"] if line.startswith(f"Round {round_no} summary:"))
+        expected_summary = app.display_fighter_names_in_text(raw_summary, log)
+        require(f"Round {round_no}:" in rendered, f"Live title watch lost Round {round_no}")
+        require(expected_summary in rendered, f"Live title watch collapsed Round {round_no} commentary")
+        if round_no < 7:
+            require("OFFICIAL SCORECARDS - RESULT CONFIRMED" not in rendered,
+                    "Live title watch revealed scorecards before the final round")
+    # The final-round control stops on the round summary; one more advance
+    # carries the watcher through the horn, decision, metrics, and result.
+    next_round.invoke()
+    root.update_idletasks()
+    rendered = commentary.get("1.0", "end-1c")
+    require(rendered.count("OFFICIAL SCORECARDS - RESULT CONFIRMED") == 1,
+            "Live title watch duplicated or lost the official scorecard reveal")
+    require(rendered.count("Judge 1 [") == 1 and "FIGHT METRICS" in rendered and "Result:" in rendered,
+            "Live title watch lost final scorecard, metrics, or result text")
+    close_secondary_windows(root)
+    app.rules["title_rounds"] = previous_title_rounds
+
+
 def exercise_all_main_screens(app, root):
     for name in app.tab_pages:
         app.select_tab(name)
@@ -470,7 +534,7 @@ def exercise_academy_and_sport_edge_cases(app):
     app.repair_academy(repaired)
     require(rng_after == rng_before == random.getstate(), "Academy legacy repair consumed the simulation RNG")
     require(json.loads(json.dumps(repaired)) == first_repair, "Academy legacy repair was not deterministic or idempotent")
-    require(repaired.get("schema_version") == 4, "Academy legacy repair did not migrate the schema version")
+    require(repaired.get("schema_version") == 5, "Academy legacy repair did not migrate the schema version")
     require(repaired.get("auto_card_min_bouts") == 2, "Academy legacy repair did not add the auto-card fight threshold")
     require(repaired.get("showcase_weeks") >= 6, "Legacy academy retained the overactive two-week showcase schedule")
     require(repaired["prospects"][0].get("prospect_id"), "Academy legacy repair did not create a stable prospect ID")
@@ -537,6 +601,19 @@ def exercise_academy_and_sport_edge_cases(app):
     app.month, app.week = (first_card_week + 6 - 1) // 4 + 1, (first_card_week + 6 - 1) % 4 + 1
     require(len(app.run_academy_showcase_card(full_academy)) == 4, "Recovered academy prospects were not eligible after six weeks")
     app.month, app.week = saved_date
+
+    # Academy decisions add player agency between cards without bypassing the
+    # normal prospect ledger. The low-risk coaching choice should resolve,
+    # improve the prospect, and remain in the academy story history.
+    full_academy["active_challenge"] = {}
+    challenge = app.create_academy_challenge(full_academy)
+    require(challenge and challenge.get("prospect_id"), "Academy did not surface a development challenge")
+    challenged = next(item for item in full_academy["prospects"] if item.get("prospect_id") == challenge["prospect_id"])
+    confidence_before = challenged.get("confidence", 0)
+    ok, challenge_note = app.resolve_academy_challenge("mentor", full_academy)
+    require(ok and challenge_note and not full_academy.get("active_challenge"), "Academy challenge did not resolve through the coaching choice")
+    require(challenged.get("confidence", 0) >= confidence_before, "Academy coaching decision reduced confidence unexpectedly")
+    require(full_academy.get("challenge_history") and full_academy["challenge_history"][0].get("choice") == "mentor", "Academy challenge resolution was not recorded")
 
     # Scout quality should affect the distribution, not guarantee an elite lead
     # on each individual roll.  Fixed seeds keep this statistical check stable.
@@ -625,7 +702,7 @@ def exercise_save_roundtrip(app):
     })
     serialized = app.serialize_world()
     serialized_academy = serialized.get("academy", {})
-    require(serialized_academy.get("schema_version") == 4, "Academy schema version was omitted from the save payload")
+    require(serialized_academy.get("schema_version") == 5, "Academy schema version was omitted from the save payload")
     require(len(serialized_academy.get("prospects", [])) == 8, "Full academy roster was omitted from the save payload")
     require(all(item.get("prospect_id") for item in serialized_academy["prospects"]), "Academy prospect IDs were omitted from the save payload")
     require(all(item.get("amateur_bout_records") for item in serialized_academy["prospects"]), "Structured amateur records were omitted from the save payload")
@@ -662,7 +739,8 @@ def exercise_save_roundtrip(app):
         restored_replay = loaded.result_records[0]
         require(restored_replay.get("log") == replay_package["log"] and restored_replay.get("fight_logs") == replay_package["fight_logs"], "Archived replay detail was not restored after load")
         loaded_academy = loaded.academy
-        require(loaded_academy.get("schema_version") == 4, "Academy schema version did not survive save roundtrip")
+        require(loaded_academy.get("schema_version") == 5, "Academy schema version did not survive save roundtrip")
+        require(loaded_academy.get("challenge_history") == serialized_academy.get("challenge_history"), "Academy challenge history changed after save roundtrip")
         require([item.get("prospect_id") for item in loaded_academy.get("prospects", [])] == expected_academy_ids, "Academy prospect identity changed after save roundtrip")
         require(
             {item["prospect_id"]: item.get("amateur_bout_records", []) for item in loaded_academy["prospects"]} == expected_academy_records,
@@ -1139,6 +1217,7 @@ def main():
         exercise_all_main_screens(app, root)
         exercise_free_agent_viewport_and_scroll(app, root)
         exercise_media_story_reader(app, root)
+        exercise_extended_title_live_watch(app, root)
         exercise_normal_and_retirement_events(app, root)
         exercise_academy_and_sport_edge_cases(app)
         exercise_talent_ecosystem_balance(app)

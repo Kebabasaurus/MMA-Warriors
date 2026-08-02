@@ -1,6 +1,29 @@
 # Changelog
 
-## Unreleased - Matt-Dev
+## 3.0.6 - 2026-08-01
+
+- Expanded staff into a real employment system: every staff role now has a documented gameplay effect, staff quality and morale influence those effects, and the Staff screen supports hiring, firing, severance, contract offers, renewal negotiations, and an Expiring Contracts tab. Legacy saves receive safe staff contract defaults.
+- Connected Broadcast Producers, Drug Testing Officers, Doctors, and the existing scouting, marketing, matchmaking, and talent-relations roles to visible simulation outcomes including broadcast reach, testing cost and accuracy, medical costs, recovery, card building, scouting, promotion, and fighter negotiations.
+- Balanced staff economics after audit: Talent Relations now gives quality-scaled cash leverage in fighter and transfer talks, compliance staff reduce manual testing costs as well as event costs, and Doctor recovery benefits scale across specialist quality instead of using a single threshold.
+- Expanded Fighting Academy engagement with recurring development challenges. Players can choose specialist camps, pressure-test prospects in amateur bouts, or align coaching plans; decisions affect cost, fatigue, confidence, development, amateur experience, reputation, and the saved academy story history.
+- Fixed secondary and popup data tables whose headings did not sort. Every `Treeview` now receives the shared numeric, date, record, and text sorting behavior, including Overall and other rating columns.
+- Added an explicit Dark Mode theme as the default presentation, with neutral dark surfaces and readable gold/red accents. Save, database, and region list controls now start in the selected palette instead of flashing light gray.
+- Fixed AI promotion takeovers carrying stale expired contracts into the player Contracts screen; inherited zero-month deals are now renewed for 12-24 months so the takeover does not mass-release the promotion's roster.
+- Updated `Build Portable.bat` so every portable build validates and includes `MMA Warriors Database Editor.exe` alongside the game.
+- Expanded the MMA Child Promotions manager with promotion health columns, AI operating mode, roster search, gender/division/status filters, contract and potential columns, fighter detail readouts, and double-click profile access.
+- Fixed child-management ownership filtering, expired child-fighter transfers, parent profit-share ledger entries, and status filters hiding all parent loan candidates.
+- Audited the opening fighter identities: all 4,850 live fighter objects have unique `fighter_id` values, while the 56 repeated base-name groups are intentional promotion/legend/free-agent career snapshots. Synthetic `Legend`, `FA`, and `BAMMA` suffixes are now hidden from roster, market, contract, scouting, profile, child-promotion, and fight-replay displays; raw names remain available internally for save compatibility and identity resolution.
+- Fixed live five-round title-fight presentation trimming too much round-summary text. The watcher still keeps official judge cards sealed until the result, but each round now retains its unofficial cumulative score and gas telemetry, and a regression advances a title fight through all five rounds to verify summaries, scorecards, metrics, and the result remain visible.
+- Changed Fight Night playback to full commentary mode. The engine no longer deduplicates repeated calls or inserts middle-exchange omission markers, and the live watcher renders the original round-summary lines instead of replacing them with condensed broadcast summaries. Official scorecards still reveal only at the result.
+- Verified player-configured extended title fights: seven-round title/main-event cards now retain every round introduction, transition, summary, scorecard, metric, and final result in the live watcher.
+- Rebuilt the `Matt-Dev` portable package with the full-commentary watcher and included `MMA Warriors Database Editor.exe`; `Portable Check.bat` passed while preserving packaged saves, databases, and logs.
+
+### MMA AI Child Promotions
+
+- Added player-funded MMA child promotions. The player chooses a large startup budget, a roster-building identity such as Youth Prospects or Big Names, and a 0-100% share of future child-promotion profits returned to the parent company.
+- The child opens with a real MMA roster signed from the free-agent market, then runs through the existing AI promotion engine for matchmaking, cards, contracts, development, finance, and long-term strategy.
+- Added a Companies-screen manager for launch, strategy and profit-share changes, parent-to-child fighter loans, recalls, and parent transfers of AI-signed child fighters. Loaned fighters remain parent-owned and cannot be released, replaced, contract-expired, retired, or removed by a child promotion's normal AI roster reviews.
+- Added save-compatible child metadata, protected-loan repair, profit-distribution tracking, and smoke coverage for launch, finance, loans, recalls, and round-trip persistence.
 
 ### Fight Excitement
 
