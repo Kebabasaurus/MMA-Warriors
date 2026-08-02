@@ -9809,7 +9809,8 @@ class WorldMixin:
                 roman += symbol
                 remaining -= value
         suffix = f" {roman}" if meetings else ""
-        return f"{a.name} vs {b.name}{suffix}"
+        display_name = getattr(self, "fighter_display_name", lambda fighter: fighter.name)
+        return f"{display_name(a)} vs {display_name(b)}{suffix}"
 
     def fighter_needs_matchmaking_rebuild(self, fighter):
         """Flag a poor run for gentler opposition, not fabricated results."""

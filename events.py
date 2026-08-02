@@ -1710,7 +1710,7 @@ class EventMixin:
             local_copy = str((state.get("crowd_profile", {}) or {}).get("summary", "") or "")
             local_copy = f" {local_copy}" if local_copy else ""
             return (f"{stakes}: {a.style} from {a.camp or 'independent camp'} meets {b.style} from {b.camp or 'independent camp'}. "
-                    f"Recent form {a.name}: {form_text(a)} | {b.name}: {form_text(b)}. Odds {self.matchup_odds(a, b)}.{rivalry_copy}{local_copy}")
+                    f"Recent form {self.fighter_display_name(a)}: {form_text(a)} | {self.fighter_display_name(b)}: {form_text(b)}. Odds {self.matchup_odds(a, b)}.{rivalry_copy}{local_copy}")
 
         def broadcast_rundown(index, log):
             """Give each bout a concise place in the event broadcast."""
@@ -1726,7 +1726,7 @@ class EventMixin:
                 lead = f"Broadcast desk: the card is underway. {a_name} and {b_name} set the first impression for the arena."
             else:
                 lead = f"Broadcast desk: {position}. {a_name} and {b_name} take over with {stakes} at stake."
-            return lead + (" This is the final fight of the broadcast." if not remaining else f" {remaining} bout{'s' if remaining != 1 else ''} remain on the card.")
+            return self.display_fighter_names_in_text(lead + (" This is the final fight of the broadcast." if not remaining else f" {remaining} bout{'s' if remaining != 1 else ''} remain on the card."), log)
 
         def reset_result_ribbon():
             result_winner_label.config(text="")
@@ -1748,10 +1748,12 @@ class EventMixin:
             label_chip.config(text=log.get("label", ""))
             a_name, b_name = log.get("a", ""), log.get("b", "")
             if a_name and b_name:
-                left_name.config(text=f"{a_name}\n{log.get('a_record', '')}")
+                a = self.result_fighter(a_name, log.get("a_id", ""), log.get("sport", ""), log.get("weight", ""))
+                b = self.result_fighter(b_name, log.get("b_id", ""), log.get("sport", ""), log.get("weight", ""))
+                left_name.config(text=f"{self.fighter_display_name(a) if a else self.display_fighter_name_value(a_name)}\n{log.get('a_record', '')}")
                 left_ovr.config(text=rating_text(log.get("a_rating", {})))
                 vs_label.config(text="VS")
-                right_name.config(text=f"{b_name}\n{log.get('b_record', '')}")
+                right_name.config(text=f"{self.fighter_display_name(b) if b else self.display_fighter_name_value(b_name)}\n{log.get('b_record', '')}")
                 right_ovr.config(text=rating_text(log.get("b_rating", {})))
                 left_title_status.config(text=log.get("a_title_status", ""))
                 right_title_status.config(text=log.get("b_title_status", ""))
@@ -1771,8 +1773,6 @@ class EventMixin:
             reset_result_ribbon()
             clock_label.config(text=f"{int(self.rules.get('round_length', 5))}:00")
             if a_name and b_name:
-                a = self.result_fighter(a_name, log.get("a_id", ""), log.get("sport", ""), log.get("weight", ""))
-                b = self.result_fighter(b_name, log.get("b_id", ""), log.get("sport", ""), log.get("weight", ""))
                 if a:
                     draw_intro_portrait(left_portrait, a, "red")
                 if b:

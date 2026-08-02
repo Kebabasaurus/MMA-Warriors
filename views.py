@@ -268,16 +268,42 @@ class ViewMixin:
         ]).lower()
         return query.lower() in text
 
+    def display_fighter_name_value(self, value):
+        """Render a stored fighter name without exposing its internal snapshot suffix."""
+        raw_name = re.sub(r"\s+\((?:C|IC|D)\)", "", str(value or "").strip()).strip()
+        duplicate = bool(re.search(r"\s+(?:Legend|FA|BAMMA)$", raw_name, flags=re.IGNORECASE))
+        name = re.sub(r"\s+(?:Legend|FA|BAMMA)$", "", raw_name, flags=re.IGNORECASE).strip()
+        return f"{name} (D)" if duplicate else name
+
     def fighter_display_name(self, fighter):
         # Source markers were added to a few seeded names to keep intentional
-        # career snapshots distinct internally. They are metadata, not part of
-        # the name a player should have to read in every table.
-        name = re.sub(r"\s+(?:Legend|FA|BAMMA)$", "", str(fighter.name), flags=re.IGNORECASE).strip()
+        # career snapshots distinct internally. Keep that identity readable
+        # without exposing the raw suffix in player-facing screens.
+        name = self.display_fighter_name_value(fighter.name)
         if fighter.champion:
             return f"{name} (C)"
         if getattr(fighter, "interim_champion", False):
             return f"{name} (IC)"
         return name
+
+    def display_fighter_text(self, text):
+        """Apply the compact duplicate marker to stored narrative text at render time."""
+        rendered = str(text or "")
+        for tag in ("C", "IC", "D"):
+            rendered = re.sub(rf"\s+\({tag}\)(?:\s+\({tag}\))+", f" ({tag})", rendered)
+        fighters = getattr(self, "all_database_fighters", None)
+        if not callable(fighters):
+            return rendered
+        try:
+            candidates = fighters(include_retired=True)
+        except TypeError:
+            candidates = fighters()
+        for fighter in sorted(candidates or [], key=lambda item: len(str(getattr(item, "name", ""))), reverse=True):
+            raw_name = str(getattr(fighter, "name", "") or "")
+            display_name = self.fighter_display_name(fighter)
+            if raw_name and raw_name != display_name and re.search(r"\s+(?:Legend|FA|BAMMA)$", raw_name, flags=re.IGNORECASE):
+                rendered = re.sub(re.escape(raw_name), display_name, rendered)
+        return rendered
 
     def active_player_division_weights(self, gender="All"):
         """Return only divisions the player has not explicitly closed."""
@@ -915,7 +941,7 @@ class ViewMixin:
             value.configure(text=str(score))
 
     def clean_display_fighter_name(self, value):
-        value = str(value).replace(" (C)", "").replace(" (IC)", "").strip()
+        value = str(value).replace(" (C)", "").replace(" (IC)", "").replace(" (D)", "").strip()
         return re.sub(r"\s+(?:Legend|FA|BAMMA)$", "", value, flags=re.IGNORECASE).strip()
 
     def open_tree_fighter_profile(self, tree, name_column="name"):
@@ -1114,7 +1140,7 @@ class ViewMixin:
         title_origin = self.fighter_title_reign_origin(fighter, company)
         title_origin_line = f"Championship Reign: {title_origin}\n" if title_origin else ""
         return (
-            f"{fighter.name}\n"
+            f"{self.fighter_display_name(fighter)}\n"
             f"{fighter.gender} {self.fighter_display_division(fighter)} | {company}\n"
             f"Record: {fighter.record} | Age: {fighter.age} | Height: {fighter.height or '-'} | Nationality: {fighter.nationality}\n"
             f"Based In: {fighter.region}\n"
@@ -2240,7 +2266,7 @@ class ViewMixin:
                 result = "-"
             method = text.split(" by ", 1)[1].split(" at ", 1)[0] if " by " in text else "Draw" if result == "D" else "-"
             context = self.fighter_history_card_context(fighter, text, opponent_fighter or opponent_name)
-            opponent = context.get("opponent_name", "-") or (opponent_fighter.name if opponent_fighter else "-")
+            opponent = context.get("opponent_name", "-") or (self.fighter_display_name(opponent_fighter) if opponent_fighter else "-")
             opponent_fighter = history_opponent(text, context) if opponent != "-" else opponent_fighter
             log_result = ""
             for fight_log in (context.get("record", {}) or {}).get("fight_logs", []):
@@ -2314,7 +2340,7 @@ class ViewMixin:
                 "This amateur result is separate from the professional record and has no retained event replay."
             )
             rows.append({
-                "result": result, "level": "Amateur", "opponent": opponent_name, "opponent_fighter": opponent_fighter,
+                "result": result, "level": "Amateur", "opponent": self.fighter_display_name(opponent_fighter) if opponent_fighter else self.display_fighter_name_value(opponent_name), "opponent_fighter": opponent_fighter,
                 "date": self.format_game_date_text(raw_date), "stakes": "AMATEUR", "opponent_record": "-", "event": event,
                 "fighter_rating": "-", "opponent_rating": "-", "method": method, "scorecard": "-",
                 "weight": str(record.get("weight", "Youth Openweight") or "Youth Openweight"), "detail": detail, "card": None,
@@ -2555,7 +2581,7 @@ class ViewMixin:
                     action_buttons.append(button)
             else:
                 history = "\n".join((getattr(fighter, "career_arc_history", None) or [])[-4:]) or "No long-term career story has been triggered yet."
-                detail.insert("end", f"{fighter.name}\nCareer goal: {fighter.career_goal or 'Undeclared'} ({fighter.career_goal_progress}%)\nPersona: {fighter.negotiation_persona} | Agent: {fighter.agent_name}\n\nCareer-story history:\n{history}\n\nGoal history:\n{goal_history}")
+                detail.insert("end", f"{self.fighter_display_name(fighter)}\nCareer goal: {fighter.career_goal or 'Undeclared'} ({fighter.career_goal_progress}%)\nPersona: {fighter.negotiation_persona} | Agent: {fighter.agent_name}\n\nCareer-story history:\n{history}\n\nGoal history:\n{goal_history}")
             detail.config(state="disabled")
 
         def act(choice):
@@ -2915,9 +2941,9 @@ class ViewMixin:
         if meetings:
             last_met = f"; last met {self.format_game_date(latest_month, 1)}" if latest_month else ""
             next_meeting = self.matchup_display_name(a, b).rsplit(" ", 1)[-1]
-            self.matchmaking_history_var.set(f"REMATCH {next_meeting}: {a.name} and {b.name} have {meetings} prior meeting{'s' if meetings != 1 else ''}{last_met}.")
+            self.matchmaking_history_var.set(f"REMATCH {next_meeting}: {self.fighter_display_name(a)} and {self.fighter_display_name(b)} have {meetings} prior meeting{'s' if meetings != 1 else ''}{last_met}.")
         else:
-            self.matchmaking_history_var.set(f"FIRST MEETING: {a.name} vs {b.name}.")
+            self.matchmaking_history_var.set(f"FIRST MEETING: {self.fighter_display_name(a)} vs {self.fighter_display_name(b)}.")
 
     def champion_non_title_warning_text(self, fighters, title_selected=None, special_belt_selected=None):
         """Explain when a belt holder is being booked without defending their championship."""
@@ -2928,9 +2954,9 @@ class ViewMixin:
             if not fighter:
                 continue
             if getattr(fighter, "champion", False):
-                divisional_holders.append(f"{fighter.name} (champion)")
+                divisional_holders.append(f"{self.fighter_display_name(fighter)} (champion)")
             elif getattr(fighter, "interim_champion", False):
-                divisional_holders.append(f"{fighter.name} (interim champion)")
+                divisional_holders.append(f"{self.fighter_display_name(fighter)} (interim champion)")
         special_choice = special_belt_selected
         if special_choice is None:
             special_choice = self.special_belt_choice.get() if hasattr(self, "special_belt_choice") else "None"
@@ -3806,7 +3832,7 @@ class ViewMixin:
             entries = list(getattr(self, "world_chronicle", []))[:60]
             self._world_news_entries = entries or [{"type": "News", "headline": item, "detail": item} for item in self.news[:60]]
             for entry in self._world_news_entries:
-                self.world_news_list.insert("end", f"[{entry.get('type', 'News')}] {entry.get('headline', '')}")
+                self.world_news_list.insert("end", f"[{entry.get('type', 'News')}] {self.display_fighter_text(entry.get('headline', ''))}")
             if self._world_news_entries:
                 self.world_news_list.selection_set(0)
             self.show_selected_world_story()
@@ -4172,7 +4198,8 @@ class ViewMixin:
         self.world_news_detail.config(state="normal")
         self.world_news_detail.delete("1.0", "end")
         if entry:
-            self.world_news_detail.insert("end", f"{self.format_game_date_text(entry.get('detail', entry.get('headline', '')))}\n\n{self.format_game_date(entry.get('month', self.month), entry.get('week', self.week))}")
+            detail = self.display_fighter_text(entry.get('detail', entry.get('headline', '')))
+            self.world_news_detail.insert("end", f"{self.format_game_date_text(detail)}\n\n{self.format_game_date(entry.get('month', self.month), entry.get('week', self.week))}")
         self.world_news_detail.config(state="disabled")
 
     def open_selected_world_story_context(self):
@@ -8180,17 +8207,17 @@ class ViewMixin:
         overview.pack(fill="both", expand=True)
         strategy, executive = data["strategy"], data["executive"]
         champs = list(data["belts"].values()) if data.get("combat_sport") else [fighter.name for fighter in data["roster"] if fighter.champion]
-        champs = [name for name in champs if name]
+        champs = [self.display_fighter_name_value(name) for name in champs if name]
         top = sorted(data["roster"], key=self.p4p_value, reverse=True)[:5]
         overview.insert("end", f"{data['reputation']}\n\nRegion: {data['region']}\nCash reserve: ${data['cash']:,}\nRoster: {len(data['roster'])} fighters\nChampions: {', '.join(champs) if champs else 'None'}\n\n")
         if strategy:
             overview.insert("end", f"Identity: {strategy.get('identity', 'Balanced Growth')}\nCurrent direction: {strategy.get('current_mode', 'Balanced')}\nMedia voice: {strategy.get('media_voice', 'Reliable fights')}\n\n")
             roadmap = strategy.get("title_roadmap", []) or []
             if roadmap:
-                overview.insert("end", "TITLE ROADMAP\n" + "\n".join(f"- {row.get('division')}: {row.get('champion')} vs {row.get('contender')} ({row.get('status')})" for row in roadmap[:6]) + "\n\n")
+                overview.insert("end", "TITLE ROADMAP\n" + "\n".join(f"- {row.get('division')}: {self.display_fighter_name_value(row.get('champion'))} vs {self.display_fighter_name_value(row.get('contender'))} ({row.get('status')})" for row in roadmap[:6]) + "\n\n")
         if executive:
             overview.insert("end", f"Executive: {executive.get('name', 'Unknown')} ({executive.get('archetype', 'Operator')})\nBoard security: {executive.get('job_security', 0)}%\n\n")
-        overview.insert("end", "TOP FIGHTERS\n" + "\n".join(f"- {fighter.name} | {fighter.weight} | {fighter.record} | OVR {fighter.overall}" for fighter in top))
+        overview.insert("end", "TOP FIGHTERS\n" + "\n".join(f"- {self.fighter_display_name(fighter)} | {fighter.weight} | {fighter.record} | OVR {fighter.overall}" for fighter in top))
         overview.config(state="disabled")
 
         boardroom = tk.Text(tabs["Boardroom"], wrap="word", font=("Tahoma", 10), bg=self.colors["panel_dark"], fg=self.colors["text"], padx=14, pady=14)
@@ -8632,7 +8659,7 @@ class ViewMixin:
             text.insert("end", "-" * 72 + "\n")
             for fighter in rows[:60]:
                 score = self.compute_legacy_score(fighter)
-                text.insert("end", f"{fighter.name[:30]:30} {score:>6}   {fighter.record:9} {fighter.title_wins:>2}/{fighter.title_defenses:<3} {fighter.award_count:>3}\n")
+                text.insert("end", f"{self.fighter_display_name(fighter)[:30]:30} {score:>6}   {fighter.record:9} {fighter.title_wins:>2}/{fighter.title_defenses:<3} {fighter.award_count:>3}\n")
             text.config(state="disabled")
 
         legacy_sport.trace_add("write", refresh_legacy_fighters)
@@ -8655,14 +8682,14 @@ class ViewMixin:
         for fight_log in record.get("fight_logs", []) or []:
             if "MAIN" in str(fight_log.get("label", "")).upper():
                 if fight_log.get("a"):
-                    return f"{fight_log['a']} vs {fight_log['b']}"
-                return str(fight_log.get("heading", ""))[:60]
+                    return self.display_fighter_text(f"{fight_log['a']} vs {fight_log['b']}")
+                return self.display_fighter_text(str(fight_log.get("heading", ""))[:60])
         fight_logs = record.get("fight_logs", []) or []
         if fight_logs:
             last = fight_logs[-1]
             if last.get("a"):
-                return f"{last['a']} vs {last['b']}"
-            return str(last.get("heading", ""))[:60]
+                return self.display_fighter_text(f"{last['a']} vs {last['b']}")
+            return self.display_fighter_text(str(last.get("heading", ""))[:60])
         return ""
 
     def result_bout_lines(self, record):
@@ -8800,6 +8827,8 @@ class ViewMixin:
     def display_fighter_names_in_text(self, text, fight_log):
         """Replace stored fighter references only at the presentation boundary."""
         text = str(text or "")
+        for tag in ("C", "IC", "D"):
+            text = re.sub(rf"\s+\({tag}\)(?:\s+\({tag}\))+", f" ({tag})", text)
         for side in ("a", "b"):
             raw_name = str(fight_log.get(side, "") or "")
             fighter = self.result_fighter(
@@ -8809,7 +8838,9 @@ class ViewMixin:
                 fight_log.get("weight", ""),
             )
             if fighter and raw_name:
-                text = text.replace(raw_name, self.fighter_display_name(fighter))
+                display_name = self.fighter_display_name(fighter)
+                suffix_guard = "" if re.search(r"\s+(?:Legend|FA|BAMMA)$", raw_name, flags=re.IGNORECASE) else r"(?!\s+\((?:C|IC|D)\))"
+                text = re.sub(re.escape(raw_name) + suffix_guard, display_name, text)
         return text
 
     def open_result_card_window(self, record):
@@ -9135,7 +9166,7 @@ class ViewMixin:
         self.belt_history_text.insert("end", f"{key} Belt History\n")
         if entries:
             for entry in entries[:8]:
-                fighter = f" - {entry.get('fighter')}" if entry.get("fighter") else ""
+                fighter = f" - {self.display_fighter_name_value(entry.get('fighter'))}" if entry.get("fighter") else ""
                 note = f" ({entry.get('note')})" if entry.get("note") else ""
                 self.belt_history_text.insert("end", f"{entry.get('date', '')}: {entry.get('action', '')}{fighter}{note}\n")
         else:
@@ -9458,10 +9489,12 @@ class ViewMixin:
         else:
             item["seen"] = True
             fighter = self.inbox_related_fighter(item)
-            context = f"\n\nRelated fighter: {fighter.name} ({fighter.gender} {fighter.weight})" if fighter else ""
             received = self.format_game_date(item.get("created_month", self.month), item.get("created_week", 1))
             action_status = "Needs action" if self.inbox_item_needs_action(item) else ("Archived" if item.get("resolved") else "For information")
-            self.inbox_detail.insert("end", f"{item.get('type', 'Mail').upper()} | RECEIVED {received}\n{item.get('subject', 'Untitled')}\n\n{item.get('body', '')}{context}\n\nStatus: {action_status}")
+            subject = self.display_fighter_text(item.get('subject', 'Untitled'))
+            body = self.display_fighter_text(item.get('body', ''))
+            context = f"\n\nRelated fighter: {self.fighter_display_name(fighter)} ({fighter.gender} {fighter.weight})" if fighter else ""
+            self.inbox_detail.insert("end", f"{item.get('type', 'Mail').upper()} | RECEIVED {received}\n{subject}\n\n{body}{context}\n\nStatus: {action_status}")
             if hasattr(self, "inbox_detail_hint_var"):
                 self.inbox_detail_hint_var.set(f"Viewing: {item.get('subject', 'Untitled')} • Double-click the inbox row or use Open Context for related screens.")
         self.inbox_detail.config(state="disabled")

@@ -105,6 +105,29 @@ class WorldReviewHarness(WorldMixin):
 
 
 class UIDataRegressionTests(unittest.TestCase):
+    def test_duplicate_fighter_names_use_compact_display_marker(self):
+        harness = ViewHarness()
+        duplicate = SimpleNamespace(name="Miesha Tate BAMMA", champion=False, interim_champion=False)
+        champion = SimpleNamespace(name="Miesha Tate BAMMA", champion=True, interim_champion=False)
+        harness.all_database_fighters = lambda include_retired=True: [duplicate]
+
+        self.assertEqual("Miesha Tate (D)", harness.fighter_display_name(duplicate))
+        self.assertEqual("Miesha Tate (D) (C)", harness.fighter_display_name(champion))
+        self.assertEqual("Miesha Tate", harness.clean_display_fighter_name("Miesha Tate BAMMA (D)"))
+        self.assertEqual("Miesha Tate (D) won the belt", harness.display_fighter_text("Miesha Tate BAMMA won the belt"))
+
+    def test_fight_night_name_rendering_does_not_duplicate_champion_tag(self):
+        harness = ViewHarness()
+        champion = SimpleNamespace(name="Magomed Zaynukov", champion=True, interim_champion=False)
+        harness.result_fighter = lambda *_args: champion
+        rendered = harness.display_fighter_names_in_text(
+            "Magomed Zaynukov (C) (C) probes with the lead hand.",
+            {"a": "Magomed Zaynukov", "b": "Christian Lee"},
+        )
+
+        self.assertEqual("Magomed Zaynukov (C) probes with the lead hand.", rendered)
+        self.assertEqual("Magomed Zaynukov (C)", harness.fighter_display_name(SimpleNamespace(name="Magomed Zaynukov (C)", champion=True, interim_champion=False)))
+
     def test_ai_roster_reviews_protect_scheduled_fighters(self):
         fighters = [
             SimpleNamespace(

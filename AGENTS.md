@@ -789,6 +789,12 @@ Every `ttk.Treeview` is sortable by heading. Main tabs may call `make_tree_sorta
 custom behavior, but secondary and popup tables rely on the shared Treeview class fallback in
 `ui.py`; do not add a new column table with permanently static headings.
 
+Fighter presentation is a boundary concern. `fighter_display_name()` and
+`display_fighter_names_in_text()` must be idempotent: stored names may be raw or may already carry
+`(C)`, `(IC)`, or `(D)` from an older presentation path, but a screen must render each marker once.
+Keep event logs and identity matching raw; normalize only when populating labels, tables, news,
+inbox detail, belt history, or Fight Night commentary.
+
 AI roster reviews run during calendar advancement and must use
 `scheduled_fighter_references(include_booked=True)` before considering a release or upgrade.
 That helper returns durable fighter IDs with legacy-name fallback; keep both review passes safe for
@@ -799,10 +805,11 @@ fail on an undefined schedule set.
 
 - Avoid duplicate fighters across companies unless intentionally represented as a historical/younger
   or market snapshot. Keep each object on its own durable `fighter_id`; source markers such as
-  `Legend`, `FA`, and `BAMMA` are internal seed metadata and must not be baked into the primary
-  player-facing name. Use company, market, division, or profile context when the player needs to
-  distinguish same-name snapshots. Audit the opening world for duplicate IDs and normalized base
-  names before changing seeded records.
+  `Legend`, `FA`, and `BAMMA` are internal seed metadata and must not be exposed as raw suffixes.
+  The shared display formatter renders a compact `(D)` marker after duplicate names, including
+  narrative and belt-history text. Use company, market, division, or profile context when the
+  player needs to distinguish same-name snapshots. Audit the opening world for duplicate IDs and
+  normalized base names before changing seeded records.
 - Never create names with a `2` suffix as a collision workaround.
 - Keep male and female fighters correctly gendered.
 - When adding women whose names are absent from `FEMALE_FIRST_NAMES`, update `infer_gender`.

@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.0.7 - 2026-08-02
+
+This release carries the complete 3.0.6 Matt-Dev and Brett-Dev feature merge, including child
+promotions, staff contracts and effects, academy progression, Dark Mode, sortable tables, finance
+and save integrity fixes, extended Fight Night commentary, and the packaged Database Editor.
+
+- Replaced exposed duplicate-source suffixes such as `BAMMA`, `FA`, and `Legend` with a compact
+  `(D)` marker after the fighter's display name across player-facing screens while preserving raw
+  names for save compatibility and identity resolution.
+- Made champion, interim-champion, and duplicate markers idempotent across live Fight Night
+  commentary, scoreboards, archived replays, official results, profiles, ledgers, news, inboxes,
+  and matchup text. Existing output such as `(C) (C)` now renders with one champion marker.
+- Included the spectator calendar crash fix, all merged child-promotion, staff, academy, finance,
+  sorting, theme, save, stability, and five-round presentation fixes from the 3.0.6 release line.
+- Rebuilt and validated both portable executables: `MMA Warriors.exe` and
+  `MMA Warriors Database Editor.exe`.
+
 ## 3.0.6 - 2026-08-01
 
 - Fixed a packaged calendar-advance crash in AI roster cuts and upgrade reviews. Scheduled fighters are now resolved through the shared durable-ID/legacy-name reference set before either review considers releasing or replacing them.
