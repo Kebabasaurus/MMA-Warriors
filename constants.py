@@ -10,7 +10,7 @@ ASSET_DIR = BUNDLE_DIR / "assets" if (BUNDLE_DIR / "assets").exists() else APP_D
 APP_ICON_ICO = ASSET_DIR / "app_icon.ico"
 APP_ICON_PNG = ASSET_DIR / "app_icon.png"
 GAME_NAME = "MMA Warriors"
-GAME_VERSION = "3.0.7"
+GAME_VERSION = "3.0.8"
 GAME_TITLE = f"{GAME_NAME} v{GAME_VERSION}"
 AI_CHILD_PROMOTION_MIN_CAPITAL = 1_000_000
 AI_CHILD_PROMOTION_MAX_CAPITAL = 25_000_000
@@ -118,6 +118,24 @@ FIGHT_COMMENTARY_ROUND_TAIL_LINES = 8
 WEIGHTS = ["Flyweight", "Bantamweight", "Featherweight", "Lightweight", "Welterweight", "Middleweight", "Light Heavyweight", "Heavyweight"]
 SCOUTING_SEARCH_FOCUSES = ("Free Agent Pool", "Rival Rosters", "Regional Prospects", "Young Prospects", "Any Market")
 SCOUTING_RECOMMENDATION_MODES = ("Balanced", "Aggressive", "Strict", "Prospect Focus", "Value Focus", "Roster Need")
+# What each verdict actually instructs the player to do. Shown beside every
+# verdict so "MONITOR" is never read as a softer "PASS".
+SCOUTING_VERDICT_DESCRIPTORS = {
+    "RECOMMEND SIGNING": "Open negotiations now — the scout rates them an upgrade on what you already have in the division at a price you can carry.",
+    "MONITOR": "Worth tracking, not worth an offer today. Shortlist them and revisit after their next fight, a price drop, or a sharper report.",
+    "PASS": "Do not pursue. The projected contribution does not justify the roster spot and wage, or a red flag blocks the deal outright.",
+    "PENDING": "No verdict yet — the assignment is still running. Wait for the report to complete.",
+    "REPORT COMPLETE": "The report landed but no recruitment case was generated. Open Scouting to review it manually.",
+}
+# What each logic mode weights, so the Logic selector is self-explaining.
+SCOUTING_MODE_DESCRIPTORS = {
+    "Balanced": "Weighs proven ability, divisional upgrade, drawing power, and price evenly. The default read.",
+    "Aggressive": "Lowers the bar and tolerates thinner reports. More signings, more misses.",
+    "Strict": "Raises the bar and punishes uncertain reports hardest. Fewer, safer signings.",
+    "Prospect Focus": "Pays for unrealised ceiling and youth; discounts fighters already at their peak.",
+    "Value Focus": "Prioritises cost per point of ability. Favours cheap contributors over expensive stars.",
+    "Roster Need": "Prioritises filling and upgrading thin divisions over raw fighter quality.",
+}
 WEIGHT_LIMITS = {
     "Flyweight": 125,
     "Bantamweight": 135,

@@ -2224,6 +2224,32 @@ class EventMixin:
         self.refresh_all()
         self.write_log()
 
+    # Signed adjustment motivation makes to a comeback asking price, as agreed
+    # anchor points. Positive is a discount, negative a surcharge, neutral at
+    # 65. Interpolated linearly between anchors, so the curve stays gentle
+    # through the reluctant range and steepens once a fighter genuinely wants
+    # back in.
+    COMEBACK_MOTIVATION_CURVE = (
+        (0, -0.06), (30, -0.04), (50, -0.02), (65, 0.0), (75, 0.045), (85, 0.075), (100, 0.12),
+    )
+
+    def comeback_motivation_discount(self, fighter):
+        """Fraction motivation adds to or takes off a comeback asking price.
+
+        A fighter who badly wants to compete again gives up to 12% back; one
+        who has to be talked into it charges up to 6% more for the
+        inconvenience. Deliberately small both ways: a comeback should stay a
+        real financial commitment rather than becoming a bargain or a wall.
+        """
+        motivation = max(0, min(100, int(getattr(fighter, "motivation", 65) or 0)))
+        curve = self.COMEBACK_MOTIVATION_CURVE
+        for (low, low_value), (high, high_value) in zip(curve, curve[1:]):
+            if motivation <= high:
+                span = high - low
+                weight = (motivation - low) / span if span else 0.0
+                return round(low_value + (high_value - low_value) * weight, 4)
+        return round(curve[-1][1], 4)
+
     def open_contract_negotiation(self, fighter, existing=False, comeback=False, farewell=False, source_promotion=None, transfer_deal=None):
         # A farewell deal is a comeback that resolves in a single retirement bout
         # rather than a multi-fight commitment.
@@ -2245,10 +2271,16 @@ class EventMixin:
             active_offer_purse = 0
         rival_name = getattr(rival, "name", active_offer_company or "No rival promotion")
         leverage = 1 + fighter.popularity / 140 + (0.35 if fighter.champion else 0) + max(0, fighter.momentum) * 0.05
+        comeback_motivation_discount = 0.0
         if comeback:
             leverage += 0.28
+            # A retired fighter who genuinely wants back in will shave their
+            # asking price. Small enough that a comeback stays expensive,
+            # visible enough that motivation is worth checking before talks.
+            comeback_motivation_discount = self.comeback_motivation_discount(fighter)
         loyalty = 0.82 if existing else 1.0
-        ask = max(4000, round(fighter.purse * leverage * loyalty), round(active_offer_purse * 1.05) if active_offer_purse else 0)
+        ask = max(4000, round(fighter.purse * leverage * loyalty * (1 - comeback_motivation_discount)),
+                  round(active_offer_purse * 1.05) if active_offer_purse else 0)
         purse_var = tk.IntVar(value=ask)
         term_var = tk.IntVar(value=max(8, min(30, fighter.contract_months if existing else 12)))
         fights_var = tk.IntVar(value=5 if (existing or comeback) else 3)
@@ -2298,7 +2330,8 @@ class EventMixin:
         if not wants:
             wants.append("fair money")
         relation_discount = self.staff_negotiation_discount("Talent Relations", 2600)
-        state = {"attempts": 3, "target": ask + fighter.popularity * 420 + fighter.professionalism * 180 - relation_discount + (12000 if comeback else 0),
+        comeback_premium = round(12000 * (1 - comeback_motivation_discount)) if comeback else 0
+        state = {"attempts": 3, "target": ask + fighter.popularity * 420 + fighter.professionalism * 180 - relation_discount + comeback_premium,
                  "rival_bid": 0}
 
         header = ttk.Frame(window, style="Header.TFrame")
@@ -2306,7 +2339,22 @@ class EventMixin:
         ttk.Label(header, text=f"NEGOTIATION: {self.fighter_display_name(fighter)}", style="ScreenTitle.TLabel").pack(side="left", padx=10, pady=5)
         body = ttk.Frame(window, style="Panel.TFrame")
         body.pack(fill="both", expand=True, padx=8, pady=8)
-        rival_text = ("A comeback requires a convincing financial and career package; the fighter stays retired if talks fail."
+        comeback_text = "A comeback requires a convincing financial and career package; the fighter stays retired if talks fail."
+        if comeback:
+            motivation_value = int(getattr(fighter, "motivation", 65) or 0)
+            if comeback_motivation_discount > 0:
+                comeback_text += (
+                    f" They are motivated to fight again ({motivation_value} motivation) and have shaved "
+                    f"{comeback_motivation_discount:.0%} off their asking price."
+                )
+            elif comeback_motivation_discount < 0:
+                comeback_text += (
+                    f" They are lukewarm about returning ({motivation_value} motivation) and have added "
+                    f"{abs(comeback_motivation_discount):.0%} to their asking price."
+                )
+            else:
+                comeback_text += " Their motivation to return is average, so their asking price is unadjusted."
+        rival_text = (comeback_text
                       if comeback else f"Live rival offer: {rival_name} is offering ${active_offer_purse:,}/fight for {fighter.ai_offer_months} months; you can beat it before next month."
                       if active_offer_purse else ("Renewal talks start warmer because they already work here." if existing
                                                   else f"{rival_name} may bid if talks drag." if rival

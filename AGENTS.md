@@ -781,9 +781,32 @@ theme changes never expose a light-gray native control.
 
 The academy's `active_challenge` and `challenge_history` are persistent coaching decisions. New
 challenge choices must resolve through world-layer methods, update the prospect's development and
-finance/amateur ledgers, and be repaired with safe defaults for older saves. The academy window
+finance/amateur ledgers, and be repaired with safe defaults for older saves. The academy screen
 must expose the active decision without interrupting calendar advancement with an unconditional
 modal prompt.
+
+Fighting Academy and Combat Sports are main notebook pages, not Toplevels. Their ownership and
+refresh rules:
+
+- `build_academy_tab` and `build_combat_sports_tab` are the registered screen builders; both are
+  lazy, like every other screen. The academy delegates to `render_academy_screen`, which owns the
+  page content and can rebuild it in place.
+- The academy workspace is assembled against a single container widget held in `_academy_window`.
+  It is a frame inside `academy_tab`, never a window: do not reintroduce `geometry`, `minsize`, or
+  `WM_DELETE_WINDOW` handling there.
+- An unbuilt academy renders an inline empty state offering the build purchase. A tab cannot open a
+  modal every time it is selected, so the purchase decision belongs on the page.
+- `refresh_academy_tab` and `refresh_combat_sports_tab` are the only refresh entry points.
+  `refresh_academy_tab` rebuilds when ownership changes so buying an academy elsewhere replaces the
+  empty state without a restart.
+- Neither page appears in the `refresh_all(full=True)` sweep. `refresh_current_screen` builds a
+  screen on demand, so listing them would construct widgets for a player who has never opened them.
+  They are refreshed after the sweep, guarded on `_academy_window` / `_combat_sports_redraw` being
+  set, which keeps a hidden-but-built page current without creating one.
+- `open_academy_window` and `open_combat_sports_window` remain as routers to `select_tab` so
+  existing entry points (Finance, Scouting, World news) keep working. They must not open a window.
+- Retained detail popups — prospect profiles, card replays, child-promotion management, circuit
+  records and history — still create Toplevels, parented to `self.root` rather than the page.
 
 Every `ttk.Treeview` is sortable by heading. Main tabs may call `make_tree_sortable` explicitly for
 custom behavior, but secondary and popup tables rely on the shared Treeview class fallback in

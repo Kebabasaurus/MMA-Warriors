@@ -639,8 +639,7 @@ class UIMixin:
         for heading, entries in groups:
             ttk.Label(nav, text=heading, anchor="center", style="Section.TLabel").pack(fill="x", padx=6, pady=(5, 2), ipady=2)
             for text, tab in entries:
-                command = self.open_combat_sports_window if tab == "combat_sports" else (self.open_academy_window if tab == "academy" else (lambda name=tab: self.select_tab(name)))
-                button = ttk.Button(nav, text=text, style="Nav.TButton", command=command)
+                button = ttk.Button(nav, text=text, style="Nav.TButton", command=lambda name=tab: self.select_tab(name))
                 button.pack(fill="x", padx=8, pady=1)
                 self.nav_buttons[tab] = button
         ttk.Separator(nav).pack(fill="x", padx=10, pady=10)
@@ -673,6 +672,8 @@ class UIMixin:
             ("regional_prospects", "regional_prospects_tab", "Regional Prospects"),
             ("fighter_search", "fighter_search_tab", "Fighter Search"),
             ("rankings", "rankings_tab", "Rankings"),
+            ("academy", "academy_tab", "Fight Academy"),
+            ("combat_sports", "combat_sports_tab", "Combat Sports"),
             ("editor", "editor_tab", "Editor"),
             ("sim_lab", "sim_lab_tab", "Sim Lab"),
             ("log", "log_tab", "Fight Night"),
@@ -703,6 +704,8 @@ class UIMixin:
             "regional_prospects": self.build_regional_prospects_tab,
             "fighter_search": self.build_fighter_search_tab,
             "rankings": self.build_rankings_tab,
+            "academy": self.build_academy_tab,
+            "combat_sports": self.build_combat_sports_tab,
             "editor": self.build_editor_tab,
             "sim_lab": self.build_sim_lab_tab,
             "log": self.build_log_tab,
@@ -784,33 +787,15 @@ class UIMixin:
             self.retheme_plain_widgets(child)
 
     def select_tab(self, name):
+        # Every navigable screen is a notebook page, so the page registry is the
+        # single source of truth. A hand-maintained lookup here only created a
+        # second place to forget a new screen.
+        page = self.tab_pages.get(name)
+        if page is None:
+            return
         self.ensure_screen_built(name)
-        lookup = {
-            "game_menu": self.tab_pages["game_menu"],
-            "website": self.tab_pages["website"],
-            "assistant": self.tab_pages["assistant"],
-            "roster": self.tab_pages["roster"],
-            "contracts": self.tab_pages["contracts"],
-            "companies": self.tab_pages["companies"],
-            "regions": self.tab_pages["regions"],
-            "results": self.tab_pages["results"],
-            "company_editor": self.tab_pages["company_editor"],
-            "inbox": self.tab_pages["inbox"],
-            "staff": self.tab_pages["staff"],
-            "scouting": self.tab_pages["scouting"],
-            "finance": self.tab_pages["finance"],
-            "booking": self.tab_pages["booking"],
-            "market": self.tab_pages["market"],
-            "world": self.tab_pages["world"],
-            "regional_prospects": self.tab_pages["regional_prospects"],
-            "fighter_search": self.tab_pages["fighter_search"],
-            "rankings": self.tab_pages["rankings"],
-            "editor": self.tab_pages["editor"],
-            "sim_lab": self.tab_pages["sim_lab"],
-            "log": self.tab_pages["log"],
-        }
         self.current_tab_name = name
-        self.tabs.select(lookup[name])
+        self.tabs.select(page)
         if hasattr(self, "refresh_current_screen"):
             self.refresh_current_screen(name)
         # Highlight the active screen in the sidebar so the player always knows where they are.
@@ -2061,7 +2046,7 @@ class UIMixin:
             ("- Title Round", lambda: self.adjust_title_rounds(-1)),
             ("+ Fighter Target", lambda: self.adjust_active_fighter_target(50)),
             ("- Fighter Target", lambda: self.adjust_active_fighter_target(-50)),
-            ("Add Production Provider", self.add_broadcaster),
+            ("Broadcast Contracts", self.add_broadcaster),
         )):
             ttk.Button(buttons, text=text, command=command).grid(row=col // 3, column=col % 3, sticky="ew", padx=3, pady=2)
         for col in range(3):
@@ -2289,7 +2274,9 @@ class UIMixin:
             "Gender": "Show male fighters, female fighters, or both.",
             "Division": "Limit results to one MMA weight class.",
             "Intel": "Filter by scouting state or recommendation. Monitor means the scout sees value, but price, uncertainty, or current division need makes an immediate offer hard to justify.",
-            "Logic": "Adjust how scouts turn completed reports into advice: balanced, aggressive, strict, prospect-led, value-led, or roster-need led.",
+            "Logic": "Adjust how scouts turn completed reports into advice.\n\n" + "\n".join(
+                f"{mode}: {SCOUTING_MODE_DESCRIPTORS[mode]}" for mode in SCOUTING_RECOMMENDATION_MODES
+            ),
         }
         for label, variable, values, width in target_combos:
             label_widget = ttk.Label(target_filters, text=label, style="Inset.TLabel")
@@ -2305,13 +2292,19 @@ class UIMixin:
             if label == "Company":
                 self.scouting_target_company_box = combo
 
+        self.scouting_legend_var = tk.StringVar(value="")
         scouting_legend = ttk.Label(
-            target,
-            text="Scout advice: RECOMMEND SIGNING = pursue now  |  MONITOR = promising, but wait for a better fit, price, or clearer report  |  PASS = no current roster-value case",
+            target, textvariable=self.scouting_legend_var,
             style="Inset.TLabel", anchor="w", justify="left", wraplength=1450,
         )
         scouting_legend.pack(fill="x", padx=8, pady=(0, 2))
-        self.attach_tooltip(scouting_legend, "Recommendations are advisory, not restrictions. They combine projected ability, potential, market pull, your divisional depth, asking price, and available cash.")
+        self.refresh_scouting_legend()
+        self.attach_tooltip(scouting_legend, "\n\n".join(
+            [f"{verdict}: {SCOUTING_VERDICT_DESCRIPTORS[verdict]}"
+             for verdict in ("RECOMMEND SIGNING", "MONITOR", "PASS", "PENDING")]
+            + ["Recommendations are advisory, not restrictions. They combine projected ability, potential, market pull, "
+               "where the fighter would slot into your division, asking price, and available cash."]
+        ))
 
         # Actionable summary strip: at a glance, what the board wants you to do.
         summary_row = tk.Frame(target, bg=self.colors["panel_dark"])
@@ -3107,6 +3100,8 @@ class UIMixin:
         market_status = ttk.Combobox(filter_primary, values=["All", "Available", "Rival Offer", "Retiring"], textvariable=self.market_status_filter, state="readonly", width=12)
         market_status.pack(side="left", padx=(0, 10))
         market_status.bind("<<ComboboxSelected>>", lambda _e: self.refresh_market())
+        ttk.Checkbutton(filter_primary, text="Closed divisions", variable=self.market_show_closed_divisions,
+                        command=self.refresh_market).pack(side="left", padx=(0, 10))
         ttk.Button(filter_primary, text="Basic Dossier", command=lambda: self.start_selected_scout_report("basic")).pack(side="left", padx=2)
         ttk.Button(filter_primary, text="Full Evaluation", command=lambda: self.start_selected_scout_report("full")).pack(side="left", padx=2)
         ttk.Button(filter_primary, text="Observe Next Fight", command=lambda: self.start_selected_scout_report("observation")).pack(side="left", padx=2)
@@ -3284,6 +3279,7 @@ class UIMixin:
         self.regional_prospect_company_filter = tk.StringVar(value="All")
         self.regional_prospect_gender_filter = tk.StringVar(value="All")
         self.regional_prospect_weight_filter = tk.StringVar(value="All")
+        self.regional_prospect_show_closed_divisions = tk.BooleanVar(value=True)
         for column, label, variable, values, width in (
             (0, "Search", self.regional_prospect_search, None, 20),
             (2, "Status", self.regional_prospect_status_filter, ["Eligible + Nearly", "Eligible Now", "Nearly Eligible", "Medical Hold", "Developing", "All Regional"], 18),
@@ -3301,7 +3297,11 @@ class UIMixin:
             widget.grid(row=0, column=column + 1, sticky="ew", padx=(0, 6), pady=4)
             if label == "Promotion":
                 self.regional_prospect_company_combo = widget
-        ttk.Button(controls, text="Reset", command=self.clear_regional_prospect_filters).grid(row=0, column=10, padx=4, pady=4)
+        ttk.Checkbutton(
+            controls, text="Closed divisions", variable=self.regional_prospect_show_closed_divisions,
+            command=self.refresh_regional_prospects,
+        ).grid(row=0, column=10, padx=(4, 2), pady=4)
+        ttk.Button(controls, text="Reset", command=self.clear_regional_prospect_filters).grid(row=0, column=11, padx=4, pady=4)
         controls.columnconfigure(1, weight=1)
 
         panel, inner = self.section(self.regional_prospects_tab, "FEEDER-CIRCUIT TALENT")
@@ -3330,6 +3330,7 @@ class UIMixin:
         self.regional_prospect_tree.tag_configure("nearly", background="#4b3b12", foreground="#ffe28a")
         self.regional_prospect_tree.tag_configure("medical", background="#512020", foreground="#ffaaa2")
         self.regional_prospect_tree.tag_configure("developing", foreground="#aab0b8")
+        self.regional_prospect_tree.tag_configure("closed_division", background="#5f421b", foreground="#ffe7a3")
         self.make_tree_sortable(self.regional_prospect_tree)
         scroll_y = ttk.Scrollbar(table, orient="vertical", command=self.regional_prospect_tree.yview)
         scroll_x = ttk.Scrollbar(table, orient="horizontal", command=self.regional_prospect_tree.xview)

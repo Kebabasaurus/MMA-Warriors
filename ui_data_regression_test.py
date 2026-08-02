@@ -321,5 +321,89 @@ class UIDataRegressionTests(unittest.TestCase):
         self.assertIn('strategy["description"] = EURASIAN_FIGHT_CIRCUIT_DESCRIPTION', source)
 
 
+class AcademyAndCombatSportsTabTests(unittest.TestCase):
+    """Academy and Combat Sports are main notebook pages, not popups."""
+
+    @classmethod
+    def setUpClass(cls):
+        root = Path(__file__).parent
+        cls.ui_source = (root / "ui.py").read_text(encoding="utf-8")
+        cls.views_source = (root / "views.py").read_text(encoding="utf-8")
+
+    def test_both_screens_are_registered_as_notebook_pages(self):
+        self.assertIn('("academy", "academy_tab", "Fight Academy")', self.ui_source)
+        self.assertIn('("combat_sports", "combat_sports_tab", "Combat Sports")', self.ui_source)
+        self.assertIn('"academy": self.build_academy_tab,', self.ui_source)
+        self.assertIn('"combat_sports": self.build_combat_sports_tab,', self.ui_source)
+
+    def test_navigation_no_longer_special_cases_the_two_screens(self):
+        self.assertNotIn("self.open_combat_sports_window if tab ==", self.ui_source)
+        self.assertNotIn("self.open_academy_window if tab ==", self.ui_source)
+
+    def test_select_tab_routes_through_the_page_registry(self):
+        # A hand-maintained lookup was a second place to forget a new screen.
+        self.assertIn("page = self.tab_pages.get(name)", self.ui_source)
+
+    def test_builders_exist_and_primary_workspaces_open_no_toplevel(self):
+        for name in ("build_academy_tab", "render_academy_screen", "build_combat_sports_tab",
+                     "refresh_academy_tab", "refresh_combat_sports_tab"):
+            self.assertTrue(hasattr(ViewMixin, name), f"{name} is missing from ViewMixin")
+        for opener in ("open_academy_window", "open_combat_sports_window"):
+            body = self._method_source(opener)
+            self.assertIn("self.select_tab(", body, f"{opener} should route to a tab")
+            self.assertNotIn("tk.Toplevel", body, f"{opener} must not open a window")
+
+    def test_primary_workspaces_build_into_their_page(self):
+        # Retained detail popups (prospect profiles, replays) may still create a
+        # Toplevel; what must not happen is the workspace itself being one.
+        combat = self._method_source("build_combat_sports_tab")
+        self.assertIn("window = self.combat_sports_tab", combat)
+        self.assertNotIn("window = tk.Toplevel", combat)
+        academy = self._method_source("render_academy_screen")
+        self.assertIn('parent = getattr(self, "academy_tab", None)', academy)
+        self.assertIn('window = ttk.Frame(parent, style="Chrome.TFrame")', academy)
+        self.assertNotIn("window = tk.Toplevel", academy)
+        self.assertNotIn("window.protocol(", academy, "a page has no window-close protocol")
+        self.assertNotIn("window.geometry(", academy, "a page has no window geometry")
+
+    def test_academy_empty_state_price_check_is_live(self):
+        # The panel stays on screen for as long as the player has no academy,
+        # so reading cash once at construction froze it (it reported $0 forever)
+        # and left the build button stuck at its original enabled state.
+        empty = self._method_source("build_academy_empty_state")
+        self.assertIn("self._academy_empty_refresh = refresh_empty_state", empty)
+        self.assertIn('build_button.state(["!disabled"] if affordable else ["disabled"])', empty)
+        refresh = self._method_source("refresh_academy_tab")
+        self.assertIn('getattr(self, "_academy_empty_refresh", None)', refresh)
+        self.assertIn(
+            'if getattr(self, "_academy_window", None) is not None or getattr(self, "_academy_empty_refresh", None) is not None:',
+            self.views_source, "refresh_all must also refresh a page showing the empty state")
+
+    def test_academy_empty_state_does_not_stretch_the_page(self):
+        empty = self._method_source("build_academy_empty_state")
+        self.assertIn("wraplength=660", empty)
+        self.assertNotIn('.pack(fill="both", expand=True, padx=18, pady=18)', empty)
+
+    def test_refresh_routes_exist_for_both_pages(self):
+        self.assertIn('"academy": (self.refresh_academy_tab,),', self.views_source)
+        self.assertIn('"combat_sports": (self.refresh_combat_sports_tab,),', self.views_source)
+
+    def test_full_refresh_does_not_construct_unopened_pages(self):
+        # refresh_current_screen builds a screen on demand, so listing these two
+        # in the full sweep would create their widgets for a player who has
+        # never opened them.
+        full_sweep = self.views_source.split("if full:", 1)[1].split("else:", 1)[0]
+        self.assertNotIn('"academy"', full_sweep)
+        self.assertNotIn('"combat_sports"', full_sweep)
+        self.assertTrue('_academy_window", None) is not None' in self.views_source)
+        self.assertTrue('if getattr(self, "_combat_sports_redraw", None) is not None:' in self.views_source)
+
+    def _method_source(self, name):
+        marker = f"    def {name}(self"
+        self.assertIn(marker, self.views_source, f"{name} not found in views.py")
+        body = self.views_source.split(marker, 1)[1]
+        return body.split("\n    def ", 1)[0]
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

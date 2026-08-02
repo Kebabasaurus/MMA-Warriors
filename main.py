@@ -273,6 +273,7 @@ class FightEmpireApp(
         self.market_ovr_max = tk.IntVar(value=100)
         self.market_pop_min = tk.IntVar(value=0)
         self.market_potential_min = tk.IntVar(value=0)
+        self.market_show_closed_divisions = tk.BooleanVar(value=True)
         self.ranking_gender_filter = tk.StringVar(value="All")
         self.ranking_weight_filter = tk.StringVar(value="All")
         self.result_search = tk.StringVar(value="")

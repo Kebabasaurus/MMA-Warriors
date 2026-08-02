@@ -1,5 +1,88 @@
 # Changelog
 
+## 3.0.8 - 2026-08-02
+
+This release reworks the scouting and recruitment loop, replaces one-off production providers with
+negotiated broadcast contracts, rebuilds the Legacy Ledger, and moves Fighting Academy and Combat
+Sports into the main navigation as normal management screens.
+
+- Moved Fighting Academy and Combat Sports into the main navigation as normal management screens.
+  Both previously opened their primary workspace in a separate window, so reaching them meant
+  leaving the main application context and managing a floating window. Selecting either from the
+  sidebar now switches the main screen in place, exactly like Roster, Contracts, or Finance, and the
+  existing Finance, Scouting, and World entry points route to the same pages. Academy purchase moved
+  from a popup to an inline empty state on the page, since a tab cannot raise a modal every time it
+  is selected. Detail views are deliberately unchanged and still open as focused popups: academy
+  prospect profiles and card replays, child-promotion management, and circuit records and history.
+  Academy and Combat Sports state, saves, and simulation rules are untouched, and neither page is
+  constructed until the player actually opens it.
+- Fixed the Fighting Academy build page reporting a frozen cash balance. Unlike the popup it
+  replaced, the panel stays on screen for as long as the player has no academy, so reading company
+  cash once while building the page left it stuck at whatever the balance was when the page was
+  first opened (commonly $0) and froze the Build Academy button in that state. The price check is
+  now live, and when funds are short it names the shortfall instead of only the balance.
+- Fixed the same page stretching to fill the whole scrollable screen, which pushed the price line
+  and the Build Academy button far below the fold. It now keeps the compact proportions of the setup
+  dialog it replaced.
+- Changed Contracts ordering so fight-counted comeback deals no longer sit at the top of the table
+  from the moment they are signed. A comeback contract now only pins to the top once it is down to
+  three or fewer guaranteed bouts; longer commitments sort below the regular expiry-ordered roster.
+- Added a "Closed divisions" toggle to Free Agents and Regional Prospects so talent in divisions you
+  have closed can be shown or hidden. Both screens default to showing them, closed-division prospects
+  are highlighted amber like the free-agent market already did, and Regional Prospects reports how
+  many rows the toggle is hiding.
+- Fixed scouts wasting their spare assignment slots. Auto-assignment only considered a scout with a
+  completely empty workload, so a two- or three-slot scout holding a single player brief never used
+  the rest of their capacity. Every free slot is now filled, which is where most of the lost scouting
+  throughput was going: a 3-slot and a 2-slot scout now reach full workload in one week instead of
+  idling four slots indefinitely.
+- Rebuilt talent searches to return a shortlist instead of a single name. A search cost 2.4x-3.1x a
+  basic report, occupied a scout for 2-5 weeks, and surfaced exactly one lead, so scouting the market
+  broadly was never affordable. A search now returns 3-6 ranked leads (scaled by the scout's
+  networking), each with its own dossier and signing verdict, at roughly a fifth of the previous cost
+  per lead. The headline lead keeps the scout's best read; secondary names come in at lower
+  confidence so a dedicated report is still worth buying on anyone you take seriously.
+- Reworked the signing recommendation to judge roster fit by quality rather than headcount. Divisional
+  need was measured purely as "fewer than ten fighters", so a 27-year-old 73 OVR was reported as not
+  needed in a division of 27 journeymen. Recommendations now weigh where the fighter would slot into
+  your existing division, reward an upgrade on your current top five, and state the projected
+  divisional rank in the reason text.
+- Stopped short-term problems vetoing good signings outright. Being injured or on a losing streak sat
+  in the same hard-blocking list as a closed division, so any injury made a 90 OVR free agent an
+  automatic PASS. Injuries and skids are now priced into the score as scaled concerns; only a closed
+  division or pending retirement blocks a deal outright.
+- Added plain-English descriptors for every scout verdict (RECOMMEND SIGNING, MONITOR, PASS, PENDING)
+  and every recommendation logic mode (Balanced, Aggressive, Strict, Prospect Focus, Value Focus,
+  Roster Need). Verdict meanings now appear in the Scouting legend, the Logic selector tooltip,
+  completed-report inbox mail, and the Free Agents scouting panel, which also shows the same formal
+  verdict the Scouting centre uses instead of an unrelated second opinion.
+- Suppressed scouting dialogs during automatic assignment so a full scout or a cash shortfall can no
+  longer interrupt week processing with a popup.
+- Rebuilt the Legacy Ledger. The all-time fighter list was a fixed-width text dump capped at 60 names
+  with a single sport filter. It is now a sortable table of up to 400 careers with Sport, Status,
+  Gender, Division, and name-search filters; columns for division, status, last company, win rate,
+  peak ability, titles, defences and awards; Hall-of-Fame and retired rows colour-coded; double-click
+  to open a full profile; and a breakdown line itemising exactly which career achievements produced
+  the selected fighter's legacy score. Company Eras became a sortable table of legacy, reputation,
+  show count and era count, with the full era history shown for the selected company instead of only
+  the most recent three.
+- Added a motivation adjustment to comeback negotiations. A retired fighter who wants to compete
+  again now shaves up to 12% off their asking price, while one who has to be talked into it adds up
+  to 6%, applied to the comeback premium as well. The curve is neutral at 65 motivation and
+  interpolates between set anchor points: 0 = -6%, 30 = -4%, 50 = -2%, 65 = 0, 75 = +4.5%,
+  85 = +7.5%, 100 = +12%. The negotiation window states the fighter's motivation and the exact
+  adjustment.
+- Replaced one-off production-provider purchases with real broadcast contracts. Adding a provider was
+  a permanent unlock from a fixed list of three with no requirements and no expiry. Networks are now
+  a six-tier ladder from Regional Webcast to Apex Worldwide, each gated behind a company-popularity
+  requirement that must be met before talks open, signed for a fixed term of 12-24 months against a
+  rights fee. Contracts count down monthly, warn in the inbox at two months remaining, and expire
+  with a dialog prompting renewal; events still assigned to a lapsed network fall back to no coverage
+  rather than being charged for a partner that no longer carries them. Company Editor lists remaining
+  contract months per network plus the popularity needed to unlock the tiers still locked, and the
+  booking screen shows the selected network's remaining term. Saves written before this change keep
+  their providers and receive a full term on load rather than expiring immediately.
+
 ## 3.0.7 - 2026-08-02
 
 This release carries the complete 3.0.6 Matt-Dev and Brett-Dev feature merge, including child

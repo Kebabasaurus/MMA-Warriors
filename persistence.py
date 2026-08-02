@@ -1186,6 +1186,9 @@ class PersistenceMixin:
             self.change_journal.append({"date": self.format_game_date(), "type": "Migration", "summary": summary})
             self.change_journal = self.change_journal[-400:]
         self.broadcasters = data.get("broadcasters", [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}])
+        # A save written before broadcast contracts existed carries perpetual
+        # providers; give them a term rather than letting them lapse on load.
+        self.ensure_broadcast_contract_defaults()
         self.ensure_media_system()
         self.weight_classes = list(dict.fromkeys(
             self.game_weight_class(weight) for weight in data.get("weight_classes", list(WEIGHTS))

@@ -2746,6 +2746,7 @@ class WorldMixin:
             ("Office and payroll", pay_overhead),
             ("Financial pressure review", self.apply_player_financial_pressure),
             ("Business agreements", self.tick_business_deals),
+            ("Broadcast contracts", self.tick_broadcast_contracts),
         ]
 
     def apply_player_financial_pressure(self):
@@ -2840,6 +2841,8 @@ class WorldMixin:
             task()
         self.refresh_all()
         self.write_log()
+        if not getattr(self, "spectator_mode", False):
+            self.show_pending_broadcast_notices()
         self.prompt_due_event()
 
     def begin_advance_sequence(self, weeks=1, status_prefix="Advancing", on_complete=None, stop_condition=None):
@@ -2919,6 +2922,7 @@ class WorldMixin:
             self._complete_advance_cleanup()
             if not getattr(self, "spectator_mode", False):
                 self.show_final_month_contract_alerts()
+                self.show_pending_broadcast_notices()
                 self.prompt_due_event()
             if callback:
                 callback()
@@ -4331,16 +4335,25 @@ class WorldMixin:
                     recommendation, reason = self.scout_signing_recommendation(fighter, report)
                 report["recommendation"] = recommendation
                 report["recommendation_reason"] = reason
-                self.inbox.append({"subject": f"Scouting Report Complete - {name}", "body": f"{report.get('kind', 'basic').title()} evaluation by {report.get('scout', 'staff')} is complete ({report.get('confidence', 0)}% confidence). {detail}\n\n{recommendation}: {reason}", "type": "Scouting", "resolved": False, "fighter_id": fighter_id})
+                meaning = SCOUTING_VERDICT_DESCRIPTORS.get(recommendation, "")
+                meaning = f"\n\nWhat {recommendation} means: {meaning}" if meaning else ""
+                self.inbox.append({"subject": f"Scouting Report Complete - {name}", "body": f"{report.get('kind', 'basic').title()} evaluation by {report.get('scout', 'staff')} is complete ({report.get('confidence', 0)}% confidence). {detail}\n\n{recommendation}: {reason}{meaning}", "type": "Scouting", "resolved": False, "fighter_id": fighter_id})
         self.process_talent_searches()
         self.auto_assign_idle_scouts()
 
     def auto_assign_idle_scouts(self):
-        """Keep a fully idle hired scout working without overriding player briefs."""
+        """Keep spare scout capacity working without overriding player briefs."""
         if not getattr(self, "rules", {}).get("auto_assign_idle_scouts", True):
             return
         scouts = [member for member in getattr(self, "staff", []) if member.get("role") == "Scout"]
-        idle_scouts = [member for member in scouts if self.scout_workload(member.get("name")) == 0]
+        # A scout with two slots holding one player brief used to sit at half
+        # capacity forever, because only a completely idle scout qualified.
+        # Every free slot is filled now, which is where most of the lost
+        # scouting throughput was going.
+        idle_scouts = []
+        for member in scouts:
+            free_slots = self.scout_capacity(member) - self.scout_workload(member.get("name"))
+            idle_scouts.extend([member] * max(0, free_slots))
         if not idle_scouts or not hasattr(self, "start_scout_report_for_fighter"):
             return
         player_ids = {self.scouting_report_key(fighter) for fighter in getattr(self, "roster", [])}
@@ -4535,9 +4548,13 @@ class WorldMixin:
                     unseen = [(emergency_lead, "Free Agent")]
             if unseen:
                 networking = int(scout.get("networking", scout.get("skill", 45)) or 45)
-                sample_size = min(len(unseen), max(2, 1 + networking // 22))
+                sample_size = min(len(unseen), max(6, 4 + networking // 8))
                 sampled = random.sample(unseen, k=sample_size)
-                target, source = max(sampled, key=lambda row: self.scouting_search_score(row[0], scout, focus, row[1]))
+                sampled.sort(key=lambda row: self.scouting_search_score(row[0], scout, focus, row[1]), reverse=True)
+                # A search used to cost 2.5x a basic report, hold a scout slot
+                # for weeks, and surface exactly one name, so breadth was never
+                # affordable. It now returns a shortlist the player can triage.
+                shortlist_size = min(len(sampled), max(3, 2 + networking // 25))
                 confidence_base = (
                     scout.get("fighter_judging", 45) * 0.34
                     + scout.get("potential_judging", 45) * 0.27
@@ -4545,11 +4562,37 @@ class WorldMixin:
                     + scout.get("regional_knowledge", 45) * 0.08
                     + scout.get("networking", 45) * 0.07
                 )
-                confidence = max(45, min(88, round(confidence_base + random.randint(-max(2, (100 - int(scout.get("reliability", 45))) // 18), 5))))
+                leads = []
+                for index, (candidate, source) in enumerate(sampled[:shortlist_size]):
+                    # The headline lead gets the scout's best read; the rest of
+                    # the shortlist is a thinner sweep, so a dedicated report is
+                    # still worth buying on anyone the player takes seriously.
+                    depth_penalty = 0 if index == 0 else 8 + index * 3
+                    confidence = max(35, min(88, round(
+                        confidence_base - depth_penalty
+                        + random.randint(-max(2, (100 - int(scout.get("reliability", 45))) // 18), 5)
+                    )))
+                    key = self.scouting_report_key(candidate)
+                    self.scouting_reports[key] = {"schema_version": 2, "fighter_id": key, "fighter_name": candidate.name, "kind": "basic", "status": "Complete", "started_week": search.get("started_week", self.calendar_week_index()), "completed_week": self.calendar_week_index(), "weeks_remaining": 0, "confidence": confidence, "reveal": confidence, "scout": search.get("scout"), "region": candidate.region, "notes": [f"Identified through a {focus.lower()} scouting brief.", f"Current market: {source}.", "Headline lead of the brief." if index == 0 else "Secondary shortlist name from the same sweep."], "estimates": self.build_scouting_estimates(candidate, scout, "basic", confidence)}
+                    if hasattr(self, "scout_signing_recommendation"):
+                        verdict, reason = self.scout_signing_recommendation(candidate, self.scouting_reports[key])
+                        self.scouting_reports[key]["recommendation"] = verdict
+                        self.scouting_reports[key]["recommendation_reason"] = reason
+                    else:
+                        verdict = "REPORT COMPLETE"
+                    leads.append((candidate, source, confidence, verdict))
+                target, source, headline_confidence, _verdict = leads[0]
                 key = self.scouting_report_key(target)
-                self.scouting_reports[key] = {"schema_version": 2, "fighter_id": key, "fighter_name": target.name, "kind": "basic", "status": "Complete", "started_week": search.get("started_week", self.calendar_week_index()), "completed_week": self.calendar_week_index(), "weeks_remaining": 0, "confidence": confidence, "reveal": confidence, "scout": search.get("scout"), "region": target.region, "notes": [f"Identified through a {focus.lower()} scouting brief.", f"Current market: {source}."], "estimates": self.build_scouting_estimates(target, scout, "basic", confidence)}
-                search.update({"status": "Complete", "result_fighter_id": key, "result_name": target.name})
-                body = f"{search.get('scout')} identified {target.name}, a {target.gender} {target.weight} from {target.region} ({source}). A {confidence}% basic dossier is now available from the {focus} brief."
+                search.update({"status": "Complete", "result_fighter_id": key, "result_name": target.name, "result_count": len(leads)})
+                lead_lines = "\n".join(
+                    f"- {candidate.name} ({candidate.gender} {candidate.weight}, {candidate.region}, {lead_source}) - {lead_confidence}% dossier - {lead_verdict}"
+                    for candidate, lead_source, lead_confidence, lead_verdict in leads
+                )
+                body = (
+                    f"{search.get('scout')} completed the {focus} brief and returned {len(leads)} lead(s), headlined by "
+                    f"{target.name}, a {target.gender} {target.weight} from {target.region} ({source}) on a {headline_confidence}% dossier.\n\n"
+                    f"{lead_lines}\n\nEvery name above now carries a basic dossier. Commission a full evaluation on anyone you intend to sign."
+                )
             else:
                 search.update({"status": "Complete", "result_name": "No suitable lead"})
                 body = f"{search.get('scout')} completed the {focus} search in {search.get('region')} but found no suitable unscouted lead matching the brief."
