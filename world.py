@@ -12148,6 +12148,9 @@ class WorldMixin:
                 key = (fighter.gender, fighter.weight)
                 counts[key] = counts.get(key, 0) + 1
             belt_holders = self.promotion_belt_holders(promo)
+            # Use durable fighter IDs with legacy-name fallback so scheduled
+            # fighters are protected even when this review runs mid-calendar.
+            scheduled = self.scheduled_fighter_references(include_booked=True)
 
             candidates = []
             for fighter in active:
@@ -12274,6 +12277,9 @@ class WorldMixin:
                 if len(active) < 12 or promo.cash <= self.ai_contract_reserve(promo):
                     break
                 belt_holders = self.promotion_belt_holders(promo)
+                # Keep the upgrade pass consistent with roster cuts and the
+                # shared booking identity rules.
+                scheduled = self.scheduled_fighter_references(include_booked=True)
                 by_division = {}
                 for fighter in active:
                     by_division.setdefault((fighter.gender, fighter.weight), []).append(fighter)

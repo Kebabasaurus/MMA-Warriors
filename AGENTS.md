@@ -789,6 +789,12 @@ Every `ttk.Treeview` is sortable by heading. Main tabs may call `make_tree_sorta
 custom behavior, but secondary and popup tables rely on the shared Treeview class fallback in
 `ui.py`; do not add a new column table with permanently static headings.
 
+AI roster reviews run during calendar advancement and must use
+`scheduled_fighter_references(include_booked=True)` before considering a release or upgrade.
+That helper returns durable fighter IDs with legacy-name fallback; keep both review passes safe for
+scheduled fighters and cover the path in `ui_data_regression_test.py` so a packaged advance cannot
+fail on an undefined schedule set.
+
 ## 13. Data Quality
 
 - Avoid duplicate fighters across companies unless intentionally represented as a historical/younger

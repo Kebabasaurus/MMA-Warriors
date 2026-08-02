@@ -88,9 +88,10 @@ The test launcher runs `smoke_test.py`, `stability_test.py`, and `media_system_t
 
 The launcher also runs `persistence_regression_test.py`, `contracts_finance_regression_test.py`,
 `ui_data_regression_test.py`, and `qa_tooling_regression_test.py` for transactional persistence and
-Results-index idempotence, contract/finance boundaries, lazy scouting UI and world-data validation,
-audit isolation, and portable batch paths. These focused checks run before the longer stability
-playtest and protect the exact failure modes found by hands-on QA.
+Results-index idempotence, contract/finance boundaries, lazy scouting UI, scheduled-fighter
+protection during AI roster reviews, world-data validation, audit isolation, and portable batch
+paths. These focused checks run before the longer stability playtest and protect the exact failure
+modes found by hands-on QA.
 
 The current development model is documented in [`docs/FIGHTER_DEVELOPMENT_GUIDE.md`](docs/FIGHTER_DEVELOPMENT_GUIDE.md); current clinch, cage, ground, and damage mechanics are documented in [`docs/FIGHT_DAMAGE_AND_CLINCH_AUDIT.md`](docs/FIGHT_DAMAGE_AND_CLINCH_AUDIT.md); shared per-theme tab colors and WCAG ratios are documented in [`TAB_ACCESSIBILITY.md`](TAB_ACCESSIBILITY.md).
 

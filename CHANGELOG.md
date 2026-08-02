@@ -2,6 +2,7 @@
 
 ## 3.0.6 - 2026-08-01
 
+- Fixed a packaged calendar-advance crash in AI roster cuts and upgrade reviews. Scheduled fighters are now resolved through the shared durable-ID/legacy-name reference set before either review considers releasing or replacing them.
 - Expanded staff into a real employment system: every staff role now has a documented gameplay effect, staff quality and morale influence those effects, and the Staff screen supports hiring, firing, severance, contract offers, renewal negotiations, and an Expiring Contracts tab. Legacy saves receive safe staff contract defaults.
 - Connected Broadcast Producers, Drug Testing Officers, Doctors, and the existing scouting, marketing, matchmaking, and talent-relations roles to visible simulation outcomes including broadcast reach, testing cost and accuracy, medical costs, recovery, card building, scouting, promotion, and fighter negotiations.
 - Balanced staff economics after audit: Talent Relations now gives quality-scaled cash leverage in fighter and transfer talks, compliance staff reduce manual testing costs as well as event costs, and Doctor recovery benefits scale across specialist quality instead of using a single threshold.

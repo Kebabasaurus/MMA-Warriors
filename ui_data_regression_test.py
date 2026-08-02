@@ -13,6 +13,7 @@ from unittest.mock import patch
 from models import Gym
 from seeding import SeedMixin
 from views import ViewMixin
+from world import WorldMixin
 
 
 class Var:
@@ -95,7 +96,85 @@ class SeedHarness(SeedMixin):
     pass
 
 
+class WorldReviewHarness(WorldMixin):
+    def scheduled_fighter_references(self, include_booked=False):
+        return set(self.scheduled_references)
+
+    def fighter_has_scheduled_fight(self, fighter, include_booked=False):
+        return fighter.name in self.scheduled_references or fighter.fighter_id in self.scheduled_references
+
+
 class UIDataRegressionTests(unittest.TestCase):
+    def test_ai_roster_reviews_protect_scheduled_fighters(self):
+        fighters = [
+            SimpleNamespace(
+                name=f"Review Fighter {index}",
+                fighter_id=f"review-{index}",
+                retired=False,
+                retirement_pending=False,
+                champion=False,
+                interim_champion=False,
+                gender="Male",
+                weight="Lightweight",
+                age=28,
+                potential=70,
+                overall=70,
+                record_w=0,
+                record_l=0,
+                record_d=0,
+                momentum=0,
+                purse=1_000,
+                contract_months=12,
+                prime_end=34,
+                popularity=10,
+            )
+            for index in range(12)
+        ]
+        promo = SimpleNamespace(
+            name="Review Test Promotion",
+            roster=fighters,
+            cash=10_000_000,
+            size=60,
+            reputation_score=60,
+            stability=60,
+            is_regional_feeder=False,
+            belts={},
+            interim_belts={},
+            show_history=[],
+        )
+        harness = WorldReviewHarness()
+        harness.promotions = [promo]
+        harness.free_agents = [SimpleNamespace(
+            name="Scheduled Upgrade Target",
+            fighter_id="incoming-1",
+            retired=False,
+            retirement_pending=False,
+            injured=0,
+            fatigue=0,
+            ai_offer_company="",
+            age=29,
+            potential=72,
+            overall=71,
+            gender="Male",
+            weight="Lightweight",
+        )]
+        harness.scheduled_references = {fighters[0].fighter_id, fighters[0].name}
+        harness.month = 3
+        harness.news = []
+        harness.update_ai_promotion_strategy = lambda _promo: {"financial_pressure": 0}
+        harness.promotion_strategy = lambda _promo: {"last_upgrade_review_month": -99}
+        harness.ai_roster_target = lambda _promo: 40
+        harness.ai_financial_roster_target = lambda _promo: 40
+        harness.ai_contract_reserve = lambda _promo: 0
+        harness.ai_division_target = lambda _promo, _gender=None: 20
+        harness.promotion_belt_holders = lambda _promo: set()
+        harness.child_promotion_loaned = lambda _promo, _fighter: False
+
+        harness.review_ai_roster_cuts()
+        harness.review_ai_upgrade_replacements()
+
+        self.assertIn(fighters[0], promo.roster)
+
     def test_refresh_staff_is_safe_before_staff_tab_is_built(self):
         harness = ViewHarness()
         harness.staff = []
