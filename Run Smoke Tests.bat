@@ -1,11 +1,11 @@
 @echo off
 setlocal
 set "APP_DIR=%~dp0"
-set "BUNDLED_PY=C:\Users\Tanks\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
+set "LOCAL_PY=%APP_DIR%.venv\Scripts\python.exe"
 
 cd /d "%APP_DIR%"
 
-if exist "%BUNDLED_PY%" set "PY=%BUNDLED_PY%"
+if exist "%LOCAL_PY%" set "PY=%LOCAL_PY%"
 
 if not defined PY (
     where py >nul 2>nul
@@ -25,6 +25,18 @@ if not defined PY (
 %PY% "%APP_DIR%smoke_test.py"
 if errorlevel 1 goto failed
 
+%PY% "%APP_DIR%persistence_regression_test.py"
+if errorlevel 1 goto failed
+
+%PY% "%APP_DIR%contracts_finance_regression_test.py"
+if errorlevel 1 goto failed
+
+%PY% "%APP_DIR%ui_data_regression_test.py"
+if errorlevel 1 goto failed
+
+%PY% "%APP_DIR%qa_tooling_regression_test.py"
+if errorlevel 1 goto failed
+
 %PY% "%APP_DIR%stability_test.py"
 if errorlevel 1 goto failed
 
@@ -32,7 +44,7 @@ if errorlevel 1 goto failed
 if errorlevel 1 goto failed
 
 echo.
-echo Smoke, stability, and media-system playtests passed.
+echo Shipping and focused Brett-Dev regression playtests passed.
 goto done
 
 :failed

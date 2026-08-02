@@ -18,6 +18,42 @@ class EventMixin:
         """Keep player-negotiated contract terms inside the supported range."""
         return max(1, min(60, int(months)))
 
+    def validated_contract_terms(self, purse, months, guaranteed_fights, signing_bonus=0,
+                                 finish_bonus_pct=0, win_bonus=0, ppv_points=0):
+        """Return safe player contract terms or reject an invalid financial package.
+
+        Spinbox limits are presentation hints rather than a security boundary: a
+        player can type arbitrary text into them and tests or future callers can
+        invoke the domain path directly.  Validate before calculating acceptance
+        or touching cash so negative money can never become a credit.
+        """
+        try:
+            terms = {
+                "purse": int(purse),
+                "months": self.normalized_contract_months(months),
+                "guaranteed_fights": int(guaranteed_fights),
+                "signing_bonus": int(signing_bonus),
+                "finish_bonus_pct": int(finish_bonus_pct),
+                "win_bonus": int(win_bonus),
+                "ppv_points": int(ppv_points),
+            }
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError("Contract terms must be whole numbers.") from exc
+
+        limits = {
+            "purse": (1, 600_000, "Purse per fight"),
+            "guaranteed_fights": (1, 12, "Guaranteed fights"),
+            "signing_bonus": (0, 400_000, "Signing bonus"),
+            "finish_bonus_pct": (0, 60, "Finish bonus"),
+            "win_bonus": (0, 300_000, "Win bonus"),
+            "ppv_points": (0, 15, "PPV points"),
+        }
+        for key, (minimum, maximum, label) in limits.items():
+            if not minimum <= terms[key] <= maximum:
+                suffix = "%" if key in ("finish_bonus_pct", "ppv_points") else ""
+                raise ValueError(f"{label} must be between {minimum}{suffix} and {maximum}{suffix}.")
+        return terms
+
     def contract_duration_offer_score(self, months, purse, ask, signing_bonus=0, win_bonus=0,
                                       finish_bonus_pct=0):
         """Value contract security without letting raw duration replace fair pay.
@@ -60,18 +96,62 @@ class EventMixin:
         """Return every booked athlete, including a tournament's complete field."""
         return list(fight.get("tournament_entrants", fight.get("fighters", [])))
 
+    def event_fight_participant_references(self, fight):
+        """Return stable participant references, preferring fighter IDs.
+
+        Names remain in event data for presentation and legacy saves, but they
+        are not unique.  A complete aligned ``fighter_ids`` list is therefore
+        authoritative for availability, conflict checks and result resolution.
+        """
+        participants = self.event_fight_participants(fight)
+        fighter_ids = list(fight.get("fighter_ids", []))
+        if len(fighter_ids) == len(participants):
+            return [fighter_id if fighter_id else name for name, fighter_id in zip(participants, fighter_ids)]
+        return participants
+
+    def event_fight_fighters(self, fight):
+        return [
+            self.get_fighter(reference)
+            for reference in self.event_fight_participant_references(fight)
+            if reference != "TBA" and self.get_fighter(reference) is not None
+        ]
+
+    def duplicate_event_participant_references(self, fights):
+        references = [
+            reference for fight in fights
+            for reference in self.event_fight_participant_references(fight)
+            if reference != "TBA"
+        ]
+        return {reference for reference in references if references.count(reference) > 1}
+
+    def contract_rival_candidate(self, active_offer_company=""):
+        candidates = [promo for promo in self.promotions if not getattr(promo, "is_regional_feeder", False)]
+        matched = next((promo for promo in candidates if promo.name == active_offer_company), None)
+        if active_offer_company:
+            return matched
+        return random.choice(candidates) if candidates else None
+
     def schedule_event(self):
         if len(self.booked) < 1:
             self.set_schedule_status("SCHEDULING BLOCKED: Book at least one fight before scheduling the show.", "error")
             messagebox.showinfo("No fights", "Book at least one fight before scheduling a show.")
             return
-        names = [name for fight in self.booked for name in self.event_fight_participants(fight) if name != "TBA"]
-        duplicates = sorted({name for name in names if names.count(name) > 1})
-        if duplicates:
+        references = [reference for fight in self.booked for reference in self.event_fight_participant_references(fight) if reference != "TBA"]
+        duplicate_refs = self.duplicate_event_participant_references(self.booked)
+        duplicates = sorted({self.get_fighter(reference).name if self.get_fighter(reference) else str(reference) for reference in duplicate_refs})
+        if duplicate_refs:
             self.set_schedule_status("SCHEDULING BLOCKED: A fighter appears more than once on this card.", "error")
             messagebox.showwarning("Double booking", f"{', '.join(duplicates)} is booked in more than one fight on this card. A fighter can only appear once per event.")
             return
-        if self.fighter_busy_message(names):
+        scheduled_refs = {
+            reference for event in self.scheduled_events
+            for fight in event.get("fights", [])
+            for reference in self.event_fight_participant_references(fight) if reference != "TBA"
+        }
+        conflict_refs = [reference for reference in references if reference in scheduled_refs]
+        if conflict_refs:
+            conflicts = sorted({self.get_fighter(reference).name if self.get_fighter(reference) else str(reference) for reference in conflict_refs})
+            messagebox.showwarning("Already scheduled", f"{', '.join(conflicts)} already has a future fight scheduled. A fighter cannot be booked again until that event has been completed.")
             self.refresh_available()
             return
         target_date = self.selected_booking_date(reject_past=True)
@@ -79,8 +159,8 @@ class EventMixin:
             return
         month, week = target_date
         unavailable = []
-        for name in names:
-            fighter = self.get_fighter(name)
+        for reference in references:
+            fighter = self.get_fighter(reference)
             if not self.fighter_available_for_date(fighter, month, week, self.selected_booking_day()):
                 unavailable.append(f"{fighter.name} ({self.fighter_return_label(fighter)})")
         if unavailable:
@@ -121,7 +201,7 @@ class EventMixin:
             snapshot = dict(booked_fight)
             snapshot["fighter_ids"] = [
                 getattr(self.get_fighter(reference), "fighter_id", "") if reference != "TBA" else ""
-                for reference in self.event_fight_participants(snapshot)
+                for reference in self.event_fight_participant_references(snapshot)
             ]
             scheduled_fights.append(snapshot)
         event = {
@@ -208,29 +288,33 @@ class EventMixin:
         for event, fight in title_bouts + other_bouts:
             event_names = claimed_per_event.setdefault(id(event), set())
             participants = self.event_fight_participants(fight)
-            for index, name in enumerate(participants):
+            references = self.event_fight_participant_references(fight)
+            for index, (name, reference) in enumerate(zip(participants, references)):
                 if name == "TBA":
                     continue
-                if name in seen or name in event_names:
+                if reference in seen or reference in event_names:
                     if fight.get("tournament"):
                         fight.setdefault("tournament_entrants", participants)[index] = "TBA"
                         fight["fighters"] = list(fight["tournament_entrants"][:1] + fight["tournament_entrants"][-1:])
                     else:
                         fight.setdefault("fighters", participants)[index] = "TBA"
-                    fight["tba_weight"] = fight.get("tba_weight", self._safe_weight(name))
-                    fight["tba_gender"] = fight.get("tba_gender", self._safe_gender(name))
+                    fighter = self.get_fighter(reference)
+                    fight["tba_weight"] = fight.get("tba_weight", fighter.weight if fighter else self._safe_weight(name))
+                    fight["tba_gender"] = fight.get("tba_gender", fighter.gender if fighter else self._safe_gender(name))
+                    if len(fight.get("fighter_ids", [])) == len(participants):
+                        fight["fighter_ids"][index] = ""
                     conflicts.append(name)
                     if self.strip_fight_title_stakes(fight, f"{name} was double-booked and freed from this card"):
                         downgraded.append((event.get("name", "a scheduled card"), name))
                 else:
-                    event_names.add(name)
-                    seen.add(name)
+                    event_names.add(reference)
+                    seen.add(reference)
         # A title bout that kept both corners may still have changed shape, so
         # its interim status is settled against the belts as they stand now.
         for _event, fight in title_bouts:
             if not self.fight_has_title_stakes(fight):
                 continue
-            named = [self.get_fighter(name) for name in self.event_fight_participants(fight) if name != "TBA"]
+            named = self.event_fight_fighters(fight)
             divisional = bool(fight.get("divisional_title", fight.get("title") and not fight.get("special_belt")))
             fight["interim"] = self.divisional_title_is_interim([f for f in named if f], divisional)
         for name in sorted(set(conflicts)):
@@ -266,10 +350,7 @@ class EventMixin:
         camp_length_weeks = camp_days / DAYS_PER_WEEK
         weeks_out = max(1, round(camp_length_weeks))
         for fight in event["fights"]:
-            for name in self.event_fight_participants(fight):
-                if name == "TBA":
-                    continue
-                fighter = self.get_fighter(name)
+            for fighter in self.event_fight_fighters(fight):
                 quality = self.gym_quality(fighter.camp)
                 gym = self.gym_by_name(fighter.camp)
                 professionalism = fighter.professionalism / 100
@@ -465,10 +546,7 @@ class EventMixin:
         """
         earliest = self.current_day_index()
         for fight in getattr(self, "booked", []):
-            for name in self.event_fight_participants(fight):
-                if name == "TBA":
-                    continue
-                fighter = self.get_fighter(name)
+            for fighter in self.event_fight_fighters(fight):
                 earliest = max(earliest, self.fighter_available_day_index(fighter))
         return self.day_index_parts(earliest)
 
@@ -650,15 +728,15 @@ class EventMixin:
 
         def current_names():
             return {
-                name for fight in event.get("fights", [])
-                for name in self.event_fight_participants(fight) if name != "TBA"
+                reference for fight in event.get("fights", [])
+                for reference in self.event_fight_participant_references(fight) if reference != "TBA"
             }
 
         def other_booked_names():
             return {
-                name for other in self.scheduled_events if other is not event
+                reference for other in self.scheduled_events if other is not event
                 for fight in other.get("fights", [])
-                for name in self.event_fight_participants(fight) if name != "TBA"
+                for reference in self.event_fight_participant_references(fight) if reference != "TBA"
             }
 
         def refresh_available_editor(*_args):
@@ -668,7 +746,7 @@ class EventMixin:
             division_ranks = self.player_division_rank_map()
             closed = set(getattr(self, "closed_divisions", set()))
             for fighter in sorted(self.roster, key=lambda item: (item.weight, item.gender, -item.overall, item.name)):
-                if fighter.name in booked_here or fighter.name in booked_elsewhere:
+                if fighter.fighter_id in booked_here or fighter.fighter_id in booked_elsewhere:
                     continue
                 # Never offer fighters from a division the promotion has closed.
                 if self.belt_key(fighter.gender, fighter.weight) in closed:
@@ -734,7 +812,7 @@ class EventMixin:
             for index, fight in enumerate(event.get("fights", [])):
                 names = fight.get("fighters", [])
                 matchup = " vs ".join(names) if names else "Tournament"
-                named = [self.get_fighter(name) for name in names if name != "TBA"]
+                named = self.event_fight_fighters(fight)
                 build = round(self.match_build_score(*named, fight)) if len(named) == 2 else "-"
                 # Make the segment of the card explicit, not just a running number.
                 tier_name = fight.get("tier", "Main Card")
@@ -788,6 +866,7 @@ class EventMixin:
             interim = self.divisional_title_is_interim(fighters, title)
             fight = {
                 "fighters": names,
+                "fighter_ids": [fighters[0].fighter_id, ""] if tba else [fighter.fighter_id for fighter in fighters],
                 "title": title,
                 "divisional_title": title,
                 "interim": interim,
@@ -821,7 +900,7 @@ class EventMixin:
             if index is None:
                 return
             fight = event["fights"][index]
-            named = [self.get_fighter(name) for name in fight.get("fighters", []) if name != "TBA"]
+            named = self.event_fight_fighters(fight)
             current_divisional = bool(fight.get("divisional_title", fight.get("title") and not fight.get("special_belt")))
             fight["divisional_title"] = not current_divisional
             fight["title"] = bool(fight["divisional_title"] or fight.get("special_belt"))
@@ -845,22 +924,27 @@ class EventMixin:
             if replacement_status != "Ready":
                 messagebox.showwarning("Fighter unavailable", f"{replacement.name}: {replacement_status}", parent=window)
                 return
-            tba_weight = fight.get("tba_weight") or next((self.get_fighter(name).weight for name in fight.get("fighters", []) if name != "TBA" and self.get_fighter(name)), "")
-            tba_gender = fight.get("tba_gender") or next((self.get_fighter(name).gender for name in fight.get("fighters", []) if name != "TBA" and self.get_fighter(name)), "")
+            booked_fighters = self.event_fight_fighters(fight)
+            tba_weight = fight.get("tba_weight") or next((fighter.weight for fighter in booked_fighters), "")
+            tba_gender = fight.get("tba_gender") or next((fighter.gender for fighter in booked_fighters), "")
             if replacement.weight != tba_weight or replacement.gender != tba_gender:
                 messagebox.showwarning("Division mismatch", f"The replacement must be a {tba_gender} {tba_weight}.", parent=window)
                 return
             fight["fighters"] = [replacement.name if name == "TBA" else name for name in fight["fighters"]]
+            fighter_ids = list(fight.get("fighter_ids", []))
+            if len(fighter_ids) != len(fight["fighters"]):
+                fighter_ids = [getattr(self.get_fighter(name), "fighter_id", "") if name != "TBA" else "" for name in fight["fighters"]]
+            fight["fighter_ids"] = [replacement.fighter_id if not fighter_id else fighter_id for fighter_id in fighter_ids]
             fight["tba_filled"] = True
             fight["tba_note"] = f"{replacement.name} was confirmed through the booked-card editor."
-            named = [self.get_fighter(name) for name in fight["fighters"]]
+            named = self.event_fight_fighters(fight)
             divisional_title = bool(fight.get("divisional_title", fight.get("title") and not fight.get("special_belt")))
             fight["divisional_title"] = divisional_title
             fight["title"] = bool(divisional_title or fight.get("special_belt"))
             fight["interim"] = self.divisional_title_is_interim(named, divisional_title)
             # Camp only the incoming replacement; the original fighter's camp
             # has already been prepared for this scheduled event.
-            self.assign_event_camps({"month": event["month"], "week": event.get("week", 1), "fights": [{"fighters": [replacement.name]}]})
+            self.assign_event_camps({"month": event["month"], "week": event.get("week", 1), "fights": [{"fighters": [replacement.name], "fighter_ids": [replacement.fighter_id]}]})
             self.news.insert(0, f"{replacement.name} replaces TBA on {event.get('name', 'an upcoming event')}." )
             refresh_card_editor(index)
 
@@ -2119,6 +2203,9 @@ class EventMixin:
         if fighter not in self.free_agents:
             self.refresh_market()
             return
+        if int(getattr(fighter, "purse", 0) or 0) < 0:
+            messagebox.showwarning("Invalid contract", "This fighter has an invalid negative purse. Repair the fighter record before signing.")
+            return
         signing_bonus = fighter.purse * 2
         if self.cash < signing_bonus:
             messagebox.showwarning("Not enough cash", f"Signing {self.fighter_display_name(fighter)} requires a ${signing_bonus:,} bonus.")
@@ -2153,7 +2240,10 @@ class EventMixin:
         window.configure(bg=self.colors["chrome"])
         active_offer_company = getattr(fighter, "ai_offer_company", "") if not existing and not comeback else ""
         active_offer_purse = getattr(fighter, "ai_offer_purse", 0) if active_offer_company else 0
-        rival = next((promo for promo in self.promotions if promo.name == active_offer_company), None) or random.choice([promo for promo in self.promotions if not getattr(promo, "is_regional_feeder", False)])
+        rival = self.contract_rival_candidate(active_offer_company)
+        if active_offer_company and rival is None:
+            active_offer_purse = 0
+        rival_name = getattr(rival, "name", active_offer_company or "No rival promotion")
         leverage = 1 + fighter.popularity / 140 + (0.35 if fighter.champion else 0) + max(0, fighter.momentum) * 0.05
         if comeback:
             leverage += 0.28
@@ -2162,10 +2252,10 @@ class EventMixin:
         purse_var = tk.IntVar(value=ask)
         term_var = tk.IntVar(value=max(8, min(30, fighter.contract_months if existing else 12)))
         fights_var = tk.IntVar(value=5 if (existing or comeback) else 3)
-        bonus_var = tk.IntVar(value=15)
         signing_var = tk.IntVar(value=max(0, round(ask * (0.75 if comeback else 0.5) / 1000) * 1000))
         exclusive_var = tk.BooleanVar(value=True)
         win_bonus_var = tk.IntVar(value=getattr(fighter, "win_bonus", 0))
+        bonus_var = tk.IntVar(value=getattr(fighter, "finish_bonus_pct", 0) if existing else 15)
         ppv_var = tk.IntVar(value=getattr(fighter, "ppv_points", 0))
         champ_clause_var = tk.BooleanVar(value=getattr(fighter, "champions_clause", False))
         title_shot_var = tk.BooleanVar(value=getattr(fighter, "title_shot_clause", False))
@@ -2217,8 +2307,10 @@ class EventMixin:
         body = ttk.Frame(window, style="Panel.TFrame")
         body.pack(fill="both", expand=True, padx=8, pady=8)
         rival_text = ("A comeback requires a convincing financial and career package; the fighter stays retired if talks fail."
-                      if comeback else f"Live rival offer: {rival.name} is offering ${active_offer_purse:,}/fight for {fighter.ai_offer_months} months; you can beat it before next month."
-                      if active_offer_purse else ("Renewal talks start warmer because they already work here." if existing else f"{rival.name} may bid if talks drag."))
+                      if comeback else f"Live rival offer: {rival_name} is offering ${active_offer_purse:,}/fight for {fighter.ai_offer_months} months; you can beat it before next month."
+                      if active_offer_purse else ("Renewal talks start warmer because they already work here." if existing
+                                                  else f"{rival_name} may bid if talks drag." if rival
+                                                  else "No rival promotion is currently able to bid; the fighter will judge your offer on its own merits."))
         rating_line = (
             f"OVR {fighter.overall} | Pop {fighter.popularity} | Morale {fighter.morale}"
             if ratings_known else
@@ -2309,9 +2401,13 @@ class EventMixin:
                  font=("Tahoma", 8, "bold"), anchor="w", justify="left", wraplength=610, padx=8, pady=6).pack(fill="x")
 
         def evaluate():
-            purse, term, fights = purse_var.get(), term_var.get(), fights_var.get()
-            bonus, signing, exclusive = bonus_var.get(), signing_var.get(), exclusive_var.get()
-            win_bonus, ppv = win_bonus_var.get(), ppv_var.get()
+            terms = self.validated_contract_terms(
+                purse_var.get(), term_var.get(), fights_var.get(), signing_var.get(),
+                bonus_var.get(), win_bonus_var.get(), ppv_var.get(),
+            )
+            purse, term, fights = terms["purse"], terms["months"], terms["guaranteed_fights"]
+            bonus, signing, exclusive = terms["finish_bonus_pct"], terms["signing_bonus"], exclusive_var.get()
+            win_bonus, ppv = terms["win_bonus"], terms["ppv_points"]
             champ_clause, title_shot = champ_clause_var.get(), title_shot_var.get()
             main_event_promise, top_opponent_promise = main_event_promise_var.get(), top_opponent_promise_var.get()
             term = self.normalized_contract_months(term)
@@ -2463,10 +2559,18 @@ class EventMixin:
                     if hasattr(self, "refresh_regional_prospects"):
                         self.refresh_regional_prospects()
                     return
-            purse, term, fights = purse_var.get(), self.normalized_contract_months(term_var.get()), fights_var.get()
+            try:
+                terms = self.validated_contract_terms(
+                    purse_var.get(), term_var.get(), fights_var.get(), signing_var.get(),
+                    bonus_var.get(), win_bonus_var.get(), ppv_var.get(),
+                )
+            except (tk.TclError, ValueError) as exc:
+                result_label.config(text=f"Invalid contract: {exc}")
+                return
+            purse, term, fights = terms["purse"], terms["months"], terms["guaranteed_fights"]
             if term != term_var.get():
                 term_var.set(term)
-            bonus, signing, exclusive = bonus_var.get(), signing_var.get(), exclusive_var.get()
+            bonus, signing, exclusive = terms["finish_bonus_pct"], terms["signing_bonus"], exclusive_var.get()
             score, target, _pct, unmet = evaluate()
             score += random.randint(-4500, 4500)
             if score >= target:
@@ -2537,10 +2641,14 @@ class EventMixin:
                     fighter.retirement_reason = "Signed for one final retirement bout."
                 else:
                     comeback_extension = self.extend_comeback_commitment(fighter, fights) if comeback else None
+                    if not comeback:
+                        fighter.guaranteed_fights = fights
+                        fighter.contract_fights_completed = 0
                 fighter.exclusive = exclusive
                 fighter.contract_type = "Exclusive" if exclusive else "Non-Exclusive"
-                fighter.win_bonus = win_bonus_var.get()
-                fighter.ppv_points = ppv_var.get()
+                fighter.win_bonus = terms["win_bonus"]
+                fighter.finish_bonus_pct = bonus
+                fighter.ppv_points = terms["ppv_points"]
                 fighter.champions_clause = champ_clause_var.get()
                 fighter.title_shot_clause = title_shot_var.get()
                 fighter.main_event_promise = main_event_promise_var.get()
@@ -2586,15 +2694,15 @@ class EventMixin:
             state["attempts"] -= 1
             fighter.negotiation_heat = min(100, fighter.negotiation_heat + 10)
             # A rival can enter the bidding when talks drag, raising the bar.
-            if not existing and not comeback and not active_offer_purse and state["attempts"] == 1 and fighter.popularity > 45 and random.random() < 0.6:
+            if rival is not None and not existing and not comeback and not active_offer_purse and state["attempts"] == 1 and fighter.popularity > 45 and random.random() < 0.6:
                 state["rival_bid"] = round(ask * random.uniform(0.15, 0.4))
                 result_label.config(text=f"{rival.name} has entered the bidding! {self.fighter_display_name(fighter)} now wants more to stay. Attempts left: {state['attempts']}")
                 refresh_meter()
                 return
             if state["attempts"] <= 0:
                 if active_offer_purse:
-                    result_label.config(text=f"Your talks ended. {rival.name}'s live offer remains in place until next month.")
-                elif not existing and not comeback and source_promotion is None and state["rival_bid"] and random.random() < 0.5:
+                    result_label.config(text=f"Your talks ended. {rival_name}'s live offer remains in place until next month.")
+                elif rival is not None and not existing and not comeback and source_promotion is None and state["rival_bid"] and random.random() < 0.5:
                     rival_purse = max(round(ask * 1.08 / 500) * 500, fighter.purse)
                     rival_term = random.randint(10, 22)
                     rival_bonus = max(rival_purse, round(rival_purse * random.uniform(0.8, 1.5) / 500) * 500)
@@ -2803,7 +2911,7 @@ class EventMixin:
             snapshot = dict(booked_fight)
             snapshot["fighter_ids"] = [
                 getattr(self.get_fighter(reference), "fighter_id", "") if reference != "TBA" else ""
-                for reference in self.event_fight_participants(snapshot)
+                for reference in self.event_fight_participant_references(snapshot)
             ]
             immediate_fights.append(snapshot)
         event = {"name": event_name, "venue": self.venue.get(), "region": self.event_region.get(), "city": self.event_city.get(), "month": self.month, "week": self.week, "fights": immediate_fights}
@@ -2823,8 +2931,9 @@ class EventMixin:
         for fight in event.get("fights", []):
             if not (fight.get("main") or fight.get("title")):
                 continue
-            names = [n for n in fight.get("fighters", []) if n != "TBA"]
-            fighters = [self.get_fighter(n) for n in names if any(r.name == n for r in self.roster)]
+            fighters = [fighter for fighter in self.event_fight_fighters(fight) if fighter in self.roster]
+            if fight.get("tournament") and len(fighters) > 2:
+                fighters = [fighters[0], fighters[-1]]
             if len(fighters) < 2:
                 continue
             a, b = fighters[0], fighters[1]
@@ -2922,11 +3031,93 @@ class EventMixin:
         return status(a), status(b)
 
     def player_bout_purse_factor(self, fight):
-        """Player cards pay less for lower-card placement; AI finance has its own model."""
-        return {"Prelims": 0.75, "Early Prelims": 0.55}.get(str(fight.get("tier", "Main Card") or "Main Card"), 1.0)
+        """Honor the negotiated purse regardless of card placement.
+
+        Card tier controls presentation and commercial draw, not whether the
+        promotion may silently withhold part of a signed fighter's pay.
+        """
+        return 1.0
 
     def player_bout_purse_cost(self, fight, a, b):
         return round((a.purse + b.purse) * self.player_bout_purse_factor(fight))
+
+    def event_contract_clause_payouts(self, results, finance):
+        """Calculate every fight-night clause from the completed card once."""
+        ppv_pool = max(0, int(finance.get("ticket_revenue", 0) or 0)) + max(0, int(finance.get("broadcast_income", 0) or 0))
+        win_bonuses = 0
+        finish_bonuses = 0
+        ppv_points = 0
+        ppv_fighters = set()
+        for winner, loser, _fight, method in results:
+            if method != "Draw" and winner in self.roster:
+                win_bonuses += max(0, int(getattr(winner, "win_bonus", 0) or 0))
+                if any(finish in str(method) for finish in ("KO", "TKO", "Submission")):
+                    finish_pct = max(0, int(getattr(winner, "finish_bonus_pct", 0) or 0))
+                    finish_bonuses += round(max(0, int(getattr(winner, "purse", 0) or 0)) * finish_pct / 100)
+            # PPV is an event-level revenue share. Tournament entrants who fight
+            # more than once are still paid their points only once for the card.
+            for fighter in (winner, loser):
+                fighter_key = getattr(fighter, "fighter_id", "") or id(fighter)
+                if fighter not in self.roster or fighter_key in ppv_fighters:
+                    continue
+                ppv_fighters.add(fighter_key)
+                ppv_points += round(ppv_pool * max(0, int(getattr(fighter, "ppv_points", 0) or 0)) / 100)
+        return {
+            "win_bonuses": win_bonuses,
+            "finish_bonuses": finish_bonuses,
+            "ppv_points": ppv_points,
+            "total": win_bonuses + finish_bonuses + ppv_points,
+        }
+
+    def finalize_event_fight_pay(self, finance, results, awards):
+        """Reconcile awards and clauses into the canonical event profit."""
+        old_tax = max(0, int(finance.get("tax", 0) or 0))
+        old_awards = max(0, int(finance.get("bonuses", 0) or 0))
+        pre_tax_expense = max(0, int(finance.get("total_expense", 0) or 0) - old_tax - old_awards)
+        award_payout = sum(
+            max(0, int(award.get("bonus", 0) or 0)) * len(award.get("fighters", []))
+            for award in awards
+        )
+        clauses = self.event_contract_clause_payouts(results, finance)
+        pre_tax_expense += award_payout + clauses["total"]
+        tax_rate = max(0.0, float(self.finance.get("tax_rate", 0) or 0))
+        total_revenue = max(0, int(finance.get("total_revenue", 0) or 0))
+        tax = round(max(0, total_revenue - pre_tax_expense) * tax_rate)
+        total_expense = pre_tax_expense + tax
+        finance.update({
+            "bonuses": award_payout,
+            "contract_clauses": clauses["total"],
+            "win_bonuses": clauses["win_bonuses"],
+            "finish_bonuses": clauses["finish_bonuses"],
+            "ppv_points_payout": clauses["ppv_points"],
+            "contract_clauses_included": True,
+            "tax": tax,
+            "total_expense": total_expense,
+            "profit": total_revenue - total_expense,
+        })
+        return finance
+
+    def record_standard_guaranteed_fight(self, fighter):
+        """Count a completed official bout against an ordinary player guarantee."""
+        if fighter not in self.roster or getattr(fighter, "comeback_contract", False):
+            return 0
+        guaranteed = max(0, int(getattr(fighter, "guaranteed_fights", 0) or 0))
+        completed = max(0, int(getattr(fighter, "contract_fights_completed", 0) or 0))
+        if guaranteed <= 0 or completed >= guaranteed:
+            return 0
+        fighter.contract_fights_completed = min(guaranteed, completed + 1)
+        remaining = guaranteed - fighter.contract_fights_completed
+        fighter.fight_history = fighter.fight_history or []
+        fighter.fight_history.insert(0, f"Contract guarantee: {fighter.contract_fights_completed}/{guaranteed} fights completed.")
+        if remaining == 0:
+            fighter.relationship_trust = min(100, int(getattr(fighter, "relationship_trust", 55) or 55) + 6)
+            fighter.morale = min(100, fighter.morale + 3)
+            self.inbox.append({
+                "subject": f"Fight Guarantee Fulfilled - {fighter.name}",
+                "body": f"{fighter.name} has received all {guaranteed} guaranteed fights in their contract. Trust and morale improved.",
+                "type": "Contracts", "resolved": True, "seen": False,
+            })
+        return remaining
 
     def prepare_event_result(self, event):
         # A player-arranged card is not re-sorted on fight night. The top row
@@ -3069,6 +3260,7 @@ class EventMixin:
             finance["profit"] += performance_bonus
         finance["media_outcome"] = dict(media_outcome)
         awards = self.choose_event_awards(award_pool)
+        self.finalize_event_fight_pay(finance, results, awards)
         gate = finance["ticket_revenue"]
         profit = finance["profit"]
         mismatch_penalty = self.card_mismatch_penalty(results)
@@ -3102,6 +3294,7 @@ class EventMixin:
         log.append(f"Attendance: {finance['attendance']:,} / {finance['venue_capacity']:,} | Ticket price ${finance['ticket_price']:,} | Mismatch penalty {mismatch_penalty}")
         log.append(f"Gate: ${finance['ticket_revenue']:,} | Broadcast: ${finance['broadcast_income']:,} | Sponsors: ${finance['sponsorship']:,} | Merch: ${finance['merchandise']:,}")
         log.append(f"Fighter pay: ${finance['fighter_pay']:,} | Lower-card savings: ${finance.get('tier_purse_savings', 0):,} | Bonuses: ${finance['bonuses']:,} | Production: ${finance['production']:,} | Medical: ${finance['medical']:,} | Marketing: ${finance['marketing']:,} | Tax: ${finance['tax']:,}")
+        log.append(f"Contract clauses: ${finance.get('contract_clauses', 0):,} (win ${finance.get('win_bonuses', 0):,}, finish ${finance.get('finish_bonuses', 0):,}, PPV ${finance.get('ppv_points_payout', 0):,})")
         log.append(f"Total revenue: ${finance['total_revenue']:,} | Total expense: ${finance['total_expense']:,} | Profit: ${profit:,}")
         log.append(f"Company popularity will move from {self.company_pop} to {projected_pop}. Stability will move from {self.company_stability} to {projected_stability}.")
         tournament_note = f", {len(tournament_brackets)} tournament(s)" if tournament_brackets else ""
@@ -3139,11 +3332,7 @@ class EventMixin:
 
     def card_mismatch_penalty(self, results):
         penalty = 0
-        for _winner, _loser, fight, _method in results:
-            names = [name for name in fight.get("fighters", []) if name != "TBA"]
-            if len(names) != 2:
-                continue
-            a, b = [self.get_fighter(name) for name in names]
+        for a, b, fight, _method in results:
             rank_a = self.division_rank_number(a) or 30
             rank_b = self.division_rank_number(b) or 30
             rank_gap = abs(rank_a - rank_b)
@@ -3551,14 +3740,19 @@ class EventMixin:
         for fight in event["fights"]:
             if fight.get("tournament") and "TBA" in fight.get("tournament_entrants", []):
                 entrants = list(fight.get("tournament_entrants", []))
+                fighter_ids = list(fight.get("fighter_ids", []))
+                if len(fighter_ids) != len(entrants):
+                    fighter_ids = [getattr(self.get_fighter(name), "fighter_id", "") if name != "TBA" else "" for name in entrants]
                 known = next((self.get_fighter(name) for name in entrants if name != "TBA"), None)
                 for index, name in enumerate(entrants):
                     if name != "TBA":
                         continue
                     replacement = self.find_tba_replacement(fight.get("tournament_weight", known.weight), fight.get("tournament_gender", known.gender), known=known, short_notice=True)
                     entrants[index] = replacement.name
+                    fighter_ids[index] = replacement.fighter_id
                     lines.append(f"Tournament alternate {replacement.name} entered the field on short notice.")
                 fight["tournament_entrants"] = entrants
+                fight["fighter_ids"] = fighter_ids
                 fight["fighters"] = [entrants[0], entrants[-1]]
             # Fill an outstanding TBA before the scale rather than after it.
             # Weigh-ins ran before the opponent existed, so any bout still
@@ -3572,7 +3766,7 @@ class EventMixin:
                 if any(name != "TBA" for name in fight.get("fighters", [])):
                     self.resolve_fight_fighters(fight)
             names = [name for name in self.event_fight_participants(fight) if name != "TBA"]
-            fighters = [self.get_fighter(name) for name in names if any(r.name == name for r in self.roster)]
+            fighters = [fighter for fighter in self.event_fight_fighters(fight) if fighter in self.roster]
             if len(fighters) < 2:
                 continue
             misses = []
@@ -3883,17 +4077,17 @@ class EventMixin:
         for _winner, _loser, fight, _method in package.get("results", []):
             if not (fight.get("main") or fight.get("title")):
                 continue
-            for name in fight.get("fighters", []):
-                fighter = self.find_fighter_anywhere(name)
+            for fighter in self.event_fight_fighters(fight):
                 if fighter and fighter not in featured:
                     featured.append(fighter)
         if package.get("media_outcome"):
             self.record_media_event_outcome(event, package["media_outcome"], featured_fighters=featured)
 
         award_pool = package.get("award_pool", [])
-        clause_payout = 0
         finance = package.get("finance", {})
-        ppv_pool = finance.get("ticket_revenue", 0) + finance.get("broadcast_income", 0)
+        clause_breakdown = self.event_contract_clause_payouts(package.get("results", []), finance)
+        clause_payout = int(finance.get("contract_clauses", clause_breakdown["total"]) or 0)
+        clauses_included = bool(finance.get("contract_clauses_included", False))
         for index, (winner, loser, fight, method) in enumerate(package["results"]):
             stats = fight.get("_fighter_stats", {})
             if stats:
@@ -3906,18 +4100,17 @@ class EventMixin:
                 self.apply_draw_result(winner, loser, fight)
             else:
                 self.apply_result(winner, loser, fight, method)
-                if winner in self.roster and getattr(winner, "win_bonus", 0):
-                    clause_payout += winner.win_bonus
-            # PPV points are owed to booked fighters win or lose.
-            for fighter in (winner, loser):
-                if fighter in self.roster and getattr(fighter, "ppv_points", 0):
-                    clause_payout += round(ppv_pool * fighter.ppv_points / 100)
+            self.record_standard_guaranteed_fight(winner)
+            self.record_standard_guaranteed_fight(loser)
         if clause_payout:
-            self.cash -= clause_payout
-            self.finance["ledger"].insert(0, f"Month {self.month}: Contract clause payouts (win bonuses + PPV points) ${clause_payout:,}.")
+            # New event packages already include clauses in profit. Keep the
+            # fallback for an in-memory package prepared by an older build.
+            if not clauses_included:
+                self.cash -= clause_payout
+            self.finance["ledger"].insert(0, f"Month {self.month}: Contract clause payouts (win + finish + PPV) ${clause_payout:,}.")
         self.record_finance_transaction(
             package["event_name"], revenue=finance.get("total_revenue", 0),
-            costs=finance.get("total_expense", 0) + clause_payout,
+            costs=finance.get("total_expense", 0) + (0 if clauses_included else clause_payout),
         )
         for bracket in package.get("tournament_brackets", []):
             champion = self.find_fighter_anywhere(bracket.get("champion", ""))
@@ -3984,7 +4177,8 @@ class EventMixin:
         finance = package.get("finance", {})
         event_reason = (
             f"{package.get('fight_count', 0)} fights; excitement {round(package.get('average_excitement', 0) or 0)}; "
-            f"${finance.get('total_revenue', 0):,} revenue against ${finance.get('total_expense', 0) + clause_payout:,} costs"
+            f"${finance.get('total_revenue', 0):,} revenue against "
+            f"${finance.get('total_expense', 0) + (0 if clauses_included else clause_payout):,} costs"
         )
         self.record_snapshot_changes(change_snapshot, event_reason, include_finance=False)
         package["attributed_changes"] = [entry for entry in getattr(self, "change_journal", []) if id(entry) not in prior_change_ids]
@@ -4007,10 +4201,7 @@ class EventMixin:
         data = self.regions.get(region, {})
         morale_bonus = data.get("promo_benefit", {}).get("morale", 1)
         for winner, loser, fight, method in package["results"]:
-            for name in fight.get("fighters", []):
-                # Prefer the exact objects stored in the result.  The fallback
-                # also supports old result packages and already-retired fighters.
-                fighter = winner if winner.name == name else loser if loser.name == name else self.find_fighter_anywhere(name)
+            for fighter in (winner, loser):
                 if not fighter:
                     continue
                 connection = self.fighter_event_connection(fighter, region, city)

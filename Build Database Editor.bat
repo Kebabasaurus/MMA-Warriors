@@ -1,14 +1,26 @@
 @echo off
 setlocal
 set "APP_DIR=%~dp0"
-set "PY=C:\Users\Tanks\AppData\Local\Programs\Python\Python313\python.exe"
+set "LOCAL_PY=%APP_DIR%.venv\Scripts\python.exe"
 
 cd /d "%APP_DIR%"
 
-if not exist "%PY%" (
-    echo Python 3.13 with PyInstaller was not found.
-    pause
-    exit /b 1
+if exist "%LOCAL_PY%" (
+    set "PY=%LOCAL_PY%"
+) else (
+    where py >nul 2>nul
+    if not errorlevel 1 (
+        set "PY=py"
+    ) else (
+        where python >nul 2>nul
+        if not errorlevel 1 (
+            set "PY=python"
+        ) else (
+            echo Python 3 with PyInstaller was not found.
+            pause
+            exit /b 1
+        )
+    )
 )
 
 %PY% "%APP_DIR%database_editor.py" --validate "%APP_DIR%Databases\Default Universe.universe.json"

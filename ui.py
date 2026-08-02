@@ -1908,7 +1908,18 @@ class UIMixin:
         region_panel.pack(side="left", fill="y", padx=(0, 6))
         region_panel.configure(width=240)
         region_panel.pack_propagate(False)
-        self.region_list = tk.Listbox(region_inner, font=("Tahoma", 9), bg=self.colors["tree"], fg=self.colors["text"])
+        self.region_list = tk.Listbox(
+            region_inner,
+            font=("Tahoma", 9),
+            bg=self.colors["tree"],
+            fg=self.colors["text"],
+            selectbackground=self.colors["red"],
+            selectforeground="#ffffff",
+            activestyle="none",
+            highlightbackground=self.colors["line"],
+            highlightcolor=self.colors["line"],
+            relief="flat",
+        )
         self.region_list.pack(fill="both", expand=True)
         self.region_list.bind("<<ListboxSelect>>", lambda _e: self.refresh_region_profile())
         info_panel, info = self.section(body, "REGION PROFILE")
@@ -1961,6 +1972,7 @@ class UIMixin:
             self.results_tree.column(col, width=width, anchor="center")
         self.results_tree.column("event", anchor="w")
         self.results_tree.column("headline", anchor="w")
+        self.results_tree.bind("<<TreeviewSelect>>", lambda _e: self.show_selected_result_detail())
         self.make_tree_sortable(self.results_tree)
         self.results_tree.pack(fill="both", expand=True)
         self.results_tree.bind("<Double-1>", lambda _e: self.open_selected_result())
@@ -2421,6 +2433,15 @@ class UIMixin:
 
         self.scouting_status_var = tk.StringVar(value="Select a scout and a search brief. Fighter evaluations are started from fighter profiles.")
         ttk.Label(bonus, textvariable=self.scouting_status_var, style="Inset.TLabel", anchor="w").pack(fill="x", padx=8, pady=(0, 4))
+        self.scouting_auto_assign_var = tk.BooleanVar(value=self.rules.get("auto_assign_idle_scouts", True))
+        auto_assign = ttk.Checkbutton(
+            bonus,
+            text="Automatically give idle staff scouts a free Basic Dossier assignment",
+            variable=self.scouting_auto_assign_var,
+            command=self.set_idle_scout_auto_assignment,
+        )
+        auto_assign.pack(fill="x", padx=8, pady=(0, 4))
+        self.attach_tooltip(auto_assign, "When enabled, an idle hired scout may proactively choose one public-market target. The assignment is labelled Auto Basic and costs no extra fee.")
         self.scouting_assignment_tree = ttk.Treeview(bonus, columns=("type", "target", "scout", "status", "due", "confidence", "advice", "cost"), show="headings", height=7, selectmode="browse")
         for col, text, width in (("type", "Assignment", 120), ("target", "Target / Region", 190), ("scout", "Scout", 145), ("status", "Status", 82), ("due", "Due", 82), ("confidence", "Confidence", 78), ("advice", "Scout Advice", 135), ("cost", "Cost", 78)):
             self.scouting_assignment_tree.heading(col, text=text)

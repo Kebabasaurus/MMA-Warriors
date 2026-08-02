@@ -1,7 +1,7 @@
 @echo off
 setlocal
 set "APP_DIR=%~dp0"
-set "BUNDLED_PY=C:\Users\Tanks\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe"
+set "LOCAL_PY=%APP_DIR%.venv\Scripts\python.exe"
 
 cd /d "%APP_DIR%"
 
@@ -12,8 +12,8 @@ if exist "%APP_DIR%dist\MMA Warriors\MMA Warriors.exe" (
 )
 
 rem Otherwise run from source with the best available Python.
-if exist "%BUNDLED_PY%" (
-    start "MMA Warriors" "%BUNDLED_PY%" "%APP_DIR%main.py"
+if exist "%LOCAL_PY%" (
+    start "MMA Warriors" "%LOCAL_PY%" "%APP_DIR%main.py"
     exit /b
 )
 

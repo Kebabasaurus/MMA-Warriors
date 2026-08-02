@@ -169,6 +169,7 @@ class Fighter:
     award_count: int = 0
     rivalry_history: list = None
     win_bonus: int = 0
+    finish_bonus_pct: int = 0
     ppv_points: int = 0
     champions_clause: bool = False
     title_shot_clause: bool = False

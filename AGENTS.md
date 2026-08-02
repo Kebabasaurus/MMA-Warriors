@@ -177,6 +177,13 @@ not the active implementation. Do not copy fixes into them.
 
 - `smoke_test.py`: broad startup, release-document synchronization, state, save/load, UI-adjacent,
   contract, and fight regressions.
+- `persistence_regression_test.py`: transactional load, metadata sidecar, serialization purity, and
+  Results-index idempotence regressions.
+- `contracts_finance_regression_test.py`: contract validation, persistent clauses, same-name booking,
+  guarantees, and canonical event-payout regressions.
+- `ui_data_regression_test.py`: lazy staff/scouting UI, Results detail, gym capacity, regional data,
+  themed Regions, and fighter-identity regressions.
+- `qa_tooling_regression_test.py`: Simulation Lab isolation/calibration and portable launcher paths.
 - `stability_test.py`: longer-running deterministic and progression playtests.
 - `media_system_test.py`: media-system state and workflow regressions.
 - `database_editor_ui_audit.py`: database-editor UI audit.
@@ -307,13 +314,24 @@ assert round_trip.morale_trend == original   # current save
 - Save discovery and manipulation must use `primary_save_paths`, `save_slot_name_from_path`, and
   `save_slot_group_from_path`. Do not assume every slot is exactly one directory below `SAVE_DIR`.
 
-### Known serialization side effect
+### Transactional load and result-index rules
 
-`serialize_world()` currently calls `ensure_all_company_champions()`. That can fill thin divisions,
-add fighters, and consume simulation RNG. It is deliberately mirrored with load-time repair so the
-round trip remains stable. Do not treat serialization as a read-only operation in tests, and do not
-remove this call as an isolated cleanup. A correct refactor must move division top-up out of both
-save and load and into one explicit simulation step, with migration and regression coverage.
+- Treat a load as a transaction. Read, validate, migrate, and apply into a guarded candidate state;
+  if any phase fails, restore the complete pre-load application state before showing the error.
+- `ensure_result_index()` is an idempotent migration. A detailed record already represented by the
+  same stable archive/detail key is skipped. Only genuinely distinct cards may receive a sequenced
+  key, and repeated Quick Loads must never grow the index.
+- Save metadata is auxiliary. A metadata-write problem must not turn an already committed primary
+  save into a reported total failure; record it as a recoverable cache warning and rebuild it later
+  without leaving a blocking success/failure dialog open.
+
+### Serialization purity
+
+`serialize_world()` and ordinary save loading must be observational: they may normalize JSON-safe
+representations, but must not top up divisions, appoint champions, add fighters, or consume
+simulation RNG. Champion/division repair belongs to explicit new-game or calendar repair steps;
+legacy migrations must be narrowly versioned and may not rewrite a healthy sealed career.
+Regression tests must compare fighter counts, champion state, and RNG state across a round trip.
 
 ## 6. Promotions, Spectator Mode, and World AI
 
@@ -599,6 +617,15 @@ for years of control. Security has diminishing value through 48 months and no ad
 benefit beyond that point. Keep `normalized_contract_months` and
 `contract_duration_offer_score` aligned with the negotiation UI and smoke regressions.
 
+All contract money and percentages are domain-validated, not merely widget-validated. Purse,
+signing bonus, win bonus, finish-bonus percentage, PPV points, and guaranteed fights cannot be
+negative, and invalid input must fail before cash or roster state changes. An agreed purse is paid at
+its full contract value; company scale cannot silently discount it on fight night. Projection,
+actual payout, the finance ledger, and the event report must consume the same clause calculation.
+Every official player bout, including a draw, consumes one guaranteed fight. Ordinary guarantees
+remain visible until fulfilled, and an expired deal never renews for free: use explicit negotiation
+or the enabled paid auto-renew workflow.
+
 ### Weight cuts
 
 Use `perform_weigh_in` for player events, AI cards, and sandbox fights. Do not add a second shortcut
@@ -614,6 +641,11 @@ Gyms are first-class world objects. Their effects consider:
 - specialties and scouting;
 - fighter style fit; and
 - fighter age, prime, potential, and dedication.
+
+Opening gym membership must be capacity-aware. Shipped elite rooms should not begin at several
+times their capacity, because `gym_attention_multiplier` then suppresses the development system the
+gym is meant to showcase. Database/seed regressions should flag ordinary gyms above 150% opening
+load and keep regional team labels geographically consistent with tracked gyms.
 
 The gym viewer is accessible from the World Hub. If gym fields change, inspect and usually update:
 
@@ -665,6 +697,9 @@ layouts must still degrade cleanly at smaller supported widths.
 
 - Avoid hard-coded white or pale backgrounds. Use `self.colors["cream"]`,
   `self.colors["text"]`, and the active palette.
+- Refresh methods for lazily built screens must start with widget-existence guards. A domain action
+  such as starting a scouting report may be used before Staff, Finance, or another screen is built;
+  successful state changes must never fail because an unrelated tree does not exist yet.
 - Do not leave player-facing `ttk.Progressbar` widgets on the native grey defaults. Loading activity
   uses `Activity.Horizontal.TProgressbar`; live-fight freshness uses the red/blue corner styles, all
   with a dark track and a fill-to-track contrast ratio of at least 3:1.
@@ -769,6 +804,11 @@ custom behavior, but secondary and popup tables rely on the shared Treeview clas
 - Use real fighters where requested; generated fighters are acceptable for roster depth.
 - Generated data and tests should be deterministic under an explicit seed. Isolate test RNG setup
   from serialization and unrelated name generation.
+- `Promotion.reputation` is a compact level label used in the World Hub, not a prose-description
+  field. Keep long company copy in an explicit description/identity field so it cannot overflow the
+  Level column.
+- Region `teams` entries must represent teams based in that region. Prefer deriving the display
+  from `Gym.region`, and validate authored overrides against the gym database.
 
 ## 14. Testing and Shipping
 
@@ -830,6 +870,11 @@ describe player-visible behavior and important compatibility changes, not merely
 Randomized tests should assert robust invariants or aggregate behavior. Do not hide a real
 regression by widening a threshold without explaining why the sample design was wrong.
 
+The Simulation Lab fight audit is a competitive calibration tool: generate named low/mid/high
+bands, prefer overall gaps of six or less, report finish rates per band, and restore RNG/name state
+after the run. Its lightweight gate/profit stress figures are labelled synthetic and must not be
+presented as the player event-finance model.
+
 ### Portable builds
 
 For the game:
@@ -843,6 +888,10 @@ For the standalone universe editor:
 ```powershell
 .\Build Database Editor.bat
 ```
+
+Launcher/test/build batch files resolve Python from the repository `.venv` first, then the `py` or
+`python` command available on `PATH`. Never commit a developer username or absolute interpreter
+path; packaged builds still take precedence in the player launcher.
 
 The game build must preserve these runtime folders and files in `dist\MMA Warriors`:
 
