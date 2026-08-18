@@ -23,14 +23,21 @@ if exist "%LOCAL_PY%" (
     )
 )
 
-%PY% "%APP_DIR%database_editor.py" --validate "%APP_DIR%Databases\Default Universe.universe.json"
+"%PY%" "%APP_DIR%tools\verify_build_toolchain.py" --root "%CD%"
+if errorlevel 1 (
+    echo Build toolchain verification failed. No packages were installed.
+    pause
+    exit /b 1
+)
+
+"%PY%" "%APP_DIR%database_editor.py" --validate "%APP_DIR%Databases\Default Universe.universe.json"
 if errorlevel 1 (
     echo Database validation failed. The editor was not built.
     pause
     exit /b 1
 )
 
-%PY% -m PyInstaller --noconfirm --clean --distpath "%APP_DIR%output_database_editor" --workpath "%APP_DIR%build_database_editor" "%APP_DIR%MMA Warriors Database Editor.spec"
+"%PY%" -m PyInstaller --noconfirm --clean --distpath "%APP_DIR%output_database_editor" --workpath "%APP_DIR%build_database_editor" "%APP_DIR%MMA Warriors Database Editor.spec"
 if errorlevel 1 (
     echo Build failed.
     pause

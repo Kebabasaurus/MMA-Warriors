@@ -33,37 +33,18 @@ if exist "%LOCAL_PY%" (
     )
 )
 
-%PY% "%APP_DIR%smoke_test.py"
+"%PY%" "%APP_DIR%tools\verify_build_toolchain.py" --root "%CD%"
 if errorlevel 1 (
-    echo Smoke tests failed. Fix them before building.
+    echo Build toolchain verification failed. No packages were installed.
     pause
     exit /b 1
 )
 
-%PY% "%APP_DIR%stability_test.py"
+"%PY%" "%APP_DIR%run_regression_suite.py"
 if errorlevel 1 (
-    echo Stability playtest failed. Fix it before building.
+    echo Isolated regression suite failed. Fix it before building.
     pause
     exit /b 1
-)
-
-%PY% "%APP_DIR%media_system_test.py"
-if errorlevel 1 (
-    echo Media-system playtest failed. Fix it before building.
-    pause
-    exit /b 1
-)
-
-%PY% -m pip show pyinstaller >nul 2>nul
-if errorlevel 1 (
-    echo PyInstaller is not installed for this Python.
-    echo Installing PyInstaller now...
-    %PY% -m pip install pyinstaller
-    if errorlevel 1 (
-        echo Could not install PyInstaller.
-        pause
-        exit /b 1
-    )
 )
 
 rem PyInstaller replaces dist\MMA Warriors. Preserve runtime data first.
@@ -74,21 +55,21 @@ for %%D in (Saves Databases Logs) do (
     )
 )
 
-%PY% -m PyInstaller --noconfirm --windowed --name "MMA Warriors" --icon "%APP_DIR%assets\app_icon.ico" --add-data "%APP_DIR%assets;assets" --distpath "%APP_DIR%dist" --workpath "%APP_DIR%build" --specpath "%APP_DIR%build" "%APP_DIR%main.py"
+"%PY%" -m PyInstaller --noconfirm --windowed --name "MMA Warriors" --icon "%APP_DIR%assets\app_icon.ico" --add-data "%APP_DIR%assets;assets" --distpath "%APP_DIR%dist" --workpath "%APP_DIR%build" --specpath "%APP_DIR%build" "%APP_DIR%main.py"
 if errorlevel 1 (
     echo Build failed.
     pause
     exit /b 1
 )
 
-%PY% "%APP_DIR%database_editor.py" --validate "%APP_DIR%Databases\Default Universe.universe.json"
+"%PY%" "%APP_DIR%database_editor.py" --validate "%APP_DIR%Databases\Default Universe.universe.json"
 if errorlevel 1 (
     echo Database validation failed. The portable package was not completed.
     pause
     exit /b 1
 )
 
-%PY% -m PyInstaller --noconfirm --clean --distpath "%APP_DIR%output_database_editor" --workpath "%APP_DIR%build_database_editor" "%APP_DIR%MMA Warriors Database Editor.spec"
+"%PY%" -m PyInstaller --noconfirm --clean --distpath "%APP_DIR%output_database_editor" --workpath "%APP_DIR%build_database_editor" "%APP_DIR%MMA Warriors Database Editor.spec"
 if errorlevel 1 (
     echo Database Editor build failed. The portable package was not completed.
     pause

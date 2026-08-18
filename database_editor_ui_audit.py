@@ -8,7 +8,7 @@ from copy import deepcopy
 import tkinter as tk
 
 import database_editor as editor_module
-from database_editor import UNSET_CHOICE_LABEL, UniverseDatabaseEditor, compact_json, json_value
+from database_editor import UNSET_CHOICE_LABEL, UniverseDatabaseEditor, json_value
 
 
 def fail(title, message):

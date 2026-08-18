@@ -29,6 +29,10 @@ except Exception:
 
 
 class FightNightAudioMixin:
+    # Each app instance gets its own cue lock.  This class-level guard only
+    # protects the one-time lazy creation for callers that construct the mixin
+    # without going through the full application initializer (including tests).
+    _fight_night_audio_init_lock = threading.Lock()
     DEFAULT_FIGHT_NIGHT_AUDIO_VOLUME = 55
     AUDIO_DEFAULT = "System default"
     _SAMPLE_RATE = 44100
@@ -123,6 +127,17 @@ class FightNightAudioMixin:
         if not self.rules.get("fight_night_audio_enabled", True):
             return "Off"
         return str(self.rules.get("fight_night_audio_output", self.AUDIO_DEFAULT))
+
+    def _ensure_fight_night_audio_runtime(self):
+        """Return the per-instance cue lock, creating runtime state once."""
+        with FightNightAudioMixin._fight_night_audio_init_lock:
+            lock = getattr(self, "_fight_night_audio_lock", None)
+            if lock is None:
+                lock = threading.Lock()
+                self._fight_night_audio_lock = lock
+            if not hasattr(self, "_fight_night_active_cues"):
+                self._fight_night_active_cues = 0
+            return lock
 
     # ---- Bundled crowd recordings ---------------------------------------
 
@@ -557,29 +572,26 @@ class FightNightAudioMixin:
         volume *= context_gain
         if volume <= 0:
             return False
-        now = time.monotonic()
-        if now - getattr(self, "_fight_night_last_sound_at", 0.0) < 0.10:
-            return False
+        audio_lock = self._ensure_fight_night_audio_runtime()
         family = self._CROWD_CUE_FAMILIES.get(str(cue))
-        if family:
-            last_family_times = getattr(self, "_fight_night_last_family_at", {})
-            cooldown = self._CROWD_CUE_COOLDOWNS.get(family, 0.0)
-            if now - last_family_times.get(family, 0.0) < cooldown:
+        with audio_lock:
+            now = time.monotonic()
+            if now - getattr(self, "_fight_night_last_sound_at", 0.0) < 0.10:
                 return False
-        if not hasattr(self, "_fight_night_audio_lock"):
-            self._fight_night_audio_lock = threading.Lock()
-            self._fight_night_active_cues = 0
-        with self._fight_night_audio_lock:
             if self._fight_night_active_cues >= self._MAX_SIMULTANEOUS_CUES:
                 return False
+            if family:
+                last_family_times = getattr(self, "_fight_night_last_family_at", {})
+                cooldown = self._CROWD_CUE_COOLDOWNS.get(family, 0.0)
+                if now - last_family_times.get(family, 0.0) < cooldown:
+                    return False
             self._fight_night_active_cues += 1
-        if family:
-            if not hasattr(self, "_fight_night_last_family_at"):
-                self._fight_night_last_family_at = {}
-            self._fight_night_last_family_at[family] = now
-        self._fight_night_last_sound_at = now
-
-        crowd_entry = self._choose_crowd_audio(cue)
+            if family:
+                if not hasattr(self, "_fight_night_last_family_at"):
+                    self._fight_night_last_family_at = {}
+                self._fight_night_last_family_at[family] = now
+            self._fight_night_last_sound_at = now
+            crowd_entry = self._choose_crowd_audio(cue)
         device = self.resolve_fight_night_output()
 
         def worker():
@@ -600,13 +612,13 @@ class FightNightAudioMixin:
                 except Exception:
                     pass
             finally:
-                with self._fight_night_audio_lock:
+                with audio_lock:
                     self._fight_night_active_cues = max(0, self._fight_night_active_cues - 1)
 
         try:
             threading.Thread(target=worker, name=f"FightNightAudio-{cue}", daemon=True).start()
         except Exception:
-            with self._fight_night_audio_lock:
+            with audio_lock:
                 self._fight_night_active_cues = max(0, self._fight_night_active_cues - 1)
             return False
         return True

@@ -143,7 +143,9 @@ Africa, the US Midwest, the Nordic region, Korea, South America, and Britain.
 These are intentional next tasks, not reasons to undo recent work.
 
 1. **Old-save normalization:** legacy fighters can still carry the internal archetype string `Standard Prime`. The profile translates it, but a save-repair migration would clean the data.
-2. **Finance completeness:** weekly history captures event and overhead flows, but some direct cash actions may not yet be recorded as transactions.
+2. **Finance completeness:** player and AI/child cash movements now use canonical transaction rows;
+   weekly close reconciles totals to actual cash and records explicit repair entries for legacy/direct
+   mutations. Continue adding a focused regression whenever a new cash action is introduced.
 3. **Inbox preferences:** hidden mail types currently work during the running session but have not been verified as serialized into saves.
 4. **Extreme-horizon audit:** the 30-year play-level audit is complete; a future overnight 100-year audit can validate the new youth/retirement equilibrium beyond three generations.
 5. **UI sweep:** highest-value interactive upgrades are Companies, Regions, Personal Assistant, Staff/Scouting, and the Chronicle. Many links now exist, but these still contain static information surfaces.

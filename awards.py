@@ -296,7 +296,7 @@ class AwardsMixin:
 
     def open_company_milestones_window(self):
         self.update_company_safety_and_standing()
-        window = tk.Toplevel(self.root)
+        window = self.create_managed_window()
         window.title("MMA Warriors - Company Milestones & Super Events")
         window.geometry("1120x700")
         window.minsize(900, 560)
@@ -364,7 +364,7 @@ class AwardsMixin:
 
     def open_achievements_window(self):
         self.ensure_season_containers()
-        window = tk.Toplevel(self.root)
+        window = self.create_managed_window()
         window.title("Achievements & Milestones")
         window.geometry("980x620")
         window.configure(bg=self.colors["chrome"])
@@ -612,7 +612,7 @@ class AwardsMixin:
         self.season_stats = {k: v for k, v in self.season_stats.items() if k in keep}
 
     def open_awards_window(self, year, awards):
-        window = tk.Toplevel(self.root)
+        window = self.create_managed_window()
         window.title(f"{year} End-of-Year Awards")
         window.geometry("620x560")
         window.configure(bg=self.colors["chrome"])
@@ -641,7 +641,7 @@ class AwardsMixin:
 
     def open_awards_history_window(self):
         self.ensure_season_containers()
-        window = tk.Toplevel(self.root)
+        window = self.create_managed_window()
         window.title("Awards History")
         window.geometry("640x560")
         window.configure(bg=self.colors["chrome"])
@@ -736,7 +736,7 @@ class AwardsMixin:
 
     def open_records_ledger_window(self):
         """Browsable all-time records, built from the persistent world roster."""
-        window = tk.Toplevel(self.root)
+        window = self.create_managed_window()
         window.title("MMA Warriors - Historical Records")
         window.geometry("1120x690")
         window.minsize(940, 560)
@@ -1289,7 +1289,7 @@ class AwardsMixin:
 
     def open_record_book_window(self):
         self.refresh_historical_records()
-        window = tk.Toplevel(self.root)
+        window = self.create_managed_window()
         window.title("MMA Warriors - Official Record Book")
         window.geometry("980x630")
         window.configure(bg=self.colors["chrome"])
@@ -1389,7 +1389,7 @@ class AwardsMixin:
         return hofers
 
     def open_hall_of_fame_window(self):
-        window = tk.Toplevel(self.root)
+        window = self.create_managed_window()
         window.title("Hall of Fame")
         window.geometry("680x580")
         window.configure(bg=self.colors["chrome"])

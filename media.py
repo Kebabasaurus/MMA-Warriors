@@ -266,10 +266,22 @@ class MediaMixin:
             if buyout and self.cash < buyout:
                 return False, f"Replacing the active deal requires a ${buyout:,} buyout."
             self.cash -= buyout
+            if buyout:
+                self.record_finance_transaction(
+                    f"Media contract buyout: {active.get('name', 'current deal')}", costs=buyout,
+                    category="Media", source="Media rights replacement", counterparty=active.get("name", ""),
+                    reference=f"media-buyout:{active.get('id', active.get('name', 'current'))}:{self.month}:{self.week}",
+                )
         elif buyout:
             if promotion.cash < buyout:
                 return False, "The company cannot afford to replace its current deal."
             promotion.cash -= buyout
+            if hasattr(self, "record_promotion_finance_transaction"):
+                self.record_promotion_finance_transaction(
+                    promotion, f"Media contract buyout: {active.get('name', 'current deal')}", costs=buyout,
+                    category="Media", source="Media rights replacement", counterparty=active.get("name", ""),
+                    reference=f"media-buyout:{active.get('id', active.get('name', 'current'))}:{self.month}:{self.week}",
+                )
         if active:
             active["status"] = "Bought out"
         contract = dict(offer)
@@ -309,6 +321,12 @@ class MediaMixin:
         if self.cash < cost:
             return False, f"Ending this deal costs ${cost:,}."
         self.cash -= cost
+        if cost:
+            self.record_finance_transaction(
+                f"Media contract termination: {active.get('name', 'current deal')}", costs=cost,
+                category="Media", source="Media rights termination", counterparty=active.get("name", ""),
+                reference=f"media-termination:{active.get('id', active.get('name', 'current'))}:{self.month}:{self.week}",
+            )
         active["status"] = "Terminated"
         finance["media_relationships"][active.get("outlet_id", "")] = max(0, finance["media_relationships"].get(active.get("outlet_id", ""), 50) - 14)
         self.sync_legacy_media_rights()
@@ -368,9 +386,21 @@ class MediaMixin:
             return False, "That rivalry callout is still on a four-week cooldown.", None
         if promotion is None:
             self.cash -= spec["cost"]
+            if spec["cost"]:
+                self.record_finance_transaction(
+                    f"Media campaign: {action}", costs=spec["cost"], category="Media",
+                    source="Media desk", counterparty=getattr(fighter, "name", ""),
+                    reference=f"media-campaign:{self.month}:{self.week}:{action}",
+                )
             marketing = self.staff_skill("Marketing") if hasattr(self, "staff_skill") else 45
         else:
             promotion.cash -= spec["cost"]
+            if spec["cost"] and hasattr(self, "record_promotion_finance_transaction"):
+                self.record_promotion_finance_transaction(
+                    promotion, f"Media campaign: {action}", costs=spec["cost"], category="Media",
+                    source="Media desk", counterparty=getattr(fighter, "name", ""),
+                    reference=f"media-campaign:{promotion.name}:{self.month}:{self.week}:{action}",
+                )
             marketing = int((promotion.strategy or {}).get("commercial_strength", promotion.size))
         strategy = finance.get("media_strategy", "Balanced")
         strategy_bonus = {
@@ -621,6 +651,10 @@ class MediaMixin:
             messagebox.showwarning("Media Rights", f"A market review costs ${cost:,}.")
             return
         self.cash -= cost
+        self.record_finance_transaction(
+            "Media-rights market review", costs=cost, category="Media",
+            source="Media market research", reference=f"media-market-review:{self.month}:{self.week}",
+        )
         finance.setdefault("ledger", []).insert(0, f"Month {self.month}: Commissioned media-rights market review for ${cost:,}.")
         self.generate_media_offers(force=True)
         self.refresh_all()

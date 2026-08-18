@@ -16,12 +16,13 @@ from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from uuid import uuid4
 import tkinter as tk
-from dataclasses import dataclass, fields
+from dataclasses import MISSING, dataclass, fields
 from pathlib import Path
 from tkinter import messagebox, ttk
 
 from constants import *
 from models import Fighter, Gym, Promotion
+from universe_validation import validate_universe_section as shared_validate_universe_section
 
 
 LOGGER = logging.getLogger("mma_warriors")
@@ -30,6 +31,30 @@ _CRASH_APP = None
 FIGHTER_SAVE_FIELDS = tuple(field.name for field in fields(Fighter))
 GYM_SAVE_FIELDS = tuple(field.name for field in fields(Gym))
 PROMOTION_SAVE_FIELDS = tuple(field.name for field in fields(Promotion))
+
+
+def load_model_row(row, model_type, field_names, context):
+    """Create one save model with an actionable compatibility error.
+
+    Saves from newer builds may carry fields this executable does not yet know.
+    Those fields are ignored rather than crashing load; malformed required data
+    remains a clear transactional load failure.
+    """
+    if not isinstance(row, dict):
+        raise ValueError(f"{context} must be an object, not {type(row).__name__}.")
+    allowed = set(field_names)
+    unknown = sorted(set(row) - allowed)
+    if unknown:
+        LOGGER.warning("Ignoring forward-compatible fields in %s: %s", context, ", ".join(unknown[:8]))
+    filtered = {name: value for name, value in row.items() if name in allowed}
+    required = [field.name for field in fields(model_type) if field.default is MISSING and field.default_factory is MISSING]
+    missing = [name for name in required if name not in filtered]
+    if missing:
+        raise ValueError(f"{context} is missing required field(s): {', '.join(missing)}.")
+    try:
+        return model_type(**filtered)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{context} could not be loaded: {exc}") from exc
 
 
 def model_field_dict(value, field_names):
@@ -130,10 +155,22 @@ def hydrate_external_save_blocks(path, data):
     blocks = data.pop("_external_blocks", {}) or {}
     if not isinstance(blocks, dict):
         return data
+    block_root = (path.parent / "DataBlocks").resolve()
     for key, relative in blocks.items():
         if key not in EXTERNAL_SAVE_BLOCK_KEYS:
             continue
-        block_path = path.parent / str(relative)
+        if not isinstance(relative, str) or not relative.strip():
+            raise ValueError(f"External save block {key!r} has no valid relative path.")
+        relative_path = Path(relative)
+        if relative_path.is_absolute() or any(part == ".." for part in relative_path.parts):
+            raise ValueError(f"External save block {key!r} uses an unsafe path.")
+        block_path = (path.parent / relative_path).resolve()
+        try:
+            block_path.relative_to(block_root)
+        except ValueError as exc:
+            raise ValueError(f"External save block {key!r} escapes the save DataBlocks folder.") from exc
+        if block_path.name != f"{key}.json.gz" or block_path.parent.parent != block_root:
+            raise ValueError(f"External save block {key!r} has an invalid generated filename.")
         data[key] = json.loads(read_json_text(block_path))
     return data
 
@@ -753,6 +790,67 @@ class PersistenceMixin:
                 self.free_agents.append(fighter)
                 existing.add(fighter.fighter_id)
 
+    def repair_player_scheduled_fighter_references(self):
+        """Restore a legacy player booking before any display lookup occurs.
+
+        Historical cards sometimes predate durable fighter IDs and a later
+        retirement or release may have moved a booked athlete out of the player
+        roster.  Repair that ownership once during transactional load rather
+        than letting ordinary lookup mutate rosters as a side effect.  Ambiguous
+        same-name legacy references are deliberately left unresolved so a save
+        cannot silently assign the wrong athlete to a card.
+        """
+        references = []
+        for event in getattr(self, "scheduled_events", []):
+            for fight in event.get("fights", []):
+                references.extend(
+                    reference for reference in self.event_fight_participant_references(fight)
+                    if reference and reference != "TBA"
+                )
+
+        roster_ids = {str(getattr(fighter, "fighter_id", "") or "") for fighter in self.roster}
+        restored = []
+        unresolved = []
+        for reference in dict.fromkeys(str(reference) for reference in references):
+            if reference in roster_ids:
+                continue
+            name_matches = [fighter for fighter in self.roster if fighter.name == reference]
+            if len(name_matches) == 1:
+                continue
+            candidates = [
+                fighter for fighter in self.retired_fighters + self.free_agents
+                if str(getattr(fighter, "fighter_id", "") or "") == reference
+            ]
+            if not candidates:
+                candidates = [
+                    fighter for fighter in self.retired_fighters + self.free_agents
+                    if fighter.name == reference
+                ]
+            if len(candidates) != 1:
+                unresolved.append(reference)
+                continue
+            fighter = candidates[0]
+            if fighter in self.retired_fighters:
+                self.retired_fighters.remove(fighter)
+                fighter.retired = False
+                fighter.retirement_pending = True
+                fighter.retirement_fight_completed = False
+                fighter.retirement_reason = "Retirement deferred to honour an existing booked fight."
+                notice_type = "Roster"
+                subject = f"Booked Fight Restored - {fighter.name}"
+                body = f"{fighter.name} was restored for an outstanding booked fight and will retire after that commitment."
+            else:
+                self.free_agents.remove(fighter)
+                fighter.contract_months = max(1, int(getattr(fighter, "contract_months", 0) or 0))
+                notice_type = "Contracts"
+                subject = f"Booked Contract Restored - {fighter.name}"
+                body = f"{fighter.name}'s outstanding event commitment was restored after an early roster transition."
+            self.roster.append(fighter)
+            roster_ids.add(str(getattr(fighter, "fighter_id", "") or ""))
+            self.inbox.append({"subject": subject, "body": body, "type": notice_type, "resolved": False, "fighter_id": getattr(fighter, "fighter_id", "")})
+            restored.append(getattr(fighter, "fighter_id", "") or fighter.name)
+        return {"restored": restored, "unresolved": unresolved}
+
     def ensure_fighter_ids(self):
         """Give legacy saves permanent fighter identities and repair bad collisions."""
         seen = set()
@@ -942,20 +1040,25 @@ class PersistenceMixin:
             self.close_busy_overlay(busy)
 
     @staticmethod
-    def _is_runtime_ui_value(value):
-        """Return whether an attribute belongs to the live Tk presentation."""
-        if isinstance(value, (tk.Misc, tk.Variable)) or hasattr(value, "tk"):
+    def _is_runtime_ui_value(value, seen=None):
+        """Return whether a value contains live presentation/runtime state.
+
+        Load staging must never copy a Tk object merely because it is later in
+        a long collection.  This walks the complete graph with cycle handling;
+        persistent fields are copied only when this guard says they are safe.
+        """
+        if isinstance(value, (tk.Misc, tk.Variable)) or hasattr(value, "tk") or callable(value):
             return True
+        if seen is None:
+            seen = set()
+        identity = id(value)
+        if identity in seen:
+            return False
+        seen.add(identity)
         if isinstance(value, dict):
-            return any(
-                isinstance(item, (tk.Misc, tk.Variable)) or hasattr(item, "tk")
-                for item in value.values()
-            )
-        if isinstance(value, (list, tuple)):
-            return any(
-                isinstance(item, (tk.Misc, tk.Variable)) or hasattr(item, "tk")
-                for item in value[:32]
-            )
+            return any(PersistenceMixin._is_runtime_ui_value(item, seen) for item in value.values())
+        if isinstance(value, (list, tuple, set, frozenset)):
+            return any(PersistenceMixin._is_runtime_ui_value(item, seen) for item in value)
         return False
 
     def _sync_loaded_ui_state(self):
@@ -1025,16 +1128,25 @@ class PersistenceMixin:
         self.company_stability = data.get("company_stability", max(5, min(99, self.cash // 5000)))
         self.month = max(1, int(data.get("month", 1) or 1))
         self.week = max(1, min(4, int(data.get("week", 1) or 1)))
-        self.roster = [Fighter(**row) for row in data.get("roster", [])]
-        self.free_agents = [Fighter(**row) for row in data.get("free_agents", [])]
+        self.roster = [load_model_row(row, Fighter, FIGHTER_SAVE_FIELDS, f"player roster row {index}") for index, row in enumerate(data.get("roster", []), 1)]
+        self.free_agents = [load_model_row(row, Fighter, FIGHTER_SAVE_FIELDS, f"free-agent row {index}") for index, row in enumerate(data.get("free_agents", []), 1)]
         for fighter in self.roster + self.free_agents:
             fighter.weight = self.game_weight_class(fighter.weight)
             self.ensure_detailed_skills(fighter)
             self.ensure_fighter_business_stats(fighter)
         self.promotions = []
         self.defunct_promotions = list(data.get("defunct_promotions", []))
-        for row in data.get("promotions", []):
-            row["roster"] = [Fighter(**fighter) for fighter in row.get("roster", [])]
+        for promotion_index, saved_row in enumerate(data.get("promotions", []), 1):
+            if not isinstance(saved_row, dict):
+                raise ValueError(f"promotion row {promotion_index} must be an object, not {type(saved_row).__name__}.")
+            row = dict(saved_row)
+            roster_rows = row.get("roster", [])
+            if not isinstance(roster_rows, list):
+                raise ValueError(f"promotion row {promotion_index} roster must be a list.")
+            row["roster"] = [
+                load_model_row(fighter, Fighter, FIGHTER_SAVE_FIELDS, f"promotion row {promotion_index} fighter {fighter_index}")
+                for fighter_index, fighter in enumerate(roster_rows, 1)
+            ]
             row["weight_classes"] = list(dict.fromkeys(
                 self.game_weight_class(weight) for weight in row.get("weight_classes", [])
                 if self.game_weight_class(weight) in WEIGHTS
@@ -1060,7 +1172,7 @@ class PersistenceMixin:
                 fighter.weight = self.game_weight_class(fighter.weight)
                 self.ensure_detailed_skills(fighter)
                 self.ensure_fighter_business_stats(fighter)
-            self.promotions.append(Promotion(**row))
+            self.promotions.append(load_model_row(row, Promotion, PROMOTION_SAVE_FIELDS, f"promotion row {promotion_index}"))
         # A save is a sealed simulation state. Its fighter rosters must never
         # be repopulated from whichever universe database happens to be active
         # when the player loads it.
@@ -1083,12 +1195,12 @@ class PersistenceMixin:
             self.regions[region].setdefault("crowd_preference", "Competitive fights")
         seeded_gyms = self.seed_gyms()
         if data.get("gyms"):
-            self.gyms = [Gym(**row) for row in data.get("gyms", [])]
+            self.gyms = [load_model_row(row, Gym, GYM_SAVE_FIELDS, f"gym row {index}") for index, row in enumerate(data.get("gyms", []), 1)]
             known_gyms = {gym.name for gym in self.gyms}
             self.gyms.extend(gym for gym in seeded_gyms if gym.name not in known_gyms)
         else:
             self.gyms = seeded_gyms
-        self.result_history = data.get("result_history", [])
+        self.result_history = list(data.get("result_history", []))[:RESULT_HISTORY_LIMIT]
         self.result_records = data.get("result_records", [])
         self.change_journal = list(data.get("change_journal", []))[-400:]
         self.ai_event_archive = data.get("ai_event_archive", [])
@@ -1098,12 +1210,15 @@ class PersistenceMixin:
         self.ensure_result_index()
         serialized_sport_worlds = data.get("combat_sport_worlds")
         self.combat_sport_worlds = serialized_sport_worlds if serialized_sport_worlds else self.seed_combat_sport_worlds()
-        for world in self.combat_sport_worlds.values():
-            world["roster"] = [fighter if isinstance(fighter, Fighter) else Fighter(**fighter) for fighter in world.get("roster", [])]
+        for sport, world in self.combat_sport_worlds.items():
+            world["roster"] = [
+                fighter if isinstance(fighter, Fighter) else load_model_row(fighter, Fighter, FIGHTER_SAVE_FIELDS, f"combat sport {sport} fighter {index}")
+                for index, fighter in enumerate(world.get("roster", []), 1)
+            ]
         self.player_combat_divisions = data.get("player_combat_divisions", {}) or {}
         self.standings_history = data.get("standings_history", {}) or {}
         self.independent_showcase_counter = max(1, data.get("independent_showcase_counter", 1))
-        self.retired_fighters = [Fighter(**row) for row in data.get("retired_fighters", [])]
+        self.retired_fighters = [load_model_row(row, Fighter, FIGHTER_SAVE_FIELDS, f"retired fighter row {index}") for index, row in enumerate(data.get("retired_fighters", []), 1)]
         for fighter in self.retired_fighters:
             fighter.weight = self.game_weight_class(fighter.weight)
             self.ensure_detailed_skills(fighter)
@@ -1203,12 +1318,16 @@ class PersistenceMixin:
         self.pending_rebookings = data.get("pending_rebookings", [])
         for event in self.scheduled_events:
             event.setdefault("week", 1)
+        booking_restore = self.repair_player_scheduled_fighter_references()
+        if booking_restore["unresolved"]:
+            refs = ", ".join(booking_restore["unresolved"][:3])
+            raise ValueError(f"Scheduled card contains unresolved or ambiguous fighter reference(s): {refs}")
         self.repair_booking_conflicts()
         self.news = data.get("news", [])
         # Chronicle entries are newest-first; retain the newest 800 from older,
         # oversized saves rather than accidentally keeping their oldest stories.
         self.world_chronicle = data.get("world_chronicle", [])[:800]
-        self.event_log = data.get("event_log", [])
+        self.event_log = list(data.get("event_log", []))[:EVENT_LOG_LIMIT]
         self.season_stats = data.get("season_stats", {})
         self.awards_history = data.get("awards_history", [])
         self.clean_numbered_fighter_names()
@@ -2150,7 +2269,14 @@ class PersistenceMixin:
         # but the AI requires a full-card reserve before it will book. Give the
         # handoff company a one-time operating runway rather than bypassing the
         # same affordability checks used by every other promotion.
+        prior_ai_cash = former_company.cash
         former_company.cash = max(former_company.cash, 2_000_000)
+        if former_company.cash != prior_ai_cash and hasattr(self, "record_promotion_finance_transaction"):
+            self.record_promotion_finance_transaction(
+                former_company, "Spectator-mode operating runway", revenue=former_company.cash - prior_ai_cash,
+                category="Rescue", source="Spectator handoff", counterparty=former_company.name,
+                reference=f"spectator-runway:{former_company.name}:{self.month}",
+            )
         former_company.show_personality = getattr(self, "company_show_personality", "Prospect Builder")
         former_company.strategy = self.seed_promotion_strategy(former_company.name, former_company.show_personality)
         former_company.executive = self.seed_promotion_executive(former_company.name)
@@ -2211,6 +2337,9 @@ class PersistenceMixin:
             messagebox.showinfo("Combat-sport circuit", "Direct takeovers currently apply to MMA promotions. Open this circuit's history or manage your own child promotion instead.")
             return
         promo = next((item for item in self.promotions if item.name == name), None)
+        if promo is not None and getattr(promo, "is_child_promotion", False):
+            messagebox.showinfo("Child promotion", "Child promotions are managed from the parent company's child-promotion manager and cannot be taken over directly.")
+            return
         if promo is not None and getattr(promo, "is_regional_feeder", False):
             messagebox.showinfo("Regional feeder", "Regional feeder circuits are development pipelines, not controllable promotions.")
             return
@@ -2224,6 +2353,9 @@ class PersistenceMixin:
         if not promo:
             messagebox.showinfo("Company unavailable", "That company is not available to control.")
             return
+        if getattr(promo, "is_child_promotion", False):
+            messagebox.showinfo("Child promotion", "Child promotions are managed by the parent company and cannot be taken over through the ordinary company takeover flow.")
+            return False
         self.promotions.remove(promo)
         was_spectator = getattr(self, "spectator_mode", False)
         if keep_current and not was_spectator:
@@ -2373,7 +2505,7 @@ class PersistenceMixin:
         path, pack = self.active_universe_pack_with_path()
         sections = pack.setdefault("sections", {})
         value = sections.get(section, {})
-        window = tk.Toplevel(self.root)
+        window = self.create_managed_window()
         window.title(f"Universe Section Editor - {section}")
         window.geometry("980x720")
         window.minsize(780, 520)
@@ -2428,6 +2560,21 @@ class PersistenceMixin:
         ttk.Button(buttons, text="Close", command=window.destroy).pack(side="right")
 
     def validate_universe_section(self, section, value):
+        """Validate editable universe JSON through the shared, non-mutating schema."""
+        company_names = []
+        if section != "companies":
+            try:
+                pack = self.load_universe_database_pack()
+                companies = pack.get("sections", {}).get("companies", {})
+                company_names = [row.get("name") for row in companies.get("promotions", []) if isinstance(row, dict)]
+                player = companies.get("player_company", {})
+                if isinstance(player, dict) and player.get("name"):
+                    company_names.append(player["name"])
+            except (OSError, ValueError, RuntimeError, TypeError) as exc:
+                LOGGER.warning("Universe validation could not read company references: %s", exc)
+        return shared_validate_universe_section(section, value, company_names=company_names)
+
+    def _legacy_validate_universe_section(self, section, value):
         issues = []
         if section == "fighters":
             if not isinstance(value, dict):
@@ -2719,7 +2866,7 @@ class PersistenceMixin:
                 if not item.name.endswith(".manifest.json"):
                     backups.append((label, item))
         backups.sort(key=lambda row: row[1].stat().st_mtime, reverse=True)
-        window = tk.Toplevel(self.root)
+        window = self.create_managed_window()
         window.title("Save Backup / Autosave Manager")
         window.geometry("860x520")
         window.configure(bg=self.colors["chrome"])
@@ -2832,7 +2979,7 @@ class PersistenceMixin:
         messagebox.showinfo("Database Loaded", f"Started game from database: {path.stem}")
 
     def open_create_promotion_mode(self):
-        window = tk.Toplevel(self.root)
+        window = self.create_managed_window()
         window.title("Create New Promotion")
         screen_width = max(800, window.winfo_screenwidth())
         screen_height = max(650, window.winfo_screenheight())
@@ -3066,7 +3213,7 @@ class PersistenceMixin:
         return [fighter for group in selected_groups for fighter in group]
 
     def open_initial_roster_draft(self, candidates, config):
-        window = tk.Toplevel(self.root)
+        window = self.create_managed_window()
         window.title(f"Found {config['name']} - Initial Roster Draft")
         screen_width = max(1024, window.winfo_screenwidth())
         screen_height = max(720, window.winfo_screenheight())

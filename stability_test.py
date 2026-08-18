@@ -17,11 +17,15 @@ from tkinter import messagebox
 from main import FightEmpireApp
 from models import Fighter, Promotion
 from persistence import atomic_write_json_gzip, read_json_text
+import test_support
 
 
 def require(condition, message):
     if not condition:
-        raise AssertionError(message)
+        raise AssertionError(test_support.contextual_message(
+            message,
+            subsystem=test_support.caller_name(),
+        ))
 
 
 def silence_dialogs():
@@ -33,6 +37,7 @@ def silence_dialogs():
 
 
 def new_app(seed):
+    test_support.update_context(subsystem="new_app", seed=seed)
     random.seed(seed)
     root = tk.Tk()
     root.withdraw()
@@ -1210,7 +1215,7 @@ def exercise_fighter_tree_identity_safety(app):
         app.refresh_available()
 
 
-def main():
+def _run_stability_suite():
     silence_dialogs()
     root, app, callback_errors = new_app(2200)
     try:
@@ -1244,6 +1249,10 @@ def main():
     print("STABILITY PLAYTEST PASSED")
     for seed, month, results, retired in summaries:
         print(f"Seed {seed}: reached Month {month}; recorded events {results}; retired fighters {retired}")
+
+
+def main():
+    return test_support.run_suite("stability", _run_stability_suite)
 
 
 if __name__ == "__main__":

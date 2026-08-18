@@ -156,7 +156,7 @@ behavior; add a true global constant or path anchor to `constants.py`.
 | `main.py` | Entry point, `FightEmpireApp`, initialization, startup splash, crash hooks, launcher | Imports every mixin; initializes shared state before builders and refreshes use it |
 | `constants.py` | Version/title, path anchors, weights, regions, skills, names, camps, tuning constants | Paths must remain portable; fight and UI limits belong here |
 | `models.py` | `Fighter`, `Gym`, and `Promotion` dataclasses | New fields need safe defaults and load repair |
-| `ui.py` | `UIMixin`: theme setup, shared layout, sorting, and all `build_*_tab` methods | Widgets are populated by refresh methods in `views.py` and other domain mixins |
+| `ui.py` | `UIMixin`: theme setup, shared layout, sorting, all `build_*_tab` methods, and the managed popup registry | Widgets are populated by refresh methods in `views.py` and other domain mixins; runtime popups must use `create_managed_window()` |
 | `views.py` | `ViewMixin`: `refresh_*` methods, profiles, rankings, contracts, staff, finance, matchmaking views | Reads shared app state; must tolerate old-save defaults |
 | `admin.py` | `AdminMixin`: sim lab, engine settings, belts, champions, name cleanup | Useful for calibration and repair tools, not outcome fudging |
 | `seeding.py` | `SeedMixin`: universe database loading, roster/company/region/gym seeding, generated fighters, repair data | Core-promotion and data-quality changes usually start here |
@@ -181,19 +181,44 @@ not the active implementation. Do not copy fixes into them.
   Results-index idempotence regressions.
 - `contracts_finance_regression_test.py`: contract validation, persistent clauses, same-name booking,
   guarantees, and canonical event-payout regressions.
+- `finance_audit_regression_test.py`: canonical player/child transaction metadata, weekly cash
+  reconciliation, and repairable direct-cash mutation coverage.
 - `ui_data_regression_test.py`: lazy staff/scouting UI, Results detail, gym capacity, regional data,
   themed Regions, and fighter-identity regressions.
 - `qa_tooling_regression_test.py`: Simulation Lab isolation/calibration and portable launcher paths.
 - `stability_test.py`: longer-running deterministic and progression playtests.
 - `media_system_test.py`: media-system state and workflow regressions.
+- `child_promotion_long_run_test.py`: deterministic 48-week MMA child-promotion progression,
+  event finance, parent profit sharing, contract countdown, protected loans, callback safety, and
+  save/load persistence. It intentionally keeps only the child in the in-memory AI world so the
+  calendar pipeline remains real while the focused regression stays fast enough for routine runs.
+- `custom_promotion_division_integrity_test.py`: deterministic 48-week AI handoff regression that
+  ensures annual weight movement cannot place fighters into a custom promotion's closed divisions.
+- `child_promotion_interactions_test.py`: child takeover, empty-launch rollback, champion-loan belt
+  protection, closed-division transfer rejection, transfer-ledger accounting, and loan repair.
+- `identity_persistence_regression_test.py`: same-name live-fight identity, event-commit rollback,
+  forward/malformed save rows, and external-block path containment.
+- `database_editor_save_as_test.py`: standalone editor Save As success, cancellation, validation,
+  and write-failure state preservation.
 - `database_editor_ui_audit.py`: database-editor UI audit.
-- `Run Smoke Tests.bat`: runs smoke, stability, and media-system suites.
+- `universe_validation_regression_test.py`: shared editor/runtime validator malformed-data diagnostics and proof that normal legacy loading does not rewrite source bytes or mtime.
+- `fight_audio_regression_test.py`: temporary fight-cache exception cleanup and concurrent fight-night audio cue-lock lifecycle.
+- `advance_notifications_regression_test.py`: routine contract/broadcast advancement notices collapse into one Inbox summary while due-event decisions remain modal.
+- `window_lifecycle_regression_test.py`: runtime popup creators use the shared call-site/entity window registry.
+- `run_regression_suite.py`: the canonical sequential test runner. It gives every suite an isolated
+  `MMA_WARRIORS_DATA_DIR` with copied universe data so tests cannot race through shared saves,
+  logs, markers, or caches.
+- `Run Smoke Tests.bat`: runs the canonical isolated regression suite.
 - `Launch MMA Warriors.bat`: starts the source game.
 - `Build Portable.bat`: tests and builds the portable game package.
 - `Build Portable.bat`: tests, validates the universe database, and builds both the game executable and the standalone database editor into `dist\\MMA Warriors`.
 - `Build Database Editor.bat`: builds the standalone database editor.
+- `build-toolchain.json` and `requirements-build.txt`: the checked-in, offline-verifiable portable-build toolchain. Build scripts must validate these and must never install dependencies.
 - `Portable Check.bat`: checks the packaged runtime.
 - `README.md`: player, source-run, test, and build instructions.
+- `FEATURE_DEVELOPMENT_BACKLOG.md`: evidence-backed player-facing feature priorities and phased
+  development sequence. Keep it synchronized when a listed feature is shipped or materially
+  re-scoped.
 - `CHANGELOG.md`: release-facing behavior changes.
 - `TAB_ACCESSIBILITY.md`: tab contrast and interaction requirements.
 - `savegame.json`, `Saves/`, `Databases/`: runtime data. Do not delete or overwrite user careers.
@@ -211,8 +236,14 @@ Two `Fighter` model invariants are especially important:
 - `Fighter` uses `@dataclass(eq=False)` deliberately. In-memory membership and comparisons use
   object identity for performance. Persistent and UI identity uses `fighter_id`; display names are
   not unique identifiers.
+- Live-fight state is private to one bout and uses per-fighter state keys, never `fighter.name`.
+  Names are presentation only. ID-first resolution must be pure: do not restore, release, sign, or
+  otherwise mutate roster ownership as a side effect of looking a fighter up.
 - `Fighter.overall` is a derived read-only property. Change the underlying broad/detailed skills or
   use the relevant calibration helper; do not assign directly to `overall`.
+- Model collections that are semantically always present use `default_factory`; persistence must still
+  normalise old-save `null` values. Do not replace meaningful optional sentinels such as an inactive
+  `Fighter.career_arc is None` with an empty object.
 
 ### Canonical flows
 
@@ -229,6 +260,11 @@ booking UI
        -> finance, injuries, rankings, history, awards, and media
   -> viewer and save/refresh
 ```
+
+`finish_event` is a domain transaction. Stage the pre-event persistent state and RNG before the
+first finance or result mutation; if any downstream award, media, archive, history, or refresh
+hook fails, restore the staged state before surfacing the failure. UI presentation occurs only after
+the commit succeeds.
 
 **Game-AI fight flow**
 
@@ -270,6 +306,9 @@ live dataclasses and world dictionaries
   advancing from week 4.
 - `begin_advance_sequence()` is the responsive Tk path. It also consumes `calendar_week_steps()`
   but schedules work through the event queue so the window remains usable.
+- Routine post-advance contract, broadcast, and similar notices are accumulated by
+  `queue_advance_notice()` and presented as one Inbox/news summary. Only genuine player decisions,
+  such as a due event's watch/simulate choice, may remain modal.
 - At a year boundary, the calendar rollover runs end-of-year awards and `age_world_one_year`.
 - Annual aging is deterministic `+1`; do not add a second birthday path.
 
@@ -304,7 +343,8 @@ assert round_trip.morale_trend == original   # current save
 
 - `APP_DIR` comes from `__file__`, or from `sys.executable` in a packaged build.
 - `DATA_DIR` uses `APP_DIR` when writable. In a protected install location it falls back to
-  `%LOCALAPPDATA%\MMA Warriors`.
+  `%LOCALAPPDATA%\MMA Warriors`. `MMA_WARRIORS_DATA_DIR` is an explicit test-only/runtime override
+  for an isolated data root; do not set it in shipped launchers.
 - `SAVE_FILE`, `SAVE_DIR`, `DATABASE_DIR`, and `LOG_DIR` are anchored to `DATA_DIR`, never the
   current working directory.
 - Existing ungrouped careers live at `Saves\<Slot>\savegame.json` and appear as the `Main` group.
@@ -324,6 +364,12 @@ assert round_trip.morale_trend == original   # current save
 - Save metadata is auxiliary. A metadata-write problem must not turn an already committed primary
   save into a reported total failure; record it as a recoverable cache warning and rebuild it later
   without leaving a blocking success/failure dialog open.
+- External split-save blocks must use generated `DataBlocks/<save-stamp>/<known-key>.json.gz` paths
+  below the owning save slot. Reject rooted paths, traversal, symlink escapes, and unexpected block
+  names before reading them.
+- Model rows must be type-checked before dataclass construction. Missing required fields are a
+  transactional load error; unknown forward-compatible fields are logged and ignored rather than
+  crashing an otherwise usable career.
 
 ### Serialization purity
 
@@ -335,6 +381,17 @@ Regression tests must compare fighter counts, champion state, and RNG state acro
 
 ## 6. Promotions, Spectator Mode, and World AI
 
+### Finance invariants
+
+Player, child, and non-feeder AI cash movements must be recorded through the canonical finance
+helpers in `world.py`. Transaction rows retain an ID, month/week, category, source, counterparty,
+event, reference, entity, revenue, costs, and net movement; legacy ledger strings may remain for
+presentation but are not the accounting source of truth. `close_finance_week()` and
+`close_promotion_finance_week()` reconcile the stored ledger to actual cash and create an explicit
+`Reconciliation` row for an unattributed legacy/direct mutation. New cash paths must add a focused
+regression and use a stable reference so repeated weekly closes are idempotent. Finance UI surfaces
+must show reconciliation status and promotion detail views must read the canonical weekly history.
+
 ### Shipped-universe source of truth
 
 New careers load `Databases\Default Universe.universe.json` through
@@ -344,6 +401,13 @@ The pack has a top-level schema version, and complex sections such as `fighters`
 `combat_sports` also carry their own schema versions. Python seed specs provide defaults, generated
 depth, and repair fallbacks; changing only a fallback may not change a new game built from the
 database.
+
+`universe_validation.py` is the sole side-effect-free schema validator for editor, runtime, and release tooling. It returns actionable section/record/field issues rather than throwing on malformed user JSON. `load_universe_database_pack()` may normalise old packs in memory, but normal loading must never rewrite a source database; explicit reset/migration operations own backups and writes.
+
+All runtime `Toplevel` creators in `admin.py`, `awards.py`, `events.py`, `persistence.py`, and
+`views.py` must call `UIMixin.create_managed_window()`. Its default key combines the call site with
+available fighter/entity identity, so repeated clicks replace stale popups without conflating two
+different fighters. Long-lived screens may provide an explicit stable key.
 
 Use `database_editor.py` or a carefully reviewed data edit for starting-universe changes, then
 validate the file. The standalone database editor changes universe database packs; it does **not**
@@ -366,7 +430,7 @@ retain a named identity assertion in `smoke_test.py` after changing either repre
 When `take_control_of_company()` transfers an AI promotion to the player, it must reconcile stale zero-month AI contracts first. Those fighters remain in the inherited roster and receive fresh 12-24 month exclusive contracts; a takeover must never mass-release a company's roster merely because legacy AI contract terms reached zero.
 
 The MMA Child Promotions manager in `views.py` is an operations screen, not just a launch dialog. Keep its promotion table synchronized with child cash, stability, roster size, protected loans, parent distributions, and AI mode. Roster filters must only change display; loan, recall, and parent-transfer actions must continue to use fighter IDs and the world-layer ownership rules.
-The manager must list only child promotions whose `parent_company` matches the active player company. Its child-roster status filter must not be applied to the separate parent-roster loan source. Parent profit-share transfers must use the normal finance transaction recorder, and taking an expired AI-signed child fighter must assign a fresh contract rather than a one-month stub.
+The manager must list only child promotions whose `parent_company` matches the active player company. Its child-roster status filter must not be applied to the separate parent-roster loan source. Parent profit-share transfers and child-fighter transfer fees must use the normal finance transaction recorder. Paid transfers require confirmation, respect closed parent divisions, and taking an expired AI-signed child fighter must assign a fresh contract rather than a one-month stub. Ordinary company takeover must reject child promotions. Empty launches must roll back capital and the promotion when no eligible opening roster can be signed. Champion loans vacate the parent belt before moving the fighter. Load repair must clear stale loan markers for missing, mismatched, retired, or retirement-pending fighters; the manager must reset stale detail text after redraw, preserve duplicate identity labels, provide vertical roster scrollbars, and reuse one manager window.
 
 During a normal player career, the player company is represented by player-owned fields such as
 `self.player_company_name`, `self.roster`, `self.cash`, and `self.company_pop`. It must not also be
@@ -869,9 +933,7 @@ The batch file pauses for interactive use. Automated agents may run the equivale
 directly:
 
 ```powershell
-python .\smoke_test.py
-python .\stability_test.py
-python .\media_system_test.py
+python .\run_regression_suite.py
 ```
 
 Validate the shipped universe database after data or editor changes:

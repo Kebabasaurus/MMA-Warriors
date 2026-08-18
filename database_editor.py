@@ -20,6 +20,7 @@ from constants import (
     REGIONS, STYLES, TRAITS, WEIGHTS,
 )
 from models import Fighter, Promotion
+from universe_validation import validate_universe_pack as _validate_universe_pack
 
 
 DEFAULT_UNIVERSE_NAME = "Default Universe.universe.json"
@@ -200,59 +201,7 @@ def sync_fighter_groups(section):
 
 
 def validate_universe_pack(pack):
-    issues = []
-    if not isinstance(pack, dict) or pack.get("type") != "universe_database":
-        return ["This is not a universe database pack."]
-    sections = pack.get("sections")
-    if not isinstance(sections, dict):
-        return ["Universe pack has no sections object."]
-    fighters = sections.get("fighters", {})
-    records = fighters.get("all_fighters", []) if isinstance(fighters, dict) else []
-    if not isinstance(records, list) or not records:
-        issues.append("fighters.all_fighters must contain fighter records.")
-    seen_fighters = set()
-    for record in records:
-        if not isinstance(record, dict):
-            issues.append("A fighter record is not an object.")
-            continue
-        missing = [key for key in FIGHTER_REQUIRED_FIELDS if record.get(key) in (None, "")]
-        if missing:
-            issues.append(f"Fighter {record.get('name', '<unnamed>')}: missing {', '.join(missing)}")
-        key = (str(record.get("name", "")).casefold(), str(record.get("owner", "")).casefold())
-        if key in seen_fighters:
-            issues.append(f"Duplicate fighter/owner pair: {record.get('name', '<unnamed>')}")
-        seen_fighters.add(key)
-        for field in ("rating", "age", "record_w", "record_l", "record_d"):
-            value = record.get(field, 0)
-            if not isinstance(value, int):
-                issues.append(f"Fighter {record.get('name', '<unnamed>')}: {field} must be an integer.")
-        if isinstance(record.get("rating"), int) and not 1 <= record["rating"] <= 99:
-            issues.append(f"Fighter {record.get('name', '<unnamed>')}: rating must be 1-99.")
-        if isinstance(record.get("age"), int) and not 14 <= record["age"] <= 70:
-            issues.append(f"Fighter {record.get('name', '<unnamed>')}: age must be 14-70.")
-    companies = sections.get("companies", {})
-    promotions = companies.get("promotions", []) if isinstance(companies, dict) else []
-    if not isinstance(promotions, list):
-        issues.append("companies.promotions must be a list.")
-    seen_companies = set()
-    for company in promotions if isinstance(promotions, list) else []:
-        if not isinstance(company, dict):
-            issues.append("A promotion record is not an object.")
-            continue
-        missing = [key for key in COMPANY_REQUIRED_FIELDS if company.get(key) in (None, "")]
-        if missing:
-            issues.append(f"Company {company.get('name', '<unnamed>')}: missing {', '.join(missing)}")
-        name = str(company.get("name", "")).casefold()
-        if name in seen_companies:
-            issues.append(f"Duplicate company: {company.get('name', '<unnamed>')}")
-        seen_companies.add(name)
-    feeders = companies.get("regional_feeders", []) if isinstance(companies, dict) else []
-    if not isinstance(feeders, list):
-        issues.append("companies.regional_feeders must be a list.")
-    for feeder in feeders if isinstance(feeders, list) else []:
-        if not isinstance(feeder, dict) or not feeder.get("name") or not feeder.get("region"):
-            issues.append("Every regional feeder needs a name and region.")
-    return issues
+    return _validate_universe_pack(pack)
 
 
 class UniverseDatabaseEditor:
@@ -1291,35 +1240,54 @@ class UniverseDatabaseEditor:
         target = filedialog.asksaveasfilename(title="Save universe database as", initialdir=self.database_dir, initialfile=self.path.name, defaultextension=".universe.json", filetypes=(("Universe databases", "*.universe.json"),))
         if not target:
             return
-        self.path = Path(target)
-        self.save_database()
-        self.refresh_database_selector(select_name=self.path.name)
+        target_path = Path(target)
+        # Saving to a different file must be transactional from the editor's
+        # perspective as well: an invalid pack, failed backup, or failed
+        # atomic write leaves the current file and unsaved editor state active.
+        if not self._save_database_to_path(target_path):
+            return
+        self.path = target_path
+        self.refresh_database_selector(select_name=target_path.name)
 
     def save_database(self):
         if not self.ensure_database_loaded():
-            return
-        if self.path.name == DEFAULT_UNIVERSE_NAME and not messagebox.askyesno("Edit shipped default", "This is the shipped base universe. Copy it first if you want a separate custom database.\n\nSave changes to the base file anyway?"):
-            self.copy_current_database()
-            return
+            return False
+        return self._save_database_to_path(self.path, offer_copy_on_default_decline=True)
+
+    def _save_database_to_path(self, target_path, *, offer_copy_on_default_decline=False):
+        """Validate and atomically save *target_path* without changing ``self.path``.
+
+        ``save_database_as`` assigns the active path only after this method
+        succeeds, so a failed Save As keeps the current database selected.
+        """
+        target_path = Path(target_path)
+        if target_path.name == DEFAULT_UNIVERSE_NAME and not messagebox.askyesno("Edit shipped default", "This is the shipped base universe. Copy it first if you want a separate custom database.\n\nSave changes to the base file anyway?"):
+            if offer_copy_on_default_decline:
+                self.copy_current_database()
+            return False
         self.sync_for_save()
         issues = validate_universe_pack(self.pack)
         if issues:
             messagebox.showwarning("Database not saved", "Fix the validation issues before saving:\n\n" + "\n".join(issues[:24]))
-            return
-        if self.path.exists():
-            backup = self.path.with_suffix(f".backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+            return False
+        backup_created = False
+        if target_path.exists():
+            backup = target_path.with_suffix(f".backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
             try:
-                shutil.copy2(self.path, backup)
+                shutil.copy2(target_path, backup)
+                backup_created = True
             except OSError as exc:
                 messagebox.showerror("Backup failed", f"The database was not saved.\n\n{type(exc).__name__}: {exc}")
-                return
+                return False
         try:
-            atomic_write_json(self.path, self.pack)
+            atomic_write_json(target_path, self.pack)
         except OSError as exc:
             messagebox.showerror("Save failed", f"{type(exc).__name__}: {exc}")
-            return
-        self.status_var.set(f"Saved {self.path.name}. A timestamped backup was created.")
+            return False
+        backup_note = " A timestamped backup was created." if backup_created else ""
+        self.status_var.set(f"Saved {target_path.name}.{backup_note}")
         self.refresh_all()
+        return True
 
     def sync_for_save(self):
         sections = self.current_sections()

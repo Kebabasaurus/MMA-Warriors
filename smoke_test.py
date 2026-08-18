@@ -13,6 +13,8 @@ from pathlib import Path
 from tkinter import ttk
 from types import SimpleNamespace
 
+import test_support
+
 
 ROOT = Path(__file__).resolve().parent
 MAIN = ROOT / "main.py"
@@ -31,7 +33,10 @@ def load_game_module():
 
 def assert_true(condition, message):
     if not condition:
-        raise AssertionError(message)
+        raise AssertionError(test_support.contextual_message(
+            message,
+            subsystem=test_support.caller_name(),
+        ))
 
 
 def assert_release_documentation_policy(game):
@@ -211,7 +216,7 @@ def assert_crowd_audio_runtime(game):
                 "Zero Fight Night volume did not silence new cues")
 
 
-def main():
+def _run_smoke_suite():
     game = load_game_module()
     assert_release_documentation_policy(game)
     assert_crowd_audio_pack()
@@ -2429,6 +2434,10 @@ def main():
         print(f"Sample fight: {winner.name} def. {loser.name} by {method} R{round_no}")
     finally:
         root.destroy()
+
+
+def main():
+    return test_support.run_suite("smoke", _run_smoke_suite)
 
 
 if __name__ == "__main__":

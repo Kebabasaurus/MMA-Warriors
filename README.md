@@ -1,11 +1,13 @@
 # MMA Warriors
 
-## Version 3.0.8
+## Version 3.0.9
 
-Version 3.0.8 reworks the scouting and recruitment loop (idle scout capacity, shortlist-returning talent searches, quality-based signing recommendations with plain-English verdict descriptors), replaces one-off production providers with popularity-gated broadcast contracts that expire and prompt renewal, adds a motivation adjustment to comeback negotiations, rebuilds the Legacy Ledger as a filterable sortable table with score breakdowns, and moves Fighting Academy and Combat Sports into the main navigation as normal management screens. Version 3.0.7 included the complete 3.0.6 feature merge plus compact duplicate-fighter markers and idempotent champion tags throughout player-facing screens and Fight Night playback. The 3.0.6 feature set includes player-funded MMA AI child promotions with configurable startup capital, Youth Prospects/Big Names/Merit strategy, parent profit sharing, protected fighter loans and recalls, combat-sports youth prospects, staff contracts and effects, academy progression, finance and save integrity, Dark Mode, sortable tables, and full commentary. See [CHANGELOG.md](CHANGELOG.md) for the complete release notes.
+Version 3.0.9 hardens long-running careers: child-promotion ownership is protected, duplicate fighter names are safe in live fights and player events, event completion and save loading are transactional, universe validation is shared and read-only, and release builds use an isolated regression runner plus a pinned offline toolchain. It also caps only the global result/event feeds—never fighter records or career totals—so long saves remain responsive. See [CHANGELOG.md](CHANGELOG.md) for the complete release notes.
+
+The active feature-development map is maintained in [FEATURE_DEVELOPMENT_BACKLOG.md](FEATURE_DEVELOPMENT_BACKLOG.md). The next major slices are future-dated child-promotion events, executable super-event projects, complete finance reconciliation, and deeper long-run validation.
 When taking control of an AI promotion, stale zero-month inherited deals are renewed for 12-24 months so the promotion's roster stays intact.
 `Build Portable.bat` now builds both `MMA Warriors.exe` and `MMA Warriors Database Editor.exe` into `dist\\MMA Warriors` every time.
-The MMA Child Promotions manager includes live cash/stability/AI-mode metrics, roster filters, contract and potential data, fighter detail inspection, loans, recalls, and parent transfers.
+The MMA Child Promotions manager includes live cash/stability/AI-mode metrics, roster filters, contract and potential data, fighter detail inspection, loans, recalls, and confirmed parent transfers. Child launches require an eligible opening roster; child companies cannot be taken over through the ordinary company flow; champion loans vacate parent belts; and transfers respect closed parent divisions.
 Child promotion transfers renew an expired AI-signed fighter for a normal contract term, and parent profit shares appear in the main company's finance history.
 This release expands the living-world simulation, improves watched fight-night presentation and commentary variety, adds career journeys and directed scouting, introduces the shipped Universe Database Editor, and strengthens UI scaling, AI scheduling, finance stability, contract negotiations, accessibility, and release packaging. Version 3.0.7 also consolidates starting-career selection into one dropdown and one Start action. Fighter source markers are kept as internal database metadata so intentional historical snapshots remain distinct without cluttering player-facing names. See [CHANGELOG.md](CHANGELOG.md) for the 3.0 release notes and hotfixes.
 
@@ -51,6 +53,8 @@ The shipped starting universe is one editable file: `Databases\Default Universe.
 
 `MMA Warriors Database Editor.exe` ships beside the game EXE. It is a developer-facing editor for universe files, with a database selector, browse/copy-current/save/save-as workflow, automatic backups, validation, bulk fighter/company changes, and per-record JSON editing. It edits starting databases only, never an active career save.
 
+Universe validation is shared by the editor, game loader, and package build. Loading a universe never rewrites it: legacy compatibility defaults are normalised in memory, while an intentional reset/migration is the only workflow that writes a database file.
+
 The game starts in the explicit **Dark Mode** theme. Themes can still be changed from the in-game theme selector, and native list controls follow the selected palette immediately.
 
 All tab, detail-window, and popup tables support sorting by clicking their column headings. Numeric ratings, money, records, durations, dates, and text columns use the same shared sort behavior.
@@ -84,14 +88,14 @@ Before shipping a build, run:
 Run Smoke Tests.bat
 ```
 
-The test launcher runs `smoke_test.py`, `stability_test.py`, and `media_system_test.py`. The smoke test checks release-document/version synchronization, startup, the reusable please-wait overlay and save-load phase wiring, responsive Inbox and Matchmaking panel order, compact wide/medium/narrow Show Details placement and field wiring, Matchmaking table-view coverage and selection preservation, direct fighter comparison, responsive booking actions, startup sash sizing and player-adjusted sash preservation, visible action footers, disclosure-state persistence, filter-aware mail counts, discovery-cue contrast across every theme, the responsive long-name header, fighter and staff contract-duration scoring, staff expiry and legacy-save migration, role-effect coverage, core promotions, roster sizes, gyms, save/load serialization, and full five-round commentary integrity. The stability playtest additionally completes normal and retirement events, verifies two-year retirement-card thresholds, popularity ordering, weight-safe matchmaking, weekly card caps and contract-expiry releases, opens every major UI viewer, exercises academy scouting, all-eligible showcase matchmaking, cooldowns, structured amateur history, adult-weight graduation, and child-sport pathways, round-trips a progressed world through JSON, and advances several independent worlds while watching for Tk callback errors. The media test covers editable outlets, player and AI offers/contracts, campaign limits, audience reporting, old-save migration, and a save/load round trip.
-
-The launcher also runs `persistence_regression_test.py`, `contracts_finance_regression_test.py`,
-`ui_data_regression_test.py`, and `qa_tooling_regression_test.py` for transactional persistence and
-Results-index idempotence, contract/finance boundaries, lazy scouting UI, scheduled-fighter
-protection during AI roster reviews, world-data validation, audit isolation, and portable batch
-paths. These focused checks run before the longer stability playtest and protect the exact failure
-modes found by hands-on QA.
+`Run Smoke Tests.bat` and `Build Portable.bat` both call `run_regression_suite.py`. It runs every
+maintained test sequentially in its own temporary runtime-data directory, including smoke,
+persistence, contracts/finance, finance-audit reconciliation, UI data, QA tooling, media, all child-promotion regressions,
+same-name fighter and save-integrity coverage, shipped-universe validation, validator read-only loading,
+fight/audio cache cleanup, window lifecycle, advancement-notification, and the long stability playtest.
+This isolation prevents one test's active database,
+save, cache, or log files from changing another test's result. Run an individual focused file only
+when iterating locally; use the canonical runner before shipping.
 
 The current development model is documented in [`docs/FIGHTER_DEVELOPMENT_GUIDE.md`](docs/FIGHTER_DEVELOPMENT_GUIDE.md); current clinch, cage, ground, and damage mechanics are documented in [`docs/FIGHT_DAMAGE_AND_CLINCH_AUDIT.md`](docs/FIGHT_DAMAGE_AND_CLINCH_AUDIT.md); shared per-theme tab colors and WCAG ratios are documented in [`TAB_ACCESSIBILITY.md`](TAB_ACCESSIBILITY.md).
 
@@ -103,13 +107,15 @@ Run:
 Build Portable.bat
 ```
 
-The script runs the shipping tests first, installs PyInstaller if needed, then creates:
+The script verifies the pinned offline build toolchain, runs the shipping tests first, then creates:
 
 ```text
 dist\MMA Warriors\MMA Warriors.exe
 ```
 
 Run `Build Database Editor.bat` separately to validate the shipped universe and build `dist\MMA Warriors\MMA Warriors Database Editor.exe`.
+
+Both build commands verify the offline pinned toolchain in `build-toolchain.json` first; they never install packages. Install the exact versions from `requirements-build.txt` into the selected Python 3.13 environment before building.
 
 Close the packaged game before rebuilding. The build script preserves packaged `Saves`, `Databases`, and `Logs` in a staging backup and restores them after PyInstaller replaces the folder.
 
@@ -151,7 +157,7 @@ Close the packaged game before rebuilding. The build script preserves packaged `
 
 ## Shipping Checklist
 
-1. Run `Run Smoke Tests.bat` and confirm the smoke, stability, and media-system playtests all pass.
+1. Run `Run Smoke Tests.bat` and confirm the isolated full regression suite passes.
 2. Start the game from `Launch MMA Warriors.bat`.
 3. Confirm the Game Menu company picker shows every listed promotion once, including Oktagon MMA, BRAVE Combat Federation, and ACA.
 4. Schedule a small event for the current week and simulate it.

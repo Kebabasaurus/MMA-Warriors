@@ -1,5 +1,58 @@
 # Changelog
 
+## 3.0.9 - 2026-08-17
+
+This release consolidates the child-promotion safeguards, persistence and identity hardening,
+universe-data validation, release tooling, and UX/stability improvements completed since 3.0.8.
+
+- Added `FEATURE_DEVELOPMENT_BACKLOG.md`, an evidence-backed roadmap separating completed systems
+  from the next feature slices: child-promotion scheduling, executable super-events, finance
+  reconciliation, decision-center UX, and 100-year simulation validation.
+- Made player and AI/child promotion finance auditable: cash movements now use canonical transaction
+  metadata, weekly closes reconcile ledger totals to actual cash with explicit repair entries, child
+  promotion receipts/costs are recorded, and Finance surfaces show reconciliation status.
+
+- Hardened MMA child-promotion ownership and interactions: empty launches roll back, ordinary
+  takeovers are blocked, parent belts are vacated before champion loans, closed parent divisions
+  reject transfers, paid transfers record parent-ledger fees with confirmation, and retired/orphaned
+  loan metadata is repaired. The manager now guards duplicate windows, clears stale details, keeps
+  identity labels consistent, and provides scrollable rosters.
+
+- Added a deterministic 48-week child-promotion progression regression covering AI events, parent
+  profit sharing, contracts, protected loans, callback safety, and save/load persistence.
+- Fixed annual AI weight movement allowing custom-promotion fighters to enter divisions the
+  promotion had deliberately closed; added a deterministic 48-week handoff regression.
+
+- Fixed same-name fighters sharing live fight state. Scorecards, damage, stamina, control,
+  knockdowns, and stat lines now use private per-bout identity slots, while names remain purely
+  presentation text. Player event references resolve durable fighter IDs first and reject ambiguous
+  legacy names instead of silently selecting or moving the wrong athlete.
+- Made completed player events transactional: a late finance, awards, archive, media, or presentation
+  failure restores the pre-event domain state and RNG rather than leaving a partially applied card.
+- Hardened save loading: split-save data blocks must stay under the owning slot's generated
+  `DataBlocks` folder, malformed model rows now report their exact location transactionally, and
+  unknown forward-compatible model fields no longer crash a current build.
+- Capped player result summaries and verbose event logs so long careers retain searchable results
+  without unbounded save, startup, or Log-screen growth.
+- Added a canonical isolated regression runner used by both the test and portable-build launchers.
+  Every maintained suite, including child-promotion, identity/persistence, database-editor, and
+  long-run stability coverage, now receives its own runtime-data directory.
+- Fixed Database Editor Save As so a cancelled or failed validation/backup/write leaves the current
+  database selection intact; added focused Save As regressions.
+- Unified database-editor, runtime, and release-pack universe validation behind one side-effect-free
+  schema check. Invalid scalar values now produce actionable diagnostics, and normal universe loads
+  normalize legacy data in memory without modifying the selected source file.
+- Made load staging inspect all nested runtime values, added profile-window reuse keyed by fighter ID,
+  and made temporary fight caches plus fight-night audio cue locking safe on exception/concurrent paths.
+- Model collection fields now use independent default factories while legacy `null` values remain accepted on load;
+  optional career arcs retain their explicit inactive `None` state.
+- Portable builds now verify the recorded offline CPython/PyInstaller toolchain instead of installing
+  build dependencies during packaging; test failures identify their subsystem, deterministic seed, and data root.
+- Migrated runtime `Toplevel` creators to the shared call-site/entity window registry, replacing stale
+  duplicate popups and preserving fighter/entity identity in detail windows.
+- Routine contract and broadcast notices from calendar advancement now become one Inbox/news summary;
+  due-event decisions remain explicit modal blockers.
+
 ## 3.0.8 - 2026-08-02
 
 This release reworks the scouting and recruitment loop, replaces one-off production providers with

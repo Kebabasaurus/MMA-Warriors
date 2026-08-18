@@ -2,7 +2,10 @@ import json
 import random
 import re
 import sys
+import threading
 import traceback
+from collections import Counter
+from copy import deepcopy
 from datetime import datetime
 import tkinter as tk
 from dataclasses import asdict, dataclass
@@ -14,6 +17,24 @@ from models import Fighter, Gym, Promotion
 
 
 class EventMixin:
+    @staticmethod
+    def event_transaction_runtime_value(value, seen=None):
+        """Identify UI/callback objects that must remain outside event rollback."""
+        if (callable(value) or isinstance(value, (tk.Misc, tk.Variable, threading.Thread,
+                                                   type(threading.Lock()), type(threading.RLock())))
+                or hasattr(value, "tk")):
+            return True
+        seen = seen if seen is not None else set()
+        marker = id(value)
+        if marker in seen:
+            return False
+        seen.add(marker)
+        if isinstance(value, dict):
+            return any(EventMixin.event_transaction_runtime_value(item, seen) for item in value.values())
+        if isinstance(value, (list, tuple, set)):
+            return any(EventMixin.event_transaction_runtime_value(item, seen) for item in value)
+        return False
+
     def normalized_contract_months(self, months):
         """Keep player-negotiated contract terms inside the supported range."""
         return max(1, min(60, int(months)))
@@ -110,11 +131,14 @@ class EventMixin:
         return participants
 
     def event_fight_fighters(self, fight):
-        return [
-            self.get_fighter(reference)
-            for reference in self.event_fight_participant_references(fight)
-            if reference != "TBA" and self.get_fighter(reference) is not None
-        ]
+        fighters = []
+        for reference in self.event_fight_participant_references(fight):
+            if reference == "TBA":
+                continue
+            fighter = self.resolve_fighter(reference) if hasattr(self, "resolve_fighter") else self.get_fighter(reference)
+            if fighter is not None:
+                fighters.append(fighter)
+        return fighters
 
     def duplicate_event_participant_references(self, fights):
         references = [
@@ -122,7 +146,7 @@ class EventMixin:
             for reference in self.event_fight_participant_references(fight)
             if reference != "TBA"
         ]
-        return {reference for reference in references if references.count(reference) > 1}
+        return {reference for reference, count in Counter(references).items() if count > 1}
 
     def contract_rival_candidate(self, active_offer_company=""):
         candidates = [promo for promo in self.promotions if not getattr(promo, "is_regional_feeder", False)]
@@ -583,7 +607,7 @@ class EventMixin:
 
     def open_scheduled_card_editor(self, event):
         """Edit a future card directly without sending it back through the new-show form."""
-        window = tk.Toplevel(self.root)
+        window = self.create_managed_window()
         window.title(f"Edit Card - {event.get('name', 'Upcoming Event')}")
         window.geometry("1120x680")
         window.minsize(900, 540)
@@ -1095,7 +1119,7 @@ class EventMixin:
     def open_event_replay_window(self, title, package):
         package = dict(package)
         package["fight_logs"] = self.fight_night_log_order(package.get("fight_logs", []))
-        window = tk.Toplevel(self.root)
+        window = self.create_managed_window()
         window.title(title)
         window.geometry("900x620")
         window.configure(bg=self.colors["chrome"])
@@ -1159,7 +1183,7 @@ class EventMixin:
         # records are not mutated merely by opening a replay.
         package = dict(package)
         package["fight_logs"] = self.fight_night_log_order(package.get("fight_logs", []))
-        window = tk.Toplevel(self.root)
+        window = self.create_managed_window()
         window.title(f"Live Fight - {event['name']}")
         self.root.update_idletasks()
         screen_w, screen_h = window.winfo_screenwidth(), window.winfo_screenheight()
@@ -2084,7 +2108,7 @@ class EventMixin:
                 status_label.config(text="That bout has not finished. Future commentary remains locked.", fg=result_color)
                 return
             log = fight_logs[index]
-            review = tk.Toplevel(window)
+            review = self.create_managed_window(parent=window)
             review.title(f"Fight Review - {log.get('a', '')} vs {log.get('b', '')}")
             review.geometry(f"{min(920, width - 80)}x{min(680, height - 80)}")
             review.minsize(700, 480)
@@ -2259,7 +2283,7 @@ class EventMixin:
         prior_comeback_completed = max(0, int(getattr(fighter, "contract_fights_completed", 0) or 0))
         report = self.scouting_report_for(fighter)
         ratings_known = existing or not self.rules.get("scouting_mode", False) or report.get("reveal", 0) >= 100
-        window = tk.Toplevel(self.root)
+        window = self.create_managed_window()
         window.title(f"Negotiate - {self.fighter_display_name(fighter)}")
         window.geometry("660x600")
         window.minsize(600, 560)
@@ -2519,7 +2543,7 @@ class EventMixin:
             def show(_event=None):
                 if holder["window"] or not widget.winfo_exists():
                     return
-                popup = tk.Toplevel(window)
+                popup = self.create_managed_window(parent=window)
                 popup.overrideredirect(True)
                 popup.configure(bg=self.colors["panel_dark"])
                 popup.attributes("-topmost", True)
@@ -2789,7 +2813,7 @@ class EventMixin:
             return
         self.open_contract_negotiation(fighter, existing=False)
         return
-        window = tk.Toplevel(self.root)
+        window = self.create_managed_window()
         window.title(f"Negotiate - {self.fighter_display_name(fighter)}")
         window.geometry("520x360")
         window.configure(bg=self.colors["chrome"])
@@ -3931,8 +3955,8 @@ class EventMixin:
                 # the career results. Preserve each bout's own box score so a
                 # later round cannot overwrite the earlier career telemetry.
                 fight["_fighter_stats"] = {
-                    a.name: dict(getattr(a, "last_fight_stats", {}) or {}),
-                    b.name: dict(getattr(b, "last_fight_stats", {}) or {}),
+                    getattr(a, "fighter_id", "") or a.name: dict(getattr(a, "last_fight_stats", {}) or {}),
+                    getattr(b, "fighter_id", "") or b.name: dict(getattr(b, "last_fight_stats", {}) or {}),
                 }
                 excitement = self.fight_excitement(a, b, winner, loser, method, round_no, fight, hype)
                 carry = max(4, round_no * 2 + (2 if method in ("Decision", "Majority Decision") else 0))
@@ -3993,7 +4017,7 @@ class EventMixin:
         if not brackets:
             messagebox.showinfo("Tournament Bracket", "This event has no tournament bracket.", parent=parent or self.root)
             return
-        window = tk.Toplevel(parent or self.root)
+        window = self.create_managed_window(parent=parent or self.root)
         window.title("Tournament Bracket")
         window.geometry("900x620")
         window.minsize(720, 480)
@@ -4113,7 +4137,50 @@ class EventMixin:
         self.event_log.insert(0, f"TBA filled by {replacement.name} ({source}) at ${replacement.purse:,} for one fight.")
         return replacement
 
+    def capture_event_transaction_state(self):
+        """Copy persistent state before committing a completed player card.
+
+        UI handles stay live; the domain state is restored in full if any late
+        award, archive, finance, or presentation-adjacent hook fails.
+        """
+        snapshot = {}
+        for key, value in self.__dict__.items():
+            if self.event_transaction_runtime_value(value):
+                continue
+            try:
+                snapshot[key] = deepcopy(value)
+            except Exception as exc:
+                raise RuntimeError(f"Could not stage event state attribute {key!r}.") from exc
+        return snapshot
+
+    def restore_event_transaction_state(self, snapshot):
+        """Restore the domain attributes captured for a failed event commit."""
+        live_keys = {
+            key for key, value in self.__dict__.items()
+            if self.event_transaction_runtime_value(value)
+        }
+        for key in list(self.__dict__):
+            if key not in live_keys and key not in snapshot:
+                del self.__dict__[key]
+        for key, value in snapshot.items():
+            self.__dict__[key] = value
+
     def finish_event(self, event, package):
+        """Commit an event atomically before refreshing the live UI."""
+        transaction_state = self.capture_event_transaction_state()
+        rng_state = random.getstate()
+        try:
+            completed_package = self._finish_event_unchecked(event, package)
+        except Exception:
+            self.restore_event_transaction_state(transaction_state)
+            random.setstate(rng_state)
+            raise
+        self.refresh_all()
+        self.write_log()
+        self.show_event_summary(completed_package)
+        return completed_package
+
+    def _finish_event_unchecked(self, event, package):
         change_snapshot = self.capture_player_change_snapshot()
         prior_change_ids = {id(entry) for entry in getattr(self, "change_journal", [])}
         self.cash += package["profit"]
@@ -4139,8 +4206,8 @@ class EventMixin:
         for index, (winner, loser, fight, method) in enumerate(package["results"]):
             stats = fight.get("_fighter_stats", {})
             if stats:
-                winner.last_fight_stats = dict(stats.get(winner.name, {}) or {}) or None
-                loser.last_fight_stats = dict(stats.get(loser.name, {}) or {}) or None
+                winner.last_fight_stats = dict(stats.get(getattr(winner, "fighter_id", "") or winner.name, stats.get(winner.name, {})) or {}) or None
+                loser.last_fight_stats = dict(stats.get(getattr(loser, "fighter_id", "") or loser.name, stats.get(loser.name, {})) or {}) or None
             excitement = award_pool[index].get("excitement", 50) if index < len(award_pool) else 50
             round_no = award_pool[index].get("round", 1) if index < len(award_pool) else 1
             self.record_season_result(winner, loser, method, round_no, fight, excitement, self.player_company_name)
@@ -4202,6 +4269,7 @@ class EventMixin:
             self.retire_after_final_fight_if_due(winner, self.player_company_name)
             self.retire_after_final_fight_if_due(loser, self.player_company_name)
         self.result_history.insert(0, package["summary"])
+        self.result_history = self.result_history[:RESULT_HISTORY_LIMIT]
         self.player_event_archive = [package] + list(getattr(self, "player_event_archive", []))
         self.player_event_archive = self.player_event_archive[:150]
         self.archive_result_record({
@@ -4233,15 +4301,13 @@ class EventMixin:
         region = package.get("region", self.venue_region(package["venue"]))
         if region in self.regions:
             self.regions[region]["last_major_show"] = package["summary"]
-        self.event_log = package["log"] + [""] + self.event_log
+        self.event_log = (package["log"] + [""] + self.event_log)[:EVENT_LOG_LIMIT]
         self.news.insert(0, f"{package['fight_count']}-fight show completed; {self.player_company_name} banked ${package['profit']:,}.")
         main = next((row for row in package.get("fight_logs", []) if "MAIN" in str(row.get("label", "")).upper()), None)
         headline = f"{self.player_company_name} completes {package['event_name']}."
         detail = main.get("result", "") if main else package["summary"]
         self.record_world_story("Event", headline, f"{detail} Profit: ${package['profit']:,}.", [self.player_company_name], importance=3)
-        self.refresh_all()
-        self.write_log()
-        self.show_event_summary(package)
+        return package
 
     def apply_regional_show_effects(self, package):
         region = package.get("region", self.player_region)
@@ -4294,7 +4360,7 @@ class EventMixin:
     def show_event_summary(self, package):
         if self.root.state() == "withdrawn":
             return
-        window = tk.Toplevel(self.root)
+        window = self.create_managed_window()
         window.title("End of Event")
         window.geometry("1040x760")
         window.minsize(820, 600)

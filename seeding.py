@@ -1,4 +1,5 @@
 import json
+import logging
 import random
 import sys
 import traceback
@@ -13,6 +14,10 @@ from tkinter import messagebox, ttk
 from constants import *
 from models import Fighter, Gym, Promotion
 from real_sport_profiles import SPORT_PROFILE_VERSION, build_fallback_sport_profile, build_real_sport_profiles
+from universe_validation import validate_universe_pack
+
+
+LOGGER = logging.getLogger("mma_warriors")
 
 
 def weighted_choice_table(values, weights):
@@ -152,9 +157,13 @@ class SeedMixin:
         if cached and cached.get("path") == path and cached.get("signature") == signature:
             return cached["data"]
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-            if data.get("type") != "universe_database" or "sections" not in data:
+            source_data = json.loads(path.read_text(encoding="utf-8"))
+            if source_data.get("type") != "universe_database" or "sections" not in source_data:
                 raise ValueError("not a universe database pack")
+            # Normalisation retains compatibility with old packs, but normal
+            # loading is deliberately observational: only explicit reset or
+            # migration commands may write the source database.
+            data = deepcopy(source_data)
             changed = False
             combat_section = data.get("sections", {}).get("combat_sports")
             if isinstance(combat_section, dict):
@@ -200,12 +209,11 @@ class SeedMixin:
                         changed = True
                 if self.merge_default_combat_sport_database(combat_section):
                     changed = True
+            issues = validate_universe_pack(data)
+            if issues:
+                raise ValueError("Universe validation failed: " + "; ".join(issues[:8]))
             if changed:
-                self.write_seed_database_file(path, data)
-            try:
-                signature = (path.stat().st_mtime_ns, path.stat().st_size)
-            except OSError:
-                signature = None
+                LOGGER.info("Loaded and normalised legacy universe data in memory without changing %s", path)
             self._universe_database_cache = {"path": path, "signature": signature, "data": data}
             return data
         except Exception as exc:
@@ -214,21 +222,10 @@ class SeedMixin:
                 raise RuntimeError(
                     "Default Universe.universe.json could not be read. Restore the packaged starting database file before starting a new game."
                 ) from exc
-            backup = Path(path).with_suffix(f".broken_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
-            try:
-                Path(path).replace(backup)
-            except Exception:
-                pass
-            default = self.build_universe_database_pack("Default Universe")
-            default["repair_note"] = f"Pack was regenerated after load failure: {type(exc).__name__}: {exc}"
-            self.write_seed_database_file(default_path, default)
-            self.active_universe_marker().write_text(default_path.name, encoding="utf-8")
-            try:
-                signature = (default_path.stat().st_mtime_ns, default_path.stat().st_size)
-            except OSError:
-                signature = None
-            self._universe_database_cache = {"path": default_path, "signature": signature, "data": default}
-            return default
+            raise RuntimeError(
+                f"Universe database '{path.name}' could not be read or validated. "
+                "The file was left unchanged; repair it in the Database Editor or select another database."
+            ) from exc
 
     def merge_default_fighter_database(self, fighters):
         """Normalize the shipped editable fighter database without code-owned rows."""

@@ -403,7 +403,7 @@ class AdminMixin:
         if not bracket:
             messagebox.showinfo("Tournament Bracket", "Run a tournament first to create its visual bracket.")
             return
-        window = tk.Toplevel(self.root)
+        window = self.create_managed_window()
         window.title(f"Tournament Bracket - {bracket['title']}")
         window.geometry("1180x720")
         window.minsize(900, 560)
@@ -771,7 +771,7 @@ class AdminMixin:
         if not report:
             messagebox.showinfo("30-Year Play Audit", "Run the 30-year play audit first.")
             return
-        window = tk.Toplevel(self.root)
+        window = self.create_managed_window()
         window.title("30-Year Play Audit Results")
         window.geometry("940x680")
         window.minsize(720, 480)

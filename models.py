@@ -34,7 +34,7 @@ class Fighter:
     interim_champion: bool = False
     interim_title_wins: int = 0
     interim_title_defenses: int = 0
-    special_titles: list = None
+    special_titles: list = field(default_factory=list)
     injured: int = 0
     region: str = "USA"
     nationality: str = "American"
@@ -44,17 +44,17 @@ class Fighter:
     sport_weight_class: str = ""
     loaned_from_company: str = ""
     loaned_to_promotion: str = ""
-    multi_sport_records: dict = None
-    crossover_history: list = None
+    multi_sport_records: dict = field(default_factory=dict)
+    crossover_history: list = field(default_factory=list)
     birth_country: str = ""
     birth_region: str = ""
     hometown: str = ""
     residence: str = ""
     training_location: str = ""
     fighting_base: str = ""
-    cultural_connections: list = None
-    regional_popularity: dict = None
-    home_event_history: list = None
+    cultural_connections: list = field(default_factory=list)
+    regional_popularity: dict = field(default_factory=dict)
+    home_event_history: list = field(default_factory=list)
     height: str = ""
     style: str = "Well-Rounded"
     stance: str = "Orthodox"
@@ -88,7 +88,7 @@ class Fighter:
     contract_type: str = "Exclusive"
     negotiation_heat: int = 0
     media_heat: int = 0
-    detailed_skills: dict = None
+    detailed_skills: dict = field(default_factory=dict)
     star_quality: int = 50
     charisma: int = 50
     professionalism: int = 50
@@ -98,27 +98,27 @@ class Fighter:
     sponsor_appeal: int = 50
     portrait_bg: str = "#333333"
     portrait_accent: str = "#c3a45d"
-    fight_history: list = None
+    fight_history: list = field(default_factory=list)
     # Academy results are a separate amateur ledger. They inform a fighter's
     # background, but never count toward the professional record or universe
     # record shown on the main profile history tab.
     amateur_w: int = 0
     amateur_l: int = 0
     amateur_d: int = 0
-    amateur_bout_history: list = None
+    amateur_bout_history: list = field(default_factory=list)
     amateur_history_migration_version: int = 0
     # Pre-bout ratings retained independently of the bounded card replay archive.
-    bout_rating_history: list = None
-    annual_overalls: dict = None
+    bout_rating_history: list = field(default_factory=list)
+    annual_overalls: dict = field(default_factory=dict)
     # Persistent high-water mark for profiles and retirement records. Annual
     # snapshots remain useful for charts, but are not granular enough to be a
     # fighter's definitive career peak.
     career_peak_overall: int = 0
-    sport_rating_history: dict = None
-    sport_development_log: list = None
+    sport_rating_history: dict = field(default_factory=dict)
+    sport_development_log: list = field(default_factory=list)
     # Compact, attributed MMA development history. Only meaningful rating
     # changes are retained; the current factor breakdown is calculated live.
-    development_log: list = None
+    development_log: list = field(default_factory=list)
     motivation: int = 65
     retired: bool = False
     retirement_reason: str = ""
@@ -144,7 +144,7 @@ class Fighter:
     division_size_note: str = ""
     # Month-by-month trail of the frame settling into its division: filling out
     # when moving up, recomposing down when the body allows it.
-    division_fit_log: list = None
+    division_fit_log: list = field(default_factory=list)
     elo_rating: int = 1500
     career_sig_strikes: int = 0
     career_takedowns: int = 0
@@ -167,7 +167,7 @@ class Fighter:
     title_wins: int = 0
     title_defenses: int = 0
     award_count: int = 0
-    rivalry_history: list = None
+    rivalry_history: list = field(default_factory=list)
     win_bonus: int = 0
     finish_bonus_pct: int = 0
     ppv_points: int = 0
@@ -207,25 +207,27 @@ class Fighter:
     relationship_trust: int = 55
     serious_injury: str = ""
     serious_injury_pending: bool = False
-    serious_injury_history: list = None
+    serious_injury_history: list = field(default_factory=list)
     serious_injury_recurrence: int = 0
     rivalry_heat: int = 0
     rivalry_origin: str = ""
     rivalry_rematch_due: bool = False
     rivalry_last_month: int = 0
-    weight_class_history: list = None
+    weight_class_history: list = field(default_factory=list)
     weight_move_last_month: int = -99
-    career_achievements: list = None
+    career_achievements: list = field(default_factory=list)
     career_goal: str = ""
     career_goal_target: int = 0
     career_goal_progress: int = 0
-    career_goal_history: list = None
+    career_goal_history: list = field(default_factory=list)
     career_win_streak: int = 0
     career_goal_last_review: int = 0
     # A player-facing long-form story layered on top of the smaller career goal.
     # It stays structured so a save can resume an unfinished journey precisely.
-    career_arc: dict = None
-    career_arc_history: list = None
+    # ``None`` is meaningful here: it distinguishes no active long-form arc
+    # from a structured active arc, unlike the always-present history list.
+    career_arc: dict | None = None
+    career_arc_history: list = field(default_factory=list)
     career_arc_last_offer_month: int = 0
     academy_graduate: bool = False
     academy_graduated_month: int = 0
@@ -250,7 +252,7 @@ class Fighter:
     universe_entry_month: int = 0
     universe_entry_year: int = 0
     camp_joined_month: int = 0
-    camp_history: list = None
+    camp_history: list = field(default_factory=list)
 
     @property
     def overall(self):
@@ -304,7 +306,7 @@ class Gym:
     notes: str = ""
     momentum: int = 0
     development_reputation: int = 50
-    history: list = None
+    history: list = field(default_factory=list)
     last_review_month: int = 0
     capacity_growth: int = 0
 
@@ -320,37 +322,37 @@ class Promotion:
     reputation: str = "Regional"
     reputation_score: int = 40
     stability: int = 50
-    show_history: list = None
+    show_history: list = field(default_factory=list)
     event_counter: int = 1
-    belts: dict = None
-    interim_belts: dict = None
-    special_belts: dict = None
-    belt_history: dict = None
-    rules: dict = None
-    broadcasters: list = None
-    weight_classes: list = None
-    scheduled_events: list = None
-    finance: dict = None
-    staff: list = None
-    scouting: list = None
-    inbox: list = None
-    owner_goals: list = None
-    post_show_bonuses: dict = None
+    belts: dict = field(default_factory=dict)
+    interim_belts: dict = field(default_factory=dict)
+    special_belts: dict = field(default_factory=dict)
+    belt_history: dict = field(default_factory=dict)
+    rules: dict = field(default_factory=dict)
+    broadcasters: list = field(default_factory=list)
+    weight_classes: list = field(default_factory=list)
+    scheduled_events: list = field(default_factory=list)
+    finance: dict = field(default_factory=dict)
+    staff: list = field(default_factory=list)
+    scouting: list = field(default_factory=list)
+    inbox: list = field(default_factory=list)
+    owner_goals: list = field(default_factory=list)
+    post_show_bonuses: dict = field(default_factory=dict)
     show_personality: str = "Balanced"
     is_regional_feeder: bool = False
-    strategy: dict = None
+    strategy: dict = field(default_factory=dict)
     strategic_rival: str = ""
-    executive: dict = None
-    era_history: list = None
+    executive: dict = field(default_factory=dict)
+    era_history: list = field(default_factory=list)
     legacy_score: int = 0
-    academy: dict = None
-    closed_divisions: list = None
+    academy: dict = field(default_factory=dict)
+    closed_divisions: list = field(default_factory=list)
     closed_division_policy_set: bool = False
-    regional_division_activity: dict = None
+    regional_division_activity: dict = field(default_factory=dict)
     is_child_promotion: bool = False
     parent_company: str = ""
     child_strategy: str = "Balanced"
     parent_profit_share: int = 0
     startup_capital: int = 0
     initial_roster_budget: int = 0
-    loaned_fighter_ids: list = None
+    loaned_fighter_ids: list = field(default_factory=list)

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "python": {
+    "implementation": "cpython",
+    "version": "3.13.2",
+    "architecture": "64bit"
+  },
+  "packages": {
+    "PyInstaller": "6.20.0",
+    "pyinstaller-hooks-contrib": "2026.5",
+    "packaging": "24.2",
+    "setuptools": "76.1.0"
+  }
+}

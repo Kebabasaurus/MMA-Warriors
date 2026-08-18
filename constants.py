@@ -10,7 +10,7 @@ ASSET_DIR = BUNDLE_DIR / "assets" if (BUNDLE_DIR / "assets").exists() else APP_D
 APP_ICON_ICO = ASSET_DIR / "app_icon.ico"
 APP_ICON_PNG = ASSET_DIR / "app_icon.png"
 GAME_NAME = "MMA Warriors"
-GAME_VERSION = "3.0.8"
+GAME_VERSION = "3.0.9"
 GAME_TITLE = f"{GAME_NAME} v{GAME_VERSION}"
 AI_CHILD_PROMOTION_MIN_CAPITAL = 1_000_000
 AI_CHILD_PROMOTION_MAX_CAPITAL = 25_000_000
@@ -83,6 +83,11 @@ DEFAULT_EVENT_DAY = 6
 
 def _select_data_dir():
     """Keep portable builds self-contained, with a safe fallback for protected folders."""
+    override = os.environ.get("MMA_WARRIORS_DATA_DIR", "").strip()
+    if override:
+        selected = Path(override).expanduser().resolve()
+        selected.mkdir(parents=True, exist_ok=True)
+        return selected
     probe = APP_DIR / ".mma_warriors_write_test"
     try:
         APP_DIR.mkdir(parents=True, exist_ok=True)
@@ -110,6 +115,11 @@ ROLLING_SAVE_SLOT_COUNT = 2
 # never vanish from the results database simply because its replay aged out.
 RESULT_INDEX_LIMIT = 100000
 GLOBAL_RESULT_REPLAY_LIMIT = 2000
+# Long careers retain searchable result records separately.  These are the
+# player-facing summary and raw commentary buffers, so cap them to keep saves,
+# startup, and the Results/Log views responsive.
+RESULT_HISTORY_LIMIT = 5000
+EVENT_LOG_LIMIT = 12000
 # Retained for compatibility with older tuning/save tooling. Fight commentary
 # is streamed in full; the live viewer may use these values for future pacing.
 FIGHT_COMMENTARY_ROUND_LINE_LIMIT = 24

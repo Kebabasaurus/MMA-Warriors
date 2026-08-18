@@ -262,6 +262,25 @@ class WorldMixin:
 
     def repair_child_promotion_state(self):
         """Normalize child metadata and rebuild the protected-loan index after loading."""
+        children = [promo for promo in getattr(self, "promotions", []) if self.is_child_promotion(promo)]
+        child_by_name = {str(promo.name): promo for promo in children}
+        all_fighters = []
+        seen_ids = set()
+        for roster in [getattr(self, "roster", []), getattr(self, "free_agents", []), getattr(self, "retired_fighters", [])]:
+            all_fighters.extend(roster or [])
+        for promo in getattr(self, "promotions", []):
+            all_fighters.extend(getattr(promo, "roster", []) or [])
+        for fighter in all_fighters:
+            fighter_id = str(getattr(fighter, "fighter_id", ""))
+            if fighter_id in seen_ids:
+                continue
+            seen_ids.add(fighter_id)
+            target_name = str(getattr(fighter, "loaned_to_promotion", "") or "")
+            target = child_by_name.get(target_name)
+            target_contains = target and any(str(getattr(item, "fighter_id", "")) == fighter_id for item in getattr(target, "roster", []))
+            if target_name and (not target_contains or getattr(fighter, "retired", False) or getattr(fighter, "retirement_pending", False)):
+                fighter.loaned_from_company = ""
+                fighter.loaned_to_promotion = ""
         for promo in getattr(self, "promotions", []):
             if not self.is_child_promotion(promo):
                 continue
@@ -276,6 +295,10 @@ class WorldMixin:
             promo.loaned_fighter_ids = list(dict.fromkeys(str(item) for item in (getattr(promo, "loaned_fighter_ids", None) or []) if item))
             actual = []
             for fighter in getattr(promo, "roster", []):
+                if (getattr(fighter, "retired", False) or getattr(fighter, "retirement_pending", False)):
+                    fighter.loaned_from_company = ""
+                    fighter.loaned_to_promotion = ""
+                    continue
                 if self.child_promotion_loaned(promo, fighter):
                     fighter.loaned_from_company = promo.parent_company
                     fighter.loaned_to_promotion = promo.name
@@ -358,8 +381,16 @@ class WorldMixin:
         self.promotions.append(promotion)
         self.set_child_promotion_settings(promotion, strategy, profit_share, announce=False)
         self.cash -= capital
-        self.record_finance_transaction(f"Launch MMA child promotion: {promotion.name}", costs=capital)
         signed = self.seed_child_promotion_roster(promotion, capital)
+        if not signed:
+            self.promotions.remove(promotion)
+            self.cash += capital
+            return False, "The launch was cancelled because no eligible MMA free agents were available for an opening roster."
+        self.record_finance_transaction(
+            f"Launch MMA child promotion: {promotion.name}", costs=capital,
+            category="Child promotion", source="Startup capital", counterparty=promotion.name,
+            reference=f"child-launch:{promotion.name}:{self.month}:{self.week}",
+        )
         promotion.initial_roster_budget = capital
         headline = f"{promotion.name} launched with ${capital:,} startup capital, {len(signed)} initial fighters, and a {strategy.lower()} strategy."
         self.news.insert(0, headline)
@@ -392,6 +423,11 @@ class WorldMixin:
                 continue
             self.free_agents.remove(fighter)
             promo.cash -= signing
+            self.record_promotion_finance_transaction(
+                promo, f"Opening roster signing: {fighter.name}", costs=signing,
+                category="Roster", source="Opening roster", counterparty=fighter.name,
+                reference=f"opening-signing:{getattr(fighter, 'fighter_id', fighter.name)}",
+            )
             fighter.purse = purse
             fighter.contract_months = random.randint(12, 28) if fighter.age <= 30 else random.randint(8, 18)
             fighter.exclusive = True
@@ -410,6 +446,9 @@ class WorldMixin:
         return next((promo for promo in self.promotions if promo.name == name and self.is_child_promotion(promo)
                      and getattr(promo, "parent_company", "") == self.player_company_name), None)
 
+    def child_promotion_transfer_fee(self, fighter):
+        return max(25_000, round((fighter.purse * 3 + fighter.popularity * 1_000) / 500) * 500)
+
     def loan_fighter_to_child_promotion(self, child_name, fighter_id):
         promo = self.child_promotion_by_name(child_name)
         fighter = next((item for item in self.roster if str(getattr(item, "fighter_id", "")) == str(fighter_id)), None)
@@ -421,6 +460,11 @@ class WorldMixin:
             return False, f"{fighter.name} is already on loan."
         if fighter.name in self.scheduled_fighter_names(include_booked=True):
             return False, f"{fighter.name} is already committed to a fight."
+        if fighter.champion or fighter.interim_champion:
+            self.belts, self.interim_belts, self.belt_history = self.vacate_fighter_belts(
+                fighter, self.roster, self.belts or {}, self.interim_belts or {}, self.belt_history or {},
+                "Loaned to a child promotion.",
+            )
         self.roster.remove(fighter)
         promo.roster.append(fighter)
         fighter.loaned_from_company = self.player_company_name
@@ -437,6 +481,8 @@ class WorldMixin:
         fighter = next((item for item in (promo.roster if promo else []) if str(getattr(item, "fighter_id", "")) == str(fighter_id)), None)
         if not promo or not fighter or not self.child_promotion_loaned(promo, fighter):
             return False, "That fighter is not a loaned member of this child promotion."
+        if fighter.retired or fighter.retirement_pending:
+            return False, f"{fighter.name} is retired or pending retirement and cannot be recalled through the loan manager."
         if fighter.champion or fighter.interim_champion:
             promo.belts, promo.interim_belts, promo.belt_history = self.vacate_fighter_belts(fighter, promo.roster, promo.belts or {}, promo.interim_belts or {}, promo.belt_history or {}, "Recalled by parent company.")
         promo.roster.remove(fighter)
@@ -455,15 +501,32 @@ class WorldMixin:
         fighter = next((item for item in (promo.roster if promo else []) if str(getattr(item, "fighter_id", "")) == str(fighter_id)), None)
         if not promo or not fighter:
             return False, "That fighter is not on the selected child-promotion roster."
+        if fighter.retired or fighter.retirement_pending:
+            return False, f"{fighter.name} is retired or pending retirement and cannot be transferred."
         if self.child_promotion_loaned(promo, fighter):
             return self.recall_fighter_from_child_promotion(child_name, fighter_id)
-        buyout = max(25_000, round((fighter.purse * 3 + fighter.popularity * 1_000) / 500) * 500)
+        buyout = self.child_promotion_transfer_fee(fighter)
+        division_key = self.belt_key(fighter.gender, fighter.weight)
+        if division_key in set(getattr(self, "closed_divisions", set()) or set()):
+            return False, f"{fighter.gender} {fighter.weight} is a closed parent division. Reopen it before taking {fighter.name}."
         if self.cash < buyout:
             return False, f"Taking {fighter.name} requires a ${buyout:,} transfer fee."
         if fighter.champion or fighter.interim_champion:
             promo.belts, promo.interim_belts, promo.belt_history = self.vacate_fighter_belts(fighter, promo.roster, promo.belts or {}, promo.interim_belts or {}, promo.belt_history or {}, "Transferred to the parent company.")
         self.cash -= buyout
         promo.cash += buyout
+        self.record_finance_transaction(
+            f"Child promotion transfer fee: {promo.name} — {fighter.name}", costs=buyout,
+            category="Transfer", source="Parent transfer fee", counterparty=promo.name,
+            reference=f"child-transfer:{getattr(fighter, 'fighter_id', fighter.name)}:{self.month}:{self.week}",
+        )
+        self.record_promotion_finance_transaction(
+            promo, f"Transfer fee received: {fighter.name}", revenue=buyout,
+            category="Transfer", source="Parent transfer fee", counterparty=self.player_company_name,
+            reference=f"child-transfer:{getattr(fighter, 'fighter_id', fighter.name)}:{self.month}:{self.week}",
+        )
+        promo.finance = promo.finance or {}
+        promo.finance["transfer_fees_received"] = int(promo.finance.get("transfer_fees_received", 0) or 0) + buyout
         promo.roster.remove(fighter)
         fighter.loaned_from_company = ""
         fighter.loaned_to_promotion = ""
@@ -490,6 +553,13 @@ class WorldMixin:
         self.cash += distribution
         self.record_finance_transaction(
             f"Child promotion profit share: {promo.name}", revenue=distribution,
+            category="Child promotion", source="Parent profit share", counterparty=promo.name,
+            reference=f"child-distribution:{promo.name}:{self.month}:{self.week}",
+        )
+        self.record_promotion_finance_transaction(
+            promo, "Parent profit-share distribution", costs=distribution,
+            category="Child promotion", source="Parent profit share", counterparty=self.player_company_name,
+            reference=f"child-distribution:{promo.name}:{self.month}:{self.week}",
         )
         strategy = self.promotion_strategy(promo)
         strategy["parent_distributions"] = int(strategy.get("parent_distributions", 0) or 0) + distribution
@@ -647,6 +717,11 @@ class WorldMixin:
             # lose several million between shows and hollow out its divisions.
             monthly_cost = round((18_000 + promo.size * 650 + roster_size * 325) * operating_multiplier)
             promo.cash -= monthly_cost
+            self.record_promotion_finance_transaction(
+                promo, "Monthly operating costs", costs=monthly_cost,
+                category="Overhead", source="Office and roster operations",
+                reference=f"monthly-overhead:{promo.name}:{self.month}",
+            )
             # Companies retain a genuine runway for cards and contract bidding.
             # Surplus above the operating ceiling is returned to ownership and
             # long-term infrastructure monthly. This is deliberately gentler
@@ -660,6 +735,11 @@ class WorldMixin:
                 surplus = promo.cash - cash_ceiling
                 distribution = round(surplus * (0.16 if promo.cash <= cash_ceiling * 1.4 else 0.24))
                 promo.cash -= distribution
+                self.record_promotion_finance_transaction(
+                    promo, "Capital distribution", costs=distribution,
+                    category="Ownership", source="Excess cash distribution", counterparty=promo.name,
+                    reference=f"capital-distribution:{promo.name}:{self.month}",
+                )
                 strategy["capital_distributions"] = int(strategy.get("capital_distributions", 0) or 0) + distribution
             commercial_strength = strategy.get("commercial_strength", promo.reputation_score)
             stability_target = max(58, min(86, round(50 + commercial_strength * 0.38)))
@@ -709,6 +789,11 @@ class WorldMixin:
                     card_runway = max(750_000, promo.size * 12_000)
                     workout = max(1_000_000, promo.size * 30_000, -promo.cash + card_runway)
                     promo.cash += workout
+                    self.record_promotion_finance_transaction(
+                        promo, "Post-buyout lender workout", revenue=workout,
+                        category="Rescue", source="Lender workout", counterparty=promo.name,
+                        reference=f"post-buyout-workout:{promo.name}:{self.month}",
+                    )
                     promo.stability = max(22, promo.stability)
                     strategy["last_post_buyout_workout_month"] = self.month
                     strategy["post_buyout_workouts"] = strategy.get("post_buyout_workouts", 0) + 1
@@ -723,6 +808,11 @@ class WorldMixin:
                 rescue = max(4_000_000, promo.size * 75_000)
                 executive["rescue_capital_used"] = True
                 promo.cash += rescue
+                self.record_promotion_finance_transaction(
+                    promo, "Investor rescue package", revenue=rescue,
+                    category="Rescue", source="Investor rescue", counterparty=promo.name,
+                    reference=f"investor-rescue:{promo.name}:{self.month}",
+                )
                 promo.stability = max(36, promo.stability)
                 headline = f"{promo.name} secures a final ${rescue:,} investor rescue package."
                 self.news.insert(0, headline)
@@ -768,7 +858,14 @@ class WorldMixin:
                 elif value and value not in retained:
                     belts[key] = ""
         injection = max(4_000_000, promo.size * random.randint(75_000, 105_000))
+        previous_cash = promo.cash
         promo.cash = injection
+        self.record_promotion_finance_transaction(
+            promo, "Distressed ownership recapitalisation",
+            revenue=max(0, injection - previous_cash), costs=max(0, previous_cash - injection),
+            category="Ownership", source="Distressed buyout", counterparty=promo.name,
+            reference=f"distressed-buyout:{promo.name}:{self.month}",
+        )
         promo.stability = random.randint(32, 48)
         promo.momentum = max(-4, min(3, promo.momentum + random.randint(-1, 2)))
         promo.size = max(35, promo.size - random.randint(2, 5))
@@ -1194,6 +1291,11 @@ class WorldMixin:
         if cost:
             self.cash -= cost
             self.finance["other"] = self.finance.get("other", 0) - cost
+            self.record_finance_transaction(
+                f"Career plan: {action} ({fighter.name})", costs=cost,
+                category="Fighter development", source="Career journey", counterparty=fighter.name,
+                reference=f"career-plan:{getattr(fighter, 'fighter_id', fighter.name)}:{action}:{self.month}:{self.week}",
+            )
         if action == "development":
             arc["plan"] = "Structured development"
             fighter.professionalism = min(99, fighter.professionalism + 4)
@@ -2843,7 +2945,32 @@ class WorldMixin:
         self.write_log()
         if not getattr(self, "spectator_mode", False):
             self.show_pending_broadcast_notices()
+        self.present_advance_notice_summary()
         self.prompt_due_event()
+
+    def queue_advance_notice(self, category, title, body):
+        """Collect routine progression notices for one post-advance summary."""
+        queue = getattr(self, "advance_notice_queue", None)
+        if queue is None:
+            queue = self.advance_notice_queue = []
+        queue.append({"category": str(category), "title": str(title), "body": str(body)})
+
+    def present_advance_notice_summary(self):
+        """Write one inbox item for routine notices; decision prompts stay modal."""
+        notices = list(getattr(self, "advance_notice_queue", []) or [])
+        self.advance_notice_queue = []
+        if not notices:
+            return
+        sections = [f"{notice['title']}\n{notice['body']}" for notice in notices]
+        body = "Routine updates from the latest calendar advance:\n\n" + "\n\n".join(sections)
+        inbox = getattr(self, "inbox", None)
+        if inbox is not None:
+            inbox.insert(0, {"subject": "Calendar advance summary", "body": body, "type": "Simulation", "resolved": False})
+        news = getattr(self, "news", None)
+        if news is not None:
+            news.insert(0, f"Calendar advance summary: {len(notices)} routine update(s). Open Inbox for details.")
+        if getattr(self, "current_tab_name", "") == "inbox" and hasattr(self, "refresh_inbox"):
+            self.refresh_inbox()
 
     def begin_advance_sequence(self, weeks=1, status_prefix="Advancing", on_complete=None, stop_condition=None):
         """Advance cooperatively through Tk's event queue so the app stays responsive."""
@@ -2923,6 +3050,7 @@ class WorldMixin:
             if not getattr(self, "spectator_mode", False):
                 self.show_final_month_contract_alerts()
                 self.show_pending_broadcast_notices()
+                self.present_advance_notice_summary()
                 self.prompt_due_event()
             if callback:
                 callback()
@@ -4598,13 +4726,33 @@ class WorldMixin:
                 body = f"{search.get('scout')} completed the {focus} search in {search.get('region')} but found no suitable unscouted lead matching the brief."
             self.inbox.append({"subject": f"Talent Search Complete - {focus}", "body": body, "type": "Scouting", "resolved": False, "fighter_id": search.get("result_fighter_id", "")})
 
-    def record_finance_transaction(self, label, revenue=0, costs=0):
+    def _finance_transaction_row(self, label, revenue=0, costs=0, category="Operating", source="", counterparty="", event="", reference="", entity=""):
+        """Build the canonical, auditable shape shared by player and AI ledgers."""
+        revenue = max(0, round(revenue))
+        costs = max(0, round(costs))
+        transaction_number = int(getattr(self, "_finance_transaction_number", 0) or 0) + 1
+        self._finance_transaction_number = transaction_number
+        return {
+            "id": f"FIN-{self.month}-{self.week}-{transaction_number}",
+            "month": int(self.month), "week": int(self.week),
+            "label": str(label), "category": str(category or "Operating"),
+            "source": str(source or label), "counterparty": str(counterparty or ""),
+            "event": str(event or ""), "reference": str(reference or ""),
+            "entity": str(entity or getattr(self, "player_company_name", "")),
+            "revenue": revenue, "costs": costs, "net": revenue - costs,
+        }
+
+    def _append_finance_transaction(self, finance, row, ledger_text=None):
+        finance.setdefault("week_transactions", []).append(row)
+        finance["week_transactions"] = finance["week_transactions"][-240:]
+        if ledger_text:
+            finance.setdefault("ledger", []).insert(0, ledger_text)
+            finance["ledger"] = finance["ledger"][:240]
+
+    def record_finance_transaction(self, label, revenue=0, costs=0, category="Operating", source="", counterparty="", event="", reference=""):
         self.ensure_finance_defaults()
-        self.finance["week_transactions"].append({
-            "month": self.month, "week": self.week, "label": label,
-            "revenue": max(0, round(revenue)), "costs": max(0, round(costs)),
-        })
-        self.finance["week_transactions"] = self.finance["week_transactions"][-240:]
+        row = self._finance_transaction_row(label, revenue, costs, category, source, counterparty, event, reference)
+        self._append_finance_transaction(self.finance, row)
         net = round(revenue) - round(costs)
         if net:
             parts = []
@@ -4613,6 +4761,88 @@ class WorldMixin:
             if costs:
                 parts.append(f"${round(costs):,} costs")
             self.record_change("Finance", label, net, " and ".join(parts))
+
+    def ensure_promotion_finance_defaults(self, promo):
+        finance = getattr(promo, "finance", None)
+        if not isinstance(finance, dict):
+            finance = {}
+            promo.finance = finance
+        finance.setdefault("ledger", [])
+        finance.setdefault("week_transactions", [])
+        finance.setdefault("weekly_history", [])
+        if not isinstance(finance["ledger"], list):
+            finance["ledger"] = []
+        if not isinstance(finance["week_transactions"], list):
+            finance["week_transactions"] = []
+        if not isinstance(finance["weekly_history"], list):
+            finance["weekly_history"] = []
+        finance.setdefault("parent_distributions", 0)
+        finance.setdefault("transfer_fees_received", 0)
+        return finance
+
+    def record_promotion_finance_transaction(self, promo, label, revenue=0, costs=0, category="Operating", source="", counterparty="", event="", reference=""):
+        """Record a cash movement belonging to an AI or child promotion."""
+        finance = self.ensure_promotion_finance_defaults(promo)
+        row = self._finance_transaction_row(
+            label, revenue, costs, category, source, counterparty, event, reference,
+            entity=getattr(promo, "name", ""),
+        )
+        self._append_finance_transaction(finance, row)
+        net = row["net"]
+        if net:
+            finance.setdefault("ledger", []).insert(0, f"Month {self.month} Week {self.week}: {label} {'+' if net >= 0 else '-'}${abs(net):,}.")
+            finance["ledger"] = finance["ledger"][:240]
+        return row
+
+    def reconcile_promotion_finance(self, promo, repair=True):
+        """Reconcile a promotion's cash to its canonical transactions for the week."""
+        finance = self.ensure_promotion_finance_defaults(promo)
+        period = (int(self.month), int(self.week))
+        transactions = [row for row in finance["week_transactions"] if (row.get("month"), row.get("week")) == period]
+        revenue = sum(int(row.get("revenue", 0) or 0) for row in transactions)
+        costs = sum(int(row.get("costs", 0) or 0) for row in transactions)
+        history = finance["weekly_history"]
+        if history and (history[-1].get("month"), history[-1].get("week")) == period:
+            opening = history[-1].get("opening", promo.cash - revenue + costs)
+        else:
+            opening = history[-1].get("ending", promo.cash - revenue + costs) if history else promo.cash - revenue + costs
+        expected = opening + revenue - costs
+        difference = int(promo.cash - expected)
+        if difference and repair and not any(row.get("reference") == f"reconcile:{promo.name}:{self.month}:{self.week}" for row in transactions):
+            self.record_promotion_finance_transaction(
+                promo, "Unattributed cash reconciliation", revenue=max(0, difference), costs=max(0, -difference),
+                category="Reconciliation", source="Weekly cash-balance check", reference=f"reconcile:{promo.name}:{self.month}:{self.week}",
+            )
+            transactions = [row for row in finance["week_transactions"] if (row.get("month"), row.get("week")) == period]
+            revenue = sum(int(row.get("revenue", 0) or 0) for row in transactions)
+            costs = sum(int(row.get("costs", 0) or 0) for row in transactions)
+        return {"opening": opening, "revenue": revenue, "costs": costs, "ending": promo.cash, "difference": promo.cash - (opening + revenue - costs)}
+
+    def close_promotion_finance_week(self, promo):
+        finance = self.ensure_promotion_finance_defaults(promo)
+        report = self.reconcile_promotion_finance(promo, repair=True)
+        row = {"month": self.month, "week": self.week, **report,
+               "net": report["ending"] - report["opening"],
+               "transactions": [item for item in finance["week_transactions"] if (item.get("month"), item.get("week")) == (self.month, self.week)]}
+        history = finance["weekly_history"]
+        if history and (history[-1].get("month"), history[-1].get("week")) == (self.month, self.week):
+            history[-1] = row
+        else:
+            history.append(row)
+        finance["weekly_history"] = history[-192:]
+        return row
+
+    def finance_reconciliation_status(self, finance=None, cash=None):
+        """Return the latest stored cash/ledger balance check without mutating state."""
+        finance = finance if isinstance(finance, dict) else getattr(self, "finance", {})
+        history = list(finance.get("weekly_history", []) or [])
+        if not history:
+            return {"balanced": True, "difference": 0, "period": None}
+        row = history[-1]
+        expected = int(row.get("opening", 0) or 0) + int(row.get("revenue", 0) or 0) - int(row.get("costs", 0) or 0)
+        actual = int(row.get("ending", cash if cash is not None else 0) or 0)
+        difference = actual - expected
+        return {"balanced": difference == 0, "difference": difference, "period": (row.get("month"), row.get("week"))}
 
     # ---- Crossover superfights (player-only) -------------------------------
 
@@ -4798,7 +5028,20 @@ class WorldMixin:
         transactions = [item for item in self.finance["week_transactions"] if (item["month"], item["week"]) == period]
         revenue = sum(item["revenue"] for item in transactions)
         costs = sum(item["costs"] for item in transactions)
-        previous = history[-1]["ending"] if history else self.cash - revenue + costs
+        if history and (history[-1].get("month"), history[-1].get("week")) == period:
+            previous = history[-1].get("opening", self.cash - revenue + costs)
+        else:
+            previous = history[-1]["ending"] if history else self.cash - revenue + costs
+        difference = self.cash - (previous + revenue - costs)
+        if difference and not any(item.get("reference") == f"reconcile:player:{self.month}:{self.week}" for item in transactions):
+            self.record_finance_transaction(
+                "Unattributed cash reconciliation", revenue=max(0, difference), costs=max(0, -difference),
+                category="Reconciliation", source="Weekly cash-balance check",
+                reference=f"reconcile:player:{self.month}:{self.week}",
+            )
+            transactions = [item for item in self.finance["week_transactions"] if (item["month"], item["week"]) == period]
+            revenue = sum(item["revenue"] for item in transactions)
+            costs = sum(item["costs"] for item in transactions)
         row = {
             "month": self.month, "week": self.week, "opening": previous,
             "revenue": revenue, "costs": costs, "net": self.cash - previous,
@@ -4809,6 +5052,8 @@ class WorldMixin:
         else:
             history.append(row)
         self.finance["weekly_history"] = history[-192:]
+        for promo in [item for item in getattr(self, "promotions", []) if not getattr(item, "is_regional_feeder", False)]:
+            self.close_promotion_finance_week(promo)
 
     def fluctuate_region_interest(self):
         if random.random() > 0.28:
@@ -7888,8 +8133,15 @@ class WorldMixin:
                 division.setdefault("finance_history", []).insert(0, {"month": self.month, "revenue": revenue, "cost": cost, "profit": profit, "cash": self.cash + profit})
                 division["finance_history"] = division["finance_history"][:120]
                 self.refresh_combat_sport_rankings(sport, world, employer=employer, division=division)
+                cash_before = self.cash
                 self.cash = max(0, self.cash + profit)
-                self.record_finance_transaction(f"{sport} child division card", revenue=revenue, costs=cost)
+                actual_revenue = revenue
+                actual_cost = cost if profit >= 0 else revenue + cash_before
+                self.record_finance_transaction(
+                    f"{sport} child division card", revenue=actual_revenue, costs=actual_cost,
+                    category="Combat sport", source="Child division card", counterparty=promotion,
+                    event=card.get("name", ""), reference=f"combat-sport-card:{sport}:{self.month}:{self.week}",
+                )
                 self.news.insert(0, headline)
         else:
             reputation = state.get("reputation", 62)
@@ -8696,7 +8948,11 @@ class WorldMixin:
             if self.cash < startup_cost:
                 return False, f"Need ${startup_cost:,} to establish a {sport} division."
             self.cash -= startup_cost
-            self.record_finance_transaction(f"Launch {sport} division", costs=startup_cost)
+            self.record_finance_transaction(
+                f"Launch {sport} division", costs=startup_cost,
+                category="Combat sport", source="Division startup", counterparty=f"{self.player_company_name} {sport}",
+                reference=f"combat-sport-launch:{sport}:{self.month}:{self.week}",
+            )
             # A child promotion begins as a genuine expansion: the player signs
             # its roster deliberately instead of receiving an invisible starter team.
             signed = []
@@ -9041,9 +9297,13 @@ class WorldMixin:
 
     def process_annual_weight_class_movements(self):
         """Annual career reviews create a small number of believable division moves."""
-        groups = [(self.roster, True, self.player_company_name)]
-        groups.extend((promo.roster, False, promo.name) for promo in self.promotions if not getattr(promo, "is_regional_feeder", False))
-        for roster, player_owned, company in groups:
+        groups = [(self.roster, True, self.player_company_name, None)]
+        groups.extend(
+            (promo.roster, False, promo.name, promo)
+            for promo in self.promotions
+            if not getattr(promo, "is_regional_feeder", False)
+        )
+        for roster, player_owned, company, promo in groups:
             candidates = list(roster)
             random.shuffle(candidates)
             moves = 0
@@ -9052,6 +9312,14 @@ class WorldMixin:
                     break
                 target, reason = self.career_weight_move_target(fighter, roster)
                 if not target:
+                    continue
+                if not player_owned and promo is not None and not self.promotion_division_open(
+                    promo, fighter.gender, target
+                ):
+                    # AI career movement must preserve a promotion's configured
+                    # division policy. Without this guard, a fighter could be
+                    # moved into a closed class during annual progression even
+                    # though recruitment and matchmaking correctly reject it.
                     continue
                 if player_owned:
                     self.inbox.append({"subject": f"Division Review — {fighter.name}", "body": f"Your staff recommend that {fighter.name} consider moving from {fighter.weight} to {target}: {reason}. Open their profile to review the body-fit assessment and decide.", "type": "Roster", "fighter": fighter.name, "action": "weight_move_recommendation", "resolved": False})
@@ -10383,7 +10651,14 @@ class WorldMixin:
                 recovery_until = max(recovery_until, self.month + 12)
                 recovery_active = True
             if promo.cash < 0 or recovery_active:
+                bridge = working_capital - promo.cash
                 promo.cash = working_capital
+                if bridge:
+                    self.record_promotion_finance_transaction(
+                        promo, "Temporary operating bridge", revenue=max(0, bridge), costs=max(0, -bridge),
+                        category="Rescue", source="Working-capital support", counterparty=promo.name,
+                        reference=f"working-capital-bridge:{promo.name}:{self.month}:{self.week}",
+                    )
             elif random.random() < 0.35:
                 promo.stability = max(1, promo.stability - 1)
                 self.news.insert(0, f"Week {self.week}: {promo.name} postponed a card after budget review.")
@@ -10563,6 +10838,12 @@ class WorldMixin:
         strategic_reinvestment = round(max(0, revenue - projected_cost) * reinvestment_rate)
         event_profit = revenue - projected_cost - strategic_reinvestment
         promo.cash += event_profit
+        self.record_promotion_finance_transaction(
+            promo, event_name, revenue=revenue,
+            costs=projected_cost + strategic_reinvestment,
+            category="Event", source="AI event finance", counterparty=promo.name,
+            event=event_name, reference=f"ai-event:{promo.name}:{self.month}:{self.week}:{promo.event_counter}",
+        )
         parent_distribution = self.distribute_child_promotion_profit(promo, event_profit)
         strategy["last_event_finance"] = {
             "month": self.month, "revenue": revenue, "cost": projected_cost,
@@ -12556,6 +12837,11 @@ class WorldMixin:
                 if promo.cash < minimum_cash:
                     refinancing = minimum_cash - promo.cash
                     promo.cash = minimum_cash
+                    self.record_promotion_finance_transaction(
+                        promo, "Finance-model refinancing", revenue=refinancing,
+                        category="Rescue", source="Legacy save migration", counterparty=promo.name,
+                        reference=f"finance-refinance:{promo.name}:v2",
+                    )
                     promo.stability = max(28, promo.stability)
                     refinanced.append((promo.name, refinancing))
                 strategy["finance_model_version"] = 2
@@ -12570,6 +12856,11 @@ class WorldMixin:
                     correction = max(0, promo.cash - (cash_ceiling + retained_buffer))
                     if correction:
                         promo.cash -= correction
+                        self.record_promotion_finance_transaction(
+                            promo, "Finance-model cash normalization", costs=correction,
+                            category="Ownership", source="Legacy save migration", counterparty=promo.name,
+                            reference=f"finance-normalization:{promo.name}:v3",
+                        )
                         strategy["finance_correction_total"] = int(strategy.get("finance_correction_total", 0) or 0) + correction
                         promo.show_history = list(promo.show_history or [])
                         promo.show_history.insert(0, f"Finance normalization: ${correction:,} redirected from excess retained cash into owner distributions and infrastructure.")
@@ -12943,6 +13234,11 @@ class WorldMixin:
             return False, f"{promo.name} could not fund the agreed deal."
         self.free_agents.remove(fighter)
         promo.cash -= signing_bonus
+        self.record_promotion_finance_transaction(
+            promo, f"Contract signing: {fighter.name}", costs=signing_bonus,
+            category="Roster", source=source or "AI contract market", counterparty=fighter.name,
+            reference=f"ai-signing:{getattr(fighter, 'fighter_id', fighter.name)}:{self.month}:{self.week}",
+        )
         fighter.purse = purse
         fighter.contract_months = months
         fighter.exclusive = True
@@ -13017,7 +13313,7 @@ class WorldMixin:
                 self.pending_final_month_contract_alerts = pending
 
     def show_final_month_contract_alerts(self):
-        """Show one compact, post-advance warning instead of interrupting the monthly sim loop."""
+        """Queue one compact post-advance warning for the calendar summary."""
         alerts = list(getattr(self, "pending_final_month_contract_alerts", []) or [])
         self.pending_final_month_contract_alerts = []
         if not alerts:
@@ -13027,7 +13323,8 @@ class WorldMixin:
             crown = " - CHAMPION" if row.get("champion") else ""
             lines.append(f"{row['name']} ({row['gender']} {row['weight']})${crown} - ${row['purse']:,}/fight")
         remainder = f"\n+ {len(alerts) - 12} more final-month deal(s)." if len(alerts) > 12 else ""
-        messagebox.showwarning(
+        self.queue_advance_notice(
+            "contracts",
             "Final-month contracts",
             "These fighters now have one month left. Renew, release, or accept that they may leave.\n\n"
             + "\n".join(lines) + remainder + "\n\nOpen Contracts to act.",

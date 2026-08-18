@@ -1,4 +1,5 @@
 import json
+import inspect
 import random
 import sys
 import traceback
@@ -14,6 +15,56 @@ from models import Fighter, Gym, Promotion
 
 
 class UIMixin:
+    def focus_managed_window(self, key):
+        """Focus a logical singleton window if it is still alive."""
+        registry = getattr(self, "_managed_windows", {})
+        window = registry.get(str(key))
+        try:
+            if window is not None and window.winfo_exists():
+                window.deiconify()
+                window.lift()
+                window.focus_force()
+                return window
+        except tk.TclError:
+            pass
+        registry.pop(str(key), None)
+        return None
+
+    def create_managed_window(self, key=None, parent=None):
+        """Create a call-site/entity keyed popup and replace stale duplicates."""
+        caller = inspect.currentframe().f_back
+        if key is None:
+            key_parts = [caller.f_code.co_filename, str(caller.f_lineno)]
+            for local_name in ("fighter", "item", "record", "sport", "member", "promo"):
+                value = caller.f_locals.get(local_name)
+                identity = getattr(value, "fighter_id", None) if value is not None else None
+                if identity is None and isinstance(value, dict):
+                    identity = value.get("fighter_id") or value.get("id") or value.get("name")
+                if identity is None and isinstance(value, (str, int)):
+                    identity = value
+                if identity:
+                    key_parts.extend((local_name, str(identity)))
+            key = "popup:" + ":".join(key_parts)
+        key = str(key)
+        existing = self.focus_managed_window(key)
+        if existing is not None:
+            try:
+                existing.destroy()
+            except tk.TclError:
+                pass
+        window = tk.Toplevel(parent or self.root)
+        registry = getattr(self, "_managed_windows", None)
+        if registry is None:
+            registry = self._managed_windows = {}
+        registry[key] = window
+
+        def unregister(event):
+            if event.widget is window and registry.get(key) is window:
+                registry.pop(key, None)
+
+        window.bind("<Destroy>", unregister, add="+")
+        return window
+
     def show_busy_overlay(self, title="Please wait", message="Working...", progress=0):
         """Show a modal, repaintable status panel before synchronous UI work begins."""
         existing = getattr(self, "_busy_overlay", None)

@@ -22,29 +22,11 @@ if not defined PY (
     goto done
 )
 
-%PY% "%APP_DIR%smoke_test.py"
-if errorlevel 1 goto failed
-
-%PY% "%APP_DIR%persistence_regression_test.py"
-if errorlevel 1 goto failed
-
-%PY% "%APP_DIR%contracts_finance_regression_test.py"
-if errorlevel 1 goto failed
-
-%PY% "%APP_DIR%ui_data_regression_test.py"
-if errorlevel 1 goto failed
-
-%PY% "%APP_DIR%qa_tooling_regression_test.py"
-if errorlevel 1 goto failed
-
-%PY% "%APP_DIR%stability_test.py"
-if errorlevel 1 goto failed
-
-%PY% "%APP_DIR%media_system_test.py"
+%PY% "%APP_DIR%run_regression_suite.py"
 if errorlevel 1 goto failed
 
 echo.
-echo Shipping and focused Brett-Dev regression playtests passed.
+echo All isolated shipping and focused regression playtests passed.
 goto done
 
 :failed

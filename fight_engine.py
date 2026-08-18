@@ -34,62 +34,77 @@ FIGHT_SKILL_BUNDLES = {
 
 
 class FightEngineMixin:
+    @staticmethod
+    def fight_state_key(fighter, state):
+        """Return the private, collision-safe key for one live bout.
+
+        Display names are intentionally non-unique in a career.  Live fight
+        state must therefore never use ``fighter.name`` as a dictionary key.
+        The slots are local to one simulation and are not serialized.
+        """
+        keys = state.get("fighter_keys", {})
+        # Focused engine tests and older tooling can still construct a tiny
+        # hand-written state dictionary.  Preserve that non-live compatibility
+        # path; every real simulation installs collision-safe slots above.
+        return keys.get(id(fighter), fighter.name)
+
     def simulate_fight(self, a, b, fight):
-        previous_bundle_cache = getattr(self, "_fight_skill_bundle_cache", None)
-        previous_conversion_cache = getattr(self, "_fight_finish_conversion_cache", None)
+        if a is b:
+            raise ValueError("A fight requires two distinct fighters.")
+        cache_missing = object()
+        previous_bundle_cache = getattr(self, "_fight_skill_bundle_cache", cache_missing)
+        previous_conversion_cache = getattr(self, "_fight_finish_conversion_cache", cache_missing)
         self._fight_skill_bundle_cache = {}
         self._fight_finish_conversion_cache = {}
 
-        def finish_result(result):
-            if previous_bundle_cache is None:
-                try:
-                    delattr(self, "_fight_skill_bundle_cache")
-                except AttributeError:
-                    pass
+        try:
+            return self._simulate_fight_with_caches(a, b, fight)
+        finally:
+            if previous_bundle_cache is cache_missing:
+                self.__dict__.pop("_fight_skill_bundle_cache", None)
             else:
                 self._fight_skill_bundle_cache = previous_bundle_cache
-            if previous_conversion_cache is None:
-                try:
-                    delattr(self, "_fight_finish_conversion_cache")
-                except AttributeError:
-                    pass
+            if previous_conversion_cache is cache_missing:
+                self.__dict__.pop("_fight_finish_conversion_cache", None)
             else:
                 self._fight_finish_conversion_cache = previous_conversion_cache
-            return result
 
+    def _simulate_fight_with_caches(self, a, b, fight):
         self.ensure_rule_defaults()
         max_rounds = self.rules["title_rounds"] if fight.get("main", False) or fight.get("title", False) else self.rules["rounds"]
         round_length_factor = self.rules["round_length"] / 5
         ticks_per_round = max(10, round(18 * round_length_factor))
+        a_key, b_key = "a", "b"
         state = {
+            "fighter_keys": {id(a): a_key, id(b): b_key},
             "position": "range",
             "top": None,
             "bottom": None,
             "clinch_controller": None,
             "clinch_ticks": 0,
-            "gas": {a.name: self.starting_fight_gas(a), b.name: self.starting_fight_gas(b)},
-            "gas_cap": {a.name: self.starting_fight_gas(a), b.name: self.starting_fight_gas(b)},
+            "gas": {a_key: self.starting_fight_gas(a), b_key: self.starting_fight_gas(b)},
+            "gas_cap": {a_key: self.starting_fight_gas(a), b_key: self.starting_fight_gas(b)},
             # ``damage`` remains the backward-compatible aggregate durability
             # channel used by the engine.  Location-specific channels power the
             # public fight metrics and must only contain damage to that target.
-            "damage": {a.name: 0, b.name: 0},
-            "head": {a.name: 0, b.name: 0},
-            "body": {a.name: 0, b.name: 0},
-            "leg": {a.name: 0, b.name: 0},
-            "cuts": {a.name: 0, b.name: 0},
-            "control": {a.name: 0, b.name: 0},
-            "impact": {a.name: 0, b.name: 0},
-            "danger": {a.name: 0, b.name: 0},
-            "scores": {a.name: [], b.name: []},
-            "judge_scores": self.make_judge_cards(a, b),
-            "knockdowns": {a.name: 0, b.name: 0},
-            "unanswered": {a.name: 0, b.name: 0},
+            "damage": {a_key: 0, b_key: 0},
+            "head": {a_key: 0, b_key: 0},
+            "body": {a_key: 0, b_key: 0},
+            "leg": {a_key: 0, b_key: 0},
+            "cuts": {a_key: 0, b_key: 0},
+            "control": {a_key: 0, b_key: 0},
+            "impact": {a_key: 0, b_key: 0},
+            "danger": {a_key: 0, b_key: 0},
+            "scores": {a_key: [], b_key: []},
+            "judge_scores": self.make_judge_cards(a, b, a_key, b_key),
+            "knockdowns": {a_key: 0, b_key: 0},
+            "unanswered": {a_key: 0, b_key: 0},
             "referee": random.choice(["cautious", "standard", "permissive", "late"]),
             "finish_detail": "",
             "finish_category": "",
             "official_time": "",
-            "context": self.fight_context(a, b, fight),
-            "night_form": self.fight_night_form(a, b),
+            "context": self.fight_context(a, b, fight, a_key, b_key),
+            "night_form": self.fight_night_form(a, b, a_key, b_key),
             "championship_pacing": bool(fight.get("main") or fight.get("title")),
             "low_level_chaos": max(0, 68 - ((a.overall + b.overall) / 2)) / 68,
             "last_actor": None,
@@ -100,8 +115,8 @@ class FightEngineMixin:
             "head_to_head": self.commentary_head_to_head(a, b),
             "round_leaders": [],
             "stats": {
-                a.name: {"sig": 0, "sig_att": 0, "td": 0, "td_att": 0, "sub_att": 0, "control_ticks": 0},
-                b.name: {"sig": 0, "sig_att": 0, "td": 0, "td_att": 0, "sub_att": 0, "control_ticks": 0},
+                a_key: {"sig": 0, "sig_att": 0, "td": 0, "td_att": 0, "sub_att": 0, "control_ticks": 0},
+                b_key: {"sig": 0, "sig_att": 0, "td": 0, "td_att": 0, "sub_att": 0, "control_ticks": 0},
             },
         }
         a_scale = f"{a.scale_weight} lb" if a.scale_weight else "not recorded"
@@ -129,7 +144,7 @@ class FightEngineMixin:
             # Commentary beats are not evenly spaced in a real round.  Use a
             # local, stable RNG so clock variety never changes combat rolls.
             state["round_clock_seconds"] = self.fight_clock_schedule(a, b, round_no, ticks_per_round)
-            round_stats = {a.name: {"impact": 0, "control": 0, "danger": 0}, b.name: {"impact": 0, "control": 0, "danger": 0}}
+            round_stats = {a_key: {"impact": 0, "control": 0, "danger": 0}, b_key: {"impact": 0, "control": 0, "danger": 0}}
             # Every scored round begins standing. Ground and clinch control cannot
             # leak through the horn into the next round.
             state["position"] = "range"
@@ -152,17 +167,17 @@ class FightEngineMixin:
                 a_init = self.initiative(a, b, state)
                 b_init = self.initiative(b, a, state)
                 actor, defender = (a, b) if a_init >= b_init else (b, a)
-                if state["last_actor"] == actor.name and state["actor_streak"] >= 2:
+                if state["last_actor"] == self.fight_state_key(actor, state) and state["actor_streak"] >= 2:
                     other = defender
                     other_init = b_init if other is b else a_init
                     actor_init = a_init if actor is a else b_init
                     comeback_chance = 0.24 + min(0.28, state["actor_streak"] * 0.06) + max(0, other.fight_iq - 55) / 220
                     if other_init + random.randint(-8, 18) > actor_init - 22 and random.random() < comeback_chance:
                         actor, defender = defender, actor
-                if state["last_actor"] == actor.name:
+                if state["last_actor"] == self.fight_state_key(actor, state):
                     state["actor_streak"] += 1
                 else:
-                    state["last_actor"] = actor.name
+                    state["last_actor"] = self.fight_state_key(actor, state)
                     state["actor_streak"] = 1
                 action = self.choose_action(actor, defender, state, round_no, tick)
                 result = self.resolve_exchange(actor, defender, action, state, round_stats)
@@ -190,7 +205,7 @@ class FightEngineMixin:
                     flush_round_commentary()
                     lines.extend(self.commentary_closing_context(a, b, winner, method, state))
                     self.attach_fight_stats(a, b, state, round_no, lines)
-                    return finish_result((winner, loser, method, round_no, lines))
+                    return winner, loser, method, round_no, lines
 
             flush_round_commentary()
 
@@ -198,31 +213,32 @@ class FightEngineMixin:
             for judge in state["judge_scores"]:
                 winner, loser, score = self.score_round(a, b, round_stats, state, judge=judge)
                 a_score, b_score = (10, score) if winner is a else (score, 10)
-                judge[a.name].append(a_score)
-                judge[b.name].append(b_score)
+                judge[self.fight_state_key(a, state)].append(a_score)
+                judge[self.fight_state_key(b, state)].append(b_score)
                 judge_rounds.append((a_score, b_score))
             # This is only a running broadcast estimate; the three official cards
             # remain independent until the decision is announced after the fight.
             a_average = round(sum(score[0] for score in judge_rounds) / len(judge_rounds))
             b_average = round(sum(score[1] for score in judge_rounds) / len(judge_rounds))
-            state["scores"][a.name].append(a_average)
-            state["scores"][b.name].append(b_average)
-            total_a = sum(state["scores"][a.name])
-            total_b = sum(state["scores"][b.name])
-            momentum_name = a.name if round_stats[a.name]["impact"] + round_stats[a.name]["danger"] >= round_stats[b.name]["impact"] + round_stats[b.name]["danger"] else b.name
+            state["scores"][self.fight_state_key(a, state)].append(a_average)
+            state["scores"][self.fight_state_key(b, state)].append(b_average)
+            total_a = sum(state["scores"][self.fight_state_key(a, state)])
+            total_b = sum(state["scores"][self.fight_state_key(b, state)])
+            momentum_key = a_key if round_stats[a_key]["impact"] + round_stats[a_key]["danger"] >= round_stats[b_key]["impact"] + round_stats[b_key]["danger"] else b_key
+            momentum_name = a.name if momentum_key == a_key else b.name
             judge_display = " | ".join(f"{a_score}-{b_score}" for a_score, b_score in judge_rounds)
             lines.append(
                 f"Round {round_no} summary: judge cards {judge_display}. "
-                f"Metrics - {a.name}: impact {round_stats[a.name]['impact']}, control {round_stats[a.name]['control']}, danger {round_stats[a.name]['danger']}; "
-                f"{b.name}: impact {round_stats[b.name]['impact']}, control {round_stats[b.name]['control']}, danger {round_stats[b.name]['danger']}. "
+                f"Metrics - {a.name}: impact {round_stats[self.fight_state_key(a, state)]['impact']}, control {round_stats[self.fight_state_key(a, state)]['control']}, danger {round_stats[self.fight_state_key(a, state)]['danger']}; "
+                f"{b.name}: impact {round_stats[self.fight_state_key(b, state)]['impact']}, control {round_stats[self.fight_state_key(b, state)]['control']}, danger {round_stats[self.fight_state_key(b, state)]['danger']}. "
                 f"Live score {a.name} {total_a}, {b.name} {total_b}. "
-                f"Gas: {a.name} {round(state['gas'][a.name])}, {b.name} {round(state['gas'][b.name])}. Momentum: {momentum_name}."
+                f"Gas: {a.name} {round(state['gas'][a_key])}, {b.name} {round(state['gas'][b_key])}. Momentum: {momentum_name}."
             )
             state["commentary_memory"] = {
-                "leader": momentum_name, "a_damage": state["damage"][a.name], "b_damage": state["damage"][b.name],
-                "a_gas": round(state["gas"][a.name]), "b_gas": round(state["gas"][b.name]), "round": round_no,
+                "leader": momentum_key, "a_damage": state["damage"][a_key], "b_damage": state["damage"][b_key],
+                "a_gas": round(state["gas"][self.fight_state_key(a, state)]), "b_gas": round(state["gas"][self.fight_state_key(b, state)]), "round": round_no,
             }
-            callback = self.commentary_round_callback(a, b, state, momentum_name, round_no)
+            callback = self.commentary_round_callback(a, b, state, momentum_key, round_no)
             if callback:
                 lines.append(f"Broadcast read: {callback}")
             if round_no < max_rounds:
@@ -232,7 +248,7 @@ class FightEngineMixin:
                     lines.append(detail)
                     lines.extend(self.commentary_closing_context(a, b, winner, method, state))
                     self.attach_fight_stats(a, b, state, round_no, lines)
-                    return finish_result((winner, loser, method, round_no, lines))
+                    return winner, loser, method, round_no, lines
                 self.recover_between_rounds(a, b, state)
 
         lines.extend(self.final_scorecard_lines(a, b, state))
@@ -241,14 +257,14 @@ class FightEngineMixin:
             lines.append(self.fight_phrase("draw", a, b, score=decision["summary"]))
             lines.extend(self.commentary_closing_context(a, b, None, "Draw", state))
             self.attach_fight_stats(a, b, state, max_rounds, lines)
-            return finish_result((a, b, "Draw", max_rounds, lines))
+            return a, b, "Draw", max_rounds, lines
         winner = decision["winner"]
         loser = b if winner is a else a
         method = "Decision"
         lines.append(self.fight_phrase("decision", winner, loser, score=decision["summary"]))
         lines.extend(self.commentary_closing_context(a, b, winner, method, state))
         self.attach_fight_stats(a, b, state, max_rounds, lines)
-        return finish_result((winner, loser, method, max_rounds, lines))
+        return winner, loser, method, max_rounds, lines
 
     def commentary_head_to_head(self, a, b):
         """Read a compact, best-effort prior-meeting record from persistent career history."""
@@ -289,8 +305,8 @@ class FightEngineMixin:
                 lines.append("Broadcast context: both fighters carry a meaningful local connection tonight, making this a split-room atmosphere.")
         a_morale = max(0, min(100, getattr(a, "morale", 60)))
         b_morale = max(0, min(100, getattr(b, "morale", 60)))
-        a_edge = context.get(a.name, {}).get("morale", self.morale_fight_edge(a))
-        b_edge = context.get(b.name, {}).get("morale", self.morale_fight_edge(b))
+        a_edge = context.get(self.fight_state_key(a, state), {}).get("morale", self.morale_fight_edge(a))
+        b_edge = context.get(self.fight_state_key(b, state), {}).get("morale", self.morale_fight_edge(b))
         lines.append(
             f"Fight-night readiness: {a.name} morale {a_morale}/100 ({a_edge:+.1f}); "
             f"{b.name} morale {b_morale}/100 ({b_edge:+.1f}). "
@@ -298,18 +314,19 @@ class FightEngineMixin:
         )
         return lines
 
-    def commentary_round_callback(self, a, b, state, leader_name, round_no):
+    def commentary_round_callback(self, a, b, state, leader_key, round_no):
         leaders = state.setdefault("round_leaders", [])
         prior = leaders[-1] if leaders else ""
-        leaders.append(leader_name)
-        leader = a if leader_name == a.name else b
+        leaders.append(leader_key)
+        leader = a if leader_key == self.fight_state_key(a, state) else b
         trailing = b if leader is a else a
         head_to_head = state.get("head_to_head", {})
-        if prior and prior != leader_name:
-            return f"Momentum has swung from {prior} to {leader.name}; {trailing.name}'s corner must answer the adjustment."
-        if state["cuts"].get(trailing.name, 0) >= 2:
+        if prior and prior != leader_key:
+            prior_name = a.name if prior == self.fight_state_key(a, state) else b.name
+            return f"Momentum has swung from {prior_name} to {leader.name}; {trailing.name}'s corner must answer the adjustment."
+        if state["cuts"].get(self.fight_state_key(trailing, state), 0) >= 2:
             return f"{trailing.name}'s face is showing the accumulated work, and the referee will be watching it closely."
-        if state["body"].get(trailing.name, 0) >= 16:
+        if state["body"].get(self.fight_state_key(trailing, state), 0) >= 16:
             return f"The body work is slowing {trailing.name}; that investment could change the later rounds."
         if round_no >= 2 and head_to_head.get("meetings", 0):
             previous_edge = head_to_head.get("a_wins", 0) - head_to_head.get("b_wins", 0)
@@ -322,8 +339,8 @@ class FightEngineMixin:
         if not memory:
             return "Both corners are making their first adjustments."
         leader = memory.get("leader")
-        trailing = b if leader == a.name else a
-        leader_fighter = a if leader == a.name else b
+        trailing = b if leader == self.fight_state_key(a, state) else a
+        leader_fighter = a if leader == self.fight_state_key(a, state) else b
         leader_damage = memory.get("a_damage", 0) if leader is a else memory.get("b_damage", 0)
         trailing_damage = memory.get("b_damage", 0) if leader is a else memory.get("a_damage", 0)
         if trailing_damage - leader_damage >= 10:
@@ -347,8 +364,9 @@ class FightEngineMixin:
             return [f"Broadcast recap: the head-to-head now stands {a.name} {a_wins}-{b_wins} {b.name}; this rivalry has real history."]
         memory = state.get("commentary_memory", {})
         leader = memory.get("leader")
-        if leader and leader != winner.name:
-            return [f"Broadcast recap: {winner.name} turned the fight after {leader} had the earlier momentum."]
+        if leader and leader != self.fight_state_key(winner, state):
+            leader_name = a.name if leader == self.fight_state_key(a, state) else b.name
+            return [f"Broadcast recap: {winner.name} turned the fight after {leader_name} had the earlier momentum."]
         return [f"Broadcast recap: {winner.name}'s game plan held up across the fight and earned the {method} victory."]
 
     def attach_fight_stats(self, a, b, state, ending_round, lines):
@@ -358,9 +376,9 @@ class FightEngineMixin:
 
         seconds_per_tick = (self.rules.get("round_length", 5) * 60) / max(1, state.get("ticks_per_round", 18))
         for fighter in (a, b):
-            s = state["stats"][fighter.name]
+            s = state["stats"][self.fight_state_key(fighter, state)]
             s["control_secs"] = metric(s["control_ticks"] * seconds_per_tick)
-            s["knockdowns"] = metric(state["knockdowns"].get(fighter.name, 0))
+            s["knockdowns"] = metric(state["knockdowns"].get(self.fight_state_key(fighter, state), 0))
             fighter.last_fight_stats = {
                 "sig": metric(s["sig"]), "sig_att": metric(s["sig_att"]), "td": metric(s["td"]), "td_att": metric(s["td_att"]),
                 "sub_att": metric(s["sub_att"]), "control_secs": s["control_secs"], "knockdowns": s["knockdowns"], "rounds": metric(ending_round),
@@ -368,9 +386,9 @@ class FightEngineMixin:
                 # the public total exactly match its visible location breakdown.
                 # The separate internal damage pool remains responsible for
                 # recovery and stoppage logic during the fight.
-                "damage_taken": metric(state["head"][fighter.name] + state["body"][fighter.name] + state["leg"][fighter.name]),
-                "head_damage": metric(state["head"][fighter.name]),
-                "body_damage": metric(state["body"][fighter.name]), "leg_damage": metric(state["leg"][fighter.name]), "cuts": metric(state["cuts"][fighter.name]),
+                "damage_taken": metric(state["head"][self.fight_state_key(fighter, state)] + state["body"][self.fight_state_key(fighter, state)] + state["leg"][self.fight_state_key(fighter, state)]),
+                "head_damage": metric(state["head"][self.fight_state_key(fighter, state)]),
+                "body_damage": metric(state["body"][self.fight_state_key(fighter, state)]), "leg_damage": metric(state["leg"][self.fight_state_key(fighter, state)]), "cuts": metric(state["cuts"][self.fight_state_key(fighter, state)]),
             }
 
         def line_for(fighter):
@@ -453,9 +471,11 @@ class FightEngineMixin:
             ])
         return ""
 
-    def fight_context(self, a, b, fight):
+    def fight_context(self, a, b, fight, a_key=None, b_key=None):
         region = fight.get("region", fight.get("event_region", ""))
-        context = {a.name: {}, b.name: {}}
+        a_key = a_key or f"fighter-{id(a)}"
+        b_key = b_key or f"fighter-{id(b)}"
+        context = {a_key: {}, b_key: {}}
         for fighter, opponent in ((a, b), (b, a)):
             stance_edge = self.stance_matchup_edge(fighter, opponent)
             home_edge = 2.2 if region and fighter.region == region else 0
@@ -468,7 +488,7 @@ class FightEngineMixin:
             size_edge = (self.ds(fighter, "natural_size", 50) - self.ds(opponent, "natural_size", 50)) * 0.04
             style_edge = self.style_matchup_bonus(fighter, opponent) * 0.55
             morale_edge = self.morale_fight_edge(fighter)
-            context[fighter.name] = {
+            context[a_key if fighter is a else b_key] = {
                 "stance": stance_edge,
                 "home": home_edge,
                 "prime": prime_edge,
@@ -492,7 +512,7 @@ class FightEngineMixin:
         morale = max(0, min(100, getattr(fighter, "morale", 60)))
         return round(max(-2.5, min(2.5, (morale - 60) / 16)), 2)
 
-    def fight_night_form(self, a, b):
+    def fight_night_form(self, a, b, a_key=None, b_key=None):
         """One bounded performance roll for the whole bout, not a result override.
 
         This represents game-plan execution, timing and minor physical readiness.
@@ -501,6 +521,8 @@ class FightEngineMixin:
         fighters remain steadier, but no elite athlete is mechanically perfect.
         """
         form = {}
+        a_key = a_key or f"fighter-{id(a)}"
+        b_key = b_key or f"fighter-{id(b)}"
         rating_gap = abs(a.overall - b.overall)
         # A narrow overall gap means the public and matchmaker cannot cleanly
         # separate the two athletes. It therefore carries a little more normal
@@ -514,7 +536,7 @@ class FightEngineMixin:
             # bounded, so ratings, conditioning, damage, and skill layers still
             # do the decisive work over a large sample.
             spread = 12.2 + max(0, 86 - consistency) * 0.055 + close_match_variance
-            form[fighter.name] = round(max(-22, min(22, random.gauss(0, spread))), 2)
+            form[a_key if fighter is a else b_key] = round(max(-22, min(22, random.gauss(0, spread))), 2)
         return form
 
     def stance_matchup_edge(self, fighter, opponent):
@@ -547,7 +569,7 @@ class FightEngineMixin:
         return (composure - 55) * 0.06 + title_bonus + prospect_drag - stakes * 0.18
 
     def context_edge(self, fighter, state, *keys):
-        values = state.get("context", {}).get(fighter.name, {})
+        values = state.get("context", {}).get(self.fight_state_key(fighter, state), {})
         return sum(values.get(key, 0) for key in keys) * 0.45
 
     def turnaround_recovery_modifier(self, fighter):
@@ -574,7 +596,7 @@ class FightEngineMixin:
             camp_recovery = min(2.4, camp_quality / 70 + fighter.camp_weeks * 0.08 + fighter.camp_boost * 0.12)
             camp_recovery += self.turnaround_recovery_modifier(fighter)
             recovery = 2 + conditioning / 30 + fighter.cardio / 36 + resilience / 55 + camp_recovery
-            recovery -= state["damage"][fighter.name] / 28 + state["body"][fighter.name] / 9 + state["leg"][fighter.name] / 24
+            recovery -= state["damage"][self.fight_state_key(fighter, state)] / 28 + state["body"][self.fight_state_key(fighter, state)] / 9 + state["leg"][self.fight_state_key(fighter, state)] / 24
             if fighter.trait == "Cardio Machine":
                 recovery += 2.2
             if fighter.trait == "Bad Weight Cut":
@@ -583,23 +605,23 @@ class FightEngineMixin:
             elite_control = max(0, fighter.overall - 78) / 14
             recovery += elite_control * 1.6
             if state.get("championship_pacing") and state.get("round", 1) >= 3:
-                state["damage"][fighter.name] = max(0, state["damage"][fighter.name] - (1.4 + elite_control * 1.2))
-                state["head"][fighter.name] = max(0, state["head"][fighter.name] - (1.4 + elite_control * 1.2))
-                state["body"][fighter.name] = max(0, state["body"][fighter.name] - 0.8)
-                state["leg"][fighter.name] = max(0, state["leg"][fighter.name] - 0.8)
+                state["damage"][self.fight_state_key(fighter, state)] = max(0, state["damage"][self.fight_state_key(fighter, state)] - (1.4 + elite_control * 1.2))
+                state["head"][self.fight_state_key(fighter, state)] = max(0, state["head"][self.fight_state_key(fighter, state)] - (1.4 + elite_control * 1.2))
+                state["body"][self.fight_state_key(fighter, state)] = max(0, state["body"][self.fight_state_key(fighter, state)] - 0.8)
+                state["leg"][self.fight_state_key(fighter, state)] = max(0, state["leg"][self.fight_state_key(fighter, state)] - 0.8)
             # Corners restore a little, never a fresh tank. The original fight cap
             # already includes the fighter's camp and weight-cut condition.
-            state["gas"][fighter.name] = max(3, min(state["gas_cap"][fighter.name], state["gas"][fighter.name] + max(1, recovery)))
+            state["gas"][self.fight_state_key(fighter, state)] = max(3, min(state["gas_cap"][self.fight_state_key(fighter, state)], state["gas"][self.fight_state_key(fighter, state)] + max(1, recovery)))
 
     def check_corner_stoppage(self, a, b, state, round_no):
         state["round"] = round_no
         state["official_time"] = f"{self.rules.get('round_length', 5)}:00"
         for fighter, opponent in ((a, b), (b, a)):
-            damage = state["damage"][fighter.name]
-            body = state["body"][fighter.name]
-            leg = state["leg"][fighter.name]
-            gas = state["gas"][fighter.name]
-            danger = state["danger"][opponent.name]
+            damage = state["damage"][self.fight_state_key(fighter, state)]
+            body = state["body"][self.fight_state_key(fighter, state)]
+            leg = state["leg"][self.fight_state_key(fighter, state)]
+            gas = state["gas"][self.fight_state_key(fighter, state)]
+            danger = state["danger"][self.fight_state_key(opponent, state)]
             if damage > fighter.toughness * 1.05 or body > 30 or leg > 28 or (gas < 10 and danger > 18):
                 # Corner stoppages should be exceptional medical decisions, not
                 # a second, frequent TKO route. A corner can see a severe
@@ -617,26 +639,30 @@ class FightEngineMixin:
                     return opponent, fighter, method, self.finish_sequence(opponent, fighter, method, self.fight_phrase("corner_stoppage", opponent, fighter), state)
         return None
 
-    def make_judge_cards(self, a, b):
+    def make_judge_cards(self, a, b, a_key=None, b_key=None):
         profiles = ["Damage-first", "Balanced", "Control-sensitive"]
         random.shuffle(profiles)
+        a_key = a_key or f"fighter-{id(a)}"
+        b_key = b_key or f"fighter-{id(b)}"
         return [
-            {"name": f"Judge {index + 1}", "profile": profile, a.name: [], b.name: []}
+            {"name": f"Judge {index + 1}", "profile": profile, a_key: [], b_key: []}
             for index, profile in enumerate(profiles)
         ]
 
     def decision_from_judges(self, a, b, state):
         cards = []
-        votes = {a.name: 0, b.name: 0}
+        a_key = self.fight_state_key(a, state)
+        b_key = self.fight_state_key(b, state)
+        votes = {a_key: 0, b_key: 0}
         for judge in state["judge_scores"]:
-            a_total = sum(judge[a.name])
-            b_total = sum(judge[b.name])
+            a_total = sum(judge[self.fight_state_key(a, state)])
+            b_total = sum(judge[self.fight_state_key(b, state)])
             cards.append((judge["name"], a_total, b_total))
             if a_total > b_total:
-                votes[a.name] += 1
+                votes[self.fight_state_key(a, state)] += 1
             elif b_total > a_total:
-                votes[b.name] += 1
-        winner = a if votes[a.name] > votes[b.name] else b if votes[b.name] > votes[a.name] else None
+                votes[self.fight_state_key(b, state)] += 1
+        winner = a if votes[a_key] > votes[b_key] else b if votes[b_key] > votes[a_key] else None
         summary = ", ".join(f"{a_total}-{b_total}" for _name, a_total, b_total in cards)
         return {"winner": winner, "cards": cards, "votes": votes, "summary": summary}
 
@@ -646,7 +672,7 @@ class FightEngineMixin:
         for card, (judge, a_total, b_total) in zip(state["judge_scores"], decision["cards"]):
             leader = a.name if a_total > b_total else b.name if b_total > a_total else "Even"
             lines.append(f"  {judge} [{card['profile']}]: {a.name} {a_total}, {b.name} {b_total} ({leader})")
-        lines.append(f"  Judges' vote: {a.name} {decision['votes'][a.name]}, {b.name} {decision['votes'][b.name]}")
+        lines.append(f"  Judges' vote: {a.name} {decision['votes'][self.fight_state_key(a, state)]}, {b.name} {decision['votes'][self.fight_state_key(b, state)]}")
         return lines
 
     def fight_clock_schedule(self, a, b, round_no, ticks_per_round):
@@ -693,13 +719,13 @@ class FightEngineMixin:
     def fighter_presence_line(self, actor, defender, state):
         if state.get("actor_streak", 0) < 3 or random.random() > 0.32:
             return ""
-        if state["damage"][defender.name] > defender.toughness * 0.55:
+        if state["damage"][self.fight_state_key(defender, state)] > defender.toughness * 0.55:
             return random.choice([
                 f"{defender.name} shells up, takes a breath, and tries to reset the range.",
                 f"{defender.name} is hurt but keeps framing and looking for a way off the fence.",
                 f"{defender.name} fires a short warning shot to stop {actor.name} from rushing in.",
             ])
-        if state["gas"][defender.name] < 24:
+        if state["gas"][self.fight_state_key(defender, state)] < 24:
             return random.choice([
                 f"{defender.name} is visibly tired and takes an extra second before resetting.",
                 f"{defender.name}'s guard is sagging as the pace starts to bite.",
@@ -722,12 +748,12 @@ class FightEngineMixin:
         so the play-by-play breathes beyond the mechanical exchanges."""
         if random.random() > 0.12:
             return ""
-        cap = state.get("gas_cap", {}).get(defender.name, 100)
-        dmg_def = state["damage"][defender.name]
-        gas_act = state["gas"][actor.name]
-        gas_def = state["gas"][defender.name]
-        cut_def = state["cuts"][defender.name]
-        body_def = state["body"][defender.name]
+        cap = state.get("gas_cap", {}).get(self.fight_state_key(defender, state), 100)
+        dmg_def = state["damage"][self.fight_state_key(defender, state)]
+        gas_act = state["gas"][self.fight_state_key(actor, state)]
+        gas_def = state["gas"][self.fight_state_key(defender, state)]
+        cut_def = state["cuts"][self.fight_state_key(defender, state)]
+        body_def = state["body"][self.fight_state_key(defender, state)]
         streak = state.get("actor_streak", 0)
         pos = state["position"]
 
@@ -735,13 +761,13 @@ class FightEngineMixin:
         if random.random() < 0.06 and pos in ("range", "pocket", "clinch", "cage"):
             foul = random.choice(["eye poke", "eye poke", "low blow", "fence grab", "grounded knee"])
             if foul == "eye poke":
-                state["gas"][defender.name] = min(cap, gas_def + 4)
+                state["gas"][self.fight_state_key(defender, state)] = min(cap, gas_def + 4)
                 return random.choice([
                     f"Action stops - {actor.name} catches {defender.name} with a stray eye poke and the referee gives time to recover.",
                     f"{defender.name} turns away blinking after a finger to the eye; the referee calls a brief timeout.",
                 ])
             if foul == "low blow":
-                state["gas"][defender.name] = min(cap, gas_def + 3)
+                state["gas"][self.fight_state_key(defender, state)] = min(cap, gas_def + 3)
                 return f"{defender.name} drops to a knee after a low blow and takes the full recovery time from the referee."
             if foul == "grounded knee":
                 return f"The referee sternly warns {actor.name} about a knee to a grounded opponent."
@@ -778,7 +804,7 @@ class FightEngineMixin:
             ]
             if defender.trait == "Comeback Artist":
                 pool += [f"But {defender.name} is at their most dangerous when hurt - the corner stays calm."]
-        if actor.trait in ("Showman", "Trash Talker") and state["damage"][actor.name] < actor.toughness * 0.4:
+        if actor.trait in ("Showman", "Trash Talker") and state["damage"][self.fight_state_key(actor, state)] < actor.toughness * 0.4:
             pool += [
                 f"{actor.name} drops the hands and beckons {defender.name} forward, playing to the crowd.",
                 f"{actor.name} flashes a grin and taps their own chin at {defender.name}.",
@@ -822,11 +848,11 @@ class FightEngineMixin:
         aggression = (self.ds(fighter, "aggression", 50) - 50) * 0.09
         pressure = 8 if fighter.behaviour in ("Pressure", "Volume", "Dynamic Attacker") else 0
         caution = -7 if fighter.behaviour == "Cautious" else 0
-        freshness = state["gas"][fighter.name] * 0.17 - state["damage"][fighter.name] * 0.18
+        freshness = state["gas"][self.fight_state_key(fighter, state)] * 0.17 - state["damage"][self.fight_state_key(fighter, state)] * 0.18
         mental = self.skill_bundle(fighter, "mental") * 0.13 + self.ds(fighter, "confidence", 50) * 0.07
         mobility = (self.ds(fighter, "mobility", 50) + self.ds(fighter, "reflexes", 50)) * 0.04
         context = self.context_edge(fighter, state, "home", "prime", "experience", "pressure", "rivalry", "stance", "style", "morale")
-        night_form = state.get("night_form", {}).get(fighter.name, 0)
+        night_form = state.get("night_form", {}).get(self.fight_state_key(fighter, state), 0)
         return freshness + mental + mobility + aggression + fighter.momentum * 0.95 + night_form * 0.78 + fighter.camp_boost * 1.3 - fighter.weight_cut_penalty * 0.9 - getattr(fighter, "division_size_penalty", 0) * 0.55 + pressure + caution + context + random.randint(-10, 10)
 
     STYLE_BIAS = {
@@ -908,10 +934,10 @@ class FightEngineMixin:
 
     def choose_action(self, fighter, opponent, state, round_no, tick):
         position = state["position"]
-        gas = state["gas"][fighter.name]
+        gas = state["gas"][self.fight_state_key(fighter, state)]
         tired = gas < 42
         exhausted = gas < 22
-        hurt = state["damage"][fighter.name] > fighter.toughness * 0.65
+        hurt = state["damage"][self.fight_state_key(fighter, state)] > fighter.toughness * 0.65
         mental = self.skill_bundle(fighter, "mental")
         aggression = self.ds(fighter, "aggression", 50)
         if gas < 8 and random.random() < 0.62:
@@ -980,7 +1006,7 @@ class FightEngineMixin:
                 "cage_control": self.ds_avg(fighter, ("cage_pressure", "clinch_control", "cage_wrestling", "strength"), fighter.wrestling),
                 "break_clinch": self.skill_bundle(fighter, "clinch_defence") + mental * 0.25,
             }
-            if state.get("clinch_controller") == fighter.name:
+            if state.get("clinch_controller") == self.fight_state_key(fighter, state):
                 weights["dirty_boxing"] *= 1.22
                 weights["takedown"] *= 1.16
                 weights["cage_control"] *= 1.12
@@ -997,7 +1023,7 @@ class FightEngineMixin:
                 weights["takedown"] *= 1.35
             self.apply_style_bias(fighter, weights, "clinch")
             return self.weighted_choice(weights)
-        if state["top"] == fighter.name:
+        if state["top"] == self.fight_state_key(fighter, state):
             sub_multiplier = 1.52 if fighter.behaviour == "Submission Hunter" else 0.94
             # From a dominant, finish-friendly position a good grappler hunts the tap.
             if position in ("mount", "back control"):
@@ -2160,8 +2186,8 @@ class FightEngineMixin:
         margin = attack - defence + random.randint(-18, 18)
 
         if action in ("jab", "power_punch", "kick", "dirty_boxing", "ground_strikes"):
-            state["unanswered"][defender.name] = state["unanswered"].get(defender.name, 0) + 1
-            state["unanswered"][actor.name] = 0
+            state["unanswered"][self.fight_state_key(defender, state)] = state["unanswered"].get(self.fight_state_key(defender, state), 0) + 1
+            state["unanswered"][self.fight_state_key(actor, state)] = 0
             return self.resolve_strike(actor, defender, action, margin, state, round_stats)
         if action in ("shoot", "takedown"):
             return self.resolve_takedown(actor, defender, margin, state, round_stats)
@@ -2169,34 +2195,34 @@ class FightEngineMixin:
             controller = state.get("clinch_controller")
             if controller and controller != actor.name:
                 if margin > 7:
-                    state["clinch_controller"] = actor.name
+                    state["clinch_controller"] = self.fight_state_key(actor, state)
                     state["clinch_ticks"] = 0
                     state["position"] = "cage" if state["position"] == "cage" else "clinch"
-                    round_stats[actor.name]["control"] += 2
+                    round_stats[self.fight_state_key(actor, state)]["control"] += 2
                     return f"{actor.name} pummels inside, wins the underhook battle, and reverses {defender.name}."
                 return f"{defender.name} keeps the stronger clinch position and denies the reversal."
             if margin > -5:
                 state["position"] = "clinch"
-                state["clinch_controller"] = actor.name
+                state["clinch_controller"] = self.fight_state_key(actor, state)
                 state["clinch_ticks"] = 0
-                round_stats[actor.name]["control"] += 1
+                round_stats[self.fight_state_key(actor, state)]["control"] += 1
                 return self.fight_phrase("clinch_entry", actor, defender)
             return self.fight_phrase("clinch_denied", actor, defender)
         if action == "cage_control":
             controller = state.get("clinch_controller")
             if controller and controller != actor.name:
                 if margin > 7:
-                    state["clinch_controller"] = actor.name
+                    state["clinch_controller"] = self.fight_state_key(actor, state)
                     state["position"] = "cage"
                     state["clinch_ticks"] = 0
-                    round_stats[actor.name]["control"] += 3
+                    round_stats[self.fight_state_key(actor, state)]["control"] += 3
                     return f"{actor.name} digs for double underhooks and turns {defender.name} onto the fence."
                 return f"{defender.name} keeps {actor.name} pinned and wins the hand fight."
             if margin > -3:
                 was_cage = state["position"] == "cage"
                 state["position"] = "cage"
-                state["clinch_controller"] = actor.name
-                round_stats[actor.name]["control"] += 3
+                state["clinch_controller"] = self.fight_state_key(actor, state)
+                round_stats[self.fight_state_key(actor, state)]["control"] += 3
                 state["clinch_ticks"] = state.get("clinch_ticks", 0) + 1
                 if not was_cage:
                     return f"{actor.name} walks {defender.name} to the fence, settles head position, and locks the hands."
@@ -2215,23 +2241,23 @@ class FightEngineMixin:
                 state["clinch_controller"] = None
                 state["clinch_ticks"] = 0
                 return self.fight_phrase("break_clinch", actor, defender)
-            round_stats[defender.name]["control"] += 1
+            round_stats[self.fight_state_key(defender, state)]["control"] += 1
             return f"{defender.name} keeps the tie-up and makes {actor.name} work."
         if action in ("advance_position", "recover_guard"):
             return self.resolve_position_move(actor, defender, action, margin, state, round_stats)
         if action in ("submission", "bottom_submission"):
             return self.resolve_submission(actor, defender, action, margin, state, round_stats)
         if action == "ground_control":
-            round_stats[actor.name]["control"] += 3
+            round_stats[self.fight_state_key(actor, state)]["control"] += 3
             return self.fight_phrase("top_control", actor, defender)
         if action == "sweep":
             if margin > 10:
-                state["top"] = actor.name
-                state["bottom"] = defender.name
+                state["top"] = self.fight_state_key(actor, state)
+                state["bottom"] = self.fight_state_key(defender, state)
                 state["position"] = "guard"
-                round_stats[actor.name]["control"] += 4
+                round_stats[self.fight_state_key(actor, state)]["control"] += 4
                 return self.fight_phrase("sweep", actor, defender)
-            round_stats[defender.name]["control"] += 1
+            round_stats[self.fight_state_key(defender, state)]["control"] += 1
             return self.fight_phrase("sweep_denied", actor, defender)
         if action == "stand_up":
             if margin > 5:
@@ -2239,18 +2265,18 @@ class FightEngineMixin:
                 state["top"] = None
                 state["bottom"] = None
                 return self.fight_phrase("stand_up", actor, defender)
-            round_stats[defender.name]["control"] += 2
+            round_stats[self.fight_state_key(defender, state)]["control"] += 2
             return self.fight_phrase("mat_return", actor, defender)
         if action == "cling":
-            round_stats[actor.name]["control"] += 1
+            round_stats[self.fight_state_key(actor, state)]["control"] += 1
             return self.fight_phrase("cling", actor, defender)
         if action == "survive":
             survive_recovery = 0.18 + self.ds(actor, "conditioning", actor.cardio) / 210 + actor.recovery / 420 + actor.camp_boost / 45
-            state["gas"][actor.name] = min(state["gas_cap"][actor.name], state["gas"][actor.name] + survive_recovery)
-            state["damage"][actor.name] = max(0, state["damage"][actor.name] - 1)
-            state["head"][actor.name] = max(0, state["head"][actor.name] - 1)
+            state["gas"][self.fight_state_key(actor, state)] = min(state["gas_cap"][self.fight_state_key(actor, state)], state["gas"][self.fight_state_key(actor, state)] + survive_recovery)
+            state["damage"][self.fight_state_key(actor, state)] = max(0, state["damage"][self.fight_state_key(actor, state)] - 1)
+            state["head"][self.fight_state_key(actor, state)] = max(0, state["head"][self.fight_state_key(actor, state)] - 1)
             if state["position"] in ("guard", "half guard", "side control", "mount", "back control"):
-                if state.get("top") == actor.name:
+                if state.get("top") == self.fight_state_key(actor, state):
                     return random.choice([
                         f"{actor.name} settles their weight and takes a breath without giving up top position.",
                         f"{actor.name} stays heavy on top and steadies the pace for a moment.",
@@ -2274,9 +2300,9 @@ class FightEngineMixin:
         return None
 
     def action_attack_value(self, fighter, action, state):
-        gas = state["gas"][fighter.name]
-        damage = state["damage"][fighter.name]
-        leg_damage = state.get("leg", {}).get(fighter.name, 0)
+        gas = state["gas"][self.fight_state_key(fighter, state)]
+        damage = state["damage"][self.fight_state_key(fighter, state)]
+        leg_damage = state.get("leg", {}).get(self.fight_state_key(fighter, state), 0)
         fatigue = (gas - 50) * 0.32
         low_gas_penalty = max(0, 32 - gas) * 0.45 + max(0, 12 - gas) * 0.9
         burst_actions = {"power_punch", "kick", "shoot", "takedown", "submission", "bottom_submission", "sweep", "stand_up"}
@@ -2351,14 +2377,14 @@ class FightEngineMixin:
         if action in ("submission", "bottom_submission"):
             context += self.context_edge(fighter, state, "experience")
         leg_drag = leg_damage * (0.26 if action in ("kick", "shoot", "takedown", "stand_up") else 0.08)
-        night_form = state.get("night_form", {}).get(fighter.name, 0)
+        night_form = state.get("night_form", {}).get(self.fight_state_key(fighter, state), 0)
         size_drag = getattr(fighter, "division_size_penalty", 0) * (1.0 if action in ("power_punch", "kick", "dirty_boxing", "ground_strikes", "shoot", "takedown", "cage_control", "sweep") else 0.38)
         return base + fatigue + fighter.momentum * 0.75 + night_form * 1.10 + fighter.camp_boost * 1.6 + trait + erratic + consistency + context - action_drag - leg_drag - size_drag
 
     def action_defence_value(self, fighter, action, state):
-        gas = state["gas"][fighter.name]
-        damage = state["damage"][fighter.name]
-        leg_damage = state.get("leg", {}).get(fighter.name, 0)
+        gas = state["gas"][self.fight_state_key(fighter, state)]
+        damage = state["damage"][self.fight_state_key(fighter, state)]
+        leg_damage = state.get("leg", {}).get(self.fight_state_key(fighter, state), 0)
         gas_drag = max(0, 34 - gas) * 0.38 + max(0, 12 - gas) * 0.72
         base = self.skill_bundle(fighter, "mental") * 0.1 + fighter.recovery * 0.08
         if action in ("jab", "power_punch", "kick", "dirty_boxing", "ground_strikes"):
@@ -2380,7 +2406,7 @@ class FightEngineMixin:
         if action in ("shoot", "takedown", "cage_control"):
             context += self.context_edge(fighter, state, "size")
         mobility_drag = leg_damage * (0.18 if action in ("kick", "shoot", "takedown", "cage_control") else 0.07)
-        night_form = state.get("night_form", {}).get(fighter.name, 0)
+        night_form = state.get("night_form", {}).get(self.fight_state_key(fighter, state), 0)
         return base + night_form * 0.78 + fighter.camp_boost * 1.2 + (gas - 50) * 0.24 - damage * 0.22 - gas_drag - mobility_drag + (self.ds(fighter, "reflexes", 50) - 50) * 0.05 + context
 
     def apply_exchange_fatigue(self, actor, defender, action, state):
@@ -2409,22 +2435,22 @@ class FightEngineMixin:
         defender_conditioning = self.ds(defender, "conditioning", defender.cardio)
         efficiency = 1 - max(-0.16, min(0.26, (conditioning - 55) / 240 + (self.ds(actor, "discipline", 50) - 50) / 470))
         actor_cost = costs.get(action, 2) * self.engine_settings.get("gas_cost", 1.0) * efficiency
-        if state["gas"][actor.name] < 30 and action in ("power_punch", "kick", "shoot", "takedown", "submission", "sweep", "stand_up"):
+        if state["gas"][self.fight_state_key(actor, state)] < 30 and action in ("power_punch", "kick", "shoot", "takedown", "submission", "sweep", "stand_up"):
             actor_cost *= 1.22
         if actor.trait == "Cardio Machine":
             actor_cost *= 0.9
-        if actor.trait == "Warrior Spirit" and state["gas"][actor.name] < 35:
+        if actor.trait == "Warrior Spirit" and state["gas"][self.fight_state_key(actor, state)] < 35:
             actor_cost *= 0.94
         if actor.trait == "Bad Weight Cut":
             actor_cost *= 1.14
         defender_efficiency = 1 - max(-0.12, min(0.20, (defender_conditioning - 55) / 280))
         defender_cost = max(0.7, actor_cost * 0.5 * defender_efficiency)
-        if state["body"][actor.name] > 12:
-            actor_cost += 1 + state["body"][actor.name] / 28
-        if state["body"][defender.name] > 12:
-            defender_cost += 1 + state["body"][defender.name] / 32
-        state["gas"][actor.name] = max(3, min(state["gas_cap"][actor.name], state["gas"][actor.name] - actor_cost))
-        state["gas"][defender.name] = max(3, min(state["gas_cap"][defender.name], state["gas"][defender.name] - defender_cost))
+        if state["body"][self.fight_state_key(actor, state)] > 12:
+            actor_cost += 1 + state["body"][self.fight_state_key(actor, state)] / 28
+        if state["body"][self.fight_state_key(defender, state)] > 12:
+            defender_cost += 1 + state["body"][self.fight_state_key(defender, state)] / 32
+        state["gas"][self.fight_state_key(actor, state)] = max(3, min(state["gas_cap"][self.fight_state_key(actor, state)], state["gas"][self.fight_state_key(actor, state)] - actor_cost))
+        state["gas"][self.fight_state_key(defender, state)] = max(3, min(state["gas_cap"][self.fight_state_key(defender, state)], state["gas"][self.fight_state_key(defender, state)] - defender_cost))
 
     def flush_knockout_chance(self, actor, defender, power, margin, creativity=50):
         """Puncher's chance: probability that a strike lands so flush it ends the fight
@@ -2501,15 +2527,15 @@ class FightEngineMixin:
 
     def deliver_flush_knockout(self, actor, defender, action, state, round_stats):
         """Apply a sudden flush KO and register the instant finish with named technique."""
-        state["danger"][actor.name] += 12
-        round_stats[actor.name]["danger"] += 12
-        state["damage"][defender.name] += 14
-        state["head"][defender.name] += 14
-        state["knockdowns"][actor.name] += 1
+        state["danger"][self.fight_state_key(actor, state)] += 12
+        round_stats[self.fight_state_key(actor, state)]["danger"] += 12
+        state["damage"][self.fight_state_key(defender, state)] += 14
+        state["head"][self.fight_state_key(defender, state)] += 14
+        state["knockdowns"][self.fight_state_key(actor, state)] += 1
         state["finish_category"] = "walkoff_ko" if random.random() < 0.45 else "ko_finish"
         technique = self.signature_technique(actor, action)
         detail = self.fight_phrase("signature_ko", actor, defender, technique=technique)
-        state["instant_finish"] = (actor.name, defender.name, "KO", self.finish_sequence(actor, defender, "KO", detail, state))
+        state["instant_finish"] = (self.fight_state_key(actor, state), self.fight_state_key(defender, state), "KO", self.finish_sequence(actor, defender, "KO", detail, state))
         return self.fight_phrase("knockdown", actor, defender, technique=technique)
 
     def output_multiplier(self, fighter):
@@ -2574,7 +2600,7 @@ class FightEngineMixin:
 
     def resolve_strike(self, actor, defender, action, margin, state, round_stats):
         attempts, _ = self.strike_volume(action, margin, landed=False, actor=actor)
-        state["stats"][actor.name]["sig_att"] += attempts
+        state["stats"][self.fight_state_key(actor, state)]["sig_att"] += attempts
         if action == "kick":
             roll = random.random()
             teep_chance = 0.08 + max(0, self.ds(actor, "creative_kicks", 50) - 45) / 500
@@ -2619,9 +2645,9 @@ class FightEngineMixin:
             if kick_margin < -13:
                 if random.random() < catch_risk:
                     state["position"] = "guard"
-                    state["top"] = defender.name
-                    state["bottom"] = actor.name
-                    round_stats[defender.name]["control"] += 4
+                    state["top"] = self.fight_state_key(defender, state)
+                    state["bottom"] = self.fight_state_key(actor, state)
+                    round_stats[self.fight_state_key(defender, state)]["control"] += 4
                     return self.fight_phrase("kick_caught", actor, defender)
                 defended_category = {
                     "high": "high_kick_checked",
@@ -2632,53 +2658,53 @@ class FightEngineMixin:
                 return self.fight_phrase(defended_category, actor, defender)
             if kick_margin < 4 and random.random() < catch_risk * 0.35:
                 state["position"] = "guard"
-                state["top"] = defender.name
-                state["bottom"] = actor.name
-                round_stats[defender.name]["control"] += 4
+                state["top"] = self.fight_state_key(defender, state)
+                state["bottom"] = self.fight_state_key(actor, state)
+                round_stats[self.fight_state_key(defender, state)]["control"] += 4
                 return self.fight_phrase("kick_caught", actor, defender)
             _attempts, landed = self.strike_volume(action, kick_margin, landed=True, attempts=attempts)
-            state["stats"][actor.name]["sig"] += landed
+            state["stats"][self.fight_state_key(actor, state)]["sig"] += landed
             impact = max(1, round((kick_margin + kick_power * 0.25 + kick_speed * 0.09) / 10 * self.engine_settings.get("damage", 1.0)))
             if kick_type in ("body", "teep"):
-                state["body"][defender.name] += body_gain
-                state["gas"][defender.name] = max(3, state["gas"][defender.name] - max(1, body_gain))
+                state["body"][self.fight_state_key(defender, state)] += body_gain
+                state["gas"][self.fight_state_key(defender, state)] = max(3, state["gas"][self.fight_state_key(defender, state)] - max(1, body_gain))
             elif kick_type == "leg":
-                state["leg"][defender.name] += leg_gain
-                state["gas"][defender.name] = max(3, state["gas"][defender.name] - max(1, leg_gain // 2))
+                state["leg"][self.fight_state_key(defender, state)] += leg_gain
+                state["gas"][self.fight_state_key(defender, state)] = max(3, state["gas"][self.fight_state_key(defender, state)] - max(1, leg_gain // 2))
             else:
                 impact += 1
-            state["damage"][defender.name] += impact
+            state["damage"][self.fight_state_key(defender, state)] += impact
             if kick_type == "high":
-                state["head"][defender.name] += impact
-            round_stats[actor.name]["impact"] += impact
+                state["head"][self.fight_state_key(defender, state)] += impact
+            round_stats[self.fight_state_key(actor, state)]["impact"] += impact
             if kick_type == "high" and random.random() < self.flush_knockout_chance(actor, defender, kick_power, kick_margin, self.ds(actor, "creative_kicks", 50)):
                 return self.deliver_flush_knockout(actor, defender, "high_kick", state, round_stats)
             if random.random() < max(0.028, (impact + kick_power * 0.9 + kick_speed * 0.24 - defender.chin - self.ds(defender, "stun_recovery", defender.recovery) * 0.22) / 125):
-                state["danger"][actor.name] += 9
-                round_stats[actor.name]["danger"] += 9
-                state["damage"][defender.name] += 8
+                state["danger"][self.fight_state_key(actor, state)] += 9
+                round_stats[self.fight_state_key(actor, state)]["danger"] += 9
+                state["damage"][self.fight_state_key(defender, state)] += 8
                 if kick_type == "high":
-                    state["head"][defender.name] += 8
+                    state["head"][self.fight_state_key(defender, state)] += 8
                 elif kick_type in ("body", "teep"):
-                    state["body"][defender.name] += 8
+                    state["body"][self.fight_state_key(defender, state)] += 8
                 else:
-                    state["leg"][defender.name] += 8
-                state["knockdowns"][actor.name] += 1
+                    state["leg"][self.fight_state_key(defender, state)] += 8
+                state["knockdowns"][self.fight_state_key(actor, state)] += 1
                 state["finish_category"] = "head_kick_ko" if kick_type == "high" else "injury_stoppage"
                 clean_ko_chance = (max(0.08, min(0.8, (kick_power + kick_speed + impact * 7.4 - defender.chin - self.ds(defender, "stun_recovery", defender.recovery) * 0.42) / 122))
                                    * self.competitive_finish_conversion(actor, defender))
                 if kick_type == "high" and random.random() < clean_ko_chance:
                     detail = self.fight_phrase("head_kick_ko", actor, defender)
-                    state["instant_finish"] = (actor.name, defender.name, "KO", self.finish_sequence(actor, defender, "KO", detail, state))
+                    state["instant_finish"] = (self.fight_state_key(actor, state), self.fight_state_key(defender, state), "KO", self.finish_sequence(actor, defender, "KO", detail, state))
                 return self.fight_phrase("knockdown", actor, defender, technique=label)
             if kick_type == "high":
                 return self.fight_phrase("high_kick_land", actor, defender)
             if kick_type == "teep":
                 return self.fight_phrase("teep_land", actor, defender)
             if kick_type == "body":
-                category = "body_kick_hurt" if state["body"][defender.name] >= 10 else "body_kick_land"
+                category = "body_kick_hurt" if state["body"][self.fight_state_key(defender, state)] >= 10 else "body_kick_land"
                 return self.fight_phrase(category, actor, defender, technique=label)
-            category = "leg_kick_hurt" if state["leg"][defender.name] >= 10 else "low_kick_land"
+            category = "leg_kick_hurt" if state["leg"][self.fight_state_key(defender, state)] >= 10 else "low_kick_land"
             return self.fight_phrase(category, actor, defender, technique=label)
         if margin < -12:
             miss_category = {
@@ -2693,7 +2719,7 @@ class FightEngineMixin:
             impact = max(1, impact - 2)
         if action == "ground_strikes":
             impact = max(1, impact - 1)
-            round_stats[actor.name]["control"] += 1
+            round_stats[self.fight_state_key(actor, state)]["control"] += 1
         clinch_detail = ""
         if action == "dirty_boxing":
             elbow = self.ds(actor, "elbows", 50)
@@ -2704,7 +2730,7 @@ class FightEngineMixin:
                 impact += 1
                 cut_chance = max(0.04, (elbow + impact * 3 - self.ds(defender, "cut_immunity", 50)) / 180)
                 if random.random() < cut_chance:
-                    state["cuts"][defender.name] += 1
+                    state["cuts"][self.fight_state_key(defender, state)] += 1
                     clinch_detail = random.choice([
                         f"{actor.name} slices {defender.name} with a short elbow in the clinch; a cut opens.",
                         f"{actor.name} frames across the guard and an elbow opens a cut on {defender.name}.",
@@ -2722,8 +2748,8 @@ class FightEngineMixin:
                     ])
             elif weapon == "knee":
                 body_gain = max(2, round((knee + max(0, margin)) / 34))
-                state["body"][defender.name] += body_gain
-                state["gas"][defender.name] = max(3, state["gas"][defender.name] - body_gain)
+                state["body"][self.fight_state_key(defender, state)] += body_gain
+                state["gas"][self.fight_state_key(defender, state)] = max(3, state["gas"][self.fight_state_key(defender, state)] - body_gain)
                 clinch_detail = random.choice([
                     f"{actor.name} drives a knee into {defender.name}'s body and makes them fold their elbows in.",
                     f"{actor.name} pulls the head down and lands a straight knee through the centre.",
@@ -2742,14 +2768,14 @@ class FightEngineMixin:
                     f"{actor.name} keeps forehead position and lands a tight pair of inside punches.",
                 ])
         if action == "kick":
-            state["body"][defender.name] += random.randint(1, 4)
-        state["damage"][defender.name] += impact
+            state["body"][self.fight_state_key(defender, state)] += random.randint(1, 4)
+        state["damage"][self.fight_state_key(defender, state)] += impact
         damage_zone = "body" if action == "dirty_boxing" and weapon == "knee" else "head"
         if damage_zone == "head":
-            state["head"][defender.name] += impact
+            state["head"][self.fight_state_key(defender, state)] += impact
         _attempts, landed = self.strike_volume(action, margin, landed=True, attempts=attempts)
-        state["stats"][actor.name]["sig"] += landed
-        round_stats[actor.name]["impact"] += impact
+        state["stats"][self.fight_state_key(actor, state)]["sig"] += landed
+        round_stats[self.fight_state_key(actor, state)]["impact"] += impact
         if action == "power_punch" and random.random() < self.flush_knockout_chance(actor, defender, self.ds(actor, "punch_power", actor.power), margin, self.ds(actor, "creative_punches", 50)):
             return self.deliver_flush_knockout(actor, defender, action, state, round_stats)
         if action == "dirty_boxing":
@@ -2758,21 +2784,21 @@ class FightEngineMixin:
             if random.random() < self.flush_knockout_chance(actor, defender, clinch_power, margin, clinch_creativity) * 0.7:
                 return self.deliver_flush_knockout(actor, defender, "dirty_boxing", state, round_stats)
         if random.random() < max(0.022, (impact + actor.power * 0.95 - defender.chin - self.ds(defender, "stun_recovery", defender.recovery) * 0.18) / 120):
-            state["danger"][actor.name] += 8
-            round_stats[actor.name]["danger"] += 8
-            state["damage"][defender.name] += 8
-            state[damage_zone][defender.name] += 8
-            state["knockdowns"][actor.name] += 1
+            state["danger"][self.fight_state_key(actor, state)] += 8
+            round_stats[self.fight_state_key(actor, state)]["danger"] += 8
+            state["damage"][self.fight_state_key(defender, state)] += 8
+            state[damage_zone][self.fight_state_key(defender, state)] += 8
+            state["knockdowns"][self.fight_state_key(actor, state)] += 1
             state["finish_category"] = "walkoff_ko" if action == "power_punch" and impact > 9 and random.random() < 0.25 else "ko_finish"
             clean_ko_chance = (max(0.04, min(0.58, (impact * 7.4 + actor.power - defender.chin - self.ds(defender, "stun_recovery", defender.recovery) * 0.25) / 112))
                                * self.competitive_finish_conversion(actor, defender))
             if action in ("power_punch", "dirty_boxing") and random.random() < clean_ko_chance:
                 detail = self.fight_phrase(state["finish_category"], actor, defender)
-                state["instant_finish"] = (actor.name, defender.name, "KO", self.finish_sequence(actor, defender, "KO", detail, state))
+                state["instant_finish"] = (self.fight_state_key(actor, state), self.fight_state_key(defender, state), "KO", self.finish_sequence(actor, defender, "KO", detail, state))
             return self.fight_phrase("knockdown", actor, defender, technique=self.action_label(action))
         cut_resistance = self.ds(defender, "cut_immunity", 50)
         if random.random() < max(0.008, (impact - defender.toughness / 24 - cut_resistance / 55) / 46):
-            state["cuts"][defender.name] += 1
+            state["cuts"][self.fight_state_key(defender, state)] += 1
             return self.fight_phrase("cut", actor, defender)
         category = {
             "jab": "jab_land",
@@ -2785,60 +2811,60 @@ class FightEngineMixin:
         return self.fight_phrase(category, actor, defender)
 
     def resolve_takedown(self, actor, defender, margin, state, round_stats):
-        state["stats"][actor.name]["td_att"] += 1
+        state["stats"][self.fight_state_key(actor, state)]["td_att"] += 1
         shot_speed = self.ds(actor, "takedown_speed", actor.wrestling)
         setup = self.ds(actor, "takedown_setup", actor.wrestling)
         sprawl = self.ds(defender, "sprawl", defender.takedown_defence)
         size_edge = (self.ds(actor, "natural_size", 50) - self.ds(defender, "natural_size", 50)) * 0.08
         margin += (shot_speed + setup - sprawl - self.ds(defender, "takedown_defence_detail", defender.takedown_defence)) * 0.12 + size_edge
         if margin > 8:
-            state["stats"][actor.name]["td"] += 1
+            state["stats"][self.fight_state_key(actor, state)]["td"] += 1
             state["position"] = "half guard" if self.ds(actor, "chain_wrestling", actor.wrestling) > self.ds(defender, "scrambles", defender.grappling) + random.randint(-8, 12) else "guard"
-            state["top"] = actor.name
-            state["bottom"] = defender.name
+            state["top"] = self.fight_state_key(actor, state)
+            state["bottom"] = self.fight_state_key(defender, state)
             state["clinch_controller"] = None
-            round_stats[actor.name]["control"] += 5
+            round_stats[self.fight_state_key(actor, state)]["control"] += 5
             if self.ds(actor, "slams", actor.wrestling) > 68 and random.random() < 0.22:
-                state["damage"][defender.name] += 3
-                state["body"][defender.name] += 3
-                round_stats[actor.name]["impact"] += 3
+                state["damage"][self.fight_state_key(defender, state)] += 3
+                state["body"][self.fight_state_key(defender, state)] += 3
+                round_stats[self.fight_state_key(actor, state)]["impact"] += 3
                 return self.fight_phrase("slam_takedown", actor, defender, position=self.position_label(state["position"]))
             return self.fight_phrase("takedown_complete", actor, defender, position=self.position_label(state["position"]))
         if margin > -8:
             state["position"] = "cage"
-            state["clinch_controller"] = actor.name
-            round_stats[actor.name]["control"] += 2
+            state["clinch_controller"] = self.fight_state_key(actor, state)
+            round_stats[self.fight_state_key(actor, state)]["control"] += 2
             return self.fight_phrase("takedown_cage", actor, defender)
         state["position"] = "range"
         state["clinch_controller"] = None
-        round_stats[defender.name]["control"] += 2
+        round_stats[self.fight_state_key(defender, state)]["control"] += 2
         return self.fight_phrase("takedown_denied", actor, defender)
 
     def resolve_position_move(self, actor, defender, action, margin, state, round_stats):
-        if action == "advance_position" and state["top"] == actor.name:
+        if action == "advance_position" and state["top"] == self.fight_state_key(actor, state):
             margin += (self.ds(actor, "transitions", actor.grappling) + self.ds(actor, "positional_ability", actor.grappling) - self.ds(defender, "guard_work", defender.grappling) - self.ds(defender, "scrambles", defender.grappling)) * 0.13
             if margin > 6:
                 next_pos = {"guard": "half guard", "half guard": "side control", "side control": "mount", "mount": "back control"}.get(state["position"], "side control")
                 if next_pos == "mount" and self.ds(actor, "back_control", actor.grappling) > self.ds(actor, "mount_control", actor.grappling) + 8 and random.random() < 0.35:
                     next_pos = "back control"
                 state["position"] = next_pos
-                round_stats[actor.name]["control"] += 4
-                round_stats[actor.name]["danger"] += 2
+                round_stats[self.fight_state_key(actor, state)]["control"] += 4
+                round_stats[self.fight_state_key(actor, state)]["danger"] += 2
                 return self.fight_phrase("pass", actor, defender, position=self.position_label(next_pos))
-            round_stats[actor.name]["control"] += 1
+            round_stats[self.fight_state_key(actor, state)]["control"] += 1
             return self.fight_phrase("pass_denied", actor, defender)
         if action == "recover_guard":
             margin += (self.ds(actor, "guard_work", actor.grappling) + self.ds(actor, "flexibility", 50) - self.ds(defender, "ride_control", defender.ground_control) - self.ds(defender, "top_control", defender.ground_control)) * 0.1
             if margin > 8:
                 state["position"] = "guard"
-                round_stats[actor.name]["control"] += 2
+                round_stats[self.fight_state_key(actor, state)]["control"] += 2
                 return self.fight_phrase("recover_guard", actor, defender)
-            round_stats[defender.name]["control"] += 2
+            round_stats[self.fight_state_key(defender, state)]["control"] += 2
             return self.fight_phrase("hold_position", actor, defender)
         return None
 
     def resolve_submission(self, actor, defender, action, margin, state, round_stats):
-        state["stats"][actor.name]["sub_att"] += 1
+        state["stats"][self.fight_state_key(actor, state)]["sub_att"] += 1
         sub_attack = self.skill_bundle(actor, "submission_game")
         sub_def = self.skill_bundle(defender, "submission_defence")
         technique = self.submission_technique(actor, action, state)
@@ -2854,29 +2880,29 @@ class FightEngineMixin:
             danger_bonus += max(0, self.ds(actor, "guard_work", actor.grappling) - 55) * 0.17
         margin += (sub_attack - sub_def) * 0.12 + (self.ds(actor, "killer_instinct", 50) - self.ds(defender, "composure", 50)) * 0.07
         if margin + danger_bonus > 8:
-            round_stats[actor.name]["danger"] += 14
-            state["danger"][actor.name] += 14
+            round_stats[self.fight_state_key(actor, state)]["danger"] += 14
+            state["danger"][self.fight_state_key(actor, state)] += 14
             finish_boost = 1 + (self.ds(actor, "leg_locks", 50) - 50) / 750 if action == "bottom_submission" else 1
             hunter_boost = 1.12 if actor.behaviour == "Submission Hunter" else 1.0
             position_finish = 1.2 if state["position"] in ("mount", "back control") else 1.08 if state["position"] == "side control" else 0.92
-            exhaustion_finish = 1 + max(0, 18 - state["gas"][defender.name]) / 100
+            exhaustion_finish = 1 + max(0, 18 - state["gas"][self.fight_state_key(defender, state)]) / 100
             finish_chance = ((0.085 + max(0, margin + danger_bonus) / 240)
                              * finish_boost * hunter_boost * position_finish * exhaustion_finish
                              * self.engine_settings.get("submission_finish", 1.0)
                              * self.competitive_finish_conversion(actor, defender))
             if random.random() < min(0.56, finish_chance):
                 technical = technique["choke"] and random.random() < max(0.08, (self.ds(defender, "toughness", defender.toughness) - self.ds(defender, "composure", defender.fight_iq)) / 360)
-                state["submission_finish"] = (actor.name, defender.name, self.submission_finish_text(actor, defender, technique, technical), "Technical Submission" if technical else "Submission")
+                state["submission_finish"] = (self.fight_state_key(actor, state), self.fight_state_key(defender, state), self.submission_finish_text(actor, defender, technique, technical), "Technical Submission" if technical else "Submission")
                 return None
-            state["gas"][defender.name] = max(5, state["gas"][defender.name] - 10)
+            state["gas"][self.fight_state_key(defender, state)] = max(5, state["gas"][self.fight_state_key(defender, state)] - 10)
             return self.fight_phrase("submission_danger", actor, defender)
         if margin > 0:
-            round_stats[actor.name]["danger"] += 5
+            round_stats[self.fight_state_key(actor, state)]["danger"] += 5
             return self.fight_phrase("submission_threat", actor, defender)
         if action == "bottom_submission" and margin < -10:
-            state["top"] = defender.name
-            state["bottom"] = actor.name
-            round_stats[defender.name]["control"] += 2
+            state["top"] = self.fight_state_key(defender, state)
+            state["bottom"] = self.fight_state_key(actor, state)
+            round_stats[self.fight_state_key(defender, state)]["control"] += 2
             return f"{defender.name} shrugs off the submission attempt and settles back on top."
         return self.fight_phrase("submission_defended", actor, defender)
 
@@ -3032,20 +3058,20 @@ class FightEngineMixin:
     def check_fight_stoppage(self, actor, defender, state):
         if "instant_finish" in state:
             winner_name, loser_name, method, detail = state.pop("instant_finish")
-            winner = actor if actor.name == winner_name else defender
-            loser = actor if actor.name == loser_name else defender
+            winner = actor if self.fight_state_key(actor, state) == winner_name else defender
+            loser = actor if self.fight_state_key(actor, state) == loser_name else defender
             return winner, loser, method, detail
         if "submission_finish" in state:
             winner_name, loser_name, detail, method = state["submission_finish"]
-            winner = actor if actor.name == winner_name else defender
-            loser = actor if actor.name == loser_name else defender
+            winner = actor if self.fight_state_key(actor, state) == winner_name else defender
+            loser = actor if self.fight_state_key(actor, state) == loser_name else defender
             return winner, loser, method, self.finish_sequence(winner, loser, method, detail, state)
         for fighter, opponent in ((actor, defender), (defender, actor)):
-            damage = state["damage"][fighter.name]
-            gas = state["gas"][fighter.name]
-            body = state["body"][fighter.name]
-            leg = state.get("leg", {}).get(fighter.name, 0)
-            cuts = state["cuts"][fighter.name]
+            damage = state["damage"][self.fight_state_key(fighter, state)]
+            gas = state["gas"][self.fight_state_key(fighter, state)]
+            body = state["body"][self.fight_state_key(fighter, state)]
+            leg = state.get("leg", {}).get(self.fight_state_key(fighter, state), 0)
+            cuts = state["cuts"][self.fight_state_key(fighter, state)]
             finisher_bonus = max(0, opponent.finishing_instinct - 55) / 260
             exhaustion_bonus = max(0, 28 - gas) / 180
             durability = self.skill_bundle(fighter, "durability")
@@ -3062,8 +3088,8 @@ class FightEngineMixin:
                 ko_threshold += 18.0 + composure / 16
             # Knockdowns are stored under the scorer.  Stoppage logic needs the
             # number this fighter has suffered, therefore read the opponent's KD.
-            knockdowns = state["knockdowns"].get(opponent.name, 0)
-            unanswered = state["unanswered"].get(fighter.name, 0)
+            knockdowns = state["knockdowns"].get(self.fight_state_key(opponent, state), 0)
+            unanswered = state["unanswered"].get(self.fight_state_key(fighter, state), 0)
             ref_mod = {"cautious": 0.04, "standard": 0.0, "permissive": -0.03, "late": -0.06}.get(state.get("referee"), 0)
             pacing_mod = (-0.08 if state.get("championship_pacing") else 0) + (-0.145 if championship_late else 0)
             low_mod = low_level_chaos * 0.065
@@ -3093,7 +3119,7 @@ class FightEngineMixin:
             doctor_window = state.get("tick", 0) >= state.get("ticks_per_round", 0)
             doctor_chance = (0.018 + cuts * 0.012 - self.ds(fighter, "cut_immunity", 50) / 1700
                              + max(0, damage - fighter.toughness * 0.82) / 700
-                             + max(0, state["danger"][opponent.name] - 18) / 900
+                             + max(0, state["danger"][self.fight_state_key(opponent, state)] - 18) / 900
                              + max(0, ref_mod) * 0.25)
             if doctor_window and cuts >= 3 and random.random() < max(0.008, min(0.16, doctor_chance)):
                 return opponent, fighter, "Doctor Stoppage", self.finish_sequence(opponent, fighter, "Doctor Stoppage", self.fight_phrase("doctor", opponent, fighter), state)
@@ -3133,12 +3159,12 @@ class FightEngineMixin:
     def score_round(self, a, b, round_stats, state, judge=None):
         profile = (judge or {}).get("profile", "Balanced")
         def value(f):
-            stats = round_stats[f.name]
+            stats = round_stats[self.fight_state_key(f, state)]
             noise = max(1, round(4 * self.engine_settings.get("decision_noise", 1.0)))
             consistency = self.ds(f, "consistency", 50)
             judging_noise = random.randint(-noise, noise) * (1.15 - min(0.35, consistency / 260))
             discipline_bonus = max(0, self.ds(f, "discipline", 50) - 60) * 0.03
-            gas_bonus = max(-3, min(4, (state["gas"][f.name] - 45) / 12))
+            gas_bonus = max(-3, min(4, (state["gas"][self.fight_state_key(f, state)] - 45) / 12))
             poise_bonus = self.context_edge(f, state, "home", "experience", "pressure") * 0.25
             # Effective striking and genuine danger lead under modern MMA scoring;
             # control matters most when it creates damage or threatening positions.
@@ -3158,8 +3184,8 @@ class FightEngineMixin:
             return winner, loser, 9
         winner = a if a_value > b_value else b
         loser = b if winner is a else a
-        winner_stats = round_stats[winner.name]
-        loser_stats = round_stats[loser.name]
+        winner_stats = round_stats[self.fight_state_key(winner, state)]
+        loser_stats = round_stats[self.fight_state_key(loser, state)]
         dominant_damage = winner_stats["impact"] >= loser_stats["impact"] + 20 or winner_stats["danger"] >= loser_stats["danger"] + 26
         dominant_control = winner_stats["control"] >= loser_stats["control"] + 18
         score = 8 if abs(a_value - b_value) > 72 and dominant_damage and (winner_stats["danger"] >= 20 or dominant_control) else 9
