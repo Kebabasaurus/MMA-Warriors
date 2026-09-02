@@ -1,13 +1,17 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(SPECPATH).resolve()
 
 a = Analysis(
-    ['D:\\CodexFILES\\MMA Warriors\\main.py'],
+    [str(PROJECT_ROOT / 'main.py')],
     pathex=[],
     binaries=[],
     datas=[
-        ('D:\\CodexFILES\\MMA Warriors\\assets', 'assets'),
-        ('D:\\CodexFILES\\MMA Warriors\\country_flags', 'country_flags'),
+        (str(PROJECT_ROOT / 'assets'), 'assets'),
+        (str(PROJECT_ROOT / 'country_flags'), 'country_flags'),
     ],
     hiddenimports=[],
     hookspath=[],
@@ -35,7 +39,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['D:\\CodexFILES\\MMA Warriors\\assets\\app_icon.ico'],
+    icon=[str(PROJECT_ROOT / 'assets' / 'app_icon.ico')],
 )
 coll = COLLECT(
     exe,

@@ -44,8 +44,32 @@ if errorlevel 1 (
     exit /b 1
 )
 
+if not exist "%APP_DIR%output_database_editor\MMA Warriors Database Editor.exe" (
+    echo Build failed: the Database Editor executable was not produced.
+    pause
+    exit /b 1
+)
+if not exist "%APP_DIR%dist\MMA Warriors" (
+    mkdir "%APP_DIR%dist\MMA Warriors"
+    if errorlevel 1 (
+        echo Build failed: the portable package folder could not be created.
+        pause
+        exit /b 1
+    )
+)
 copy /Y "%APP_DIR%output_database_editor\MMA Warriors Database Editor.exe" "%APP_DIR%dist\MMA Warriors\MMA Warriors Database Editor.exe" >nul
+if errorlevel 1 (
+    echo Build failed: the Database Editor executable could not be copied to the portable package.
+    pause
+    exit /b 1
+)
+if not exist "%APP_DIR%dist\MMA Warriors\MMA Warriors Database Editor.exe" (
+    echo Build failed: the copied Database Editor executable could not be verified.
+    pause
+    exit /b 1
+)
 echo.
 echo Build complete:
 echo %APP_DIR%dist\MMA Warriors\MMA Warriors Database Editor.exe
 pause
+exit /b 0

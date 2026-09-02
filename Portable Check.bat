@@ -12,6 +12,13 @@ if not exist "%APP_DIR%MMA Warriors.exe" (
     exit /b 1
 )
 
+if not exist "%APP_DIR%MMA Warriors Database Editor.exe" (
+    echo ERROR: MMA Warriors Database Editor.exe was not found beside this check.
+    echo Extract or copy the entire MMA Warriors folder before running it.
+    pause
+    exit /b 1
+)
+
 for %%D in (Saves Databases Logs) do (
     if not exist "%APP_DIR%%%D" mkdir "%APP_DIR%%%D" 2>nul
 )
@@ -30,3 +37,4 @@ if not exist "%PROBE%" (
 
 echo The portable build is ready to launch.
 pause
+exit /b 0

@@ -100,7 +100,10 @@ def audit_rating_controls(app):
             fail("core apply", f"{field} did not persist")
     for group, skills in editor_module.DETAILED_SKILL_GROUPS.items():
         for skill in skills:
-            value = record["signature_skills"][skill]
+            # Legacy/authored rows may intentionally store only exceptional
+            # overrides. Audit the same deterministic fallback shown by the
+            # editor; Apply below must then materialize the complete sheet.
+            value = app.detailed_skill_value(record, skill)
             scale = app.fighter_skill_scales[skill]
             scale.set(value)
             if int(app.fighter_skill_vars[skill].get()) != value:

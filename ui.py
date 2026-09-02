@@ -1041,19 +1041,20 @@ class UIMixin:
         event_fields = getattr(self, "show_details_event_fields", None)
         location_fields = getattr(self, "show_details_location_fields", None)
         date_fields = getattr(self, "show_details_date_fields", None)
+        economics_fields = getattr(self, "show_details_economics_fields", None)
         primary_actions = getattr(self, "show_details_primary_actions", None)
         secondary_actions = getattr(self, "show_details_secondary_actions", None)
         status_grid = getattr(self, "show_details_status_grid", None)
         schedule_status = getattr(self, "schedule_status", None)
         broadcaster_status = getattr(self, "event_broadcaster_status", None)
-        required = (controls, event_fields, location_fields, date_fields, primary_actions, secondary_actions, status_grid, schedule_status, broadcaster_status)
+        required = (controls, event_fields, location_fields, date_fields, economics_fields, primary_actions, secondary_actions, status_grid, schedule_status, broadcaster_status)
         if not all(required):
             return
         width = int(width)
         mode = "wide" if width >= 1500 else ("medium" if width >= 1150 else "narrow")
         if getattr(self, "_show_details_layout_mode", None) == mode:
             return
-        for group in (event_fields, location_fields, date_fields, primary_actions, secondary_actions):
+        for group in (event_fields, location_fields, date_fields, economics_fields, primary_actions, secondary_actions):
             group.grid_forget()
         schedule_status.grid_forget()
         broadcaster_status.grid_forget()
@@ -1065,13 +1066,15 @@ class UIMixin:
             location_fields.grid(row=0, column=1, sticky="w", padx=(0, 8), pady=1)
             secondary_actions.grid(row=0, column=2, sticky="e", pady=1)
             date_fields.grid(row=1, column=0, sticky="w", padx=(0, 8), pady=1)
-            primary_actions.grid(row=1, column=1, columnspan=2, sticky="e", pady=1)
+            economics_fields.grid(row=1, column=1, sticky="w", padx=(0, 8), pady=1)
+            primary_actions.grid(row=1, column=2, sticky="e", pady=1)
             controls.columnconfigure(2, weight=1)
         elif mode == "medium":
             event_fields.grid(row=0, column=0, sticky="w", padx=(0, 8), pady=1)
             location_fields.grid(row=0, column=1, columnspan=2, sticky="w", pady=1)
             date_fields.grid(row=1, column=0, sticky="w", padx=(0, 8), pady=1)
-            primary_actions.grid(row=1, column=1, columnspan=2, sticky="e", pady=1)
+            economics_fields.grid(row=1, column=1, sticky="w", pady=1)
+            primary_actions.grid(row=1, column=2, sticky="e", pady=1)
             secondary_actions.grid(row=2, column=0, columnspan=3, sticky="e", pady=1)
             controls.columnconfigure(2, weight=1)
         else:
@@ -1080,6 +1083,7 @@ class UIMixin:
             date_fields.grid(row=2, column=0, sticky="w", pady=1)
             primary_actions.grid(row=3, column=0, sticky="w", pady=1)
             secondary_actions.grid(row=4, column=0, sticky="w", pady=1)
+            economics_fields.grid(row=5, column=0, sticky="w", pady=1)
             controls.columnconfigure(0, weight=1)
         if mode == "narrow":
             schedule_status.grid(row=0, column=0, sticky="ew", pady=(2, 0))
@@ -1399,8 +1403,23 @@ class UIMixin:
         self.screen_header(self.game_menu_tab, "GAME MENU", "Save game, load game, start new game, export database, and load database")
         body = ttk.Frame(self.game_menu_tab)
         body.pack(fill="both", expand=True)
-        save_panel, save_inner = self.section(body, "SAVE GAMES")
+        save_panel, save_inner = self.section(body, "CAREER LIBRARY")
         save_panel.pack(side="left", fill="both", expand=True, padx=(0, 6))
+        active_card = tk.Frame(save_inner, bg=self.colors["red"], bd=0, highlightthickness=0)
+        active_card.pack(fill="x", pady=(0, 6))
+        self.save_active_title = tk.StringVar(value="ACTIVE CAREER")
+        self.save_active_detail = tk.StringVar(value="Loading career details...")
+        tk.Label(active_card, textvariable=self.save_active_title, bg=self.colors["red"], fg="#ffffff",
+                 font=("Impact", 13), anchor="w", padx=10, pady=4).pack(fill="x")
+        tk.Label(active_card, textvariable=self.save_active_detail, bg=self.colors["red"], fg="#ffe9e9",
+                 font=("Tahoma", 8), anchor="w", padx=10, pady=3).pack(fill="x")
+
+        library_heading = ttk.Frame(save_inner, style="Inset.TFrame")
+        library_heading.pack(fill="x", pady=(0, 4))
+        ttk.Label(library_heading, text="SAVE SLOTS", style="Inset.TLabel", font=("Tahoma", 9, "bold")).pack(side="left", padx=3)
+        self.save_library_status = tk.StringVar(value="Scanning saves...")
+        ttk.Label(library_heading, textvariable=self.save_library_status, style="Inset.TLabel").pack(side="right", padx=3)
+
         folder_row = ttk.Frame(save_inner, style="Inset.TFrame")
         folder_row.pack(fill="x", pady=(0, 5))
         self.save_folder_filter = tk.StringVar(value="All Saves")
@@ -1414,38 +1433,66 @@ class UIMixin:
         self.save_folder_target_box = ttk.Combobox(folder_row, textvariable=self.save_folder_target, values=("Main",), state="readonly", width=15)
         self.save_folder_target_box.grid(row=0, column=3, sticky="ew", padx=3)
         ttk.Entry(folder_row, textvariable=self.save_new_folder_name, width=15).grid(row=1, column=0, columnspan=2, sticky="ew", padx=3, pady=(4, 0))
-        ttk.Button(folder_row, text="Create Folder", command=self.create_save_folder).grid(row=1, column=2, sticky="ew", padx=3, pady=(4, 0))
-        ttk.Button(folder_row, text="Move Selected", command=self.move_selected_save_to_folder).grid(row=1, column=3, sticky="ew", padx=3, pady=(4, 0))
+        ttk.Button(folder_row, text="New Folder", command=self.create_save_folder).grid(row=1, column=2, sticky="ew", padx=3, pady=(4, 0))
+        self.save_move_button = ttk.Button(folder_row, text="Move Selected", command=self.move_selected_save_to_folder, state="disabled")
+        self.save_move_button.grid(row=1, column=3, sticky="ew", padx=3, pady=(4, 0))
         for column in (1, 3):
             folder_row.columnconfigure(column, weight=1)
-        self.save_slot_list = tk.Listbox(save_inner, font=("Tahoma", 9), bg=self.colors["tree"], fg=self.colors["text"])
-        self.save_slot_list.pack(fill="both", expand=True)
+        save_browser = tk.Frame(save_inner, bg=self.colors["tree"], bd=0, highlightthickness=1,
+                                highlightbackground=self.colors["tree_head"])
+        save_browser.pack(fill="both", expand=True)
+        save_scroll = ttk.Scrollbar(save_browser, orient="vertical")
+        self.save_slot_list = tk.Listbox(
+            save_browser, font=("Tahoma", 9), bg=self.colors["tree"], fg=self.colors["text"],
+            selectbackground=self.colors["red"], selectforeground="#ffffff", activestyle="none",
+            exportselection=False, relief="flat", highlightthickness=0, yscrollcommand=save_scroll.set,
+        )
+        save_scroll.configure(command=self.save_slot_list.yview)
+        save_scroll.pack(side="right", fill="y")
+        self.save_slot_list.pack(side="left", fill="both", expand=True)
+        self.save_slot_list.bind("<<ListboxSelect>>", self.refresh_save_selection_summary)
+
+        selection_card = ttk.Frame(save_inner, style="Inset.TFrame")
+        selection_card.pack(fill="x", pady=(6, 2))
+        self.save_selection_title = tk.StringVar(value="No save selected")
+        self.save_selection_detail = tk.StringVar(value="Choose a career above to load, copy, move, back up, or delete it.")
+        ttk.Label(selection_card, textvariable=self.save_selection_title, style="Inset.TLabel",
+                  font=("Tahoma", 9, "bold"), anchor="w").pack(fill="x", padx=5, pady=(4, 1))
+        ttk.Label(selection_card, textvariable=self.save_selection_detail, style="Inset.TLabel",
+                  anchor="w", justify="left", wraplength=520).pack(fill="x", padx=5, pady=(0, 4))
+
         row = ttk.Frame(save_inner, style="Inset.TFrame")
-        row.pack(fill="x", pady=6)
+        row.pack(fill="x", pady=(4, 3))
         # This is a deliberate destination field, never a reflection of the
         # active career. Keeping it blank prevents accidental overwrites.
         self.save_slot_name = tk.StringVar()
-        ttk.Entry(row, textvariable=self.save_slot_name, width=18).grid(row=0, column=0, columnspan=4, sticky="ew", padx=4, pady=2)
-        ttk.Button(row, text="Save Slot", command=self.save_selected_slot).grid(row=1, column=0, sticky="ew", padx=3, pady=2)
-        ttk.Button(row, text="Load Slot", command=self.load_selected_slot).grid(row=1, column=1, sticky="ew", padx=3, pady=2)
-        ttk.Button(row, text="Copy Slot", command=self.duplicate_selected_save).grid(row=1, column=2, sticky="ew", padx=3, pady=2)
-        ttk.Button(row, text="Delete Slot", command=self.delete_selected_slot).grid(row=1, column=3, sticky="ew", padx=3, pady=2)
+        ttk.Label(row, text="New save name", style="Inset.TLabel").grid(row=0, column=0, sticky="w", padx=4, pady=(2, 0))
+        ttk.Label(row, text="Blank protects existing slots", style="Inset.TLabel").grid(row=0, column=1, columnspan=3, sticky="e", padx=4, pady=(2, 0))
+        ttk.Entry(row, textvariable=self.save_slot_name, width=18).grid(row=1, column=0, columnspan=4, sticky="ew", padx=4, pady=3)
+        ttk.Button(row, text="Save New / Overwrite", style="Accent.TButton", command=self.save_selected_slot).grid(row=2, column=0, columnspan=2, sticky="ew", padx=3, pady=2)
+        self.save_load_button = ttk.Button(row, text="Load Selected", style="Accent.TButton", command=self.load_selected_slot, state="disabled")
+        self.save_load_button.grid(row=2, column=2, columnspan=2, sticky="ew", padx=3, pady=2)
+        self.save_copy_button = ttk.Button(row, text="Copy", command=self.duplicate_selected_save, state="disabled")
+        self.save_copy_button.grid(row=3, column=0, sticky="ew", padx=3, pady=2)
+        self.save_delete_button = ttk.Button(row, text="Delete", command=self.delete_selected_slot, state="disabled")
+        self.save_delete_button.grid(row=3, column=1, sticky="ew", padx=3, pady=2)
+        self.save_backup_button = ttk.Button(row, text="Back Up", command=self.backup_selected_slot, state="disabled")
+        self.save_backup_button.grid(row=3, column=2, sticky="ew", padx=3, pady=2)
+        ttk.Button(row, text="Restore...", command=self.open_save_backup_manager).grid(row=3, column=3, sticky="ew", padx=3, pady=2)
         for col in range(4):
             row.columnconfigure(col, weight=1)
         save_tools = ttk.Frame(save_inner, style="Inset.TFrame")
         save_tools.pack(fill="x", pady=(0, 6))
-        ttk.Button(save_tools, text="Backup Slot", command=self.backup_selected_slot).grid(row=0, column=0, sticky="ew", padx=3, pady=2)
-        ttk.Button(save_tools, text="Restore Backup", command=self.open_save_backup_manager).grid(row=0, column=1, sticky="ew", padx=3, pady=2)
-        ttk.Button(save_tools, text="Open Saves Folder", command=self.open_saves_folder).grid(row=0, column=2, sticky="ew", padx=3, pady=2)
-        ttk.Button(save_tools, text="Game Settings", command=self.open_game_settings_window).grid(row=1, column=0, columnspan=3, sticky="ew", padx=3, pady=2)
-        for col in range(3):
+        ttk.Button(save_tools, text="Open Save Folder", command=self.open_saves_folder).grid(row=0, column=0, sticky="ew", padx=3, pady=2)
+        ttk.Button(save_tools, text="Game Settings", command=self.open_game_settings_window).grid(row=0, column=1, sticky="ew", padx=3, pady=2)
+        for col in range(2):
             save_tools.columnconfigure(col, weight=1)
         autosave_row = ttk.Frame(save_inner, style="Inset.TFrame")
         autosave_row.pack(fill="x", pady=(0, 6))
         self.autosave_status_label = ttk.Label(autosave_row, text="Autosaves loading...", style="Inset.TLabel")
         self.autosave_status_label.grid(row=0, column=0, columnspan=2, sticky="ew", padx=4, pady=2)
         for col, (text, command) in enumerate((
-            ("Auto", self.toggle_autosaves),
+            ("Toggle Autosaves", self.toggle_autosaves),
         )):
             ttk.Button(autosave_row, text=text, command=command).grid(row=1, column=col, sticky="ew", padx=2, pady=2)
             autosave_row.columnconfigure(col, weight=1)
@@ -2286,6 +2333,10 @@ class UIMixin:
         self.scouting_gender_var = tk.StringVar(value="All")
         self.scouting_weight_var = tk.StringVar(value="All")
         self.scouting_focus_var = tk.StringVar(value=self.rules.get("scouting_search_focus", "Free Agent Pool"))
+        self.scouting_priority_var = tk.StringVar(value=self.rules.get("scouting_search_priority", "Balanced"))
+        self.scouting_age_band_var = tk.StringVar(value="Any Age")
+        self.scouting_style_var = tk.StringVar(value="All")
+        self.scouting_brief_level_var = tk.StringVar(value="Standard")
         scouting_tabs = ttk.Notebook(self.scouting_tab)
         scouting_tabs.pack(fill="both", expand=True)
         target_page = ttk.Frame(scouting_tabs, style="Chrome.TFrame")
@@ -2306,9 +2357,13 @@ class UIMixin:
         self.scouting_target_count_var = tk.StringVar(value="")
         self.scouting_target_page = 0
         self.scouting_target_page_size = 400
-        search_label = ttk.Label(target_filters, text="Search", style="Inset.TLabel")
+        target_search_row = ttk.Frame(target_filters, style="Inset.TFrame")
+        target_search_row.pack(fill="x", pady=(0, 3))
+        target_filter_row = ttk.Frame(target_filters, style="Inset.TFrame")
+        target_filter_row.pack(fill="x")
+        search_label = ttk.Label(target_search_row, text="Search", style="Inset.TLabel")
         search_label.pack(side="left", padx=(4, 2))
-        search_entry = ttk.Entry(target_filters, textvariable=self.scouting_target_search, width=22)
+        search_entry = ttk.Entry(target_search_row, textvariable=self.scouting_target_search, width=22)
         search_entry.pack(side="left", padx=(0, 6))
         search_entry.bind("<KeyRelease>", lambda _event: self.reset_scouting_target_page())
         self.attach_tooltip(search_label, "Find fighters by name or current company.")
@@ -2317,7 +2372,7 @@ class UIMixin:
             ("Company", self.scouting_target_company, (), 20),
             ("Gender", self.scouting_target_gender, ("All", "Male", "Female"), 9),
             ("Division", self.scouting_target_weight, ("All", *WEIGHTS), 14),
-            ("Intel", self.scouting_target_status, ("All", "Recommended Signings", "Monitor", "Pass", "Shortlisted", "Unscouted", "In Progress", "Scouted", "Stale", "Free Agents", "Rival Rosters"), 18),
+            ("Intel", self.scouting_target_status, ("All", "Recommended Signings", "Monitor", "Pass", "Shortlisted", "Unscouted", "In Progress", "Scouted", "Stale", "Cancelled", "Expired", "Free Agents", "Rival Rosters"), 18),
             ("Logic", self.scouting_recommendation_mode_var, SCOUTING_RECOMMENDATION_MODES, 15),
         )
         filter_help = {
@@ -2330,9 +2385,10 @@ class UIMixin:
             ),
         }
         for label, variable, values, width in target_combos:
-            label_widget = ttk.Label(target_filters, text=label, style="Inset.TLabel")
+            row = target_search_row if label == "Company" else target_filter_row
+            label_widget = ttk.Label(row, text=label, style="Inset.TLabel")
             label_widget.pack(side="left", padx=(3, 2))
-            combo = ttk.Combobox(target_filters, textvariable=variable, values=values, state="readonly", width=width)
+            combo = ttk.Combobox(row, textvariable=variable, values=values, state="readonly", width=width)
             combo.pack(side="left", padx=(0, 5))
             if label == "Logic":
                 combo.bind("<<ComboboxSelected>>", lambda _event: self.update_scouting_recommendation_mode())
@@ -2412,9 +2468,13 @@ class UIMixin:
         ttk.Label(target_nav, text="All matching fighters are available across pages.", style="Inset.TLabel").pack(side="right", padx=4)
         target_actions = ttk.Frame(target, style="Inset.TFrame")
         target_actions.pack(fill="x", padx=4, pady=(0, 4))
-        assign_label = ttk.Label(target_actions, text="Assign", style="Inset.TLabel")
+        report_action_row = ttk.Frame(target_actions, style="Inset.TFrame")
+        report_action_row.pack(fill="x", pady=(0, 3))
+        target_action_row = ttk.Frame(target_actions, style="Inset.TFrame")
+        target_action_row.pack(fill="x")
+        assign_label = ttk.Label(report_action_row, text="Assign", style="Inset.TLabel")
         assign_label.pack(side="left", padx=(4, 2))
-        self.scouting_target_scout_box = ttk.Combobox(target_actions, textvariable=self.scouting_scout_var, values=(), state="readonly", width=22)
+        self.scouting_target_scout_box = ttk.Combobox(report_action_row, textvariable=self.scouting_scout_var, values=(), state="readonly", width=22)
         self.scouting_target_scout_box.pack(side="left", padx=(0, 6))
         self.attach_tooltip(assign_label, "Choose a scout for the report. Auto Assign selects a suitable scout with a free assignment slot.")
         self.attach_tooltip(self.scouting_target_scout_box, "Each scout has limited assignment capacity. Better judging and reliability produce tighter, more dependable estimates.")
@@ -2424,14 +2484,14 @@ class UIMixin:
             "Observe Next Fight": "~$4,000. Keeps the slot open until the fighter competes; live evidence improves confidence, but the report expires if they stay inactive.",
         }
         for text, kind in (("Basic Dossier", "basic"), ("Full Evaluation", "full"), ("Observe Next Fight", "observation")):
-            button = ttk.Button(target_actions, text=text, command=lambda report_kind=kind: self.start_selected_recruitment_report(report_kind))
+            button = ttk.Button(report_action_row, text=text, command=lambda report_kind=kind: self.start_selected_recruitment_report(report_kind))
             button.pack(side="left", padx=3)
             self.attach_tooltip(button, report_help[text])
-        shortlist_button = ttk.Button(target_actions, text="Toggle Shortlist", command=self.toggle_selected_scouting_shortlist)
+        shortlist_button = ttk.Button(target_action_row, text="Toggle Shortlist", command=self.toggle_selected_scouting_shortlist)
         shortlist_button.pack(side="left", padx=3)
-        profile_button = ttk.Button(target_actions, text="Open Profile", command=self.open_selected_recruitment_target)
+        profile_button = ttk.Button(target_action_row, text="Open Profile", command=self.open_selected_recruitment_target)
         profile_button.pack(side="right", padx=3)
-        negotiate_button = ttk.Button(target_actions, text="Negotiate", style="Accent.TButton", command=self.negotiate_selected_recruitment_target)
+        negotiate_button = ttk.Button(target_action_row, text="Negotiate", style="Accent.TButton", command=self.negotiate_selected_recruitment_target)
         negotiate_button.pack(side="right", padx=3)
         self.attach_tooltip(shortlist_button, "Add or remove the selected fighter from your persistent watch list. This does not spend money or consume a scout slot.")
         self.attach_tooltip(profile_button, "Open the complete fighter profile. Information your scouts have not uncovered remains hidden.")
@@ -2443,16 +2503,27 @@ class UIMixin:
         panel.pack(fill="both", expand=True)
         scout_controls = ttk.Frame(bonus, style="Inset.TFrame")
         scout_controls.pack(fill="x", padx=4, pady=4)
+        scout_brief_row = ttk.Frame(scout_controls, style="Inset.TFrame")
+        scout_brief_row.pack(fill="x", pady=(0, 3))
+        scout_filter_row = ttk.Frame(scout_controls, style="Inset.TFrame")
+        scout_filter_row.pack(fill="x", pady=(0, 3))
+        scout_action_row = ttk.Frame(scout_controls, style="Inset.TFrame")
+        scout_action_row.pack(fill="x")
         for label, variable, values, width in (
             ("Scout", self.scouting_scout_var, (), 22),
             ("Region", self.scouting_region_var, REGIONS, 16),
             ("Gender", self.scouting_gender_var, ("All", "Male", "Female"), 10),
             ("Division", self.scouting_weight_var, ("All", *WEIGHTS), 15),
             ("Aim", self.scouting_focus_var, SCOUTING_SEARCH_FOCUSES, 17),
+            ("Priority", self.scouting_priority_var, SCOUTING_SEARCH_PRIORITIES, 16),
+            ("Age", self.scouting_age_band_var, SCOUTING_AGE_BANDS, 11),
+            ("Style", self.scouting_style_var, ("All", *STYLES), 16),
+            ("Level", self.scouting_brief_level_var, SCOUTING_BRIEF_LEVELS, 10),
         ):
-            label_widget = ttk.Label(scout_controls, text=label, style="Inset.TLabel")
+            row = scout_brief_row if label in ("Scout", "Region", "Aim", "Priority") else scout_filter_row
+            label_widget = ttk.Label(row, text=label, style="Inset.TLabel")
             label_widget.pack(side="left", padx=(5, 2))
-            combo = ttk.Combobox(scout_controls, textvariable=variable, values=values, state="readonly", width=width)
+            combo = ttk.Combobox(row, textvariable=variable, values=values, state="readonly", width=width)
             combo.pack(side="left", padx=(0, 5))
             search_help = {
                 "Scout": "Assign a specific scout or let Auto Assign choose an available one.",
@@ -2460,16 +2531,20 @@ class UIMixin:
                 "Gender": "Choose which fighter market the search should prioritize.",
                 "Division": "Choose a specific weight class or search across all divisions.",
                 "Aim": "Tell scouts what kind of lead to find: free agents, rival-roster targets, regional prospects, young prospects, or the broad market.",
+                "Priority": "Tell scouts what to optimise inside that market: present ability, upside, value, drawing power, or a thin division.",
+                "Age": "Limit the brief to a career stage. Near matches may be returned when the exact pool is thin.",
+                "Style": "Prefer a specific public fighting style or search across all styles.",
+                "Level": "Priority costs more and returns faster. Ongoing retains the scout slot and refreshes the brief every quarter.",
             }[label]
             self.attach_tooltip(label_widget, search_help)
             self.attach_tooltip(combo, search_help)
             if label == "Scout":
                 self.scouting_scout_box = combo
-        start_search_button = ttk.Button(scout_controls, text="Start Search", style="Accent.TButton", command=self.assign_scouting)
+        start_search_button = ttk.Button(scout_action_row, text="Start Search", style="Accent.TButton", command=self.assign_scouting)
         start_search_button.pack(side="left", padx=4)
-        cancel_assignment_button = ttk.Button(scout_controls, text="Cancel Assignment", command=self.cancel_selected_scouting_assignment)
+        cancel_assignment_button = ttk.Button(scout_action_row, text="Cancel Assignment", command=self.cancel_selected_scouting_assignment)
         cancel_assignment_button.pack(side="left", padx=4)
-        open_fighter_button = ttk.Button(scout_controls, text="Open Fighter", command=self.open_selected_scouting_target)
+        open_fighter_button = ttk.Button(scout_action_row, text="Open Fighter", command=self.open_selected_scouting_target)
         open_fighter_button.pack(side="left", padx=4)
         self.attach_tooltip(start_search_button, "Send the selected scout to find a new lead matching this brief. Searches cost money and occupy one assignment slot until complete.")
         self.attach_tooltip(cancel_assignment_button, "End the selected active report or talent search and release its scout slot. Spent scouting costs are not refunded.")
@@ -2480,13 +2555,15 @@ class UIMixin:
         self.scouting_auto_assign_var = tk.BooleanVar(value=self.rules.get("auto_assign_idle_scouts", True))
         auto_assign = ttk.Checkbutton(
             bonus,
-            text="Automatically give idle staff scouts a free Basic Dossier assignment",
+            text="Automatically commission one discounted Basic Dossier per week when staff capacity is idle",
             variable=self.scouting_auto_assign_var,
             command=self.set_idle_scout_auto_assignment,
         )
         auto_assign.pack(fill="x", padx=8, pady=(0, 4))
-        self.attach_tooltip(auto_assign, "When enabled, an idle hired scout may proactively choose one public-market target. The assignment is labelled Auto Basic and costs no extra fee.")
-        self.scouting_assignment_tree = ttk.Treeview(bonus, columns=("type", "target", "scout", "status", "due", "confidence", "advice", "cost"), show="headings", height=7, selectmode="browse")
+        self.attach_tooltip(auto_assign, "When enabled, the department may commission one $1,000 home-market Basic Dossier per week (travel still applies). Explicit player briefs always retain the remaining capacity.")
+        assignment_tree_frame = ttk.Frame(bonus, style="Inset.TFrame")
+        assignment_tree_frame.pack(fill="both", expand=True, padx=4, pady=(0, 4))
+        self.scouting_assignment_tree = ttk.Treeview(assignment_tree_frame, columns=("type", "target", "scout", "status", "due", "confidence", "advice", "cost"), show="headings", height=7, selectmode="browse")
         for col, text, width in (("type", "Assignment", 120), ("target", "Target / Region", 190), ("scout", "Scout", 145), ("status", "Status", 82), ("due", "Due", 82), ("confidence", "Confidence", 78), ("advice", "Scout Advice", 135), ("cost", "Cost", 78)):
             self.scouting_assignment_tree.heading(col, text=text)
             self.scouting_assignment_tree.column(col, width=width, anchor="center")
@@ -2496,7 +2573,12 @@ class UIMixin:
         self.scouting_assignment_tree.tag_configure("advice_monitor", foreground="#e6c15a")
         self.scouting_assignment_tree.tag_configure("advice_pass", foreground="#8a8f97")
         self.scouting_assignment_tree.tag_configure("assignment_pending", foreground="#9db4c0")
-        self.scouting_assignment_tree.pack(fill="both", expand=True, padx=4, pady=(0, 4))
+        assignment_y_scroll = ttk.Scrollbar(assignment_tree_frame, orient="vertical", command=self.scouting_assignment_tree.yview)
+        assignment_x_scroll = ttk.Scrollbar(assignment_tree_frame, orient="horizontal", command=self.scouting_assignment_tree.xview)
+        self.scouting_assignment_tree.configure(yscrollcommand=assignment_y_scroll.set, xscrollcommand=assignment_x_scroll.set)
+        assignment_y_scroll.pack(side="right", fill="y")
+        assignment_x_scroll.pack(side="bottom", fill="x")
+        self.scouting_assignment_tree.pack(side="left", fill="both", expand=True)
         self.scouting_assignment_tree.bind("<Double-1>", lambda _event: self.open_selected_scouting_target())
         self.attach_tree_heading_tooltips(self.scouting_assignment_tree, {
             "type": "Basic, full, observation, automatic, academy-network, or regional talent-search assignment.",
@@ -2528,7 +2610,16 @@ class UIMixin:
         ttk.Button(actions, text="Lower Ticket Price", command=lambda: self.adjust_ticket_price(-5)).pack(side="right", padx=4)
         self.finance_summary = ttk.Label(inner, text="", style="Panel.TLabel", justify="left")
         self.finance_summary.pack(fill="x", padx=6, pady=(0, 6))
-        sponsor_panel, sponsor_inner = self.section(inner, "SPONSOR MARKET")
+        self.finance_notebook = ttk.Notebook(inner)
+        self.finance_notebook.pack(fill="both", expand=True)
+        cashflow_page = ttk.Frame(self.finance_notebook, style="Chrome.TFrame")
+        history_page = ttk.Frame(self.finance_notebook, style="Chrome.TFrame")
+        investment_page = ttk.Frame(self.finance_notebook, style="Chrome.TFrame")
+        self.finance_notebook.add(cashflow_page, text="Cashflow & Sponsors")
+        self.finance_notebook.add(history_page, text="History & Outlook")
+        self.finance_notebook.add(investment_page, text="Strategic Investments")
+
+        sponsor_panel, sponsor_inner = self.section(cashflow_page, "SPONSOR MARKET")
         sponsor_panel.pack(fill="x", pady=(0, 6))
         sponsor_actions = ttk.Frame(sponsor_inner, style="Inset.TFrame")
         sponsor_actions.pack(side="right", fill="y", padx=(6, 0))
@@ -2543,9 +2634,9 @@ class UIMixin:
         self.sponsor_market_tree.pack(fill="x", expand=True)
         self.sponsor_market_note = ttk.Label(sponsor_inner, text="", style="Inset.TLabel", justify="left")
         self.sponsor_market_note.pack(fill="x", pady=(3, 0))
-        body = ttk.Frame(inner, style="Chrome.TFrame")
+        body = ttk.Frame(cashflow_page, style="Chrome.TFrame")
         body.pack(fill="both", expand=True)
-        self.finance_tree = ttk.Treeview(body, columns=("period", "opening", "revenue", "costs", "net", "ending"), show="headings", height=14)
+        self.finance_tree = ttk.Treeview(body, columns=("period", "opening", "revenue", "costs", "net", "ending"), show="headings", height=9)
         for column, text, width in (("period", "Period", 95), ("opening", "Opening", 115), ("revenue", "Revenue", 115), ("costs", "Costs", 115), ("net", "Net", 105), ("ending", "Ending", 115)):
             self.finance_tree.heading(column, text=text)
             self.finance_tree.column(column, width=width, anchor="e" if column != "period" else "w")
@@ -2558,6 +2649,61 @@ class UIMixin:
         detail_panel.pack(side="left", fill="both", expand=True)
         self.finance_detail = tk.Text(detail, wrap="word", font=("Courier New", 9), bg=self.colors["panel_dark"], fg=self.colors["text"], insertbackground=self.colors["text"], padx=10, pady=10)
         self.finance_detail.pack(fill="both", expand=True)
+
+        outlook_top = ttk.Frame(history_page, style="Chrome.TFrame")
+        outlook_top.pack(fill="both", expand=True, pady=(3, 6))
+        annual_panel, annual_inner = self.section(outlook_top, "ANNUAL PROFIT HISTORY")
+        annual_panel.pack(side="left", fill="both", expand=True, padx=(0, 3))
+        self.finance_annual_tree = ttk.Treeview(annual_inner, columns=("year", "events", "revenue", "costs", "net", "margin", "ending"), show="headings", height=5)
+        for column, text, width in (("year", "Year", 60), ("events", "Events", 55), ("revenue", "Revenue", 100), ("costs", "Costs", 100), ("net", "Profit", 100), ("margin", "Margin", 65), ("ending", "Year-end Cash", 110)):
+            self.finance_annual_tree.heading(column, text=text)
+            self.finance_annual_tree.column(column, width=width, anchor="e" if column not in ("year", "events") else "center")
+        self.finance_annual_tree.tag_configure("positive", foreground="#9de6a0")
+        self.finance_annual_tree.tag_configure("negative", foreground="#ff9b9b")
+        self.finance_annual_tree.pack(fill="both", expand=True)
+
+        mix_panel, mix_inner = self.section(outlook_top, "12-MONTH REVENUE MIX")
+        mix_panel.pack(side="left", fill="both", expand=True, padx=(3, 0))
+        self.finance_mix_tree = ttk.Treeview(mix_inner, columns=("stream", "amount", "share"), show="headings", height=5)
+        for column, text, width in (("stream", "Revenue Stream", 150), ("amount", "Amount", 115), ("share", "Share", 70)):
+            self.finance_mix_tree.heading(column, text=text)
+            self.finance_mix_tree.column(column, width=width, anchor="w" if column == "stream" else "e")
+        self.finance_mix_tree.pack(fill="both", expand=True)
+
+        outlook_bottom = ttk.Frame(history_page, style="Chrome.TFrame")
+        outlook_bottom.pack(fill="both", expand=True)
+        roster_panel, roster_inner = self.section(outlook_bottom, "ROSTER COST TREND")
+        roster_panel.pack(side="left", fill="both", expand=True, padx=(0, 3))
+        self.finance_roster_cost_tree = ttk.Treeview(roster_inner, columns=("period", "roster", "pool", "top10", "booked", "fixed"), show="headings", height=6)
+        for column, text, width in (("period", "Month", 80), ("roster", "Roster", 55), ("pool", "Purse Pool", 100), ("top10", "Top 10", 95), ("booked", "Booked", 95), ("fixed", "Fixed + Projects", 110)):
+            self.finance_roster_cost_tree.heading(column, text=text)
+            self.finance_roster_cost_tree.column(column, width=width, anchor="e" if column != "period" else "w")
+        self.finance_roster_cost_tree.pack(fill="both", expand=True)
+
+        milestone_panel, milestone_inner = self.section(outlook_bottom, "MILESTONE PROJECTIONS")
+        milestone_panel.pack(side="left", fill="both", expand=True, padx=(3, 0))
+        self.finance_milestone_tree = ttk.Treeview(milestone_inner, columns=("milestone", "cash_gap", "event_gap", "eta", "blockers"), show="headings", height=6)
+        for column, text, width in (("milestone", "Milestone", 135), ("cash_gap", "Cash Gap", 95), ("event_gap", "Events", 55), ("eta", "ETA", 75), ("blockers", "Other Gates", 220)):
+            self.finance_milestone_tree.heading(column, text=text)
+            self.finance_milestone_tree.column(column, width=width, anchor="w" if column in ("milestone", "blockers") else "center")
+        self.finance_milestone_tree.pack(fill="both", expand=True)
+        self.finance_outlook_note = ttk.Label(history_page, text="", style="Panel.TLabel", justify="left")
+        self.finance_outlook_note.pack(fill="x", padx=6, pady=(4, 0))
+
+        investment_panel, investment_inner = self.section(investment_page, "LATE-GAME FACILITIES, OPERATIONS, DEPARTMENTS & PRESTIGE")
+        investment_panel.pack(fill="both", expand=True, pady=3)
+        self.finance_investment_tree = ttk.Treeview(investment_inner, columns=("category", "project", "capital", "upkeep", "status", "requirement", "effect"), show="headings", height=10)
+        for column, text, width in (("category", "Category", 95), ("project", "Project", 190), ("capital", "Capital", 100), ("upkeep", "Monthly", 90), ("status", "Status", 80), ("requirement", "Requirement", 210), ("effect", "Permanent Effect", 260)):
+            self.finance_investment_tree.heading(column, text=text)
+            self.finance_investment_tree.column(column, width=width, anchor="w" if column in ("category", "project", "requirement", "effect") else "center")
+        self.finance_investment_tree.tag_configure("owned", foreground="#9de6a0")
+        self.finance_investment_tree.tag_configure("available", foreground="#9de6ff")
+        self.finance_investment_tree.pack(fill="both", expand=True)
+        investment_actions = ttk.Frame(investment_inner, style="Inset.TFrame")
+        investment_actions.pack(fill="x", pady=(6, 0))
+        ttk.Button(investment_actions, text="Approve Selected Project", style="Accent.TButton", command=self.purchase_selected_strategic_investment).pack(side="left", padx=4)
+        self.finance_investment_note = ttk.Label(investment_actions, text="Select a project to review its capital and operating commitment.", style="Inset.TLabel", justify="left")
+        self.finance_investment_note.pack(side="left", fill="x", expand=True, padx=8)
 
     def build_roster_tab(self):
         self.screen_header(self.roster_tab, "COMPANY ROSTER", "Sort fighters, check status, and build your divisions")
@@ -2772,11 +2918,13 @@ class UIMixin:
         self.show_details_event_fields = ttk.Frame(controls, style="Inset.TFrame")
         self.show_details_location_fields = ttk.Frame(controls, style="Inset.TFrame")
         self.show_details_date_fields = ttk.Frame(controls, style="Inset.TFrame")
+        self.show_details_economics_fields = ttk.Frame(controls, style="Inset.TFrame")
         self.show_details_primary_actions = ttk.Frame(controls, style="Inset.TFrame")
         self.show_details_secondary_actions = ttk.Frame(controls, style="Inset.TFrame")
         line1 = self.show_details_event_fields
         line2 = self.show_details_location_fields
         line3 = self.show_details_date_fields
+        line4 = self.show_details_economics_fields
         schedule_actions = self.show_details_primary_actions
         ttk.Label(line1, text="Event", style="Inset.TLabel", width=7).pack(side="left")
         self.event_name_entry = ttk.Entry(line1, textvariable=self.event_name, width=34)
@@ -2785,6 +2933,7 @@ class UIMixin:
         venue_box = ttk.Combobox(line1, textvariable=self.venue, values=self.available_event_venues(), state="readonly", width=24)
         venue_box.pack(side="left", padx=(4, 12))
         self.event_venue_box = venue_box
+        venue_box.bind("<<ComboboxSelected>>", lambda _e: self.refresh_event_economics_forecast())
         self.attach_tooltip(venue_box, "Bigger venues seat more fans and can lift the gate, but a half-empty large room hurts atmosphere and stability. Match the venue to your drawing power.")
         schedule_btn = ttk.Button(schedule_actions, text="Schedule Show", style="Accent.TButton", command=self.schedule_event)
         schedule_btn.pack(side="right", padx=(4, 0))
@@ -2796,7 +2945,7 @@ class UIMixin:
         region_box = ttk.Combobox(line2, textvariable=self.event_region, values=REGIONS, state="readonly", width=11)
         region_box.pack(side="left", padx=(4, 12))
         self.event_region_box = region_box
-        region_box.bind("<<ComboboxSelected>>", lambda _e: (self.update_city_options(), self.refresh_event_atmosphere_forecast()))
+        region_box.bind("<<ComboboxSelected>>", lambda _e: (self.update_city_options(), self.refresh_event_atmosphere_forecast(), self.refresh_event_economics_forecast()))
         ttk.Label(line2, text="City", style="Inset.TLabel", width=7).pack(side="left")
         self.city_box = ttk.Combobox(line2, textvariable=self.event_city, values=REGION_CITIES["USA"], state="readonly", width=13)
         self.city_box.pack(side="left", padx=(4, 12))
@@ -2827,6 +2976,37 @@ class UIMixin:
         self.event_broadcaster_box.pack(side="left", padx=(4, 0))
         self.event_broadcaster_box.bind("<<ComboboxSelected>>", self.refresh_event_broadcaster_status)
         self.attach_tooltip(self.event_broadcaster_box, "A broadcast provider adds media income and exposure that grows your popularity. 'No Coverage' means sharply reduced reach and revenue.")
+        ttk.Label(line4, text="Ticket $", style="Inset.TLabel", width=8).pack(side="left")
+        ticket_spin = ttk.Spinbox(
+            line4, from_=EVENT_TICKET_PRICE_MIN, to=EVENT_TICKET_PRICE_MAX, increment=5,
+            textvariable=self.event_ticket_price, width=6, command=self.refresh_event_economics_forecast,
+        )
+        ticket_spin.pack(side="left", padx=(4, 12))
+        ticket_spin.configure(command=self.note_manual_event_price)
+        ticket_spin.bind("<KeyRelease>", lambda _e: self.note_manual_event_price())
+        ticket_spin.bind("<FocusOut>", lambda _e: self.note_manual_event_price())
+        self.event_ticket_price_spin = ticket_spin
+        self.attach_tooltip(ticket_spin, "Price this card's tickets. Charging near what the market will bear fills the room; going well above it empties seats and costs you gate, atmosphere and merch.")
+        ttk.Label(line4, text="Production", style="Inset.TLabel", width=10).pack(side="left")
+        tier_box = ttk.Combobox(line4, textvariable=self.event_production_tier, values=list(EVENT_PRODUCTION_TIER_ORDER), state="readonly", width=11)
+        tier_box.pack(side="left", padx=(4, 12))
+        tier_box.bind("<<ComboboxSelected>>", lambda _e: self.refresh_event_economics_forecast())
+        self.event_production_tier_box = tier_box
+        self.attach_tooltip(tier_box, chr(10).join(
+            f"{name}: {EVENT_PRODUCTION_TIERS[name]['note']}" for name in EVENT_PRODUCTION_TIER_ORDER
+        ))
+        ttk.Label(line4, text="Marketing $", style="Inset.TLabel", width=11).pack(side="left")
+        marketing_spin = ttk.Spinbox(
+            line4, from_=0, to=EVENT_MARKETING_BUDGET_MAX, increment=2500,
+            textvariable=self.event_marketing_budget, width=9, command=self.refresh_event_economics_forecast,
+        )
+        marketing_spin.pack(side="left", padx=(4, 12))
+        marketing_spin.bind("<KeyRelease>", lambda _e: self.refresh_event_economics_forecast())
+        marketing_spin.bind("<FocusOut>", lambda _e: self.refresh_event_economics_forecast())
+        self.event_marketing_spin = marketing_spin
+        self.attach_tooltip(marketing_spin, "Spend on promoting this card. Buys turnout and awareness, and is charged as an event cost whether or not the show sells.")
+        ttk.Button(line4, text="Suggest", command=self.apply_suggested_event_economics).pack(side="left", padx=(0, 4))
+
         status_grid = ttk.Frame(header, style="Inset.TFrame")
         status_grid.pack(fill="x")
         self.show_details_status_grid = status_grid
@@ -2849,6 +3029,9 @@ class UIMixin:
         self.event_atmosphere_status = ttk.Label(atmosphere_row, text="", style="Inset.TLabel", anchor="w", justify="left")
         self.event_atmosphere_status.pack(fill="x", expand=True, padx=4, pady=2)
         self.event_atmosphere_status.bind("<Configure>", lambda event: self.event_atmosphere_status.configure(wraplength=max(300, event.width - 14)))
+        self.event_economics_status = ttk.Label(atmosphere_row, text="", style="Inset.TLabel", anchor="w", justify="left")
+        self.event_economics_status.pack(fill="x", expand=True, padx=4, pady=(0, 2))
+        self.event_economics_status.bind("<Configure>", lambda event: self.event_economics_status.configure(wraplength=max(300, event.width - 14)))
         ttk.Button(self.show_details_secondary_actions, text="Fanbase & Atmosphere", command=self.open_fanbase_window).pack(side="right", padx=3, pady=1)
         superfight_btn = ttk.Button(self.show_details_secondary_actions, text="★ Superfight Night", style="Accent.TButton", command=self.open_superfight_night_window)
         superfight_btn.pack(side="right", padx=3, pady=1)
@@ -2942,6 +3125,20 @@ class UIMixin:
         tier_label.pack(side="left", padx=(10, 2))
         tier_box = ttk.Combobox(booking_options, textvariable=self.card_tier, values=CARD_TIERS, state="readonly", width=12)
         tier_box.pack(side="left", padx=(0, 3))
+        plan_options = ttk.Frame(left, style="Inset.TFrame")
+        plan_options.pack(fill="x", pady=(0, 5))
+        ttk.Label(plan_options, text="Corner A plan", style="Inset.TLabel").pack(side="left", padx=(2, 3))
+        red_plan_box = ttk.Combobox(
+            plan_options, textvariable=self.red_fight_plan, values=FIGHT_PLANS,
+            state="readonly", width=20,
+        )
+        red_plan_box.pack(side="left", padx=(0, 10))
+        ttk.Label(plan_options, text="Corner B plan", style="Inset.TLabel").pack(side="left", padx=(2, 3))
+        blue_plan_box = ttk.Combobox(
+            plan_options, textvariable=self.blue_fight_plan, values=FIGHT_PLANS,
+            state="readonly", width=20,
+        )
+        blue_plan_box.pack(side="left", padx=(0, 3))
         self.attach_tooltip(add_matchup_btn, "Book the two selected available fighters into a bout. Pick same-gender fighters in the same (or a close) division for a viable, credible fight.")
         self.attach_tooltip(add_tba_btn, "Add a bout with one side left open (To Be Announced). Reserve a slot now and fill it later from Upcoming Events once you've signed or freed an opponent.")
         self.attach_tooltip(tournament_btn, "Add a full bracket of bouts in one division. A quick way to fill a card and build a division — you'll need several same-division, same-gender fighters.")
@@ -2951,6 +3148,8 @@ class UIMixin:
         self.attach_tooltip(compare_btn, "Open the full side-by-side fighter comparison for the two selected rows without leaving Matchmaking.")
         self.attach_tooltip(self.special_belt_box, "Attach an interim, tournament, or other special title to raise the stakes and hype of a non-divisional-title bout.")
         self.attach_tooltip(tier_box, "Card position tier (Main Card, Prelims, etc.). Lower tiers pay and cost less — stack prospects on the prelims and save stars for the main card.")
+        self.attach_tooltip(red_plan_box, "Pre-fight plan for the first selected fighter. Plans alter action choice, target selection and pace, then the corner may adapt between rounds.")
+        self.attach_tooltip(blue_plan_box, "Pre-fight plan for the second selected fighter. Plans never directly change the official result.")
 
         self.matchup_insight_summary_var = tk.StringVar(value="Click to add fighters • click a selected fighter to remove")
         insight_panel, insight = self.disclosure_section(
@@ -3238,6 +3437,7 @@ class UIMixin:
         ttk.Button(news_actions, text="Open Story Context", command=self.open_selected_world_story_context).pack(side="left", padx=4, pady=3)
         ttk.Button(news_actions, text="Combat Sports", command=self.open_combat_sports_window).pack(side="left", padx=4, pady=3)
         ttk.Button(news_actions, text="World Chronicle", command=self.open_world_chronicle).pack(side="right", padx=4, pady=3)
+        ttk.Button(news_actions, text="Storylines", style="Accent.TButton", command=self.open_storylines_window).pack(side="right", padx=4, pady=3)
         ttk.Label(right, text="GYM NETWORK", style="PanelTitle.TLabel").pack(anchor="w")
         self.gym_tree = ttk.Treeview(right, columns=("name", "region", "tier", "effective", "morale", "members", "trend", "specialty"), show="headings", height=7)
         for col, text, width in (("name", "Gym", 135), ("region", "Region", 66), ("tier", "Tier", 72), ("effective", "Effective", 54), ("morale", "Room", 46), ("members", "Load", 66), ("trend", "Form", 44), ("specialty", "Identity", 150)):
@@ -3660,14 +3860,21 @@ class UIMixin:
         settings_panel, settings = self.section(top, "ENGINE SETTINGS")
         settings_panel.pack(side="left", fill="x", expand=True, padx=(0, 6))
         self.engine_vars = {}
-        for label, key in (("KO Power", "ko_power"), ("Submission Finish", "submission_finish"), ("Decision Noise", "decision_noise"), ("Gas Cost", "gas_cost"), ("Damage", "damage"), ("Gate Multiplier", "gate_multiplier")):
+        ttk.Label(settings, text="Fight mechanics (changes simulated actions and outcomes)", style="Inset.TLabel").pack(anchor="w", pady=(0, 2))
+        for label, key in (("KO Power", "ko_power"), ("Submission Finish", "submission_finish"), ("Decision Noise", "decision_noise"), ("Gas Cost", "gas_cost"), ("Damage", "damage")):
             row = ttk.Frame(settings, style="Inset.TFrame")
             row.pack(fill="x", pady=2)
             ttk.Label(row, text=label, width=18, style="Inset.TLabel").pack(side="left")
             var = tk.DoubleVar(value=self.engine_settings.get(key, 1.0))
             self.engine_vars[key] = var
             ttk.Spinbox(row, from_=0.5, to=2.0, increment=0.05, textvariable=var, width=6).pack(side="left", padx=4)
-        ttk.Button(settings, text="Apply Engine Settings", command=self.apply_engine_settings).pack(anchor="e", pady=4)
+        business_row = ttk.Frame(settings, style="Inset.TFrame")
+        business_row.pack(fill="x", pady=(5, 2))
+        ttk.Label(business_row, text="Gate Multiplier", width=18, style="Inset.TLabel").pack(side="left")
+        self.gate_multiplier_var = tk.DoubleVar(value=self.business_settings.get("gate_multiplier", 1.0))
+        ttk.Spinbox(business_row, from_=0.5, to=2.0, increment=0.05, textvariable=self.gate_multiplier_var, width=6).pack(side="left", padx=4)
+        ttk.Label(business_row, text="Business only", style="Inset.TLabel").pack(side="left", padx=4)
+        ttk.Button(settings, text="Apply Settings", command=self.apply_engine_settings).pack(anchor="e", pady=4)
         audit_panel, audit = self.section(top, "AUDIT")
         audit_panel.pack(side="left", fill="x", expand=True)
         row = ttk.Frame(audit, style="Inset.TFrame")
@@ -3751,7 +3958,10 @@ class UIMixin:
         tk.Label(blue_card, text="BLUE CORNER SCOUT REPORT", bg=self.colors["panel_dark"], fg=self.colors["gold"], font=("Impact", 11), anchor="w").pack(fill="x", padx=8, pady=(5, 1))
         self.sim_profile_b = tk.Label(blue_card, text="Select a fighter.", bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 8), justify="left", anchor="nw", wraplength=520)
         self.sim_profile_b.pack(fill="both", expand=True, padx=8, pady=(0, 6))
-        self.sim_result = ttk.Label(sim, text="Pick two fighters from the database.", style="Inset.TLabel", anchor="w")
+        self.sim_result = ttk.Label(
+            sim, text="Pick two fighters from the database.", style="Inset.TLabel",
+            anchor="w", justify="left", wraplength=1120,
+        )
         self.sim_result.pack(fill="x", pady=(2, 0))
 
         tournament_panel, tournament = self.section(self.sim_lab_tab, "SANDBOX TOURNAMENT")

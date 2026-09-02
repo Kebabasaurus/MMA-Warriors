@@ -3,6 +3,7 @@ import random
 import re
 import sys
 import traceback
+from copy import deepcopy
 from datetime import datetime
 import tkinter as tk
 from dataclasses import asdict, dataclass
@@ -376,6 +377,7 @@ class ViewMixin:
             parent=parent,
         ):
             return False
+        self.record_contract_exit(fighter, self.player_company_name, "Released after the division closed")
         self.belts, self.interim_belts, self.belt_history = self.vacate_fighter_belts(
             fighter, self.roster, self.belts, self.interim_belts, self.belt_history, "Released by the promotion."
         )
@@ -627,6 +629,7 @@ class ViewMixin:
         if interim_holder:
             self.belt_history = self.record_belt_history(self.belt_history, key, "Division Closed", interim_holder, "Player closed the division.")
         for fighter in fighters:
+            self.record_contract_exit(fighter, self.player_company_name, "Released when the promotion closed the division")
             fighter.champion = False
             fighter.interim_champion = False
             fighter.contract_months = 0
@@ -742,7 +745,7 @@ class ViewMixin:
         offer = self.prompt_combat_sport_offer(sport, fighter, terms)
         if offer is None:
             return
-        ok, note = self.renew_player_combat_contract(sport, fighter.name, purse=offer["purse"], months=offer["months"])
+        ok, note = self.renew_player_combat_contract(sport, fighter.fighter_id, purse=offer["purse"], months=offer["months"])
         if not ok:
             messagebox.showwarning("Renewal Declined", note)
             return
@@ -934,7 +937,7 @@ class ViewMixin:
                 f"{fighter.weight}\n"
                 f"Record: {fighter.record}     Age: {fighter.age}     Height: {fighter.height or '-'}     Nationality: {fighter.nationality}\n"
                 f"Based In: {fighter.region}\n"
-                f"Style: {fighter.style}     Stance: {fighter.stance}     Behaviour: {fighter.behaviour}\n"
+                f"Style: {fighter.style_label}     Stance: {fighter.stance}     Behaviour: {fighter.behaviour}\n"
                 f"Trait: {fighter.trait}     Camp: {fighter.camp}\n"
                 f"Camp Focus: {fighter.camp_focus} ({fighter.camp_intensity})\n"
                 f"Walk Weight: {fighter.walk_weight or self.default_walk_weight(fighter)} lb     Last Scale: {fighter.scale_weight or '-'} lb     Cut Penalty: {fighter.weight_cut_penalty}\n"
@@ -1006,8 +1009,10 @@ class ViewMixin:
             return getattr(fighter, "sport_weight_class", "") or fighter.weight
         return fighter.weight
 
-    def portrait_badge_text(self, fighter):
+    def portrait_badge_text(self, fighter, ratings_visible=True):
         sport = self.combat_sport_for_fighter(fighter) if getattr(fighter, "sport_employer", "") else ""
+        if not ratings_visible:
+            return "SCOUTING REQUIRED"
         if sport:
             label = {"Brazilian Jiu-Jitsu": "BJJ", "Kickboxing": "KB", "Muay Thai": "MT", "Wrestling": "WRE", "Boxing": "BOX"}.get(sport, sport[:3].upper())
             return f"{label} | RTG {round(self.combat_sport_display_rating(fighter, sport))}"
@@ -1027,7 +1032,7 @@ class ViewMixin:
             size -= 1
         return item
 
-    def draw_profile_portrait(self, canvas, fighter):
+    def draw_profile_portrait(self, canvas, fighter, ratings_visible=True):
         bg = fighter.portrait_bg or "#222222"
         accent = fighter.portrait_accent or "#c3a45d"
         canvas.delete("all")
@@ -1040,7 +1045,7 @@ class ViewMixin:
         canvas.create_rectangle(28, 148, 152, 166, fill=accent, outline="")
         initials = "".join(part[0] for part in fighter.name.replace("'", "").split()[:2]).upper()
         canvas.create_text(90, 58, text=initials, fill=bg, font=("Impact", 24))
-        self.fit_canvas_text(canvas, 90, 157, self.portrait_badge_text(fighter), bg, 116, base_size=8)
+        self.fit_canvas_text(canvas, 90, 157, self.portrait_badge_text(fighter, ratings_visible), bg, 116, base_size=8)
         self.draw_portrait_status_markers(canvas, fighter, large=True)
 
     def draw_portrait_status_markers(self, canvas, fighter, large=False):
@@ -1080,7 +1085,15 @@ class ViewMixin:
                 history = promo.belt_history or {}
         key = self.belt_key(fighter.gender, fighter.weight)
         entries = self.normalize_belt_history(history).get(key, [])
-        entry = next((item for item in entries if item.get("fighter") == fighter.name and item.get("action") in ("Champion Crowned", "Inaugural Champion", "Inaugural Champion Appointed")), None)
+        fighter_id = str(getattr(fighter, "fighter_id", "") or "")
+        same_name_count = sum(
+            candidate.name == fighter.name
+            for _company, candidate in self.fighter_instances_with_companies(include_retired=True)
+        )
+        entry = next((item for item in entries if (
+            str(item.get("fighter_id", "") or "") == fighter_id
+            if item.get("fighter_id") else item.get("fighter") == fighter.name and same_name_count == 1
+        ) and item.get("action") in ("Champion Crowned", "Inaugural Champion", "Inaugural Champion Appointed")), None)
         if not entry:
             return "Championship origin unavailable"
         appointed = "appointed" in str(entry.get("action", "")).lower() or "status normalized" in str(entry.get("note", "")).lower()
@@ -1100,10 +1113,21 @@ class ViewMixin:
             histories.append((promo.name, self.normalize_belt_history(getattr(promo, "belt_history", None) or {})))
         rows = []
         seen = set()
+        same_name_count = sum(
+            candidate.name == fighter.name
+            for _company, candidate in self.fighter_instances_with_companies(include_retired=True)
+        )
+        fighter_id = str(getattr(fighter, "fighter_id", "") or "")
         for promo_name, history in histories:
             for key, entries in (history or {}).items():
                 for entry in entries or []:
-                    if not isinstance(entry, dict) or entry.get("fighter") != fighter.name:
+                    if not isinstance(entry, dict):
+                        continue
+                    entry_id = str(entry.get("fighter_id", "") or "")
+                    if entry_id:
+                        if entry_id != fighter_id:
+                            continue
+                    elif entry.get("fighter") != fighter.name or same_name_count != 1:
                         continue
                     date = str(entry.get("date", ""))
                     action = str(entry.get("action", ""))
@@ -1129,7 +1153,7 @@ class ViewMixin:
         return lines
 
     def fighter_profile_text(self, fighter):
-        company = fighter.sport_employer if getattr(fighter, "sport_employer", "") else next((name for name, candidate in self.all_database_fighters_with_companies() if candidate.name == fighter.name), "Unknown")
+        company = self.fighter_company_for_profile(fighter)
         company_rank = self.rank_label_for_fighter(fighter, company, world=False)
         world_rank = self.rank_label_for_fighter(fighter, company, world=True)
         company_rank_text = self.profile_rank_text(fighter, company_rank, "Company")
@@ -1167,7 +1191,7 @@ class ViewMixin:
             f"{title_origin_line}"
             f"Title Record: Primary {fighter.title_wins} wins / {fighter.title_defenses} defenses | "
             f"Interim {getattr(fighter, 'interim_title_wins', 0)} wins / {getattr(fighter, 'interim_title_defenses', 0)} defenses\n\n"
-            f"Style: {fighter.style} | Stance: {fighter.stance} | Behaviour: {fighter.behaviour}\n"
+            f"Style: {fighter.style_label} | Stance: {fighter.stance} | Behaviour: {fighter.behaviour}\n"
             f"Trait: {fighter.trait} | Camp: {fighter.camp} | Plan: {fighter.camp_focus} ({fighter.camp_intensity})\n"
             f"{self.rivalry_summary(fighter)}\n\n"
             f"Popularity: {fighter.popularity} | Momentum: {fighter.momentum} | Morale: {fighter.morale}\n"
@@ -1213,6 +1237,14 @@ class ViewMixin:
         rows.extend(("Retired", fighter) for fighter in self.retired_fighters)
         return rows
 
+    def fighter_company_for_profile(self, fighter):
+        """Resolve the fighter's current employer without trusting a display name."""
+        fighter_key = self.fighter_identity_key(fighter)
+        for company, candidate in self.fighter_instances_with_companies(include_retired=True):
+            if candidate is fighter or self.fighter_identity_key(candidate) == fighter_key:
+                return company
+        return "Unknown"
+
     def fighter_instances_with_companies(self, include_retired=True):
         """Return every stored fighter instance, including intentional same-name athletes.
 
@@ -1239,12 +1271,13 @@ class ViewMixin:
                     continue
                 player_owned = fighter.sport_employer == self.player_company_name
                 employer = fighter.sport_employer or sport_world.get("promotion", "")
-                state = self.ensure_combat_sport_circuit_state(sport, sport_world, employer, player_owned)
+                state = self.combat_sport_state(sport, sport_world, player_owned)
                 key = self.combat_sport_division_key(fighter, sport)
-                if state.get("titles", {}).get(key) == fighter.name:
+                same_name = [candidate for candidate in sport_world.get("roster", []) if candidate.name == fighter.name]
+                if len(same_name) == 1 and state.get("titles", {}).get(key) == fighter.name:
                     return "C"
                 names = state.get("rankings_by_division", {}).get(key, [])
-                return f"#{names.index(fighter.name) + 1}" if fighter.name in names else "-"
+                return f"#{names.index(fighter.name) + 1}" if len(same_name) == 1 and fighter.name in names else "-"
         rows = [(co, f) for co, f in self.unfiltered_ranked_fighter_rows() if f.gender == fighter.gender and f.weight == fighter.weight]
         if world:
             ordered = sorted(rows, key=lambda row: self.rank_value(row[1]), reverse=True)
@@ -1278,6 +1311,18 @@ class ViewMixin:
             f"  Knockdowns: {getattr(fighter, 'career_knockdowns', 0)} | {round(getattr(fighter, 'career_knockdowns', 0) / stat_rounds, 2)} per round | Control: {cm}:{cs:02d}",
             "",
         ]
+        lines.insert(-1, f"  Signature moves: {', '.join(self.fighter_signature_move_labels(fighter)) or 'None declared'}")
+        mastery_rows = sorted((getattr(fighter, "move_mastery", {}) or {}).items(), key=lambda row: (-row[1], row[0]))[:8]
+        if mastery_rows:
+            lines.insert(-1, "  Technique mastery:")
+            for move_id, value in reversed(mastery_rows):
+                lines.insert(-1, f"    {move_id.replace('defense:', '').replace('_', ' ').title()}: {value}")
+        for move_id, row in sorted((getattr(fighter, "career_signature_stats", {}) or {}).items()):
+            lines.insert(-1, f"  {move_id.replace('_', ' ').title()}: {row.get('landed', 0)}/{row.get('attempts', 0)} effective, {row.get('finishes', 0)} finishes")
+        if getattr(fighter, "career_move_family_stats", None):
+            lines.insert(-1, "  Move-family record (effective/used):")
+            for family, row in sorted(fighter.career_move_family_stats.items()):
+                lines.insert(-1, f"    {family}: {row.get('effective', 0)}/{row.get('attempts', 0)}")
         self.ensure_detailed_skills(fighter)
         for group, keys in DETAILED_SKILL_GROUPS.items():
             lines.append(group)
@@ -1291,6 +1336,133 @@ class ViewMixin:
         if not history:
             return f"Career record (W-L-D): {fighter.record}\n\nNo prior fight history recorded yet."
         return f"Career record (W-L-D): {fighter.record}\n\n" + "\n".join(f"- {self.format_game_date_text(entry)}" for entry in history[:80])
+
+    def fighter_career_timeline_rows(self, fighter, limit=30):
+        """Build one lazy, bounded career timeline from fighter-local records.
+
+        This is presentation work for one selected fighter. It uses the direct
+        story participant index and already-bounded model histories; it never
+        searches cards, the Chronicle, or the wider fighter world.
+        """
+        rows = []
+
+        def add(month, week, kind, summary, status=""):
+            summary = str(summary or "").strip()
+            if not summary:
+                return
+            rows.append({
+                "month": max(0, int(month or 0)), "week": max(1, int(week or 1)),
+                "kind": str(kind or "Career"), "summary": summary, "status": str(status or ""),
+            })
+
+        for thread in self.story_threads_for_fighter(fighter):
+            beats = list(thread.get("beats", []) or [])
+            for beat in beats:
+                add(
+                    beat.get("month", thread.get("last_updated_month", 0)), beat.get("week", 1),
+                    thread.get("type", "Story"), beat.get("summary", ""), thread.get("status", ""),
+                )
+            if not beats and thread.get("resolution"):
+                add(thread.get("last_updated_month", 0), thread.get("last_updated_week", 1),
+                    thread.get("type", "Story"), thread.get("resolution"), thread.get("status", ""))
+
+        def add_text_history(kind, values, maximum):
+            for value in list(values or [])[-maximum:]:
+                text = str(value)
+                match = re.search(r"\bMonth\s+(\d+)(?:\s+(?:Week\s+)?(\d+))?", text, flags=re.IGNORECASE)
+                add(int(match.group(1)) if match else 0, int(match.group(2) or 1) if match else 1, kind, text)
+
+        for entry in list(getattr(fighter, "camp_history", None) or [])[-20:]:
+            if isinstance(entry, dict):
+                add(entry.get("month", 0), 1, "Gym",
+                    f"Moved from {entry.get('from', 'Independent')} to {entry.get('to', fighter.camp)} — {entry.get('reason', 'career move')}.")
+        add_text_history("Division", getattr(fighter, "weight_class_history", None), 20)
+        add_text_history("Medical", getattr(fighter, "serious_injury_history", None), 20)
+        add_text_history("Career Plan", getattr(fighter, "career_arc_history", None), 30)
+        add_text_history("Fight", getattr(fighter, "fight_history", None), 12)
+        add_text_history("Achievement", getattr(fighter, "career_achievements", None), 20)
+
+        unique = {}
+        for row in rows:
+            key = (row["month"], row["week"], row["kind"], row["summary"])
+            unique[key] = row
+        ordered = sorted(
+            unique.values(),
+            key=lambda row: (row["month"], row["week"], row["kind"] != "Fight"),
+            reverse=True,
+        )
+        return ordered[:max(1, min(100, int(limit or 30)))]
+
+    def fighter_history_baseline_for_profile(self, fighter):
+        """Read a history baseline without turning profile rendering into a migration."""
+        fields = ("record_history_baseline_w", "record_history_baseline_l", "record_history_baseline_d")
+        values = tuple(int(getattr(fighter, field, -1) or 0) for field in fields)
+        if all(value >= 0 for value in values):
+            return values
+        wins = losses = draws = 0
+        name = str(fighter.name)
+        for entry in getattr(fighter, "fight_history", []) or []:
+            line = str(entry)
+            if "amateur" in line.lower():
+                continue
+            if f"{name} def. " in line or "W over" in line:
+                wins += 1
+            elif "fought to a draw" in line:
+                draws += 1
+            elif (" def. " in line and name in line) or "L to" in line:
+                losses += 1
+        return (
+            max(0, int(getattr(fighter, "record_w", 0)) - wins),
+            max(0, int(getattr(fighter, "record_l", 0)) - losses),
+            max(0, int(getattr(fighter, "record_d", 0)) - draws),
+        )
+
+    def fighter_profile_history_opponent(self, fighter, context=None):
+        """Resolve a history opponent by durable identity before legacy display data."""
+        context = context or {}
+        opponent_name = str(context.get("opponent_name", "") or "")
+        opponent_id = str(context.get("opponent_id", "") or "")
+        sport = str(context.get("sport", "") or "")
+        division = str(context.get("weight", "") or "")
+        fighter_key = self.fighter_identity_key(fighter)
+        candidates = [
+            candidate for _company, candidate in self.fighter_instances_with_companies(include_retired=True)
+            if candidate is not fighter and self.fighter_identity_key(candidate) != fighter_key
+        ]
+        if opponent_id:
+            candidates = [candidate for candidate in candidates if str(getattr(candidate, "fighter_id", "") or "") == opponent_id]
+        elif opponent_name:
+            candidates = [candidate for candidate in candidates if candidate.name.casefold() == opponent_name.casefold()]
+        else:
+            return None
+        if sport:
+            candidates = [candidate for candidate in candidates if str(getattr(candidate, "primary_discipline", "") or "") == sport] or candidates
+        if division:
+            candidates = [candidate for candidate in candidates if str(getattr(candidate, "sport_weight_class", "") or candidate.weight) == division] or candidates
+        return max(candidates, key=lambda candidate: (len(candidate.name), candidate.record_w + candidate.record_l + candidate.record_d), default=None)
+
+    def fighter_profile_outcome(self, fighter, fight_log=None, legacy_text=""):
+        """Return W/L/D from an archived bout without confusing same-name corners."""
+        fight_log = fight_log or {}
+        if fight_log.get("draw") or str(fight_log.get("result", "")).strip().lower().startswith("draw"):
+            return "D"
+        fighter_id = str(getattr(fighter, "fighter_id", "") or "")
+        winner_id = str(fight_log.get("winner_id", "") or "")
+        if winner_id and fighter_id:
+            return "W" if winner_id == fighter_id else "L"
+        text = str(legacy_text or fight_log.get("result", "") or "")
+        if "fought to a draw" in text or "Amateur D" in text or f"{fighter.name} drew an outside fight" in text:
+            return "D"
+        a_name, b_name = str(fight_log.get("a", "")), str(fight_log.get("b", ""))
+        if a_name and a_name == b_name:
+            return "-"
+        if f"{fighter.name} def. " in text or "Amateur W" in text or "W over" in text or f"{fighter.name} won an outside fight" in text:
+            return "W"
+        if "fought to a draw" in text or "Amateur D" in text or f"{fighter.name} drew an outside fight" in text:
+            return "D"
+        if (" def. " in text and fighter.name in text) or "Amateur L" in text or "L to" in text or f"{fighter.name} lost an outside fight" in text:
+            return "L"
+        return "-"
 
     def fighter_history_opponent_name(self, fighter, entry):
         """Extract an opponent before resolving same-date bouts from a card archive."""
@@ -1332,11 +1504,11 @@ class ViewMixin:
                 "date": entry_date or "-", "event": entry_event or "Archive unavailable", "weight": fighter.weight,
                 "opponent_name": "-", "opponent_id": "", "opponent_record": "-",
                 "scorecard": "-", "sport": "", "title": False, "divisional_title": False, "interim": False, "special_belt": "", "source": "Legacy history entry", "fighter_rating": {}, "opponent_rating": {}, "record": None,
+                "result_code": self.fighter_profile_outcome(fighter, legacy_text=text), "result_text": text,
             }
         records, seen = [], set()
         for record in list(getattr(self, "result_records", []) or []) + list(getattr(self, "ai_event_archive", []) or []):
-            event_name = str(record.get("event") or record.get("event_name") or "")
-            key = (str(record.get("date", "")), event_name, str(record.get("company", "")))
+            key = self.result_archive_key(record)
             if key not in seen:
                 seen.add(key)
                 records.append(record)
@@ -1349,7 +1521,7 @@ class ViewMixin:
         for record in records:
             event_name = str(record.get("event") or record.get("event_name") or "")
             record_date = str(record.get("date", ""))
-            for fight_log in record.get("fight_logs", []) or []:
+            for fight_index, fight_log in enumerate(record.get("fight_logs", []) or []):
                 a_name, b_name = str(fight_log.get("a", "")), str(fight_log.get("b", ""))
                 a_id, b_id = str(fight_log.get("a_id", "") or ""), str(fight_log.get("b_id", "") or "")
                 identified_bout = bool(a_id or b_id)
@@ -1389,7 +1561,7 @@ class ViewMixin:
                     score += 300
                 elif " by " in text and " by " in log_result:
                     score += 4
-                candidates.append((score, record, fight_log))
+                candidates.append((score, record, fight_index, fight_log))
         if not candidates:
             historical = next((
                 item for item in (getattr(fighter, "bout_rating_history", None) or [])
@@ -1405,9 +1577,9 @@ class ViewMixin:
                 "source": "Recorded result; card replay has expired" if historical else "Legacy history entry; card replay unavailable",
                 "fighter_rating": {"overall": historical.get("self_overall"), "elo": historical.get("self_elo")},
                 "opponent_rating": {"overall": historical.get("opponent_overall"), "elo": historical.get("opponent_elo")},
-                "record": None,
+                "record": None, "result_code": self.fighter_profile_outcome(fighter, legacy_text=text), "result_text": text,
             }
-        _score, record, fight_log = max(candidates, key=lambda item: item[0])
+        _score, record, fight_index, fight_log = max(candidates, key=lambda item: item[0])
         lines = list(fight_log.get("lines", []) or [])
         scorecards = []
         collecting = False
@@ -1453,6 +1625,8 @@ class ViewMixin:
             "weight": fight_log.get("weight", fighter.weight), "opponent_name": opponent_name or "-",
             "opponent_id": opponent_id or "", "opponent_record": opponent_record or "-", "scorecard": " / ".join(scorecards) if scorecards else "-",
             "sport": str(fight_log.get("sport", "")), "title": bool(fight_log.get("title", False)), "divisional_title": bool(fight_log.get("divisional_title", fight_log.get("title") and not fight_log.get("special_belt"))), "interim": bool(fight_log.get("interim", False)), "special_belt": str(fight_log.get("special_belt", "") or ""), "source": "Archived event replay", "fighter_rating": fighter_rating or {}, "opponent_rating": opponent_rating or {}, "record": card_record,
+            "result_code": self.fighter_profile_outcome(fighter, fight_log, text), "result_text": str(fight_log.get("result", "") or text),
+            "bout_key": (self.result_archive_key(record), fight_index),
         }
 
     def profile_info_row(self, parent, label, value, row):
@@ -1543,11 +1717,14 @@ class ViewMixin:
 
     def fill_profile_skill_tree(self, tree, fighter, groups):
         tree.delete(*tree.get_children())
-        self.ensure_detailed_skills(fighter)
+        skills = getattr(fighter, "detailed_skills", None) or {}
+        if not skills:
+            tree.insert("", "end", values=("Detailed ratings unavailable", "-", "Load repair required"))
+            return
         for group in groups:
             group_id = tree.insert("", "end", values=(group, "", ""), open=True)
             for key in DETAILED_SKILL_GROUPS[group]:
-                value = fighter.detailed_skills.get(key, 50)
+                value = skills.get(key, 50)
                 grade = "Elite" if value >= 88 else "Excellent" if value >= 78 else "Good" if value >= 65 else "Raw" if value >= 50 else "Weak"
                 tree.insert(group_id, "end", values=(key.replace("_", " ").title(), value, grade))
 
@@ -1557,7 +1734,8 @@ class ViewMixin:
             return True
         if company and company == self.player_company_name:
             return True
-        report = self.scouting_report_for(fighter)
+        raw_report = self.scouting_report_for(fighter, migrate=False)
+        report = self.scouting_intel_report(raw_report)
         return self.scouting_report_is_current_full(report)
 
     def fighter_current_championships(self, fighter):
@@ -1569,30 +1747,49 @@ class ViewMixin:
             if label and label not in titles:
                 titles.append(label)
 
-        for key, holder in self.normalize_belts(getattr(self, "belts", {})).items():
-            if holder == name:
-                add(self.player_company_name, key)
-        for key, holder in self.normalize_belts(getattr(self, "interim_belts", {})).items():
-            if holder == name:
-                add(self.player_company_name, key, "Interim Champion")
-        for title, belt in self.normalize_special_belts(getattr(self, "special_belts", {})).items():
-            if belt.get("holder") == name or title in (getattr(fighter, "special_titles", None) or []):
-                add(self.player_company_name, title)
-        for promo in getattr(self, "promotions", []):
-            for key, holder in self.normalize_belts(getattr(promo, "belts", {})).items():
+        owner = self.fighter_company_for_profile(fighter)
+        owner_roster = []
+        belts = interim_belts = special_belts = {}
+        if owner == self.player_company_name and self.player_owns_fighter(fighter):
+            owner_roster = self.roster
+            belts = getattr(self, "belts", {})
+            interim_belts = getattr(self, "interim_belts", {})
+            special_belts = getattr(self, "special_belts", {})
+        else:
+            promo = self.promotion_owning_fighter(fighter)
+            if promo is not None:
+                owner_roster = promo.roster
+                belts = getattr(promo, "belts", {})
+                interim_belts = getattr(promo, "interim_belts", {})
+
+        unambiguous_owner_name = sum(candidate.name == name for candidate in owner_roster) == 1
+        if unambiguous_owner_name:
+            for key, holder in self.normalize_belts(belts).items():
                 if holder == name:
-                    add(promo.name, key)
-            for key, holder in self.normalize_belts(getattr(promo, "interim_belts", {})).items():
+                    add(owner, key)
+            for key, holder in self.normalize_belts(interim_belts).items():
                 if holder == name:
-                    add(promo.name, key, "Interim Champion")
+                    add(owner, key, "Interim Champion")
+            for title, belt in self.normalize_special_belts(special_belts).items():
+                holder_id = str(belt.get("holder_id", "") or "")
+                if holder_id == str(getattr(fighter, "fighter_id", "") or "") or (not holder_id and belt.get("holder") == name):
+                    add(owner, title)
+        sport_owner_roster = []
         for sport, world in getattr(self, "combat_sport_worlds", {}).items():
-            state = self.ensure_combat_sport_circuit_state(sport, world, getattr(fighter, "sport_employer", "") or world.get("promotion", sport), getattr(fighter, "sport_employer", "") == self.player_company_name)
+            if fighter not in world.get("roster", []):
+                continue
+            sport_owner_roster = world.get("roster", [])
+            player_owned = getattr(fighter, "sport_employer", "") == self.player_company_name
+            state = self.combat_sport_state(sport, world, player_owned)
+            same_name = [candidate for candidate in world.get("roster", []) if candidate.name == name]
             for key, holder in state.get("titles", {}).items():
-                if holder == name:
+                if len(same_name) == 1 and holder == name:
                     add(state.get("promotion", world.get("promotion", sport)), self.combat_sport_division_label(key))
-        if getattr(fighter, "champion", False) and not titles:
+        fallback_roster = owner_roster or sport_owner_roster
+        unambiguous_fallback = sum(candidate.name == name for candidate in fallback_roster) == 1
+        if getattr(fighter, "champion", False) and not titles and unambiguous_fallback:
             add("", self.fighter_display_division(fighter))
-        if getattr(fighter, "interim_champion", False) and not any("Interim" in item for item in titles):
+        if getattr(fighter, "interim_champion", False) and unambiguous_fallback and not any("Interim" in item for item in titles):
             add("", self.fighter_display_division(fighter), "Interim Champion")
         return titles
 
@@ -1608,6 +1805,13 @@ class ViewMixin:
         copy.pack(side="left", fill="x", expand=True, pady=4)
         tk.Label(copy, text="CURRENT CHAMPION", bg="#4b3512", fg="#ffe08a", font=("Impact", 10), anchor="w").pack(fill="x")
         tk.Label(copy, text=" | ".join(titles[:3]), bg="#4b3512", fg="#ffffff", font=("Tahoma", 8, "bold"), justify="left", anchor="w", wraplength=118).pack(fill="x", pady=(1, 2))
+
+    @staticmethod
+    def fighter_profile_geometry(screen_width, screen_height):
+        """Keep the profile and its fixed action footer inside the usable display."""
+        width = min(1500, max(760, int(screen_width) - 120), max(1, int(screen_width) - 40))
+        height = min(900, max(520, int(screen_height) - 130), max(1, int(screen_height) - 80))
+        return width, height, min(1100, width), min(680, height)
 
     def fighter_trade_asset_value(self, fighter):
         age_drag = max(0, fighter.age - min(fighter.prime_end, 33)) * 3.0
@@ -1907,14 +2111,10 @@ class ViewMixin:
         existing = self.focus_managed_window(profile_key)
         if existing is not None:
             return existing
-        report = self.scouting_report_for(fighter)
-        self.ensure_detailed_skills(fighter)
-        self.ensure_fighter_business_stats(fighter)
-        # Old saves may still have academy bouts mixed into the professional
-        # text ledger. Repair before calculating the visible record.
-        self.migrate_academy_amateur_history(fighter)
-        baseline_record = self.ensure_fighter_history_baseline(fighter)
-        company = fighter.sport_employer if getattr(fighter, "sport_employer", "") else next((name for name, candidate in self.all_database_fighters_with_companies() if candidate.name == fighter.name), "Unknown")
+        raw_report = self.scouting_report_for(fighter, migrate=False)
+        report = self.scouting_intel_report(raw_report)
+        baseline_record = self.fighter_history_baseline_for_profile(fighter)
+        company = self.fighter_company_for_profile(fighter)
         sport = self.combat_sport_for_fighter(fighter) if getattr(fighter, "sport_employer", "") else ""
         stats_visible = self.fighter_profile_stats_visible(fighter, company)
         private_development_visible = (not self.rules.get("scouting_mode", False) or self.player_owns_fighter(fighter) or getattr(fighter, "retired", False) or company == self.player_company_name)
@@ -1923,15 +2123,14 @@ class ViewMixin:
         world_rank = self.rank_label_for_fighter(fighter, company, world=True)
         company_rank_text = self.profile_rank_text(fighter, company_rank, "Company")
         world_rank_text = self.profile_rank_text(fighter, world_rank, "World")
-        window = self.create_managed_window()
+        window = self.create_managed_window(profile_key)
         display_name = self.fighter_display_name(fighter)
         window.title(f"Fighter Profile - {display_name}")
         screen_width = window.winfo_screenwidth()
         screen_height = window.winfo_screenheight()
-        profile_width = min(1500, max(1220, screen_width - 120))
-        profile_height = min(900, max(760, screen_height - 130))
+        profile_width, profile_height, min_width, min_height = self.fighter_profile_geometry(screen_width, screen_height)
         window.geometry(f"{profile_width}x{profile_height}+{max(0, (screen_width - profile_width) // 2)}+{max(0, (screen_height - profile_height) // 3)}")
-        window.minsize(1100, 680)
+        window.minsize(min_width, min_height)
         window.configure(bg=self.colors["chrome"])
         header = ttk.Frame(window, style="Header.TFrame")
         header.pack(fill="x", padx=8, pady=(8, 0))
@@ -1946,7 +2145,7 @@ class ViewMixin:
         left.pack(side="left", fill="y", padx=(0, 8), ipadx=2)
         portrait = tk.Canvas(left, width=180, height=180, highlightthickness=1, highlightbackground=self.colors["line"], bg="#222222")
         portrait.pack(anchor="n", padx=10, pady=10)
-        self.draw_profile_portrait(portrait, fighter)
+        self.draw_profile_portrait(portrait, fighter, stats_visible)
 
         badge_row = tk.Frame(left, bg=self.colors["panel"])
         badge_row.pack(fill="x", padx=8, pady=(0, 6))
@@ -1961,6 +2160,8 @@ class ViewMixin:
 
         identity = tk.Frame(left, bg=self.colors["panel"])
         identity.pack(fill="x", padx=8, pady=(0, 8))
+        observed_identity = stats_visible or self.scouting_effective_confidence(report) >= 25
+        signature_labels = self.fighter_signature_move_labels(fighter) if observed_identity else []
         rows = [
             ("Record", fighter.record),
             ("Age", f"{fighter.age} ({self.combat_sport_development_stage(fighter, sport) if sport else self.fighter_career_stage(fighter)})"),
@@ -1968,11 +2169,12 @@ class ViewMixin:
             ("Nationality", fighter.nationality),
             ("Born", f"{getattr(fighter, 'birth_country', '') or fighter.region} - {getattr(fighter, 'hometown', '') or '-'}"),
             ("Based / Trains", f"{getattr(fighter, 'fighting_base', '') or fighter.region} / {getattr(fighter, 'training_location', '') or fighter.region}"),
-            ("Style", fighter.style),
-            ("Stance", fighter.stance),
-            ("Behaviour", fighter.behaviour),
-            ("Trait", fighter.trait),
-            ("Camp", fighter.camp),
+            ("Style", fighter.style_label if observed_identity else "Unknown"),
+            ("Signature Moves", ", ".join(signature_labels) if signature_labels else ("None declared" if observed_identity else "Unknown")),
+            ("Stance", fighter.stance if observed_identity else "Unknown"),
+            ("Behaviour", fighter.behaviour if stats_visible else "Unknown"),
+            ("Trait", fighter.trait if stats_visible else "Unknown"),
+            ("Camp", fighter.camp if observed_identity else "Unknown"),
             ("Competition Class", self.fighter_display_division(fighter)),
             ("Status", fighter.status),
             ("Major Injury", self.serious_injury_status(fighter)),
@@ -2086,7 +2288,7 @@ class ViewMixin:
             ("Development Profile", fighter.career_archetype.replace("Standard Prime", "Balanced Development")),
         ] if stats_visible else [
             ("Scout Status", f"{report.get('status', 'Unscouted')} ({self.scouting_effective_confidence(report) if report else 0}% confidence)"),
-            ("Observed Style", fighter.style if self.scouting_effective_confidence(report) >= 25 else "Unknown"),
+            ("Observed Style", fighter.style_label if self.scouting_effective_confidence(report) >= 25 else "Unknown"),
             ("Known Record", fighter.record),
         ]
         if sport and stats_visible:
@@ -2261,53 +2463,17 @@ class ViewMixin:
         history_detail = tk.Text(history_frame, wrap="word", font=("Tahoma", 9), height=4, bg=self.colors["panel_dark"], fg=self.colors["text"], padx=10, pady=8); history_detail.pack(fill="x", padx=8, pady=(0, 8)); history_detail.config(state="disabled")
         entries = fighter.fight_history or []
 
-        def history_opponent(entry, context=None):
-            """Find the real opponent even when old save history is plain text."""
-            text = str(entry)
-            opponent_name = str((context or {}).get("opponent_name", "") or "")
-            opponent_id = str((context or {}).get("opponent_id", "") or "")
-            sport = str((context or {}).get("sport", "") or "")
-            division = str((context or {}).get("weight", "") or "")
-            candidates = [
-                candidate for _company, candidate in self.fighter_instances_with_companies(include_retired=True)
-                if candidate is not fighter and candidate.name != fighter.name
-                and (candidate.fighter_id == opponent_id if opponent_id else (candidate.name.casefold() == opponent_name.casefold() if opponent_name else False))
-            ]
-            if sport:
-                sport_matches = [candidate for candidate in candidates if str(getattr(candidate, "primary_discipline", "") or "") == sport]
-                if sport_matches:
-                    candidates = sport_matches
-            if division:
-                division_matches = [candidate for candidate in candidates if str(getattr(candidate, "sport_weight_class", "") or candidate.weight) == division]
-                if division_matches:
-                    candidates = division_matches
-            return max(candidates, key=lambda candidate: (len(candidate.name), candidate.record_w + candidate.record_l + candidate.record_d), default=None)
-
         def parsed(entry):
             text = str(entry)
             amateur = "Amateur" if "Amateur" in text else "Professional"
             opponent_name = self.fighter_history_opponent_name(fighter, text)
-            opponent_fighter = history_opponent(text, {"opponent_name": opponent_name}) if opponent_name else None
-            if f"{fighter.name} def. " in text or "Amateur W" in text or "W over" in text or f"{fighter.name} won an outside fight" in text:
-                result = "W"
-            elif "fought to a draw" in text or "Amateur D" in text or f"{fighter.name} drew an outside fight" in text:
-                result = "D"
-            elif (" def. " in text and fighter.name in text) or "Amateur L" in text or "L to" in text or f"{fighter.name} lost an outside fight" in text:
-                result = "L"
-            else:
-                result = "-"
-            method = text.split(" by ", 1)[1].split(" at ", 1)[0] if " by " in text else "Draw" if result == "D" else "-"
-            context = self.fighter_history_card_context(fighter, text, opponent_fighter or opponent_name)
+            opponent_fighter = self.fighter_profile_history_opponent(fighter, {"opponent_name": opponent_name}) if opponent_name else None
+            context = self.fighter_history_card_context(fighter, text, opponent_name)
+            result = context.get("result_code") or self.fighter_profile_outcome(fighter, legacy_text=text)
+            result_text = str(context.get("result_text", "") or text)
+            method = result_text.split(" by ", 1)[1].rsplit(" (R", 1)[0] if " by " in result_text else "Draw" if result == "D" else "-"
             opponent = context.get("opponent_name", "-") or (self.fighter_display_name(opponent_fighter) if opponent_fighter else "-")
-            opponent_fighter = history_opponent(text, context) if opponent != "-" else opponent_fighter
-            log_result = ""
-            for fight_log in (context.get("record", {}) or {}).get("fight_logs", []):
-                names = (str(fight_log.get("a", "")), str(fight_log.get("b", "")))
-                if fighter.name in names and (opponent == "-" or opponent in names):
-                    log_result = str(fight_log.get("result", ""))
-                    break
-            if " by " in log_result:
-                method = log_result.split(" by ", 1)[1].rsplit(" (R", 1)[0]
+            opponent_fighter = self.fighter_profile_history_opponent(fighter, context) if opponent != "-" else opponent_fighter
             fighter_rating = context.get("fighter_rating", {}) or {}
             opponent_rating = context.get("opponent_rating", {}) or {}
             def format_rating(snapshot):
@@ -2333,7 +2499,7 @@ class ViewMixin:
                 "date": self.format_game_date_text(context["date"]), "stakes": stakes, "opponent_record": context["opponent_record"], "event": context["event"],
                 "fighter_rating": fighter_rating_text, "opponent_rating": opponent_rating_text,
                 "method": method, "scorecard": context["scorecard"], "weight": context["weight"],
-                "detail": detail, "card": context["record"],
+                "detail": detail, "card": context["record"], "bout_key": context.get("bout_key"),
             }
         rows = []
         resolved_bouts = set()
@@ -2344,10 +2510,10 @@ class ViewMixin:
             # Legacy saves can retain the same string twice. Only suppress a row when
             # it resolves to the exact same archived bout, never merely on a matching
             # name or date.
-            key = (row["date"], row["event"], row["opponent"], row["method"], row["weight"])
+            key = row.get("bout_key")
             if row["card"] and key in resolved_bouts:
                 continue
-            if row["card"]:
+            if row["card"] and key is not None:
                 resolved_bouts.add(key)
             rows.append(row)
         # Academy background is intentionally rendered as its own ledger. It
@@ -2357,7 +2523,7 @@ class ViewMixin:
             if not isinstance(record, dict):
                 continue
             opponent_name = str(record.get("opponent", "Unknown opponent") or "Unknown opponent")
-            opponent_fighter = history_opponent("", {"opponent_name": opponent_name})
+            opponent_fighter = self.fighter_profile_history_opponent(fighter, {"opponent_name": opponent_name})
             result = str(record.get("result", "-") or "-")[:1]
             month = int(record.get("month", 0) or 0)
             week = int(record.get("week", 1) or 1)
@@ -2421,6 +2587,17 @@ class ViewMixin:
         history_tree.bind("<Double-1>", open_history_card)
         render_history()
 
+        timeline_rows = self.fighter_career_timeline_rows(fighter, limit=14)
+        if timeline_rows:
+            timeline_log = tk.Text(history_frame, wrap="word", height=min(14, 3 + len(timeline_rows)), bg=self.colors["panel_dark"], fg=self.colors["gold"], font=("Tahoma", 9), padx=10, pady=8)
+            timeline_log.pack(fill="x", padx=8, pady=(0, 8))
+            timeline_lines = []
+            for row in timeline_rows:
+                date = self.format_game_date(row["month"], row["week"]) if row["month"] else "Career record"
+                status = f" · {row['status'].replace('_', ' ').title()}" if row.get("status") else ""
+                timeline_lines.append(f"{date} · {row['kind']}{status}\n{self.format_game_date_text(row['summary'])}")
+            timeline_log.insert("end", "CAREER TIMELINE\n" + "\n\n".join(timeline_lines))
+            timeline_log.config(state="disabled")
         if fighter.serious_injury_history:
             medical = tk.Text(history_frame, wrap="word", height=4, bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 9), padx=10, pady=8)
             medical.pack(fill="x", padx=8, pady=(0, 8))
@@ -2473,7 +2650,9 @@ class ViewMixin:
         footer = ttk.Frame(window, style="Chrome.TFrame")
         footer.pack(fill="x", padx=8, pady=(0, 8))
         ttk.Button(footer, text="Market Identity", command=lambda: self.open_regional_identity_window(fighter)).pack(side="left", padx=4)
-        if getattr(fighter, "retired", False):
+        if getattr(self, "spectator_mode", False):
+            ttk.Label(footer, text="Observer mode — management actions are disabled", style="Chrome.TLabel").pack(side="left", padx=8)
+        elif getattr(fighter, "retired", False):
             ttk.Button(
                 footer, text="Offer Comeback Deal", style="Accent.TButton",
                 command=lambda: self.offer_comeback_deal(fighter, window),
@@ -2516,6 +2695,7 @@ class ViewMixin:
                     command=lambda promo=source_promotion: self.open_transfer_negotiation(fighter, promo, window),
                 ).pack(side="left", padx=4)
         ttk.Button(footer, text="Close", command=window.destroy).pack(side="right", padx=4)
+        return window
 
     def open_regional_identity_window(self, fighter):
         window = self.create_managed_window()
@@ -2650,7 +2830,7 @@ class ViewMixin:
         text = tk.Text(window, wrap="word", font=("Tahoma", 10), bg=self.colors["panel_dark"], fg=self.colors["text"], padx=12, pady=12)
         text.pack(fill="both", expand=True, padx=10, pady=(0, 8))
         reveal = report.get("reveal", 0)
-        text.insert("end", f"{fighter.gender} | {fighter.weight} | Age {fighter.age} | {fighter.region}\nStyle: {fighter.style if reveal >= 25 else 'Unknown'}\n\nReport status: {report.get('status', 'Unscouted')}\nConfidence: {reveal}%\nScout: {report.get('scout', 'No assigned scout')}\n\n")
+        text.insert("end", f"{fighter.gender} | {fighter.weight} | Age {fighter.age} | {fighter.region}\nStyle: {fighter.style_label if reveal >= 25 else 'Unknown'}\n\nReport status: {report.get('status', 'Unscouted')}\nConfidence: {reveal}%\nScout: {report.get('scout', 'No assigned scout')}\n\n")
         text.insert("end", "Findings:\n" + ("\n".join(f"- {note}" for note in report.get('notes', [])) or "- No verified findings yet.") + "\n\nYou can negotiate immediately. A Full Scout report is only required to reveal exact ratings and reduce recruitment risk.")
         text.config(state="disabled")
         actions = ttk.Frame(window, style="Chrome.TFrame"); actions.pack(fill="x", padx=10, pady=(0, 10))
@@ -2969,6 +3149,22 @@ class ViewMixin:
             f"MATCHUP | Fit {fit or '-'} | Build {build} | Projected hype {hype} | OVR gap {abs(a.overall - b.overall)} | "
             f"ELO gap {abs(a.elo_rating - b.elo_rating)} | {self.matchmaking_score(a, b)[1]}."
         )
+        # A feud is the most commercially significant thing about a matchup, so
+        # it is stated plainly instead of only moving the hype number.
+        grudge = self.grudge_match_state(a, b)
+        if grudge["grudge"]:
+            demand = " Both camps are demanding the rematch." if grudge["rematch_due"] else ""
+            origin = f" Origin: {grudge['origin']}." if grudge["origin"] else ""
+            pair_note += (
+                chr(10) + f"GRUDGE MATCH | Heat {grudge['heat']}/100 — booking this settles a live feud"
+                f" and lifts gate and hype.{origin}{demand}"
+            )
+        story_context = self.fight_story_summary(
+            a, b,
+            {"title": self.title_fight.get(), "main": self.main_event.get(), "tier": self.card_tier.get()},
+        )
+        if story_context:
+            pair_note += chr(10) + f"WHY THIS FIGHT MATTERS | {story_context}"
         self.matchmaking_brief_var.set(self.matchmaking_fighter_brief(a) + "\n" + self.matchmaking_fighter_brief(b) + "\n" + pair_note)
         if meetings:
             last_met = f"; last met {self.format_game_date(latest_month, 1)}" if latest_month else ""
@@ -3130,12 +3326,16 @@ class ViewMixin:
             if "TBA" in fight["fighters"]:
                 known = named_fighters[0]
                 tba_label = f"TBA {fight.get('tba_gender', known.gender)} {fight.get('tba_weight', known.weight)}"
-                booking = f"Hype {self.fight_build_score(known)} | Build TBA | Fatigue {known.fatigue} / - | Medical {self.fighter_recovery_date_label(known)} / -"
+                known_plan = self.normalize_fight_plan(fight.get("fight_plans", {}).get(known.fighter_id, "Balanced"))
+                booking = f"Plan {known_plan} / TBA | Hype {self.fight_build_score(known)} | Build TBA | Fatigue {known.fatigue} / - | Medical {self.fighter_recovery_date_label(known)} / -"
                 self.card_tree.insert("", "end", iid=str(index - 1), tags=(("non_title_champion",) if non_title_warning else ()), values=(slot, f"{known.name} vs {tba_label}", known.weight, booking))
             else:
                 a, b = named_fighters
+                plans = fight.get("fight_plans", {}) if isinstance(fight.get("fight_plans", {}), dict) else {}
+                plan_a = self.normalize_fight_plan(plans.get(a.fighter_id, "Balanced"))
+                plan_b = self.normalize_fight_plan(plans.get(b.fighter_id, "Balanced"))
                 booking = (
-                    f"Hype {self.fight_hype(a, b, fight)} | Build {self.match_build_score(a, b, fight)} | "
+                    f"Plans {plan_a} / {plan_b} | Hype {self.fight_hype(a, b, fight)} | Build {self.match_build_score(a, b, fight)} | "
                     f"Fatigue {a.fatigue} / {b.fatigue} | Medical {self.fighter_recovery_date_label(a)} / {self.fighter_recovery_date_label(b)}"
                 )
                 self.card_tree.insert("", "end", iid=str(index - 1), tags=(("non_title_champion",) if non_title_warning else ()), values=(slot, f"{a.name} vs {b.name}", a.weight, booking))
@@ -3159,6 +3359,7 @@ class ViewMixin:
             if foreign_auto or (self.booked and self.is_auto_event_name(current)):
                 self.event_name.set(self.default_event_name())
         self.refresh_event_atmosphere_forecast()
+        self.refresh_event_economics_forecast()
 
     def event_date_label(self, event):
         # Cards booked before bookings carried a weekday show the date they
@@ -3324,6 +3525,8 @@ class ViewMixin:
                 self.event_broadcaster.set("No Coverage")
             self.refresh_event_broadcaster_status()
             self.refresh_event_atmosphere_forecast()
+            self.refresh_event_economics_forecast()
+        self.refresh_event_economics_forecast()
         self.upcoming_tree.delete(*self.upcoming_tree.get_children())
         for index, event in enumerate(self.sorted_scheduled_events()):
             self.refresh_scheduled_event_auto_name(event)
@@ -3355,6 +3558,117 @@ class ViewMixin:
         region = self.event_region.get() if hasattr(self, "event_region") else self.player_region
         forecast = self.event_atmosphere({"region": region, "fights": list(getattr(self, "booked", []))})
         self.event_atmosphere_status.config(text=f"Atmosphere forecast: {forecast['mood']} {forecast['intensity']}/100 | {forecast['identity']} | Crowd wants {forecast['preference']}. Home connections: {forecast['local_fighters']} ({forecast.get('hometown_fighters', 0)} hometown), pull {forecast.get('home_pull', 0):.1f}.")
+
+    def projected_card_hype(self):
+        """Rough total hype for the fights currently on the booking card."""
+        rank_map = self.player_division_rank_map()
+        total = 0
+        for fight in list(getattr(self, "booked", [])):
+            fighters = [item for item in self.event_fight_fighters(fight) if item]
+            if len(fighters) < 2:
+                continue
+            total += self.fight_hype(fighters[0], fighters[1], fight, rank_map=rank_map)
+        return total
+
+    def suggested_event_economics(self):
+        """A sane opening price/marketing pair for the current card."""
+        region = self.event_region.get() if hasattr(self, "event_region") else self.player_region
+        venue = self.venue.get() if hasattr(self, "venue") else "Regional Arena"
+        hype = self.projected_card_hype()
+        regional_pull = self.regional_market_score(region)
+        fair = self.event_fair_ticket_price(hype, regional_pull, venue)
+        self.ensure_finance_defaults()
+        return {"ticket_price": fair, "marketing_budget": int(self.finance["marketing_budget"]), "fair_price": fair}
+
+    def apply_suggested_event_economics(self):
+        suggestion = self.suggested_event_economics()
+        if hasattr(self, "event_ticket_price"):
+            self.event_ticket_price.set(suggestion["ticket_price"])
+        if hasattr(self, "event_marketing_budget"):
+            self.event_marketing_budget.set(suggestion["marketing_budget"])
+        self._event_price_user_set = False
+        self.refresh_event_economics_forecast()
+
+    def note_manual_event_price(self):
+        """Stop auto-pricing once the player takes control of this card."""
+        self._event_price_user_set = True
+        self.refresh_event_economics_forecast()
+
+    def autoprice_event_if_untouched(self):
+        """Keep an untouched card priced at the market rate.
+
+        The company-wide default never scaled with the promotion, so a player
+        who ignored this lever drifted further from a sensible price the bigger
+        they got. Leaving it alone now means 'charge the market rate'.
+        """
+        if getattr(self, "_event_price_user_set", False) or not hasattr(self, "event_ticket_price"):
+            return
+        if not list(getattr(self, "booked", [])):
+            return
+        suggestion = self.suggested_event_economics()
+        if int(self.event_ticket_price.get() or 0) != suggestion["ticket_price"]:
+            self.event_ticket_price.set(suggestion["ticket_price"])
+
+    def refresh_event_economics_forecast(self, _event=None):
+        """Show what the current price/production/marketing choices are worth."""
+        if not hasattr(self, "event_economics_status"):
+            return
+        self.autoprice_event_if_untouched()
+        region = self.event_region.get() if hasattr(self, "event_region") else self.player_region
+        venue = self.venue.get() if hasattr(self, "venue") else "Regional Arena"
+        economics = self.selected_event_economics()
+        hype = self.projected_card_hype()
+        if not hype:
+            self.event_economics_status.config(
+                text="Card economics: book at least one complete bout to project turnout, gate and costs."
+            )
+            return
+        regional_pull = self.regional_market_score(region)
+        capacity = self.venue_capacity_for(venue)
+        fair = self.event_fair_ticket_price(hype, regional_pull, venue)
+        demand = self.ticket_price_demand_factor(economics["ticket_price"], fair)
+        marketing_factor = self.marketing_demand_factor(economics["marketing_budget"])
+        tier_name, tier = self.resolve_event_production_tier({"production_tier": economics["production_tier"]})
+        atmosphere = self.event_atmosphere({"region": region, "fights": list(getattr(self, "booked", []))})
+        forecast_event = {
+            "name": self.event_name.get() if hasattr(self, "event_name") else "Projected event",
+            "month": int(self.event_month.get()) if hasattr(self, "event_month") else self.month,
+            "week": int(self.event_week.get()) if hasattr(self, "event_week") else self.week,
+            "day": self.selected_booking_day(),
+        }
+        prior_month_events = self.player_events_in_month(forecast_event["month"], forecast_event)
+        cadence_factor = max(0.45, 1.0 / (1.0 + prior_month_events * PLAYER_EVENT_CADENCE_DECAY))
+        attendance_demand = hype * (24 + self.company_pop * 0.82 + self.company_stability * 0.22) / 14
+        attendance = min(capacity, max(80, round(
+            attendance_demand * regional_pull * 0.95
+            * max(0.0, atmosphere["attendance_factor"] + tier["atmosphere"])
+            * demand * marketing_factor * cadence_factor
+        )))
+        gate = round(attendance * economics["ticket_price"])
+        grudge_bonus = self.event_grudge_gate_bonus({"fights": list(getattr(self, "booked", []))})
+        if grudge_bonus:
+            gate = round(gate * (1 + grudge_bonus))
+        staged = round((self.finance["production_base"] + max(1, len(getattr(self, "booked", []))) * 5200
+                        + round(capacity * (5 + self.company_pop / 16))) * tier["cost"])
+        spend = staged + economics["marketing_budget"]
+        fill = attendance / max(1, capacity)
+        verdict = (
+            "priced above what this card can carry" if economics["ticket_price"] > fair * 1.25 else
+            "leaving money on the table" if economics["ticket_price"] < fair * 0.7 else
+            "priced about right"
+        )
+        grudge_note = f" | Grudge gate +{grudge_bonus:.0%}" if grudge_bonus else ""
+        if prior_month_events:
+            grudge_note += f" | Card {prior_month_events + 1} this month: commercial reach {cadence_factor:.0%}"
+        # Production and marketing are committed whether or not the show sells,
+        # so a card that eats the bank is called out before it is scheduled.
+        if spend > max(1, self.cash) * 0.6:
+            grudge_note += f"  ⚠ This card commits {spend / max(1, self.cash):.0%} of your cash before a ticket is sold."
+        self.event_economics_status.config(text=(
+            f"Card economics: ~{attendance:,} of {capacity:,} seats ({fill:.0%} full) | "
+            f"gate ~${gate:,} | {tier_name} production + marketing ~${spend:,} | "
+            f"market price ~${fair} — you are {verdict}.{grudge_note}"
+        ))
 
     def open_fanbase_window(self):
         fanbase = getattr(self, "fanbase", {}) or {}
@@ -3457,14 +3771,15 @@ class ViewMixin:
             offer = ""
             if getattr(fighter, "ai_offer_company", ""):
                 offer = f"{fighter.ai_offer_company}: ${fighter.ai_offer_purse:,}"
-            report = self.scouting_report_for(fighter)
+            raw_report = self.scouting_report_for(fighter)
+            report = self.scouting_intel_report(raw_report)
             reveal = self.scouting_effective_confidence(report) if scouting_on and report else (0 if scouting_on else 100)
             if in_closed_division:
                 tag = "DIVISION CLOSED"
             elif not scouting_on:
                 tag = "BLUE CHIP" if self.is_blue_chip_prospect(fighter) else ""
-            elif report.get("status") == "In progress":
-                tag = f"{report.get('kind', 'report').upper()} {report.get('weeks_remaining', 0)}W"
+            elif raw_report.get("status") == "In progress":
+                tag = f"{raw_report.get('kind', 'report').upper()} {raw_report.get('weeks_remaining', 0)}W"
             elif report.get("reveal", 0) >= 100:
                 tag = "FULL" if self.scouting_report_is_current_full(report) else "STALE"
             elif report:
@@ -3504,8 +3819,9 @@ class ViewMixin:
 
     def market_scout_summary(self, fighter):
         report = self.scouting_report_for(fighter)
+        intel_report = self.scouting_intel_report(report)
         scouting_on = bool(self.rules.get("scouting_mode", False))
-        reveal = self.scouting_effective_confidence(report) if scouting_on and report else (0 if scouting_on else 100)
+        reveal = self.scouting_effective_confidence(intel_report) if scouting_on and intel_report else (0 if scouting_on else 100)
         confidence = f"{reveal}% confidence" if self.rules.get("scouting_mode", False) else "Full public info"
         division_closed = self.belt_key(fighter.gender, fighter.weight) in set(getattr(self, "closed_divisions", set()))
         eligibility = "Eligible to sign into an active division."
@@ -3543,7 +3859,7 @@ class ViewMixin:
         offer = "No known rival offer."
         if getattr(fighter, "ai_offer_company", ""):
             offer = f"Rival offer: {fighter.ai_offer_company} at ${fighter.ai_offer_purse:,}. Move quickly or raise your terms."
-        notes = list(report.get("notes", []))
+        notes = list(intel_report.get("notes", []))
         if not notes and reveal < 35:
             notes = ["Not enough reliable information yet."]
         elif not notes:
@@ -3553,15 +3869,15 @@ class ViewMixin:
             hidden = "\nHidden: exact OVR/popularity/star/media/professionalism may still be off."
         # The Scouting centre and this panel used to reach the reader with two
         # unrelated verdicts. Show the formal one here too, with its meaning.
-        if report.get("status") == "Complete":
-            verdict, verdict_reason = self.scout_signing_recommendation(fighter, report)
+        if intel_report.get("status") == "Complete":
+            verdict, verdict_reason = self.scout_signing_recommendation(fighter, intel_report)
             verdict_block = f"Scout verdict: {verdict}\n{verdict_reason}"
         else:
             verdict_block = f"Scout verdict: PENDING\n{self.scouting_verdict_descriptor('PENDING')}"
         return (
             f"{fighter.name}\n"
             f"{fighter.gender} {fighter.weight} | Age {fighter.age} | {fighter.region}\n"
-            f"Record {fighter.record} | Style {fighter.style if reveal >= 25 or reveal == 100 else 'Unknown'}\n"
+            f"Record {fighter.record} | Style {fighter.style_label if reveal >= 25 or reveal == 100 else 'Unknown'}\n"
             f"Eligibility: {eligibility}\n\n"
             f"Report: {report.get('kind', 'none').title() if report else 'None'} | {confidence}\n"
             f"Scout: {report.get('scout', 'No assigned scout')}\n"
@@ -3587,6 +3903,7 @@ class ViewMixin:
 
     def open_game_settings_window(self):
         """Persistent gameplay, market, replay, and Fight Night audio settings."""
+        self.ensure_rule_defaults()
         window = self.create_managed_window()
         window.title("Game Settings")
         window.geometry("620x650")
@@ -3624,6 +3941,20 @@ class ViewMixin:
         ttk.Entry(replay_row, textvariable=replay_limit_var, width=10).pack(side="left", pady=6)
         ttk.Label(replay_row, text="cards", style="Inset.TLabel").pack(side="left", padx=6, pady=6)
         ttk.Label(body, text="Older cards still keep compact results and scorecards permanently; this only controls how many global cards keep full watchable play-by-play. Use 0 for compact history only.", style="Inset.TLabel", wraplength=510, justify="left").pack(anchor="w", padx=12, pady=(2, 4))
+        commentary_row = ttk.Frame(body, style="Inset.TFrame")
+        commentary_row.pack(fill="x", padx=12, pady=(8, 2))
+        ttk.Label(commentary_row, text="Fight commentary", style="Inset.TLabel").pack(side="left", padx=(8, 6), pady=6)
+        commentary_mode_var = tk.StringVar(value=self.rules["fight_commentary_mode"])
+        ttk.Combobox(
+            commentary_row, state="readonly", values=FIGHT_COMMENTARY_MODES,
+            textvariable=commentary_mode_var, width=10,
+        ).pack(side="left", pady=6)
+        ttk.Label(commentary_row, text="Voice", style="Inset.TLabel").pack(side="left", padx=(14, 6), pady=6)
+        commentary_personality_var = tk.StringVar(value=self.rules["fight_commentary_personality"])
+        ttk.Combobox(
+            commentary_row, state="readonly", values=FIGHT_COMMENTARY_PERSONALITIES,
+            textvariable=commentary_personality_var, width=11,
+        ).pack(side="left", pady=6)
         audio_separator = ttk.Separator(body, orient="horizontal")
         audio_separator.pack(fill="x", padx=12, pady=(12, 4))
         ttk.Label(body, text="FIGHT NIGHT AUDIO", style="Section.TLabel").pack(anchor="w", padx=12, pady=(2, 4))
@@ -3678,6 +4009,9 @@ class ViewMixin:
             except (tk.TclError, ValueError):
                 replay_limit = GLOBAL_RESULT_REPLAY_LIMIT
             self.rules["global_result_replay_limit"] = max(0, replay_limit)
+            self.rules["fight_commentary_mode"] = commentary_mode_var.get()
+            self.rules["fight_commentary_personality"] = commentary_personality_var.get()
+            self.ensure_rule_defaults()
             self.rules["fight_night_audio_enabled"] = bool(audio_enabled_var.get())
             self.rules["fight_night_audio_output"] = audio_output_var.get()
             self.set_fight_night_audio_volume(audio_volume_var.get())
@@ -3714,12 +4048,15 @@ class ViewMixin:
             return False
         scouts = [staff for staff in self.staff if staff.get("role") == "Scout"]
         if scout_name:
-            scout = next((staff for staff in scouts if staff.get("name") == scout_name), None)
+            scout = next((staff for staff in scouts if self.scout_identity_key(staff) == scout_name), None)
+            if scout is None:
+                matches = [staff for staff in scouts if staff.get("name") == scout_name]
+                scout = matches[0] if len(matches) == 1 else None
             if not scout:
                 messagebox.showinfo("Scouting", "That scout is no longer employed.")
                 return False
         else:
-            available = [staff for staff in scouts if self.scout_workload(staff.get("name")) < self.scout_capacity(staff)]
+            available = [staff for staff in scouts if self.scout_workload(staff) < self.scout_capacity(staff)]
             scout = max(
                 available,
                 key=lambda staff: (
@@ -3740,7 +4077,7 @@ class ViewMixin:
                 messagebox.showinfo("Scouting", "Your independent contractor is already handling another report. Hire a Scout for more capacity.")
                 return False
             scout = {"name": "Independent Contractor", "skill": 42, "fighter_judging": 42, "potential_judging": 38, "efficiency": 35, "regional_knowledge": 35, "networking": 35, "reliability": 40, "professionalism": 50}
-        elif self.scout_workload(scout.get("name")) >= self.scout_capacity(scout):
+        elif self.scout_workload(scout) >= self.scout_capacity(scout):
             # Automatic assignment races its own slot accounting; it must fail
             # quietly rather than interrupting the week with a dialog.
             if not automatic:
@@ -3760,7 +4097,10 @@ class ViewMixin:
         self.scouting_reports = getattr(self, "scouting_reports", {})
         base_weeks = {"basic": 2, "full": 6, "observation": 26}.get(kind, 2)
         weeks = base_weeks if kind == "observation" else max(1, base_weeks - int(efficiency >= 80))
-        cost = 0 if automatic else {"basic": 2500, "full": 7500, "observation": 4000}.get(kind, 2500)
+        # Delegation still consumes a departmental budget. Free automatic
+        # dossiers eventually mapped the whole market without a decision or
+        # trade-off; routine work is discounted, not free.
+        cost = (1000 if automatic else {"basic": 2500, "full": 7500, "observation": 4000}.get(kind, 2500))
         if fighter.region != self.player_region:
             cost = round(cost * 1.35)
         if independent:
@@ -3771,25 +4111,25 @@ class ViewMixin:
             if not automatic:
                 messagebox.showinfo("Scouting", f"This assignment needs ${cost:,}.")
             return False
+        # Pending assignments must not expose conclusions computed from hidden
+        # ratings. Opinion notes and estimates are created only on completion.
         notes = []
-        if automatic:
-            notes.append("Proactively selected by an idle staff scout from public market information.")
-        if confidence >= 35:
-            notes.append("Strong striking base" if fighter.striking >= fighter.wrestling else "Reliable wrestling base")
-        if confidence >= 50:
-            notes.append("High upside" if fighter.potential >= fighter.overall + 12 else "Limited upside")
-        if confidence >= 65:
-            notes.append("Durable and well-conditioned" if fighter.cardio + fighter.chin >= 145 else "Conditioning or durability concern")
-        if confidence >= 80:
-            notes.append("Professional preparation" if fighter.professionalism >= 70 else "Preparation consistency concern")
         key = self.scouting_report_key(fighter)
-        self.scouting_reports[key] = {"schema_version": 2, "fighter_id": key, "fighter_name": fighter.name, "kind": kind, "status": "In progress", "started_week": self.calendar_week_index(), "weeks_remaining": weeks, "confidence": confidence, "reveal": 0, "scout": scout.get("name"), "region": fighter.region, "notes": notes, "cost": cost, "automatic": bool(automatic), "estimates": self.build_scouting_estimates(fighter, scout, kind, confidence), "prior_kind": existing.get("kind", ""), "prior_confidence": self.scouting_effective_confidence(existing) if existing else 0, "prior_notes": list(existing.get("notes", [])) if existing else []}
+        prior_report = deepcopy(existing) if existing.get("status") == "Complete" else deepcopy(existing.get("prior_report", {}))
+        if prior_report:
+            prior_report.pop("prior_report", None)
+        history = self.scouting_report_history(existing)
+        prior_snapshot = self.scouting_report_snapshot(prior_report)
+        if prior_snapshot:
+            history = (history + [prior_snapshot])[-12:]
+        self.scouting_reports[key] = {"schema_version": 4, "fighter_id": key, "fighter_name": fighter.name, "kind": kind, "status": "In progress", "started_week": self.calendar_week_index(), "weeks_remaining": weeks, "confidence": confidence, "reveal": 0, "scout": scout.get("name"), "scout_id": self.scout_identity_key(scout), "region": fighter.region, "notes": notes, "cost": cost, "automatic": bool(automatic), "estimates": {}, "prior_report": prior_report, "prior_kind": existing.get("kind", ""), "prior_confidence": self.scouting_effective_confidence(existing) if existing else 0, "prior_notes": list(existing.get("notes", [])) if existing else [], "history": history, "look_number": len(history) + 1}
         if cost:
             self.cash -= cost
             self.record_finance_transaction(f"Scouting: {fighter.name} ({kind})", costs=cost)
         cost_text = f" Cost ${cost:,}." if cost else " Routine staff assignment; no additional fee."
         assignment_text = f"{scout.get('name')} began {'an observation assignment' if kind == 'observation' else f'a {kind} report'} on {fighter.name}.{cost_text}"
         self.scouting.append(assignment_text)
+        self.append_scouting_history("Assignment Started", fighter, assignment_text, self.scouting_reports[key])
         if not automatic:
             self.inbox.append({"subject": f"Scouting Assignment - {fighter.name}", "body": assignment_text + (" The report completes after their next fight." if kind == "observation" else f" Due in {weeks} week(s)."), "type": "Scouting", "resolved": True, "fighter_id": key})
             # Screens are built lazily. A scouting purchase must not fail after
@@ -4242,7 +4582,7 @@ class ViewMixin:
             ("Fatigue", left_fighter.fatigue, "lower", right_fighter.fatigue),
             ("Title Wins", left_fighter.title_wins, "higher", right_fighter.title_wins),
             ("Title Defenses", left_fighter.title_defenses, "higher", right_fighter.title_defenses),
-            ("Style", left_fighter.style, None, right_fighter.style),
+            ("Style", left_fighter.style_label, None, right_fighter.style_label),
             ("Stance", left_fighter.stance, None, right_fighter.stance),
             ("Trait", left_fighter.trait, None, right_fighter.trait),
             ("Camp", left_fighter.camp, None, right_fighter.camp),
@@ -4834,6 +5174,7 @@ class ViewMixin:
         promotion_name = division.get("promotion_name", f"{self.player_company_name} {'BJJ' if sport == 'Brazilian Jiu-Jitsu' else sport}")
         division.setdefault("promotion_name", promotion_name)
         division.setdefault("booked_bouts", [])
+        self.ensure_player_combat_division_identity(sport, world)
         window.title(f"{promotion_name} - {sport}")
         window.geometry("1280x760")
         window.minsize(1020, 640)
@@ -4870,6 +5211,12 @@ class ViewMixin:
         target_bouts_var = tk.IntVar(value=max(1, min(14, int(division.get("card_target_bouts", 6) or 6))))
         event_name_var = tk.StringVar(value=division.get("next_event_name", f"{promotion_name} {sport} Night"))
         title_var = tk.BooleanVar(value=False)
+        next_month, next_week = self.combat_sport_event_date_parts(self.calendar_week_index() + 1)
+        schedule_month_var = tk.IntVar(value=next_month)
+        schedule_week_var = tk.IntVar(value=next_week)
+        production_var = tk.StringVar(value=division.get("next_production", "Regional"))
+        marketing_var = tk.IntVar(value=int(division.get("next_marketing", 0) or 0))
+        forecast_var = tk.StringVar(value="Build a card to see its event forecast.")
 
         roster_search_var = tk.StringVar(value="")
         roster_division_var = tk.StringVar(value="All")
@@ -4926,6 +5273,18 @@ class ViewMixin:
         )
         strategy_box.pack(side="left", padx=(0, 8), pady=4)
         ttk.Checkbutton(matchmaking_setup, text="Championship bout", variable=title_var).pack(side="left", padx=6, pady=4)
+
+        event_plan_controls = ttk.Frame(matchmaking_tab, style="Inset.TFrame")
+        event_plan_controls.pack(fill="x", padx=6, pady=(0, 6))
+        ttk.Label(event_plan_controls, text="Schedule Month", style="Inset.TLabel").pack(side="left", padx=(6, 3), pady=4)
+        ttk.Spinbox(event_plan_controls, from_=1, to=2400, width=5, textvariable=schedule_month_var).pack(side="left", padx=(0, 6))
+        ttk.Label(event_plan_controls, text="Week", style="Inset.TLabel").pack(side="left", padx=(0, 3))
+        ttk.Spinbox(event_plan_controls, from_=1, to=4, width=3, textvariable=schedule_week_var).pack(side="left", padx=(0, 10))
+        ttk.Label(event_plan_controls, text="Production", style="Inset.TLabel").pack(side="left", padx=(0, 3))
+        ttk.Combobox(event_plan_controls, values=("Local", "Regional", "Arena"), textvariable=production_var, state="readonly", width=10).pack(side="left", padx=(0, 10))
+        ttk.Label(event_plan_controls, text="Marketing $", style="Inset.TLabel").pack(side="left", padx=(0, 3))
+        ttk.Spinbox(event_plan_controls, from_=0, to=250000, increment=5000, width=9, textvariable=marketing_var).pack(side="left", padx=(0, 10))
+        ttk.Label(event_plan_controls, textvariable=forecast_var, style="Inset.TLabel").pack(side="left", padx=4)
 
         matchup_panes = ttk.Panedwindow(matchmaking_tab, orient="horizontal")
         matchup_panes.pack(fill="both", expand=True, padx=6, pady=(0, 6))
@@ -5011,6 +5370,14 @@ class ViewMixin:
 
         finance_var = tk.StringVar(value="")
         ttk.Label(events_tab, textvariable=finance_var, style="Inset.TLabel", justify="left").pack(fill="x", padx=8, pady=(8, 5))
+        scheduled_panel, scheduled_inner = self.section(events_tab, "UPCOMING SCHEDULED CARDS")
+        scheduled_panel.pack(fill="x", padx=6, pady=(0, 6))
+        scheduled_tree = ttk.Treeview(scheduled_inner, columns=("date", "show", "bouts", "production", "forecast"), show="headings", height=4)
+        for column, label, width in (("date", "Date", 100), ("show", "Show", 240), ("bouts", "Bouts", 55), ("production", "Production", 90), ("forecast", "Forecast", 180)):
+            scheduled_tree.heading(column, text=label)
+            scheduled_tree.column(column, width=width, anchor="center")
+        scheduled_tree.column("show", anchor="w")
+        scheduled_tree.pack(fill="x", expand=True)
         events_body = ttk.Panedwindow(events_tab, orient="horizontal")
         events_body.pack(fill="both", expand=True, padx=6, pady=(0, 6))
         events_panel, events_inner = self.section(events_body, "COMPLETED CARDS")
@@ -5047,14 +5414,15 @@ class ViewMixin:
         auto_card_spin.pack(side="left", padx=(0, 8))
 
         def roster_members():
-            names = set(division.get("roster", []))
-            return [fighter for fighter in world.get("roster", []) if fighter.name in names and fighter.sport_employer == self.player_company_name and not fighter.retired]
+            member_ids = set((self.ensure_player_combat_division_identity(sport, world) or {}).get("roster_ids", []))
+            return [fighter for fighter in world.get("roster", []) if fighter.fighter_id in member_ids and fighter.sport_employer == self.player_company_name and not fighter.retired]
 
         roster_row_fighters = {}
         athlete_row_fighters = {}
         opponent_row_fighters = {}
         market_row_fighters = {}
         event_rows = {}
+        scheduled_rows = {}
 
         def set_status(text, tone="normal"):
             colors = {
@@ -5066,17 +5434,30 @@ class ViewMixin:
             decision_var.set(text)
             decision_bar.config(fg=colors.get(tone, self.colors["text"]))
 
-        def used_names():
+        def used_ids():
             return {
-                name
+                fighter_id
                 for bout in division.get("booked_bouts", [])
-                for name in (bout.get("a"), bout.get("b"))
-                if name
+                for fighter_id in (bout.get("a_id"), bout.get("b_id"))
+                if fighter_id
+            }
+
+        def scheduled_ids():
+            return {
+                fighter_id
+                for event in division.get("scheduled_events", [])
+                for bout in event.get("bouts", [])
+                for fighter_id in (bout.get("a_id"), bout.get("b_id"))
+                if fighter_id
             }
 
         def athlete_readiness(fighter):
-            if fighter.name in used_names():
+            if fighter.fighter_id in used_ids():
                 return "Booked"
+            if fighter.fighter_id in scheduled_ids():
+                return "Scheduled"
+            if int(getattr(fighter, "contract_months", 0) or 0) <= 0:
+                return "Contract expired"
             if fighter.injured:
                 return f"Injured {fighter.injured} mo"
             if fighter.fatigue >= 55:
@@ -5134,6 +5515,7 @@ class ViewMixin:
             target_bouts_var.set(division["card_target_bouts"])
             members = sorted(roster_members(), key=lambda fighter: (self.combat_sport_rating(fighter, sport), fighter.record_w - fighter.record_l), reverse=True)
             division["roster"] = [fighter.name for fighter in members]
+            division["roster_ids"] = [fighter.fighter_id for fighter in members]
             self.refresh_combat_sport_rankings(sport, world, employer=self.player_company_name, division=division)
             self.combat_sport_record_book(sport, world, self.player_company_name, True)
             champions = {name for name in division.get("titles", {}).values() if name}
@@ -5184,8 +5566,7 @@ class ViewMixin:
                 if roster_tree.exists(row_id):
                     roster_tree.selection_add(row_id)
 
-            member_names = {fighter.name for fighter in members}
-            division["booked_bouts"] = [bout for bout in division.get("booked_bouts", []) if bout.get("a") in member_names and bout.get("b") in member_names]
+            self.ensure_player_combat_division_identity(sport, world)
 
             current_athlete = athlete_tree.selection()
             athlete_tree.delete(*athlete_tree.get_children())
@@ -5206,10 +5587,10 @@ class ViewMixin:
                 opponent_row_fighters.clear()
 
             card_tree.delete(*card_tree.get_children())
-            by_name = {fighter.name: fighter for fighter in members}
+            by_id = {fighter.fighter_id: fighter for fighter in members}
             projected_draw = 0
             for index, bout in enumerate(division["booked_bouts"], 1):
-                a, b = by_name.get(bout.get("a")), by_name.get(bout.get("b"))
+                a, b = by_id.get(bout.get("a_id")), by_id.get(bout.get("b_id"))
                 if not a or not b:
                     continue
                 quality, score = matchup_quality(a, b)
@@ -5229,6 +5610,16 @@ class ViewMixin:
                 f"{sum(1 for bout in division['booked_bouts'] if bout.get('title'))} title | "
                 f"Projected draw {projected_draw}"
             )
+            planned_objects = [
+                {**bout, "a": by_id.get(bout.get("a_id")), "b": by_id.get(bout.get("b_id"))}
+                for bout in division.get("booked_bouts", [])
+                if by_id.get(bout.get("a_id")) and by_id.get(bout.get("b_id"))
+            ]
+            if planned_objects:
+                forecast = self.combat_sport_event_forecast(sport, planned_objects, production_var.get(), marketing_var.get())
+                forecast_var.set(f"Forecast ${forecast['revenue']:,} revenue / ${forecast['profit']:+,} net")
+            else:
+                forecast_var.set("Build a card to see its event forecast.")
 
             market_tree.delete(*market_tree.get_children())
             market_row_fighters.clear()
@@ -5261,6 +5652,17 @@ class ViewMixin:
 
             events_tree.delete(*events_tree.get_children())
             event_rows.clear()
+            scheduled_tree.delete(*scheduled_tree.get_children())
+            scheduled_rows.clear()
+            for index, event in enumerate(division.get("scheduled_events", [])):
+                row_id = f"scheduled:{index}"
+                scheduled_rows[row_id] = event
+                forecast = event.get("forecast", {})
+                scheduled_tree.insert("", "end", iid=row_id, values=(
+                    self.format_game_date(event.get("month", self.month), event.get("week", 1)),
+                    event.get("event_name", f"{sport} Card"), len(event.get("bouts", [])),
+                    event.get("production", "Regional"), f"${forecast.get('profit', 0):+,} net",
+                ))
             for index, event in enumerate(division.get("events", [])[:50]):
                 finance = event.get("finance", {})
                 event_rows[f"event:{index}"] = event
@@ -5300,8 +5702,12 @@ class ViewMixin:
                 set_status(f"A {self.combat_sport_division_label(key)} title bout is already on this card.", "bad")
                 return
             champion = division.get("titles", {}).get(key, "")
+            champion_id = division.get("title_ids", {}).get(key, "")
             ranked = division.get("rankings_by_division", {}).get(key, [])
-            if title and champion and champion not in (a.name, b.name):
+            if title and champion_id and champion_id not in (a.fighter_id, b.fighter_id):
+                set_status(f"{champion} holds this title and must be in the championship bout.", "bad")
+                return
+            if title and champion and not champion_id and champion not in (a.name, b.name):
                 set_status(f"{champion} holds this title and must be in the championship bout.", "bad")
                 return
             if title and not champion and (a.name not in ranked[:4] or b.name not in ranked[:4]):
@@ -5309,7 +5715,7 @@ class ViewMixin:
                 return
             quality, score = matchup_quality(a, b)
             division.setdefault("booked_bouts", []).append({
-                "a": a.name, "b": b.name, "title": title, "title_key": key,
+                "a_id": a.fighter_id, "b_id": b.fighter_id, "a": a.name, "b": b.name, "title": title, "title_key": key,
                 "booking_reason": f"Player booked {quality.lower()} matchup ({score})",
             })
             set_status(f"Added {a.name} vs {b.name}. {quality} competitive fit ({score}/100).", "good")
@@ -5356,28 +5762,28 @@ class ViewMixin:
                 target = 6
             division["card_target_bouts"] = target
             existing = list(division.get("booked_bouts", []))
-            existing_names = used_names()
+            existing_ids = used_ids()
             proposed = self.build_combat_sport_card(
                 sport, world, self.player_company_name, player_owned=True, target_bouts=target + len(existing),
             )
-            member_names = {fighter.name for fighter in roster_members()}
+            member_ids = {fighter.fighter_id for fighter in roster_members()}
             added = 0
             for bout in proposed:
                 if len(existing) >= target:
                     break
                 a, b = bout["a"], bout["b"]
-                if a.name not in member_names or b.name not in member_names:
+                if a.fighter_id not in member_ids or b.fighter_id not in member_ids:
                     continue
-                if a.name in existing_names or b.name in existing_names:
+                if a.fighter_id in existing_ids or b.fighter_id in existing_ids:
                     continue
                 if athlete_readiness(a) != "Ready" or athlete_readiness(b) != "Ready":
                     continue
                 existing.append({
-                    "a": a.name, "b": b.name, "title": bool(bout.get("title")),
+                    "a_id": a.fighter_id, "b_id": b.fighter_id, "a": a.name, "b": b.name, "title": bool(bout.get("title")),
                     "title_key": bout.get("title_key", self.combat_sport_division_key(a, sport)),
                     "booking_reason": bout.get("booking_reason", "Smart matchmaking"),
                 })
-                existing_names.update((a.name, b.name))
+                existing_ids.update((a.fighter_id, b.fighter_id))
                 added += 1
             division["booked_bouts"] = existing
             if added:
@@ -5391,10 +5797,10 @@ class ViewMixin:
             if not planned:
                 set_status("Build at least one matchup before running the show.", "warn")
                 return
-            members = {fighter.name: fighter for fighter in roster_members()}
+            members = {fighter.fighter_id: fighter for fighter in roster_members()}
             bouts = []
             for bout in planned:
-                a, b = members.get(bout.get("a")), members.get(bout.get("b"))
+                a, b = members.get(bout.get("a_id")), members.get(bout.get("b_id"))
                 if not a or not b:
                     set_status("A booked athlete is no longer on this roster. Remove that matchup and rebuild the card.", "bad")
                     return
@@ -5420,6 +5826,45 @@ class ViewMixin:
             notebook.select(events_tab)
             finance = card.get("finance", {})
             set_status(f"{name} completed: {len(card.get('results', []))} bouts, profit ${finance.get('profit', 0):,}. Select it below to watch the replay.", "good")
+
+        def schedule_booked_card():
+            planned = list(division.get("booked_bouts", []))
+            if not planned:
+                set_status("Build at least one matchup before scheduling the show.", "warn")
+                return
+            try:
+                target_month = max(1, int(schedule_month_var.get()))
+                target_week = max(1, min(4, int(schedule_week_var.get())))
+                marketing = max(0, min(250000, int(marketing_var.get())))
+            except (TypeError, ValueError, tk.TclError):
+                set_status("Enter a valid month, week, and marketing budget.", "bad")
+                return
+            name = event_name_var.get().strip() or f"{promotion_name} {sport} Night"
+            ok, note, _event = self.schedule_player_combat_event(
+                sport, planned, target_month, target_week, name,
+                production=production_var.get(), marketing=marketing,
+            )
+            if not ok:
+                set_status(note, "bad")
+                return
+            division["next_event_name"] = name
+            division["next_production"] = production_var.get()
+            division["next_marketing"] = marketing
+            set_status(note, "good")
+            redraw()
+            notebook.select(events_tab)
+
+        def cancel_selected_scheduled_card():
+            selected = scheduled_tree.selection()
+            event = scheduled_rows.get(selected[0]) if selected else None
+            if not event:
+                set_status("Select an upcoming scheduled card first.", "warn")
+                return
+            if not messagebox.askyesno("Cancel Scheduled Card", f"Cancel {event.get('event_name', sport + ' card')} and release its booked athletes?"):
+                return
+            ok, note = self.cancel_player_combat_event(sport, event.get("event_id", ""))
+            set_status(note, "good" if ok else "bad")
+            redraw()
 
         def watch_selected_card(_event=None):
             selected = events_tree.selection()
@@ -5491,18 +5936,17 @@ class ViewMixin:
             fighter = next((candidate for candidate in world.get("roster", []) if candidate.fighter_id == fighter_id), None)
             if not fighter:
                 return
-            cost = max(8000, fighter.popularity * 450 + round(self.combat_sport_display_rating(fighter, sport)) * 260)
-            if self.cash < cost:
-                set_status(f"Need ${cost:,} to buy out and sign {fighter.name}.", "bad")
+            terms = self.combat_sport_contract_terms(sport, fighter)
+            offer = self.prompt_combat_sport_offer(sport, fighter, terms, window)
+            if offer is None:
                 return
-            self.cash -= cost
-            self.record_finance_transaction(f"Combat-sport signing: {fighter.name}", costs=cost)
-            fighter.sport_employer = self.player_company_name
-            division["roster"] = list(dict.fromkeys(division.get("roster", []) + [fighter.name]))
-            fighter.fight_history = (fighter.fight_history or [])
-            fighter.fight_history.insert(0, f"Month {self.month}: Signed with {self.player_company_name}'s {sport} division.")
-            self.news.insert(0, f"{self.player_company_name} signed {fighter.name} to its {sport} division for ${cost:,}.")
-            set_status(f"Signed {fighter.name} for ${cost:,}. They are now available in the Roster and Matchmaking workspaces.", "good")
+            ok, note, _fighter = self.sign_player_combat_flagship(
+                sport, fighter_id, purse=offer["purse"], months=offer["months"],
+            )
+            if not ok:
+                set_status(note, "bad")
+                return
+            set_status(note, "good")
             redraw()
             self.refresh_all()
 
@@ -5658,6 +6102,7 @@ class ViewMixin:
         ttk.Button(matchup_actions, text="Move Down", command=lambda: move_booked_matchup(1)).pack(side="left", padx=4)
         ttk.Button(matchup_actions, text="Remove", command=remove_booked_matchup).pack(side="left", padx=4)
         ttk.Button(matchup_actions, text="Clear Card", command=clear_card).pack(side="left", padx=4)
+        ttk.Button(matchup_actions, text="Schedule Show", style="Accent.TButton", command=schedule_booked_card).pack(side="right", padx=4)
         ttk.Button(matchup_actions, text="Run Show Now", style="Accent.TButton", command=run_booked_card).pack(side="right", padx=4)
 
         market_search.bind("<KeyRelease>", lambda _event: redraw())
@@ -5678,6 +6123,7 @@ class ViewMixin:
         events_tree.bind("<Double-1>", watch_selected_card)
         ttk.Button(events_controls, text="Watch Selected Card", style="Accent.TButton", command=watch_selected_card).pack(side="left", padx=4)
         ttk.Button(events_controls, text="Records & History", command=lambda: self.open_combat_sport_history_window(sport, player_owned=True)).pack(side="left", padx=4)
+        ttk.Button(events_controls, text="Cancel Scheduled", command=cancel_selected_scheduled_card).pack(side="left", padx=4)
         ttk.Button(events_controls, text="Refresh", command=redraw).pack(side="left", padx=4)
 
         footer = ttk.Frame(window, style="Chrome.TFrame")
@@ -5752,6 +6198,197 @@ class ViewMixin:
         story_list.bind("<<ListboxSelect>>", show_story)
         story_list.bind("<Double-1>", lambda _event: open_context())
         ttk.Button(body, text="Open Story Context", style="Accent.TButton", command=open_context).pack(anchor="e", pady=(6, 0))
+        render()
+
+    def open_storylines_window(self):
+        """Browse the bounded narrative index without advancing or rebuilding it."""
+        self.ensure_story_thread_index()
+        window = self.create_managed_window(key="storylines")
+        window.title("MMA Warriors - Storylines")
+        window.geometry("1040x680")
+        window.minsize(820, 520)
+        window.configure(bg=self.colors["chrome"])
+
+        header = ttk.Frame(window, style="Header.TFrame")
+        header.pack(fill="x", padx=8, pady=(8, 0))
+        ttk.Label(header, text="ACTIVE STORYLINES", style="ScreenTitle.TLabel").pack(side="left", padx=10, pady=5)
+        ttk.Label(
+            header,
+            text="Persistent threads created by real simulation events",
+            style="Chrome.TLabel",
+        ).pack(side="right", padx=10)
+
+        controls = ttk.Frame(window, style="Chrome.TFrame")
+        controls.pack(fill="x", padx=8, pady=6)
+        filter_var = tk.StringVar(value="Active")
+        ttk.Label(controls, text="Show", style="Chrome.TLabel").pack(side="left", padx=(4, 3))
+        filter_box = ttk.Combobox(
+            controls, textvariable=filter_var, values=("Active", "Resolved", "All"),
+            state="readonly", width=14,
+        )
+        filter_box.pack(side="left", padx=3)
+        count_var = tk.StringVar()
+        ttk.Label(controls, textvariable=count_var, style="Chrome.TLabel").pack(side="right", padx=4)
+
+        body = ttk.Frame(window, style="Chrome.TFrame")
+        body.pack(fill="both", expand=True, padx=8, pady=(0, 6))
+        body.columnconfigure(0, weight=3)
+        body.columnconfigure(1, weight=4)
+        body.rowconfigure(0, weight=1)
+
+        table_frame = ttk.Frame(body, style="Panel.TFrame")
+        table_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+        tree = ttk.Treeview(
+            table_frame,
+            columns=("status", "type", "story", "phase", "updated"),
+            show="headings", selectmode="browse",
+        )
+        for column, label, width in (
+            ("status", "Status", 72), ("type", "Type", 82), ("story", "Story", 220),
+            ("phase", "Phase", 100), ("updated", "Updated", 92),
+        ):
+            tree.heading(column, text=label)
+            tree.column(column, width=width, minwidth=55, anchor="w", stretch=column == "story")
+        table_scroll = ttk.Scrollbar(table_frame, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=table_scroll.set)
+        tree.pack(side="left", fill="both", expand=True)
+        table_scroll.pack(side="right", fill="y")
+
+        detail_frame = ttk.Frame(body, style="Panel.TFrame")
+        detail_frame.grid(row=0, column=1, sticky="nsew")
+        detail = tk.Text(
+            detail_frame, wrap="word", bg=self.colors["panel_dark"], fg=self.colors["text"],
+            insertbackground=self.colors["text"], font=("Tahoma", 10), padx=12, pady=12,
+        )
+        detail_scroll = ttk.Scrollbar(detail_frame, orient="vertical", command=detail.yview)
+        detail.configure(yscrollcommand=detail_scroll.set)
+        detail.pack(side="left", fill="both", expand=True)
+        detail_scroll.pack(side="right", fill="y")
+
+        rows = []
+
+        def thread_title(thread):
+            names = list(thread.get("fighter_names", []) or [])
+            if len(names) >= 2:
+                return f"{names[0]} vs {names[1]}"
+            if names:
+                return names[0]
+            staff_names = list(thread.get("staff_names", []) or [])
+            if staff_names:
+                return staff_names[0]
+            companies = list(thread.get("companies", []) or [])
+            return companies[0] if companies else thread.get("type", "World story")
+
+        def selected_thread():
+            selected = tree.selection()
+            if not selected:
+                return None
+            try:
+                return rows[int(selected[0].split(":", 1)[1])]
+            except (IndexError, ValueError):
+                return None
+
+        def show_detail(_event=None):
+            thread = selected_thread()
+            detail.config(state="normal")
+            detail.delete("1.0", "end")
+            if not thread:
+                detail.insert("end", "Select a storyline to review its stakes and recorded beats.")
+            else:
+                status = str(thread.get("status", "active")).replace("_", " ").title()
+                phase = str(thread.get("phase", "active")).replace("_", " ").title()
+                detail.insert("end", f"{thread_title(thread)}\n\n")
+                detail.insert("end", f"{thread.get('type', 'World')} | {status} | {phase}\n")
+                detail.insert("end", f"Importance: {thread.get('importance', 1)}/5\n")
+                if thread.get("staff_ids"):
+                    detail.insert(
+                        "end",
+                        f"Staff role: {thread.get('staff_role', 'Operations')} | "
+                        f"Legacy: {int(thread.get('staff_legacy_score', 0) or 0)} | "
+                        f"Distinct milestones: {len(thread.get('contribution_kinds', []) or [])}\n",
+                    )
+                scoreboard = thread.get("scoreboard", {})
+                if isinstance(scoreboard, dict) and scoreboard:
+                    ordered_scores = sorted(
+                        ((str(company), int(score or 0)) for company, score in scoreboard.items()),
+                        key=lambda row: (-row[1], row[0]),
+                    )
+                    score_line = " | ".join(f"{company} {score}" for company, score in ordered_scores)
+                    leader = str(thread.get("leader", "") or "Tied")
+                    detail.insert(
+                        "end",
+                        f"\nPROMOTION SCOREBOARD\n{score_line}\n"
+                        f"Leader: {leader} | Contested events: {thread.get('contests', 0)}\n",
+                    )
+                if thread.get("stakes"):
+                    detail.insert("end", f"\nWHY IT MATTERS\n{thread['stakes']}\n")
+                detail.insert("end", "\nSTORY BEATS\n")
+                for beat in thread.get("beats", []) or []:
+                    date = self.format_game_date(beat.get("month", 1), beat.get("week", 1))
+                    detail.insert("end", f"{date} — {beat.get('summary', '')}\n")
+                if thread.get("resolution"):
+                    detail.insert("end", f"\nRESOLUTION\n{thread['resolution']}\n")
+            detail.config(state="disabled")
+
+        def render(*_args):
+            nonlocal rows
+            chosen = filter_var.get()
+            all_rows = list(getattr(self, "story_threads", []) or [])
+            if chosen == "Active":
+                rows = [thread for thread in all_rows if thread.get("status") not in {"resolved", "abandoned"}]
+            elif chosen == "Resolved":
+                rows = [thread for thread in all_rows if thread.get("status") in {"resolved", "abandoned"}]
+            else:
+                rows = all_rows
+            rows.sort(
+                key=lambda thread: (
+                    int(thread.get("last_updated_month", 0) or 0),
+                    int(thread.get("last_updated_week", 0) or 0),
+                    int(thread.get("importance", 1) or 1),
+                ),
+                reverse=True,
+            )
+            tree.delete(*tree.get_children())
+            for index, thread in enumerate(rows):
+                status = str(thread.get("status", "active")).replace("_", " ").title()
+                phase = str(thread.get("phase", "active")).replace("_", " ").title()
+                updated = self.format_game_date(
+                    thread.get("last_updated_month", 1), thread.get("last_updated_week", 1),
+                )
+                tree.insert(
+                    "", "end", iid=f"story:{index}",
+                    values=(status, thread.get("type", "World"), thread_title(thread), phase, updated),
+                )
+            count_var.set(f"{len(rows)} shown | {len(all_rows)} stored")
+            if rows:
+                tree.selection_set("story:0")
+            show_detail()
+
+        def open_context():
+            thread = selected_thread()
+            if not thread:
+                return
+            wanted = set(str(value) for value in thread.get("fighter_ids", []) if value)
+            fighters = [
+                fighter for fighter in self.all_fighter_objects()
+                if str(getattr(fighter, "fighter_id", "") or "") in wanted
+            ]
+            if fighters:
+                for fighter in fighters[:2]:
+                    self.open_fighter_profile_window(fighter)
+                return
+            companies = thread.get("companies", []) or []
+            if companies and self.select_company_by_name(companies[0]):
+                self.open_selected_company_hub()
+
+        filter_box.bind("<<ComboboxSelected>>", render)
+        tree.bind("<<TreeviewSelect>>", show_detail)
+        tree.bind("<Double-1>", lambda _event: open_context())
+        footer = ttk.Frame(window, style="Chrome.TFrame")
+        footer.pack(fill="x", padx=8, pady=(0, 8))
+        ttk.Button(footer, text="Open Story Context", style="Accent.TButton", command=open_context).pack(side="left", padx=4)
+        ttk.Button(footer, text="World Chronicle", command=self.open_world_chronicle).pack(side="left", padx=4)
+        ttk.Button(footer, text="Close", command=window.destroy).pack(side="right", padx=4)
         render()
 
     def selected_gym_from_tree(self):
@@ -6235,6 +6872,7 @@ class ViewMixin:
             messagebox.showinfo("Media Desk", "Choose a spokesperson and a same-division target.")
             return
         fighter.rival, target.rival = target.name, fighter.name
+        fighter.rival_fighter_id, target.rival_fighter_id = target.fighter_id, fighter.fighter_id
         heat = 10 + round(self.staff_effect("Marketing", 0.7))
         fighter.media_heat = min(100, fighter.media_heat + heat)
         target.media_heat = min(100, target.media_heat + max(6, heat - 3))
@@ -6322,7 +6960,9 @@ class ViewMixin:
             active_scouting = [report for report in getattr(self, "scouting_reports", {}).values() if report.get("status") == "In progress"]
             active_scouting += [search for search in getattr(self, "scouting_searches", []) if search.get("status") == "In progress"]
             payroll = sum(member.get("salary", 0) for member in self.staff)
-            monthly_burn = max(1, self.finance.get("monthly_office", 0) + payroll + (self.academy.get("weekly_cost", 0) * 4 if self.academy.get("owned") else 0))
+            office = self.player_monthly_office_cost() if hasattr(self, "player_monthly_office_cost") else self.finance.get("monthly_office", 0)
+            strategic_upkeep = self.strategic_investment_upkeep() if hasattr(self, "strategic_investment_upkeep") else 0
+            monthly_burn = max(1, office + payroll + strategic_upkeep + (self.academy.get("weekly_cost", 0) * 4 if self.academy.get("owned") else 0))
             runway = self.cash / monthly_burn
             next_event = upcoming[0] if upcoming else None
             if next_event:
@@ -6388,7 +7028,7 @@ class ViewMixin:
                 if report.get("weeks_remaining", 99) <= 1:
                     target = report.get("fighter_name") or report.get("region", "regional search")
                     messages.append(("•", f"Scouting update due this week: {target} via {report.get('scout', 'staff')}.", "scouting", "normal"))
-            idle_scouts = [member for member in self.staff if member.get("role") == "Scout" and self.scout_workload(member.get("name")) == 0]
+            idle_scouts = [member for member in self.staff if member.get("role") == "Scout" and self.scout_workload(member) == 0]
             if idle_scouts:
                 messages.append(("•", f"{len(idle_scouts)} scout(s) have no active assignment.", "scouting", "normal"))
             for fighter in medical_decisions[:3]:
@@ -6531,7 +7171,19 @@ class ViewMixin:
         info = self.staff_role_info(member.get("role"))
         contract = (f"\nContract: {self.staff_contract_remaining(member)} month(s) remaining"
                     f"\nExpiry: {self.staff_contract_expiry_label(member)}")
-        messagebox.showinfo("Staff Profile", f"{member['name']}\n\nRole: {member['role']}\nSkill: {member['skill']}\nMorale: {member['morale']}\nSalary: ${member['salary']:,}/month\nSpecialty: {member.get('specialty', 'Operations')}\nReputation: {member.get('reputation', 50)}{contract}\n\nEFFECT\n{info['summary']}" + scout_detail)
+        story_detail = ""
+        thread = self.active_staff_tenure(member)
+        if thread:
+            latest = (thread.get("beats", []) or [])[-1:]
+            latest_summary = str(latest[0].get("summary", "") or "") if latest else ""
+            milestone_count = len(thread.get("contribution_kinds", []) or [])
+            story_detail = (
+                f"\n\nCURRENT STORY\n{str(thread.get('phase', 'active')).replace('_', ' ').title()}"
+                f"\nStaff legacy: {int(thread.get('staff_legacy_score', 0) or 0)}"
+                f" | Distinct milestones: {milestone_count}"
+                f"\n{latest_summary or thread.get('stakes', '')}"
+            )
+        messagebox.showinfo("Staff Profile", f"{member['name']}\n\nRole: {member['role']}\nSkill: {member['skill']}\nMorale: {member['morale']}\nSalary: ${member['salary']:,}/month\nSpecialty: {member.get('specialty', 'Operations')}\nReputation: {member.get('reputation', 50)}{contract}\n\nEFFECT\n{info['summary']}" + story_detail + scout_detail)
 
     def _open_academy_window_legacy(self):
         academy = self.academy
@@ -6547,8 +7199,12 @@ class ViewMixin:
         status = ttk.Label(window, style="Inset.TLabel"); status.pack(fill="x", padx=10)
         report = ttk.Label(window, style="Inset.TLabel", wraplength=1060); report.pack(fill="x", padx=10, pady=(4, 0))
         network = ttk.Frame(window, style="Chrome.TFrame"); network.pack(fill="x", padx=10, pady=6)
-        scout_names = [member.get("name", "") for member in self.staff if member.get("role") == "Scout"] or ["Staff Scout"]
-        scout_var = tk.StringVar(value=academy.get("network_scout") or scout_names[0])
+        legacy_scouts = [member for member in self.staff if member.get("role") == "Scout"]
+        scout_names, legacy_scout_choice_ids = self.scout_selection_options(legacy_scouts)
+        if not scout_names:
+            scout_names = ["Staff Scout"]
+        active_scout_label = next((label for label, scout_id in legacy_scout_choice_ids.items() if scout_id == academy.get("network_scout_id")), "")
+        scout_var = tk.StringVar(value=active_scout_label or scout_names[0])
         region_var = tk.StringVar(value=academy.get("network_region") or self.player_region)
         philosophy_var = tk.StringVar(value=academy.get("philosophy", "Balanced MMA"))
         ttk.Label(network, text="Scout", style="Chrome.TLabel").pack(side="left", padx=(4, 2))
@@ -6604,7 +7260,7 @@ class ViewMixin:
             cost = item.get('signing_cost') or self.academy_signing_cost(item)
             if self.cash < cost: messagebox.showwarning('Academy', f'Signing {item["name"]} costs ${cost:,}.'); return
             self.cash -= cost
-            item = academy['talent_pool'].pop(talent.curselection()[0]); item.update({'plan': 'Automatic', 'training_intensity': 'Standard', 'amateur_w': 0, 'amateur_l': 0, 'amateur_d': 0, 'amateur_history': [], 'weeks': 0, 'development': 0, 'weeks_to_sign': 0, 'academy_member': True, 'joined_month': self.month, 'baseline_rating': item.get('rating', 40)}); self.repair_academy_prospect(item); academy['prospects'].append(item); academy['signing_spend'] = academy.get('signing_spend', 0) + cost; self.record_finance_transaction(f"Academy signing: {item['name']}", costs=cost); academy['last_scout_report'] = f"Signed {item['name']} into the academy for ${cost:,}."; redraw(); self.refresh_all()
+            item = academy['talent_pool'].pop(talent.curselection()[0]); item.update({'plan': 'Automatic', 'training_intensity': 'Standard', 'amateur_w': 0, 'amateur_l': 0, 'amateur_d': 0, 'amateur_history': [], 'weeks': 0, 'development': 0, 'weeks_to_sign': 0, 'academy_member': True, 'joined_month': self.month, 'baseline_rating': item.get('rating', 40)}); self.repair_academy_prospect(item); academy['prospects'].append(item); academy['signing_spend'] = academy.get('signing_spend', 0) + cost; self.record_finance_transaction(f"Academy signing: {item['name']}", costs=cost); self.record_academy_recruitment_win(item, self.player_company_name); academy['last_scout_report'] = f"Signed {item['name']} into the academy for ${cost:,}."; redraw(); self.refresh_all()
         def pass_lead():
             if not talent.curselection(): return
             item = academy['talent_pool'].pop(talent.curselection()[0]); academy['last_scout_report'] = f"Passed on {item.get('name', 'a youth lead')} from the {item.get('region', 'regional')} youth list."; redraw()
@@ -6692,7 +7348,8 @@ class ViewMixin:
             if self.cash < cost: messagebox.showwarning('Academy', f'Upgrade costs ${cost:,}.'); return
             self.cash -= cost; academy.update({'capacity': academy['capacity'] + 2, 'level': academy['level'] + 1, 'weekly_cost': academy['weekly_cost'] + 1800}); academy['upgrade_spend'] = academy.get('upgrade_spend', 0) + cost; academy['reputation'] = min(100, academy.get('reputation', 10) + 2); self.record_finance_transaction('Academy facilities upgrade', costs=cost); redraw()
         def start_network():
-            ok, message = self.start_academy_network(region_var.get(), scout_var.get())
+            scout_id = legacy_scout_choice_ids.get(scout_var.get(), scout_var.get())
+            ok, message = self.start_academy_network(region_var.get(), scout_id)
             if not ok: messagebox.showwarning("Academy", message)
             redraw(); self.refresh_all()
         def cancel_network():
@@ -6871,11 +7528,13 @@ class ViewMixin:
         squad = ttk.Frame(notebook, style="Chrome.TFrame")
         facilities = ttk.Frame(notebook, style="Chrome.TFrame")
         legacy = ttk.Frame(notebook, style="Chrome.TFrame")
+        rivals = ttk.Frame(notebook, style="Chrome.TFrame")
         notebook.add(overview, text="Overview / Network")
         notebook.add(recruitment, text="Recruitment")
         notebook.add(squad, text="Squad / Training")
         notebook.add(facilities, text="Facilities")
         notebook.add(legacy, text="Cards & Alumni")
+        notebook.add(rivals, text="Rival Academies")
 
         def add_tree(parent, columns, height=12):
             shell = ttk.Frame(parent, style="Panel.TFrame")
@@ -6921,6 +7580,7 @@ class ViewMixin:
         for col in range(4):
             network.columnconfigure(col, weight=1)
         scout_var = tk.StringVar()
+        academy_scout_choice_ids = {}
         region_var = tk.StringVar(value=academy.get("network_region") or self.player_region)
         philosophy_var = tk.StringVar(value=academy.get("philosophy", "Balanced MMA"))
         ttk.Label(network, text="Scout", style="Inset.TLabel").grid(row=0, column=0, sticky="w", padx=4, pady=(4, 0))
@@ -6978,16 +7638,17 @@ class ViewMixin:
         squad.columnconfigure(0, weight=1)
         prospect_shell, prospect_tree = add_tree(squad, (
             ("name", "Prospect", 150, "w"), ("gender", "G", 34, "center"), ("age", "Age", 42, "center"), ("weight", "Class", 100, "w"),
-            ("focus", "Focus / Intensity", 130, "w"), ("record", "Amateur", 65, "center"), ("ability", "Current / Pot", 85, "center"),
-            ("trend", "Trend", 55, "center"), ("ready", "Ready", 55, "center"), ("grad", "Graduation", 118, "center"), ("fatigue", "Fatigue", 55, "center"), ("status", "Status", 75, "center"),
+            ("focus", "Development Block", 175, "w"), ("record", "Amateur", 65, "center"), ("tier", "Level / SoS", 95, "center"),
+            ("ability", "Current / Pot", 85, "center"), ("ready", "Ready", 55, "center"),
+            ("retention", "Retention", 85, "center"), ("fatigue", "Fatigue", 55, "center"), ("status", "Status", 75, "center"),
         ), 14)
         prospect_shell.grid(row=0, column=0, sticky="nsew", padx=8, pady=8)
         prospect_tree.tag_configure("injured", foreground="#ff9b9b")
         prospect_tree.tag_configure("ready", foreground="#9de6a0")
         self.attach_tree_heading_tooltips(prospect_tree, {
             "ready": "Graduation readiness (age, ability, amateur experience, mentality, minus injury/fatigue).",
-            "grad": "Scout's call: GRADUATE NOW (turn pro), ALMOST READY, KEEP DEVELOPING, NEEDS BOUTS, or TOO YOUNG.",
-            "trend": "Recent rating movement.",
+            "tier": "Current amateur competition level and average opponent rating (strength of schedule).",
+            "retention": "Committed, Unsettled, or At Risk based on satisfaction, loyalty, workload, and promises.",
             "ability": "Current rating / projected ceiling.",
         })
         plan_row = ttk.Frame(squad, style="Inset.TFrame")
@@ -6995,16 +7656,35 @@ class ViewMixin:
         for col in range(8): plan_row.columnconfigure(col, weight=1)
         focus_var = tk.StringVar(value="Automatic")
         intensity_var = tk.StringVar(value="Standard")
-        destination_var = tk.StringVar(value="MMA")
+        objective_var = tk.StringVar(value="Balanced Growth")
+        duration_var = tk.IntVar(value=8)
+        tournament_tier_var = tk.StringVar(value="Local")
+        promise_var = tk.StringVar(value="Tournament Opportunity")
+        destination_var = tk.StringVar(value="MMA Main Roster")
         ttk.Label(plan_row, text="Focus", style="Inset.TLabel").grid(row=0, column=0, padx=3, sticky="w")
         ttk.Combobox(plan_row, textvariable=focus_var, state="readonly", values=("Automatic", "Balanced", "Wrestling", "Boxing", "Muay Thai", "BJJ", "Judo", "Sambo", "Clinch", "Cardio", "Strength", "Fight IQ")).grid(row=0, column=1, padx=3, sticky="ew")
         ttk.Label(plan_row, text="Intensity", style="Inset.TLabel").grid(row=0, column=2, padx=3, sticky="w")
         ttk.Combobox(plan_row, textvariable=intensity_var, state="readonly", values=("Light", "Standard", "Intensive", "Recovery")).grid(row=0, column=3, padx=3, sticky="ew")
+        ttk.Label(plan_row, text="Objective", style="Inset.TLabel").grid(row=0, column=4, padx=3, sticky="w")
+        ttk.Combobox(plan_row, textvariable=objective_var, state="readonly", values=self.ACADEMY_PLAN_OBJECTIVES).grid(row=0, column=5, padx=3, sticky="ew")
+        ttk.Label(plan_row, text="Weeks", style="Inset.TLabel").grid(row=0, column=6, padx=3, sticky="w")
+        ttk.Combobox(plan_row, textvariable=duration_var, state="readonly", values=(4, 8, 12), width=5).grid(row=0, column=7, padx=3, sticky="ew")
         plan_hint = ttk.Label(plan_row, text="Select a prospect to see coaching advice.", style="Inset.TLabel", anchor="w")
         plan_hint.grid(row=1, column=0, columnspan=8, padx=3, pady=(3, 0), sticky="ew")
         squad_actions = ttk.Frame(squad, style="Inset.TFrame")
         squad_actions.grid(row=2, column=0, sticky="ew", padx=8, pady=(0, 8))
         for col in range(7): squad_actions.columnconfigure(col, weight=1)
+
+        rivals.rowconfigure(1, weight=1); rivals.columnconfigure(0, weight=1)
+        ttk.Label(rivals, text="Major rival promotions operate persistent youth programmes. Their regional reputation affects competition for unsigned leads.", style="Inset.TLabel", anchor="w").grid(row=0, column=0, sticky="ew", padx=8, pady=(8, 4))
+        rival_shell, rival_tree = add_tree(rivals, (
+            ("promotion", "Promotion", 220, "w"), ("academy", "Youth Programme", 260, "w"),
+            ("region", "Region", 100, "w"), ("philosophy", "Philosophy", 150, "w"),
+            ("level", "Level", 55, "center"), ("reputation", "Rep", 55, "center"),
+            ("cohort", "Cohort", 60, "center"), ("graduates", "Graduates", 70, "center"),
+            ("poached", "Won Leads", 70, "center"), ("latest", "Latest Graduate", 160, "w"),
+        ), 16)
+        rival_shell.grid(row=1, column=0, sticky="nsew", padx=8, pady=(0, 8))
 
         # Cards and alumni tables.
         legacy.rowconfigure(0, weight=1)
@@ -7172,13 +7852,20 @@ class ViewMixin:
             training_tab = ttk.Frame(profile_tabs, style="Chrome.TFrame")
             for tab, label in ((summary_tab, "Summary"), (progress_tab, "Progression"), (history_tab, "Amateur History"), (training_tab, "Training & Milestones")):
                 profile_tabs.add(tab, text=label)
+            mastery_text = ", ".join(
+                f"{key.replace('_', ' ')} {value}"
+                for key, value in sorted(item.get("move_mastery", {}).items(), key=lambda row: (-row[1], row[0]))[:4]
+            ) or "developing fundamentals"
             identity = ttk.Label(
                 summary_tab,
                 text=(f"{item['gender']} | Age {item['age']} | {item['region']} | {item['amateur_weight']} -> {item['weight']}\n"
                       f"Current/Potential {item['rating']}/{item['potential']} | Amateur {item['amateur_w']}-{item['amateur_l']}-{item.get('amateur_d', 0)} | "
                       f"Readiness {self.academy_graduation_readiness(item)}%\n"
-                      f"Focus {item.get('plan', 'Automatic')} ({item.get('training_intensity', 'Standard')}) | Recommended {self.recommended_academy_focus(item)} | "
-                      f"Preferred path {self.academy_preferred_sport(item)} | Fatigue {item.get('fatigue', 0)} | Injury {item.get('injured', 0)}w"),
+                      f"{self.academy_development_plan_status(item)} | Focus {item.get('plan', 'Automatic')} ({item.get('training_intensity', 'Standard')})\n"
+                      f"Competition {self.academy_competition_tier(item)} | SoS {self.academy_strength_of_schedule(item):.1f} | Quality {item.get('amateur_quality_points', 0)} | Titles {len(item.get('amateur_titles', []))}\n"
+                      f"{item.get('youth_trait', 'Patient')} | Satisfaction {item.get('satisfaction', 60)} | Loyalty {item.get('loyalty', 60)} | {item.get('retention_status', 'Committed')}\n"
+                      f"Recommended {self.recommended_academy_focus(item)} | Preferred path {self.academy_preferred_sport(item)} | Fatigue {item.get('fatigue', 0)} | Injury {item.get('injured', 0)}w\n"
+                      f"Technique mastery: {mastery_text}"),
                 style="Inset.TLabel", justify="left", anchor="w",
             )
             identity.pack(fill="x", padx=8, pady=8)
@@ -7240,7 +7927,7 @@ class ViewMixin:
                 for index, record in enumerate(bout_records):
                     result = record.get("result", "-")
                     date = self.format_game_date(record.get("month", self.month), record.get("week", 1))
-                    detail = f"{record.get('event', 'Academy Showcase')} | R{record.get('round', '?')} | {record.get('weight', item.get('amateur_weight', 'Youth'))}"
+                    detail = f"{record.get('event', 'Academy Showcase')} | {record.get('competition_tier', 'Local')} | Opp {record.get('opponent_rating', '?')} | R{record.get('round', '?')} | {record.get('weight', item.get('amateur_weight', 'Youth'))}"
                     amateur_tree.insert("", "end", iid=f"history:{index}", tags=("win" if result == "W" else "loss" if result == "L" else "",), values=(date, result, record.get("opponent", "Unknown"), record.get("method", "-"), detail))
             else:
                 for index, entry in enumerate(item.get("amateur_history", [])[:100]):
@@ -7275,6 +7962,17 @@ class ViewMixin:
             training = [self.format_game_date_text(entry) for entry in item.get("training_log", [])[:60]] or ["No recorded training gains yet."]
             training_text.insert("end", "MILESTONES\n" + "\n".join(milestones))
             training_text.insert("end", "\n\nRECENT TRAINING\n" + "\n".join(training))
+            reports = item.get("development_reports", [])[:12]
+            if reports:
+                report_lines = [
+                    f"{row.get('objective')} ({'met' if row.get('success') else 'missed'}) · "
+                    f"rating {row.get('rating_gain', 0):+} · readiness {row.get('readiness_gain', 0):+} · bouts {row.get('bouts', 0)}"
+                    for row in reports
+                ]
+                training_text.insert("end", "\n\nDEVELOPMENT BLOCK REPORTS\n" + "\n".join(report_lines))
+            retention = item.get("retention_history", [])[:20]
+            if retention:
+                training_text.insert("end", "\n\nPROMISES & RETENTION\n" + "\n".join(retention))
             training_text.config(state="disabled")
 
         def replay_selected_card():
@@ -7285,11 +7983,26 @@ class ViewMixin:
 
         def open_alumnus_profile():
             row = selected_alumnus()
-            fighter = self.academy_alumnus_fighter(row.get("name", "")) if row else None
+            fighter = self.academy_alumnus_fighter(row.get("name", ""), row.get("fighter_id", "")) if row else None
             if fighter:
                 self.open_fighter_profile_window(fighter)
             elif row:
                 show_academy_notice(f"{row.get('name')} is no longer available in the active fighter database.", legacy)
+
+        def exercise_matching_right():
+            row = selected_alumnus()
+            if not row or not row.get("fighter_id"):
+                return
+            def complete_right():
+                ok, note = self.exercise_academy_matching_right(row.get("fighter_id"))
+                show_academy_notice(note, legacy)
+                if ok:
+                    self.refresh_all()
+                refresh_window()
+            request_academy_decision(
+                f"Exercise the active matching right for {row.get('name')} and bring them onto the MMA roster?",
+                complete_right, legacy,
+            )
 
         def sign_lead():
             item = selected_lead()
@@ -7313,6 +8026,7 @@ class ViewMixin:
             self.repair_academy_prospect(item); academy["prospects"].append(item)
             academy["signing_spend"] = academy.get("signing_spend", 0) + cost
             self.record_finance_transaction(f"Academy signing: {item['name']}", costs=cost)
+            self.record_academy_recruitment_win(item, self.player_company_name)
             academy["last_scout_report"] = f"Signed {item['name']} into the academy for ${cost:,}."
             refresh_window()
             self.refresh_all()
@@ -7328,10 +8042,35 @@ class ViewMixin:
             item = selected_prospect()
             if not item:
                 return
-            item["plan"] = focus_var.get() or "Automatic"
-            item["training_intensity"] = intensity_var.get() or "Standard"
-            academy["last_scout_report"] = f"{item['name']} training set to {item['plan']} / {item['training_intensity']}."
+            _ok, note = self.start_academy_development_plan(
+                item, focus_var.get() or "Automatic", intensity_var.get() or "Standard",
+                objective_var.get() or "Balanced Growth", duration_var.get() or 8,
+            )
+            academy["last_scout_report"] = note
             refresh_window(preserve_prospect=item["name"])
+
+        def enter_tournament():
+            item = selected_prospect()
+            if not item:
+                return
+            tier = tournament_tier_var.get() or self.academy_competition_tier(item)
+            cost = self.ACADEMY_COMPETITION_TIERS.get(tier, {}).get("cost", 0)
+            def complete_tournament():
+                ok, note, _results = self.run_academy_tournament(item, tier, academy)
+                show_academy_notice(note, squad)
+                if ok:
+                    self.refresh_all()
+                refresh_window(preserve_prospect=item.get("name"))
+            request_academy_decision(f"Enter {item['name']} in a {tier.lower()} amateur tournament for ${cost:,}? A finalist may fight twice in one night.", complete_tournament, squad)
+
+        def promise_opportunity():
+            item = selected_prospect()
+            if not item:
+                return
+            ok, note = self.make_academy_promise(item, promise_var.get())
+            show_academy_notice(note, squad)
+            if ok:
+                refresh_window(preserve_prospect=item.get("name"))
 
         def promote():
             item = selected_prospect()
@@ -7399,14 +8138,15 @@ class ViewMixin:
 
         def start_network():
             scouts = [member for member in self.staff if member.get("role") == "Scout"]
-            scout = next((member for member in scouts if member.get("name") == scout_var.get()), None)
+            scout_id = academy_scout_choice_ids.get(scout_var.get(), scout_var.get())
+            scout = next((member for member in scouts if self.scout_identity_key(member) == scout_id), None)
             if not scout:
                 show_academy_notice("Hire a Scout on the Staff screen before establishing a youth network.", overview)
                 return
             cost = self.academy_scouting_network_cost(region_var.get())
 
             def complete_network_setup():
-                ok, note = self.start_academy_network(region_var.get(), scout_var.get())
+                ok, note = self.start_academy_network(region_var.get(), scout_id)
                 if not ok:
                     show_academy_notice(note, overview)
                     return
@@ -7508,19 +8248,32 @@ class ViewMixin:
         release_button = ttk.Button(squad_actions, text="Release", command=release_prospect)
         for col, button in ((0, plan_button), (1, profile_button), (2, card_button), (5, promote_button), (6, release_button)):
             button.grid(row=0, column=col, sticky="ew", padx=3, pady=3)
+        ttk.Combobox(squad_actions, textvariable=tournament_tier_var, state="readonly", values=tuple(self.ACADEMY_COMPETITION_TIERS), width=14).grid(row=1, column=0, sticky="ew", padx=3, pady=3)
+        tournament_button = ttk.Button(squad_actions, text="Enter Tournament", command=enter_tournament)
+        tournament_button.grid(row=1, column=1, columnspan=2, sticky="ew", padx=3, pady=3)
+        ttk.Combobox(squad_actions, textvariable=promise_var, state="readonly", values=self.ACADEMY_PROMISE_TYPES, width=18).grid(row=1, column=3, columnspan=2, sticky="ew", padx=3, pady=3)
+        promise_button = ttk.Button(squad_actions, text="Make Promise", command=promise_opportunity)
+        promise_button.grid(row=1, column=5, columnspan=2, sticky="ew", padx=3, pady=3)
 
         replay_button = ttk.Button(card_controls, text="Replay Selected Card", style="Accent.TButton", command=replay_selected_card)
         replay_button.pack(side="left", padx=4, pady=3)
         alumni_profile_button = ttk.Button(alumni_controls, text="Open Graduate Fighter Profile", style="Accent.TButton", command=open_alumnus_profile)
         alumni_profile_button.pack(side="left", padx=4, pady=3)
+        matching_right_button = ttk.Button(alumni_controls, text="Exercise Matching Right", command=exercise_matching_right)
+        matching_right_button.pack(side="left", padx=4, pady=3)
 
         def update_network_preview(*_args):
             scouts = [member for member in self.staff if member.get("role") == "Scout"]
-            names = [member.get("name", "") for member in scouts]
-            scout_combo["values"] = names
-            if scout_var.get() not in names:
-                scout_var.set(academy.get("network_scout") if academy.get("network_scout") in names else (names[0] if names else ""))
-            scout = next((member for member in scouts if member.get("name") == scout_var.get()), None)
+            labels, identities = self.scout_selection_options(scouts)
+            academy_scout_choice_ids.clear()
+            academy_scout_choice_ids.update(identities)
+            scout_combo["values"] = labels
+            if scout_var.get() not in labels:
+                active_id = str(academy.get("network_scout_id", "") or "")
+                active_label = next((label for label, scout_id in identities.items() if scout_id == active_id), "")
+                scout_var.set(active_label or (labels[0] if labels else ""))
+            scout_id = academy_scout_choice_ids.get(scout_var.get(), scout_var.get())
+            scout = next((member for member in scouts if self.scout_identity_key(member) == scout_id), None)
             cost = self.academy_scouting_network_cost(region_var.get())
             distance = self.academy_region_distance(region_var.get())
             if scout:
@@ -7549,12 +8302,17 @@ class ViewMixin:
                 set_readonly_text(lead_feedback, self.academy_lead_report(lead))
             else:
                 set_readonly_text(lead_feedback, "Select a live lead to inspect the full scouting report here. Reports become more accurate while the lead remains available.")
-            for button in (plan_button, profile_button, promote_button, release_button): set_enabled(button, bool(prospect))
+            for button in (plan_button, profile_button, promote_button, release_button, tournament_button, promise_button): set_enabled(button, bool(prospect))
             set_enabled(replay_button, bool(card and card.get("fight_logs")))
-            fighter = self.academy_alumnus_fighter(alumnus.get("name", "")) if alumnus else None
+            fighter = self.academy_alumnus_fighter(alumnus.get("name", ""), alumnus.get("fighter_id", "")) if alumnus else None
             set_enabled(alumni_profile_button, bool(fighter))
+            set_enabled(matching_right_button, bool(alumnus and self.academy_matching_right(alumnus.get("fighter_id", ""))))
             if prospect:
                 focus_var.set(prospect.get("plan", "Automatic")); intensity_var.set(prospect.get("training_intensity", "Standard"))
+                active_plan = prospect.get("development_plan") or {}
+                objective_var.set(active_plan.get("objective", "Balanced Growth"))
+                duration_var.set(active_plan.get("duration", 8))
+                tournament_tier_var.set(self.academy_competition_tier(prospect))
                 recommendation, reason, recommended_fields = self.academy_focus_recommendation(prospect)
                 fields = ", ".join(key.replace("_", " ").title() for key in recommended_fields)
                 risk = {"Light": "low fatigue / low injury risk", "Standard": "balanced workload", "Intensive": "high gain chance / higher fatigue and injury risk", "Recovery": "recovery only"}.get(intensity_var.get(), "balanced workload")
@@ -7578,7 +8336,7 @@ class ViewMixin:
             selected_card_name = card_tree.item(card_tree.selection()[0], "values")[0] if card_tree.selection() else None
             selected_alumnus_name = alumni_tree.item(alumni_tree.selection()[0], "values")[0] if alumni_tree.selection() else None
             net = f"Building {academy.get('network_region', '')}: {academy.get('network_weeks', 0)} weeks left" if academy.get("network_weeks", 0) > 0 else f"Active in {academy.get('network_region', '')} via {academy.get('network_scout', 'Scout')}" if academy.get("network_active") else "No active network"
-            next_card = f"{academy.get('showcase_weeks', 8)} week(s)" if academy.get("auto_showcases", True) else "Automatic cards off"
+            next_card = self.academy_showcase_status(academy)
             summary.config(text=f"Level {academy.get('level', 0)} | Reputation {academy.get('reputation', 10)}/100 | Squad {len(academy.get('prospects', []))}/{academy.get('capacity', 0)} | Weekly ${academy.get('weekly_cost', 0):,}")
             total_invested = sum(academy.get(key, 0) for key in ("build_spend", "operating_spend", "signing_spend", "upgrade_spend", "network_spend"))
             runway = self.cash // max(1, academy.get("weekly_cost", 0))
@@ -7611,9 +8369,9 @@ class ViewMixin:
             training_toggle.config(text=f"Weekly Training: {'ON' if academy.get('auto_train', True) else 'PAUSED'}")
             cards_toggle.config(text=f"Auto Cards: {'ON' if academy.get('auto_showcases', True) else 'OFF'}")
             graduate_toggle.config(text=f"Auto Graduate: {'ON' if academy.get('auto_graduate', False) else 'OFF'}")
-            destinations = ["MMA"] + sorted(getattr(self, "player_combat_divisions", {}).keys())
+            destinations = self.academy_graduation_destinations()
             destination_combo["values"] = destinations
-            if destination_var.get() not in destinations: destination_var.set("MMA")
+            if destination_var.get() not in destinations: destination_var.set("MMA Main Roster")
 
             lead_tree.delete(*lead_tree.get_children())
             for index, item in enumerate(academy.get("talent_pool", [])):
@@ -7623,19 +8381,22 @@ class ViewMixin:
                 tag = "urgent" if item.get("weeks_to_sign", 0) <= 1 else "strong" if potential[1] >= 90 else ""
                 iid = f"lead:{index}"
                 gender = str(item.get("gender", "")).strip()[:1].upper() or "?"
-                lead_tree.insert("", "end", iid=iid, tags=(tag,), values=(item.get("name"), gender, item.get("age"), item.get("region"), item.get("amateur_weight"), f"{current[0]}-{current[1]}", f"{potential[0]}-{potential[1]}", f"{item.get('scout_confidence', 0)}%", f"${item.get('signing_cost', 0):,}", f"{item.get('weeks_to_sign', 0)}w"))
+                rival = (item.get("rival_offer") or {}).get("promotion", "") if isinstance(item.get("rival_offer"), dict) else ""
+                decision_window = f"{item.get('weeks_to_sign', 0)}w" + (" · BID" if rival else "")
+                lead_tree.insert("", "end", iid=iid, tags=(tag,), values=(item.get("name"), gender, item.get("age"), item.get("region"), item.get("amateur_weight"), f"{current[0]}-{current[1]}", f"{potential[0]}-{potential[1]}", f"{item.get('scout_confidence', 0)}%", f"${item.get('signing_cost', 0):,}", decision_window))
                 if item.get("name") == selected_lead_name: lead_tree.selection_set(iid); lead_tree.see(iid)
 
             prospect_tree.delete(*prospect_tree.get_children())
             for index, item in enumerate(academy.get("prospects", [])):
                 self.repair_academy_prospect(item)
-                ready = self.academy_graduation_readiness(item); trend = self.academy_prospect_trend(item)
+                ready = self.academy_graduation_readiness(item)
                 grad_label, _grad_reason = self.academy_graduation_recommendation(item)
-                status = f"INJ {item.get('injured')}w" if item.get("injured", 0) else "Ready" if ready >= 75 else "Training"
+                status = f"INJ {item.get('injured')}w" if item.get("injured", 0) else grad_label if grad_label == "GRADUATE NOW" else "Training"
                 tag = "injured" if item.get("injured", 0) else "ready" if grad_label == "GRADUATE NOW" else ""
                 iid = f"prospect:{index}"
                 gender = str(item.get("gender", "")).strip()[:1].upper() or "?"
-                prospect_tree.insert("", "end", iid=iid, tags=(tag,), values=(item.get("name"), gender, item.get("age"), item.get("amateur_weight"), f"{item.get('plan', 'Automatic')} / {item.get('training_intensity', 'Standard')}", f"{item.get('amateur_w', 0)}-{item.get('amateur_l', 0)}-{item.get('amateur_d', 0)}", f"{item.get('rating')}/{item.get('potential')}", f"{trend:+}", f"{ready}%", grad_label, item.get("fatigue", 0), status))
+                tier = self.academy_competition_tier(item)
+                prospect_tree.insert("", "end", iid=iid, tags=(tag,), values=(item.get("name"), gender, item.get("age"), item.get("amateur_weight"), self.academy_development_plan_status(item), f"{item.get('amateur_w', 0)}-{item.get('amateur_l', 0)}-{item.get('amateur_d', 0)}", f"{tier} / {self.academy_strength_of_schedule(item):.0f}", f"{item.get('rating')}/{item.get('potential')}", f"{ready}%", item.get("retention_status", "Committed"), item.get("fatigue", 0), status))
                 if item.get("name") == selected_prospect_name: prospect_tree.selection_set(iid); prospect_tree.see(iid)
 
             card_tree.delete(*card_tree.get_children())
@@ -7646,6 +8407,14 @@ class ViewMixin:
             for index, row in enumerate(academy.get("alumni", [])):
                 iid = f"alumnus:{index}"; alumni_tree.insert("", "end", iid=iid, values=(row.get("name"), row.get("destination"), row.get("amateur_record"), row.get("professional_record"), row.get("current_rating"), row.get("title_wins", 0), "Active" if row.get("active", True) else "Retired"))
                 if row.get("name") == selected_alumnus_name: alumni_tree.selection_set(iid); alumni_tree.see(iid)
+            rival_tree.delete(*rival_tree.get_children())
+            for promo in sorted(self.rival_academy_promotions(), key=lambda item: (-self.rival_academy_program(item).get("reputation", 0), item.name)):
+                program = self.rival_academy_program(promo)
+                rival_tree.insert("", "end", iid=f"rival:{promo.name}", values=(
+                    promo.name, program.get("name"), program.get("region"), program.get("philosophy"),
+                    program.get("level"), program.get("reputation"), len(program.get("prospects", [])),
+                    program.get("graduates", 0), program.get("poached_leads", 0), program.get("last_graduate", "—"),
+                ))
             selected_facility = facility_tree.selection()[0] if facility_tree.selection() else None
             facility_tree.delete(*facility_tree.get_children())
             owned = set(academy.get("upgrades", []) or [])
@@ -7928,11 +8697,20 @@ class ViewMixin:
                 fighter_detail_var.set("Select a child-roster fighter for contract, development, and loan details.")
                 return
             status = "Loaned from parent" if self.child_promotion_loaned(promo, fighter) else "AI signed"
-            fighter_detail_var.set(
+            detail = (
                 f"{self.fighter_display_name(fighter)} | {fighter.gender} {fighter.weight} | OVR {fighter.overall} / POT {fighter.potential} | "
                 f"Age {fighter.age} | Record {fighter.record} | Deal {fighter.contract_months} mo at ${fighter.purse:,}/fight | "
                 f"Morale {fighter.morale} | {status}"
             )
+            pathway = self.active_feeder_pathway(fighter)
+            if pathway:
+                latest = (pathway.get("beats", []) or [])[-1:]
+                latest_summary = str(latest[0].get("summary", "") or "") if latest else ""
+                phase = str(pathway.get("phase", "development_loan") or "development_loan").replace("_", " ").title()
+                detail += f"\nFeeder pathway: {phase}"
+                if latest_summary:
+                    detail += f" — {latest_summary}"
+            fighter_detail_var.set(detail)
 
         def open_selected_fighter(_event=None):
             promo = selected_child()
@@ -9122,19 +9900,48 @@ class ViewMixin:
 
     def watch_result_card(self, record):
         """Replay a completed card without applying its already-recorded result twice."""
-        logs = list(record.get("fight_logs", []) or [])
-        event_name = record.get("event") or record.get("event_name") or "Archived Event"
-        package = {
-            "event_name": event_name,
-            "log": list(record.get("log", []) or [record.get("summary", "No saved play-by-play.")]),
-        }
+        source = dict(record)
+        archive_key = self.result_archive_key(record)
+        archive_coordinates = (
+            str(record.get("date", "") or "").strip(),
+            str(record.get("company", "") or "").strip(),
+            str(record.get("event", record.get("event_name", "")) or "").strip(),
+        )
+        archived = next(
+            (
+                item for item in list(getattr(self, "player_event_archive", []))
+                + list(getattr(self, "ai_event_archive", []))
+                if self.result_archive_key(item) == archive_key
+                or (
+                    str(item.get("date", "") or "").strip(),
+                    str(item.get("company", "") or "").strip(),
+                    str(item.get("event", item.get("event_name", "")) or "").strip(),
+                ) == archive_coordinates
+            ),
+            None,
+        )
+        if archived:
+            # The compact Results shelf formats fields such as profit for its
+            # table. Prefer the owning archive's original numeric/report values
+            # when that bounded replay package is still available.
+            source.update(archived)
+        logs = list(source.get("fight_logs", []) or [])
+        event_name = source.get("event") or source.get("event_name") or "Archived Event"
+        # A replay is still a presentation of the original event. Retain the
+        # archived economics, location and report metadata so Fight Night does
+        # not incorrectly show a $0 / excitement 0 generic ending.
+        package = dict(source)
+        package["event_name"] = event_name
+        package["log"] = list(source.get("log", []) or [source.get("summary", "No saved play-by-play.")])
         if logs:
             package["fight_logs"] = logs
         else:
             package["fight_logs"] = [{"heading": "Event Report", "lines": package["log"]}]
-        if record.get("tournament_brackets"):
-            package["tournament_brackets"] = record["tournament_brackets"]
-        self.open_live_fight_window({"name": event_name}, package, apply_results=False)
+        event = {"name": event_name}
+        for field in ("venue", "region", "city", "month", "week", "day"):
+            if field in source:
+                event[field] = source[field]
+        self.open_live_fight_window(event, package, apply_results=False)
 
     def result_fighter(self, name, fighter_id="", sport="", division=""):
         """Resolve a result-card fighter by permanent ID, with legacy metadata fallback."""
@@ -9157,6 +9964,7 @@ class ViewMixin:
         text = str(text or "")
         for tag in ("C", "IC", "D"):
             text = re.sub(rf"\s+\({tag}\)(?:\s+\({tag}\))+", f" ({tag})", text)
+        corners = []
         for side in ("a", "b"):
             raw_name = str(fight_log.get(side, "") or "")
             fighter = self.result_fighter(
@@ -9166,9 +9974,42 @@ class ViewMixin:
                 fight_log.get("weight", ""),
             )
             if fighter and raw_name:
-                display_name = self.fighter_display_name(fighter)
-                suffix_guard = "" if re.search(r"\s+(?:Legend|FA|BAMMA)$", raw_name, flags=re.IGNORECASE) else r"(?!\s+\((?:C|IC|D)\))"
-                text = re.sub(re.escape(raw_name) + suffix_guard, display_name, text)
+                corners.append((side, raw_name, self.fighter_display_name(fighter)))
+
+        if len(corners) == 2 and corners[0][1] == corners[1][1]:
+            # Legacy commentary stores names rather than identity tokens. When
+            # both corners have the same raw name, replacing one side globally
+            # erases the other. Consume occurrences in their generated corner
+            # order and add an explicit corner label so both identities remain
+            # readable. Including existing presentation tags in the match keeps
+            # this operation idempotent when a replay is rendered more than once.
+            raw_name = corners[0][1]
+            displays = (
+                f"{corners[0][2]} (Red)",
+                f"{corners[1][2]} (Blue)",
+            )
+            occurrence = {"index": 0}
+
+            def replace_same_name(_match):
+                replacement = displays[occurrence["index"] % 2]
+                occurrence["index"] += 1
+                return replacement
+
+            tagged_name = re.escape(raw_name) + r"(?:\s+\((?:C|IC|D|Red|Blue)\))*"
+            return re.sub(tagged_name, replace_same_name, text)
+
+        # Placeholders prevent one rendered display name from being matched as
+        # the other corner's raw name during the same presentation pass.
+        replacements = []
+        for index, (_side, raw_name, display_name) in enumerate(
+            sorted(corners, key=lambda item: len(item[1]), reverse=True)
+        ):
+            placeholder = f"\u0000FIGHTER{index}\u0000"
+            suffix_guard = "" if re.search(r"\s+(?:Legend|FA|BAMMA)$", raw_name, flags=re.IGNORECASE) else r"(?!\s+\((?:C|IC|D)\))"
+            text = re.sub(re.escape(raw_name) + suffix_guard, placeholder, text)
+            replacements.append((placeholder, display_name))
+        for placeholder, display_name in replacements:
+            text = text.replace(placeholder, display_name)
         return text
 
     def open_result_card_window(self, record):
@@ -9525,14 +10366,27 @@ class ViewMixin:
         self.rules.setdefault("global_result_replay_limit", GLOBAL_RESULT_REPLAY_LIMIT)
         self.rules.setdefault("live_follow_commentary", True)
         self.rules.setdefault("live_auto_play_card", False)
+        commentary_mode = str(self.rules.get("fight_commentary_mode", "Broadcast") or "").strip().casefold()
+        commentary_personality = str(self.rules.get("fight_commentary_personality", "Balanced") or "").strip().casefold()
+        self.rules["fight_commentary_mode"] = next(
+            (value for value in FIGHT_COMMENTARY_MODES if value.casefold() == commentary_mode),
+            "Broadcast",
+        )
+        self.rules["fight_commentary_personality"] = next(
+            (value for value in FIGHT_COMMENTARY_PERSONALITIES if value.casefold() == commentary_personality),
+            "Balanced",
+        )
         self.rules.setdefault("ui_owner_goals_collapsed", False)
         self.rules.setdefault("ui_show_details_collapsed", False)
         self.rules.setdefault("ui_matchup_insight_collapsed", True)
         self.ensure_audio_defaults()
         self.rules.setdefault("scouting_search_focus", "Free Agent Pool")
+        self.rules.setdefault("scouting_search_priority", "Balanced")
         self.rules.setdefault("scouting_recommendation_mode", "Balanced")
         if self.rules["scouting_search_focus"] not in SCOUTING_SEARCH_FOCUSES:
             self.rules["scouting_search_focus"] = "Free Agent Pool"
+        if self.rules["scouting_search_priority"] not in SCOUTING_SEARCH_PRIORITIES:
+            self.rules["scouting_search_priority"] = "Balanced"
         if self.rules["scouting_recommendation_mode"] not in SCOUTING_RECOMMENDATION_MODES:
             self.rules["scouting_recommendation_mode"] = "Balanced"
         self.rules.setdefault("opening_division_depth_seeded", False)
@@ -10428,17 +11282,22 @@ class ViewMixin:
             return "In Progress"
         if status != "Complete":
             return status or "Unscouted"
-        completed = int(report.get("completed_week", self.calendar_week_index()) or self.calendar_week_index())
+        completed_value = report.get("completed_week")
+        completed = self.calendar_week_index() if completed_value is None else int(completed_value)
         if self.calendar_week_index() - completed > 52:
             return "Stale"
         return {"basic": "Basic", "full": "Full", "observation": "Observed"}.get(report.get("kind"), "Scouted")
 
     def reset_scouting_target_page(self):
         self.scouting_target_page = 0
+        if hasattr(self, "scouting_target_status_var"):
+            self.scouting_target_status_var.set("Filters changed. Select a visible fighter to review their scouting summary.")
         self.refresh_scouting_targets()
 
     def change_scouting_target_page(self, direction):
         self.scouting_target_page = max(0, int(getattr(self, "scouting_target_page", 0)) + int(direction))
+        if hasattr(self, "scouting_target_status_var"):
+            self.scouting_target_status_var.set("Page changed. Select a visible fighter to review their scouting summary.")
         self.refresh_scouting_targets()
 
     def refresh_scouting_targets(self):
@@ -10479,8 +11338,9 @@ class ViewMixin:
         filtered = []
         for key, company, fighter in candidates:
             report = self.scouting_report_for(fighter)
+            intel_report = self.scouting_intel_report(report)
             intel = self.scouting_intel_label(fighter, report)
-            advice = self.scout_signing_recommendation(fighter, report)[0] if report.get("status") == "Complete" else "-"
+            advice = self.scout_signing_recommendation(fighter, intel_report)[0] if intel_report.get("status") == "Complete" else "-"
             watched = key in shortlist
             if search and search not in fighter.name.lower() and search not in company.lower():
                 continue
@@ -10499,6 +11359,8 @@ class ViewMixin:
             if intel_filter == "Scouted" and report.get("status") != "Complete":
                 continue
             if intel_filter == "Stale" and intel != "Stale":
+                continue
+            if intel_filter in ("Cancelled", "Expired") and intel != intel_filter:
                 continue
             if intel_filter == "Free Agents" and company != "Free Agent":
                 continue
@@ -10528,6 +11390,7 @@ class ViewMixin:
                 self.scouting_target_count_var.set(f"Showing {start + 1:,}-{end:,} of {total_matches:,} | Page {page + 1} of {max_page + 1}")
             else:
                 self.scouting_target_count_var.set("No fighters match these filters")
+        previous_selection = tuple(self.scouting_target_tree.selection())
         self.scouting_target_tree.delete(*self.scouting_target_tree.get_children())
         self._scouting_target_rows = {}
         open_database = not self.rules.get("scouting_mode", True)
@@ -10544,12 +11407,17 @@ class ViewMixin:
                 advice_tag = self._scouting_advice_tag(advice)
                 tags = (advice_tag,) if advice_tag else ()
             self.scouting_target_tree.insert("", "end", iid=row_id, values=("WATCH" if key in shortlist else "", self.fighter_display_name(fighter), company, fighter.gender[:1], fighter.weight, fighter.record, fighter.age, intel, advice, overall, potential, self.fighter_last_fight_date_label(fighter)), tags=tags)
+        retained = next((row_id for row_id in previous_selection if row_id in self._scouting_target_rows), "")
+        if retained:
+            self.scouting_target_tree.selection_set(retained)
+        elif previous_selection and hasattr(self, "scouting_target_status_var"):
+            self.scouting_target_status_var.set("The previous fighter is not on this page. Select a visible target to continue.")
         if hasattr(self, "scouting_board_summary_var"):
             recommend = sum(1 for row in filtered if row[10] == "RECOMMEND SIGNING")
             watched = sum(1 for row in filtered if not row[0])  # row[0] is `not watched`
             in_progress = sum(1 for report in self.scouting_reports.values() if report.get("status") == "In progress")
             scouts = [member for member in self.staff if member.get("role") == "Scout"]
-            idle_slots = sum(max(0, self.scout_capacity(member) - self.scout_workload(member.get("name"))) for member in scouts)
+            idle_slots = sum(max(0, self.scout_capacity(member) - self.scout_workload(member)) for member in scouts)
             self.scouting_board_summary_var.set(
                 f"{recommend} recommended · {watched} shortlisted · {in_progress} report(s) in progress · {idle_slots} free scout slot(s)"
             )
@@ -10592,7 +11460,12 @@ class ViewMixin:
         if report.get("status") == "In progress":
             kind = str(report.get("kind", "basic")).replace("_", " ").title()
             due = "their next fight" if report.get("kind") == "observation" else f"{report.get('weeks_remaining', 0)} week(s)"
-            self.scouting_target_status_var.set(f"{fighter.name} | {kind} in progress with {report.get('scout', 'assigned staff')} | Due: {due}. No signing recommendation is available yet.")
+            prior = self.scouting_intel_report(report)
+            prior_note = ""
+            if prior is not report and prior.get("status") == "Complete":
+                recommendation, reason = self.scout_signing_recommendation(fighter, prior)
+                prior_note = f" Prior intel remains active: {recommendation}: {reason}"
+            self.scouting_target_status_var.set(f"{fighter.name} | {kind} in progress with {report.get('scout', 'assigned staff')} | Due: {due}.{prior_note or ' No signing recommendation is available yet.'}")
             return
         self.scouting_target_status_var.set(f"{fighter.name} | Unscouted. Public record and career information are visible, but ability, ceiling, and recruitment value remain uncertain.")
 
@@ -10603,7 +11476,7 @@ class ViewMixin:
             return
         _company, fighter = selected
         selected_scout = self.scouting_scout_var.get()
-        scout_name = None if selected_scout in ("", "Auto Assign") else selected_scout
+        scout_name = None if selected_scout in ("", "Auto Assign") else getattr(self, "_scouting_scout_choice_ids", {}).get(selected_scout, selected_scout)
         if self.start_scout_report_for_fighter(fighter, kind, scout_name=scout_name):
             self.scouting_target_status_var.set(f"{kind.title()} assignment started for {fighter.name}.")
             self.refresh_scouting_center()
@@ -10615,7 +11488,7 @@ class ViewMixin:
             return
         _company, fighter = selected
         key = self.scouting_report_key(fighter)
-        shortlist = list(dict.fromkeys(str(value) for value in getattr(self, "scouting_shortlist", [])))
+        shortlist = list(self.active_scouting_watchlist_ids())
         if key in shortlist:
             shortlist.remove(key)
             action = "Removed"
@@ -10623,6 +11496,15 @@ class ViewMixin:
             shortlist.append(key)
             action = "Added"
         self.scouting_shortlist = shortlist
+        active_id = self.rules.get("scouting_active_watchlist_id", "WATCH-main")
+        for watchlist in getattr(self, "scouting_watchlists", []):
+            if watchlist.get("watchlist_id") == active_id:
+                watchlist["fighter_ids"] = list(shortlist)
+                break
+        self.append_scouting_history(
+            "Watchlist Removed" if action == "Removed" else "Watchlist Added",
+            fighter, f"{action} {fighter.name} {'from' if action == 'Removed' else 'to'} the active watchlist.",
+        )
         self.scouting_target_status_var.set(f"{action} {fighter.name} {'from' if action == 'Removed' else 'to'} the recruitment shortlist.")
         self.refresh_scouting_targets()
         row_id = f"target:{key}"
@@ -10636,6 +11518,21 @@ class ViewMixin:
             self.open_fighter_profile_window(selected[1])
         else:
             self.scouting_target_status_var.set("Select a fighter to open their profile.")
+
+    def scout_selection_options(self, scouts):
+        """Return readable scout choices with durable IDs behind duplicate names."""
+        name_counts = {}
+        for member in scouts:
+            name = str(member.get("name", "Scout"))
+            name_counts[name] = name_counts.get(name, 0) + 1
+        labels, identities = [], {}
+        for member in scouts:
+            name = str(member.get("name", "Scout"))
+            scout_id = self.scout_identity_key(member)
+            label = name if name_counts[name] == 1 else f"{name} [{scout_id[-6:]}]"
+            labels.append(label)
+            identities[label] = scout_id
+        return labels, identities
 
     def negotiate_selected_recruitment_target(self):
         selected = self.selected_recruitment_target()
@@ -10653,8 +11550,8 @@ class ViewMixin:
             return
         self.migrate_scouting_state()
         scouts = [member for member in self.staff if member.get("role") == "Scout"]
-        names = [member.get("name") for member in scouts]
-        scout_choices = ["Auto Assign", *names]
+        scout_labels, self._scouting_scout_choice_ids = self.scout_selection_options(scouts)
+        scout_choices = ["Auto Assign", *scout_labels]
         self.scouting_scout_box.configure(values=scout_choices)
         if hasattr(self, "scouting_target_scout_box"):
             self.scouting_target_scout_box.configure(values=scout_choices)
@@ -10665,6 +11562,9 @@ class ViewMixin:
             if focus not in SCOUTING_SEARCH_FOCUSES:
                 focus = "Free Agent Pool"
             self.scouting_focus_var.set(focus)
+        if hasattr(self, "scouting_priority_var"):
+            priority = self.rules.get("scouting_search_priority", "Balanced")
+            self.scouting_priority_var.set(priority if priority in SCOUTING_SEARCH_PRIORITIES else "Balanced")
         if hasattr(self, "scouting_recommendation_mode_var"):
             mode = self.rules.get("scouting_recommendation_mode", "Balanced")
             self.scouting_recommendation_mode_var.set(mode if mode in SCOUTING_RECOMMENDATION_MODES else "Balanced")
@@ -10678,7 +11578,7 @@ class ViewMixin:
             kind = str(report.get("kind", "basic")).replace("_", " ").title()
             if report.get("automatic"):
                 kind = f"Auto {kind}"
-            due = "Next fight" if report.get("kind") == "observation" and report.get("status") == "In progress" else (f"{report.get('weeks_remaining', 0)} wk" if report.get("status") == "In progress" else self.format_game_date(self.month, self.week, include_week=False))
+            due = "Next fight" if report.get("kind") == "observation" and report.get("status") == "In progress" else (f"{report.get('weeks_remaining', 0)} wk" if report.get("status") == "In progress" else self.scouting_week_label(report.get("completed_week")))
             confidence = self.scouting_effective_confidence(report) if report.get("status") == "Complete" else "-"
             advice = self.scout_signing_recommendation(fighter, report)[0] if fighter else "-"
             row_id = f"report:{fighter_id}"
@@ -10692,7 +11592,12 @@ class ViewMixin:
             self.scouting_assignment_tree.insert("", "end", iid=row_id, values=(kind, report_name, report.get("scout", "-"), report.get("status", "-"), due, f"{confidence}%" if isinstance(confidence, int) else confidence, advice, f"${int(report.get('cost', 0)):,}"), tags=report_tags)
         for index, search in enumerate(getattr(self, "scouting_searches", [])):
             row_id = f"search:{index}"
-            self.scouting_assignment_rows[row_id] = {"type": "search", "search": search}
+            result_ids = list(search.get("result_fighter_ids", []) or [])
+            if search.get("result_fighter_id") and search.get("result_fighter_id") not in result_ids:
+                result_ids.insert(0, search.get("result_fighter_id"))
+            result_fighters = [fighters[fighter_id] for fighter_id in result_ids if fighter_id in fighters]
+            headline = result_fighters[0] if result_fighters else fighters.get(search.get("result_fighter_id"))
+            self.scouting_assignment_rows[row_id] = {"type": "search", "search": search, "fighter": headline, "fighters": result_fighters}
             due = f"{search.get('weeks_remaining', 0)} wk" if search.get("status") == "In progress" else "Complete"
             focus = search.get("focus", "Free Agent Pool")
             self.scouting_assignment_tree.insert("", "end", iid=row_id, values=("Talent Search", f"{focus} | {search.get('region')} | {search.get('gender')} {search.get('weight')}", search.get("scout", "-"), search.get("status", "-"), due, "-", search.get("result_name", "-") if search.get("status") == "Complete" else "Searching", f"${int(search.get('cost', 0)):,}"))
@@ -10701,11 +11606,22 @@ class ViewMixin:
             self.scouting_assignment_rows["academy"] = {"type": "academy"}
             status = "Active" if academy.get("network_active") else "Building"
             self.scouting_assignment_tree.insert("", "end", iid="academy", values=("Academy Network", academy.get("network_region", "-"), academy.get("network_scout"), status, f"{academy.get('network_weeks', 0)} wk" if not academy.get("network_active") else "Ongoing", "-", "Youth leads", "Ongoing"))
-        capacity = " | ".join(f"{member['name']} {self.scout_workload(member['name'])}/{self.scout_capacity(member)} slots" for member in scouts) or "No hired scouts; fighter profiles can commission one independent report at a time."
-        if not self.scouting_status_var.get().startswith(("Search started", "Cancelled", "Cannot")):
-            self.scouting_status_var.set(capacity)
+        capacity = " | ".join(f"{member['name']} {self.scout_workload(member)}/{self.scout_capacity(member)} slots" for member in scouts) or "No hired scouts; fighter profiles can commission one independent report at a time."
+        self.scouting_status_var.set(capacity)
         self.show_selected_scouting_assignment()
         self.refresh_scouting_targets()
+
+    def scouting_week_label(self, week_index):
+        """Render a stored one-based simulation week without pretending it completed today."""
+        try:
+            week_index = int(week_index)
+        except (TypeError, ValueError):
+            return "Unknown"
+        if week_index <= 0:
+            return "Legacy / stale"
+        month = (week_index - 1) // 4 + 1
+        week = (week_index - 1) % 4 + 1
+        return self.format_game_date(month, week, include_week=False)
 
     def show_selected_scouting_assignment(self):
         if not hasattr(self, "scouting_detail_text"):
@@ -10715,16 +11631,55 @@ class ViewMixin:
         text = "Select an assignment. Completed fighter reports include a scout recommendation based on projected ability, upside, market value, division need, and asking price."
         if row and row.get("type") == "report":
             fighter, report = row.get("fighter"), row.get("report", {})
-            recommendation, reason = self.scout_signing_recommendation(fighter, report)
+            intel_report = self.scouting_intel_report(report)
+            recommendation, reason = self.scout_signing_recommendation(fighter, intel_report)
+            if intel_report.get("status") == "Complete":
+                confidence_text = f"{self.scouting_effective_confidence(intel_report)}%"
+                if intel_report is not report:
+                    confidence_text += " prior intel; replacement pending"
+            else:
+                confidence_text = "Pending"
             ranges = []
             for key, label in (("overall", "OVR"), ("potential", "Potential"), ("popularity", "Popularity"), ("professionalism", "Professionalism")):
                 estimate = self.scouting_estimate(fighter, key, {}) if fighter else {}
                 if estimate:
                     ranges.append(f"{label}: {estimate.get('low')}-{estimate.get('high')}")
-            text = f"{report.get('fighter_name')} | {report.get('kind', 'basic').title()} | {report.get('status')}\nScout: {report.get('scout')} | Confidence: {self.scouting_effective_confidence(report)}%\n" + (" | ".join(ranges) or "Report work is still in progress.") + f"\n\n{recommendation}\n{reason}\n\n" + "\n".join(f"- {note}" for note in report.get("notes", []))
+            evidence = intel_report.get("evidence", {}) if isinstance(intel_report.get("evidence"), dict) else {}
+            evidence_lines = []
+            if evidence.get("source"):
+                evidence_lines.append(f"Source: {evidence.get('source')} | {evidence.get('focus', '')} {evidence.get('priority', '')}".strip())
+            if evidence.get("opponent_name"):
+                evidence_lines.append(
+                    f"Observed: {evidence.get('outcome', 'Observed')} vs {evidence.get('opponent_name')} by {evidence.get('method', 'official result')} | "
+                    f"{evidence.get('rounds', 0)} round(s) | Sig {evidence.get('sig', 0)}/{evidence.get('sig_att', 0)} | "
+                    f"TD {evidence.get('td', 0)}/{evidence.get('td_att', 0)} | Control {evidence.get('control_secs', 0)}s | KD {evidence.get('knockdowns', 0)}"
+                )
+            history = self.scouting_report_history(intel_report)
+            history_lines = [
+                f"- {self.scouting_week_label(item.get('completed_week'))}: {item.get('kind', 'report').title()} by {item.get('scout', 'Scout')} ({item.get('confidence', 0)}%)"
+                for item in history[-5:]
+            ]
+            text = (
+                f"{report.get('fighter_name')} | {report.get('kind', 'basic').title()} | {report.get('status')}\n"
+                f"Scout: {report.get('scout')} | Confidence: {confidence_text}\n"
+                + (" | ".join(ranges) or "Report work is still in progress.")
+                + f"\n\n{recommendation}\n{reason}\n\nScout opinion:\n"
+                + ("\n".join(f"- {note}" for note in intel_report.get("notes", [])) or "- No completed opinion yet.")
+                + "\n\nObjective evidence:\n" + ("\n".join(evidence_lines) or "No structured fight evidence recorded.")
+                + "\n\nPrevious dossiers:\n" + ("\n".join(history_lines) or "No earlier dossier snapshot.")
+            )
         elif row and row.get("type") == "search":
             search = row.get("search", {})
-            text = f"Talent Search | {search.get('focus', 'Free Agent Pool')} | {search.get('region')}\nScout: {search.get('scout')} | Status: {search.get('status')} | Brief: {search.get('gender')} {search.get('weight')}\nResult: {search.get('result_name', 'Search in progress')}"
+            names = list(search.get("result_names", []) or [])
+            if not names and search.get("result_name"):
+                names = [search.get("result_name")]
+            result_text = "\n".join(f"{index}. {name}" for index, name in enumerate(names, 1)) or "Search in progress"
+            qualities = list(search.get("result_match_quality", []) or [])
+            result_text = "\n".join(
+                f"{index}. {name}{f' — {qualities[index - 1]}' if index <= len(qualities) else ''}"
+                for index, name in enumerate(names, 1)
+            ) or "Search in progress"
+            text = f"Talent Search | {search.get('level', 'Standard')} {search.get('focus', 'Free Agent Pool')} | {search.get('region')}\nScout: {search.get('scout')} | Status: {search.get('status')} | Brief: {search.get('gender')} {search.get('weight')} | {search.get('age_band', 'Any Age')} | {search.get('style', 'All')} | Priority: {search.get('priority', 'Balanced')}\nRegion knowledge: {self.scouting_region_knowledge(search.get('region'))}%\nResults ({len(names)}):\n{result_text}"
         elif row and row.get("type") == "academy":
             text = "The academy youth network uses one assignment slot from its named scout. Manage its region, leads, and cancellation from Fight Academy."
         self.scouting_detail_text.config(state="normal")
@@ -10739,13 +11694,23 @@ class ViewMixin:
             self.scouting_status_var.set("Select an active report or talent search to cancel.")
             return
         target = row.get("report") if row.get("type") == "report" else row.get("search") if row.get("type") == "search" else None
-        if not target or target.get("status") != "In progress":
+        if not target or target.get("status") not in ("In progress", "Monitoring"):
             self.scouting_status_var.set("Only an active fighter report or talent search can be cancelled here.")
             return
-        target["status"] = "Cancelled"
-        target["weeks_remaining"] = 0
-        self.scouting_status_var.set("Cancelled assignment. Spent scouting costs are not refunded.")
+        restored = False
+        if row.get("type") == "report" and target.get("prior_report"):
+            fighter_id = str(target.get("fighter_id", ""))
+            if fighter_id:
+                self.scouting_reports[fighter_id] = deepcopy(target["prior_report"])
+                restored = True
+        if not restored:
+            target["status"] = "Cancelled"
+            target["weeks_remaining"] = 0
         self.refresh_scouting_center()
+        self.scouting_status_var.set(
+            "Cancelled assignment; the previous completed report remains available. Spent scouting costs are not refunded."
+            if restored else "Cancelled assignment. Spent scouting costs are not refunded."
+        )
 
     def open_selected_scouting_target(self):
         selected = self.scouting_assignment_tree.selection() if hasattr(self, "scouting_assignment_tree") else ()
@@ -10801,6 +11766,12 @@ class ViewMixin:
         self.record_finance_transaction(f"Staff severance: {member['name']}", costs=severance)
         self.inbox.insert(0, {"subject": "Staff Contract Ended", "body": f"Released {member['name']} as {member['role']}. ${severance:,} severance was paid.", "type": "Staff", "resolved": False})
         self.news.insert(0, f"Released {member['name']} from the staff.")
+        departure = f"{member['name']} was released as {member['role']} after receiving ${severance:,} severance."
+        self.record_staff_tenure_story(
+            member, phase="released", status="resolved", importance=3,
+            summary=departure, resolution=departure,
+            event_ref=f"staff-released:{member.get('staff_id', '')}:{self.month}:{self.week}",
+        )
         self.refresh_all()
 
     def open_staff_negotiation(self, member, existing=False):
@@ -10873,6 +11844,15 @@ class ViewMixin:
                     headline = f"Hired {member['name']} as {member['role']} for ${salary:,}/month."
                 else:
                     headline = f"Renewed {member['name']}'s staff contract for {months} months at ${salary:,}/month."
+                self.record_staff_tenure_story(
+                    member, phase="renewed" if existing else "appointed",
+                    summary=headline, importance=3 if existing else 2,
+                    event_ref=(
+                        f"staff-renewed:{member.get('staff_id', '')}:{self.month}:{self.week}"
+                        if existing else
+                        f"staff-appointed:{member.get('staff_id', '')}:{self.month}:{self.week}"
+                    ),
+                )
                 self.inbox.insert(0, {"subject": "Staff Contract Agreed", "body": headline, "type": "Staff", "resolved": False})
                 self.news.insert(0, headline)
                 self.refresh_all()
@@ -10882,6 +11862,12 @@ class ViewMixin:
             member["negotiation_heat"] = min(100, int(member.get("negotiation_heat", 0) or 0) + 8)
             if attempts["left"] <= 0:
                 result.config(text=f"{member['name']} rejected the package. You can try again later with a stronger salary or longer term.")
+                if existing:
+                    self.record_staff_tenure_story(
+                        member, phase="talks_stalled", importance=3,
+                        summary=f"Renewal talks with {member['name']} stalled after the staff member rejected the package.",
+                        event_ref=f"staff-talks-stalled:{member.get('staff_id', '')}:{self.month}:{self.week}",
+                    )
                 submit_button.config(state="disabled")
             else:
                 result.config(text=f"The representative wants a stronger package. Attempts left: {attempts['left']}.")
@@ -10917,11 +11903,12 @@ class ViewMixin:
         if not hasattr(self, "scouting_scout_var"):
             self.select_tab("scouting")
             return
-        scout_name = self.scouting_scout_var.get()
-        if scout_name in ("", "Auto Assign"):
+        scout_choice = self.scouting_scout_var.get()
+        scout_name = getattr(self, "_scouting_scout_choice_ids", {}).get(scout_choice, scout_choice)
+        if scout_choice in ("", "Auto Assign"):
             available = [
                 scout for scout in self.staff
-                if scout.get("role") == "Scout" and self.scout_workload(scout.get("name")) < self.scout_capacity(scout)
+                if scout.get("role") == "Scout" and self.scout_workload(scout) < self.scout_capacity(scout)
             ]
             region = self.scouting_region_var.get()
             focus = self.scouting_focus_var.get() if hasattr(self, "scouting_focus_var") else self.rules.get("scouting_search_focus", "Free Agent Pool")
@@ -10938,14 +11925,24 @@ class ViewMixin:
                 ),
                 default=None,
             )
-            scout_name = scout.get("name") if scout else ""
+            scout_name = self.scout_identity_key(scout) if scout else ""
         focus = self.scouting_focus_var.get() if hasattr(self, "scouting_focus_var") else self.rules.get("scouting_search_focus", "Free Agent Pool")
         if focus not in SCOUTING_SEARCH_FOCUSES:
             focus = "Free Agent Pool"
         self.rules["scouting_search_focus"] = focus
-        ok, message = self.start_talent_search(scout_name, self.scouting_region_var.get(), self.scouting_gender_var.get(), self.scouting_weight_var.get(), focus)
-        self.scouting_status_var.set(("Search started: " if ok else "Cannot start search: ") + message)
+        priority = self.scouting_priority_var.get() if hasattr(self, "scouting_priority_var") else self.rules.get("scouting_search_priority", "Balanced")
+        if priority not in SCOUTING_SEARCH_PRIORITIES:
+            priority = "Balanced"
+        self.rules["scouting_search_priority"] = priority
+        ok, message = self.start_talent_search(
+            scout_name, self.scouting_region_var.get(), self.scouting_gender_var.get(),
+            self.scouting_weight_var.get(), focus, priority,
+            self.scouting_age_band_var.get() if hasattr(self, "scouting_age_band_var") else "Any Age",
+            self.scouting_style_var.get() if hasattr(self, "scouting_style_var") else "All",
+            self.scouting_brief_level_var.get() if hasattr(self, "scouting_brief_level_var") else "Standard",
+        )
         self.refresh_scouting_center()
+        self.scouting_status_var.set(("Search started: " if ok else "Cannot start search: ") + message)
         self.refresh_header()
 
     def run_drug_tests(self):
@@ -10990,14 +11987,16 @@ class ViewMixin:
         child_promotions = [promo for promo in getattr(self, "promotions", []) if getattr(promo, "is_child_promotion", False) and getattr(promo, "parent_company", "") == self.player_company_name]
         balanced_children = sum(1 for promo in child_promotions if self.finance_reconciliation_status(getattr(promo, "finance", {}) or {}, promo.cash).get("balanced", True)) if hasattr(self, "finance_reconciliation_status") else len(child_promotions)
         ledger_status = "BALANCED" if reconciliation.get("balanced", True) else f"OFF BY ${abs(reconciliation.get('difference', 0)):,.0f}"
-        monthly_fixed = self.finance["monthly_office"] + payroll + academy_monthly + medical_expected
+        office_cost = self.player_monthly_office_cost() if hasattr(self, "player_monthly_office_cost") else self.finance["monthly_office"]
+        investment_upkeep = self.strategic_investment_upkeep() if hasattr(self, "strategic_investment_upkeep") else 0
+        monthly_fixed = office_cost + payroll + academy_monthly + medical_expected + investment_upkeep
         income_per_event = media.get("fee", 0) + sponsor_total
         self.finance_summary.config(text=(
             f"Cash ${self.cash:,.0f}     Ticket ${self.finance['ticket_price']}     Sponsor/Event ${sponsor_total:,.0f}     "
-            f"Office + Payroll ${self.finance['monthly_office'] + payroll:,.0f}/month\n"
+            f"Office + Payroll ${office_cost + payroll:,.0f}/month (scaled office ${office_cost:,.0f})\n"
             f"Media: {media['name']} ({media['months']} mo, {media.get('events_remaining', 0)} event(s), ${media['fee']:,.0f}/event, reach +{media['reach']})     "
             f"Marketing ${self.finance['marketing_budget']:,.0f}/event     Tax {round(self.finance['tax_rate'] * 100)}%\n"
-            f"Forecast: fixed monthly burn ${monthly_fixed:,.0f} (office/payroll ${self.finance['monthly_office'] + payroll:,.0f}, academy ${academy_monthly:,.0f}, medical ${medical_expected:,.0f})     "
+            f"Forecast: fixed monthly burn ${monthly_fixed:,.0f} (office/payroll ${office_cost + payroll:,.0f}, academy ${academy_monthly:,.0f}, medical ${medical_expected:,.0f}, strategic upkeep ${investment_upkeep:,.0f})     "
             f"Upcoming booked purses ${booked_purses:,.0f}     Expected media+sponsor income/event ${income_per_event:,.0f}\n"
             f"Child sport divisions: {len(sport_divisions)} open | lifetime net ${sport_net:,.0f} | unrecovered setup/card costs ${sport_costs:,.0f}\n"
             f"Ledger reconciliation: {ledger_status} | Child MMA ledgers balanced {balanced_children}/{len(child_promotions)}"
@@ -11014,6 +12013,8 @@ class ViewMixin:
             if selected_sponsor and selected_sponsor[0] in self.sponsor_market_tree.get_children():
                 self.sponsor_market_tree.selection_set(selected_sponsor[0])
             self.sponsor_market_note.config(text=self.finance.get("sponsor_market_note", "Pitch the market once per month, compare terms, then choose which category partners fit the promotion."))
+        self.refresh_finance_history_outlook()
+        self.refresh_strategic_investments()
         selected = self.finance_tree.selection()
         self.finance_tree.delete(*self.finance_tree.get_children())
         history = self.finance["weekly_history"][-48:]
@@ -11029,6 +12030,101 @@ class ViewMixin:
         elif self.finance_tree.get_children():
             self.finance_tree.selection_set(self.finance_tree.get_children()[-1])
         self.show_selected_finance_week()
+
+    def refresh_finance_history_outlook(self):
+        if not hasattr(self, "finance_annual_tree"):
+            return
+        self.update_annual_finance_history()
+        self.finance_annual_tree.delete(*self.finance_annual_tree.get_children())
+        for row in self.finance.get("annual_history", [])[-12:]:
+            revenue = int(row.get("revenue", 0) or 0)
+            net = int(row.get("net", 0) or 0)
+            margin = net / max(1, revenue)
+            self.finance_annual_tree.insert("", "end", tags=("positive" if net >= 0 else "negative",), values=(
+                row.get("year", "-"), row.get("events", 0), f"${revenue:,}",
+                f"${int(row.get('costs', 0) or 0):,}", f"${net:+,}", f"{margin:.0%}",
+                f"${int(row.get('ending', 0) or 0):,}",
+            ))
+
+        mix = self.player_revenue_mix(12)
+        mix_total = sum(mix.values())
+        self.finance_mix_tree.delete(*self.finance_mix_tree.get_children())
+        for stream, amount in sorted(mix.items(), key=lambda item: (-item[1], item[0])):
+            self.finance_mix_tree.insert("", "end", values=(stream, f"${amount:,}", f"{amount / max(1, mix_total):.0%}"))
+
+        self.finance_roster_cost_tree.delete(*self.finance_roster_cost_tree.get_children())
+        for row in self.finance.get("roster_cost_history", [])[-24:]:
+            fixed = int(row.get("office", 0) or 0) + int(row.get("staff_payroll", 0) or 0) + int(row.get("investment_upkeep", 0) or 0)
+            self.finance_roster_cost_tree.insert("", "end", values=(
+                self.format_game_date(int(row.get("month", 1) or 1), 1, include_week=False),
+                row.get("roster", 0), f"${int(row.get('purse_pool', 0) or 0):,}",
+                f"${int(row.get('top_10_purses', 0) or 0):,}", f"${int(row.get('booked_exposure', 0) or 0):,}", f"${fixed:,}",
+            ))
+
+        self.finance_milestone_tree.delete(*self.finance_milestone_tree.get_children())
+        unlocked = self.company_unlocked_milestone_ids()
+        for rule in self.company_milestone_registry():
+            if rule["id"] in unlocked:
+                values = (rule["name"], "$0", 0, "Unlocked", "All gates complete")
+            else:
+                projection = self.company_milestone_projection(rule)
+                eta = "No cash trend" if projection["eta_months"] is None else f"~{projection['eta_months']} mo"
+                values = (
+                    rule["name"], f"${projection['cash_gap']:,}", projection["event_gap"], eta,
+                    ", ".join(projection["blockers"]) or "Sustain qualifying months",
+                )
+            self.finance_milestone_tree.insert("", "end", iid=f"milestone:{rule['id']}", values=values)
+        recent = list(self.finance.get("weekly_history", []) or [])[-48:]
+        rolling = round(sum(int(row.get("net", 0) or 0) for row in recent) / max(1, len(recent)) * 4)
+        self.finance_outlook_note.config(text=(
+            f"Rolling monthly net ${rolling:+,}. Projections combine cash trend, event pace and sustained-month rules; "
+            "popularity, stability and safety are shown as blockers rather than guessed growth."
+        ))
+
+    def refresh_strategic_investments(self):
+        if not hasattr(self, "finance_investment_tree"):
+            return
+        selected = self.finance_investment_tree.selection()
+        self.finance_investment_tree.delete(*self.finance_investment_tree.get_children())
+        for spec in self.strategic_investment_registry():
+            status, requirement = self.strategic_investment_status(spec)
+            tag = "owned" if status == "Owned" else "available" if status == "Available" else ""
+            self.finance_investment_tree.insert("", "end", iid=spec["id"], tags=(tag,) if tag else (), values=(
+                spec["category"], spec["name"], f"${spec['cost']:,}", f"${spec['upkeep']:,}",
+                status, requirement, spec["effect"],
+            ))
+        if selected and self.finance_investment_tree.exists(selected[0]):
+            self.finance_investment_tree.selection_set(selected[0])
+        self.finance_investment_note.config(text=(
+            f"Owned projects: {len(self.owned_strategic_investments())}/{len(self.strategic_investment_registry())} | "
+            f"Monthly strategic upkeep: ${self.strategic_investment_upkeep():,}. Capital purchases and upkeep use the canonical finance ledger."
+        ))
+
+    def purchase_selected_strategic_investment(self):
+        if not hasattr(self, "finance_investment_tree"):
+            return
+        selected = self.finance_investment_tree.selection()
+        if not selected:
+            self.finance_investment_note.config(text="Select a strategic project first.")
+            return
+        spec = next((row for row in self.strategic_investment_registry() if row["id"] == selected[0]), None)
+        if not spec:
+            self.finance_investment_note.config(text="That project is no longer available.")
+            return
+        status, reason = self.strategic_investment_status(spec)
+        if status != "Available":
+            self.finance_investment_note.config(text=f"{spec['name']}: {reason}.")
+            return
+        commitment = spec["cost"] + spec["upkeep"] * 12
+        if not messagebox.askyesno(
+            "Approve strategic investment",
+            f"Approve {spec['name']}?\n\nCapital: ${spec['cost']:,}\nMonthly upkeep: ${spec['upkeep']:,}\nFirst-year commitment: ${commitment:,}\n\n{spec['effect']}",
+        ):
+            return
+        ok, message = self.purchase_strategic_investment(spec["id"])
+        self.finance_investment_note.config(text=message)
+        if ok:
+            self.refresh_all()
 
     def show_selected_finance_week(self, _event=None):
         if not hasattr(self, "finance_detail"):
@@ -11072,12 +12168,21 @@ class ViewMixin:
         self.finance.setdefault("ledger", [])
         self.finance.setdefault("weekly_history", [])
         self.finance.setdefault("week_transactions", [])
+        self.finance.setdefault("annual_history", [])
+        self.finance.setdefault("roster_cost_history", [])
+        self.finance.setdefault("strategic_investments", {})
         if not isinstance(self.finance["ledger"], list):
             self.finance["ledger"] = []
         if not isinstance(self.finance["weekly_history"], list):
             self.finance["weekly_history"] = []
         if not isinstance(self.finance["week_transactions"], list):
             self.finance["week_transactions"] = []
+        if not isinstance(self.finance["annual_history"], list):
+            self.finance["annual_history"] = []
+        if not isinstance(self.finance["roster_cost_history"], list):
+            self.finance["roster_cost_history"] = []
+        if not isinstance(self.finance["strategic_investments"], dict):
+            self.finance["strategic_investments"] = {}
         normalized = []
         for row in self.finance["week_transactions"]:
             if not isinstance(row, dict):
@@ -11505,7 +12610,15 @@ class ViewMixin:
         if make_main:
             for fight in self.booked:
                 fight["main"] = False
-        fight = {"fighters": [a.name, b.name], "fighter_ids": [a.fighter_id, b.fighter_id], "title": title, "divisional_title": divisional_title, "interim": interim, "special_belt": special_belt, "main": make_main, "tier": self.card_tier.get()}
+        fight = {
+            "fighters": [a.name, b.name], "fighter_ids": [a.fighter_id, b.fighter_id],
+            "fight_plans": {
+                a.fighter_id: self.normalize_fight_plan(self.red_fight_plan.get()),
+                b.fighter_id: self.normalize_fight_plan(self.blue_fight_plan.get()),
+            },
+            "title": title, "divisional_title": divisional_title, "interim": interim,
+            "special_belt": special_belt, "main": make_main, "tier": self.card_tier.get(),
+        }
         if make_main:
             self.booked.insert(0, fight)
         else:
@@ -11514,6 +12627,8 @@ class ViewMixin:
         self.title_fight.set(False)
         self.special_belt_choice.set("None")
         self.main_event.set(False)
+        self.red_fight_plan.set("Balanced")
+        self.blue_fight_plan.set("Balanced")
         self.refresh_available()
         self.refresh_card()
 
@@ -11607,7 +12722,13 @@ class ViewMixin:
         if make_main:
             for fight in self.booked:
                 fight["main"] = False
-        fight = {"fighters": [fighter.name, "TBA"], "fighter_ids": [fighter.fighter_id, ""], "title": title, "divisional_title": divisional_title, "interim": interim, "special_belt": special_belt, "main": make_main, "tier": self.card_tier.get(), "tba_weight": fighter.weight, "tba_gender": fighter.gender}
+        fight = {
+            "fighters": [fighter.name, "TBA"], "fighter_ids": [fighter.fighter_id, ""],
+            "fight_plans": {fighter.fighter_id: self.normalize_fight_plan(self.red_fight_plan.get())},
+            "title": title, "divisional_title": divisional_title, "interim": interim,
+            "special_belt": special_belt, "main": make_main, "tier": self.card_tier.get(),
+            "tba_weight": fighter.weight, "tba_gender": fighter.gender,
+        }
         if make_main:
             self.booked.insert(0, fight)
         else:
@@ -11694,6 +12815,7 @@ class ViewMixin:
             return
         fight["fighters"] = [known.name, replacement.name]
         fight["fighter_ids"] = [known.fighter_id, replacement.fighter_id]
+        fight.setdefault("fight_plans", {})[replacement.fighter_id] = "Balanced"
         fight["tba_filled"] = True
         fight["tba_note"] = f"{replacement.name} was signed as the replacement opponent."
         divisional_title = bool(fight.get("divisional_title", fight.get("title") and not fight.get("special_belt")))
@@ -11865,7 +12987,7 @@ class ViewMixin:
         if (a.record_l == 0 and a.age < 26 and b.overall - a.overall > 7) or (b.record_l == 0 and b.age < 26 and a.overall - b.overall > 7):
             prospect_penalty = 35
             reason_bits.append("major prospect-risk penalty")
-        if a.rival == b.name or b.rival == a.name:
+        if self.rivalry_heat_between(a, b):
             hype += 24
             reason_bits.append("existing rivalry")
         if a.champion or b.champion:
@@ -11901,12 +13023,14 @@ class ViewMixin:
         if not selected:
             return
         fighter = self.get_fighter(selected[0])
-        rivals = [f for f in self.roster if f.gender == fighter.gender and f.weight == fighter.weight and f.name != fighter.name]
+        rivals = [f for f in self.roster if f is not fighter and f.gender == fighter.gender and f.weight == fighter.weight]
         if not rivals:
             return
         target = max(rivals, key=lambda f: self.rank_value(f) + f.popularity)
         fighter.rival = target.name
         target.rival = fighter.name
+        fighter.rival_fighter_id = target.fighter_id
+        target.rival_fighter_id = fighter.fighter_id
         fighter.media_heat = min(100, fighter.media_heat + 18)
         target.media_heat = min(100, target.media_heat + 12)
         self.news.insert(0, f"{fighter.name} called out {target.name}, heating up the {fighter.weight} division.")
@@ -12005,6 +13129,20 @@ class ViewMixin:
         if not fighter.detailed_skills:
             self.generate_detailed_skills(fighter)
             self.sync_broad_skills_from_details(fighter)
+            return
+        # Versionless, value-preserving compatibility repair for the Phase 2
+        # boxing attributes. Derive them from the old save's own ratings so a
+        # loaded fighter does not acquire generic 50s or consume simulation RNG.
+        skills = fighter.detailed_skills
+        derived = {
+            "combination_punching": ("punch_technique", "hand_speed", "conditioning"),
+            "body_punching": ("punch_technique", "creative_punches", "feints"),
+            "counter_timing": ("reflexes", "head_movement", "adaptability"),
+        }
+        for key, sources in derived.items():
+            if key not in skills:
+                fallback = fighter.striking if key != "counter_timing" else fighter.fight_iq
+                skills[key] = round(sum(skills.get(source, fallback) for source in sources) / len(sources))
 
     def build_editor_form(self, parent, fields):
         for index, (label, key, kind) in enumerate(fields):

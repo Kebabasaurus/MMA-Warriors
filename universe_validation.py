@@ -9,6 +9,7 @@ from collections import Counter
 from dataclasses import dataclass
 
 from constants import BEHAVIOURS, COMBAT_SPORT_WEIGHT_CLASSES, DETAILED_SKILL_GROUPS, REGIONS, STYLES, TRAITS, WEIGHTS
+from fight_moves import MOVE_REGISTRY
 
 
 FIGHTER_REQUIRED_FIELDS = ("name", "placement", "owner", "weight", "gender", "rating", "age", "region", "nationality")
@@ -59,6 +60,11 @@ def validate_universe_section_issues(section, value, *, company_names=()):
         if not isinstance(records, list) or not records:
             _issue(issues, section, "all_fighters", "", "must contain fighter records")
             return issues
+        try:
+            fighter_schema = int(value.get("schema", 1) or 1)
+        except (TypeError, ValueError):
+            fighter_schema = 1
+            _issue(issues, section, "", "schema", "must be an integer")
         fighter_ids, owner_pairs = set(), set()
         allowed_owners = {str(name) for name in company_names} | {"Free Agent", "Legend", ""}
         for index, record in enumerate(records):
@@ -77,7 +83,29 @@ def validate_universe_section_issues(section, value, *, company_names=()):
                 _issue(issues, section, label, "region", "is not a supported region")
             if record.get("gender") not in ("Male", "Female"):
                 _issue(issues, section, label, "gender", "must be Male or Female")
+            if record.get("style") not in STYLES:
+                _issue(issues, section, label, "style", "is not a supported value")
+            for field, choices in (
+                ("profile_style", STYLES), ("secondary_style", STYLES),
+                ("trait", TRAITS), ("behaviour", BEHAVIOURS),
+            ):
+                if record.get(field) not in (None, "") and record.get(field) not in choices:
+                    _issue(issues, section, label, field, "is not a supported value")
+            if (record.get("secondary_style")
+                    and record.get("secondary_style") == record.get("style")):
+                _issue(issues, section, label, "secondary_style", "must differ from the primary style")
+            signature_moves = record.get("signature_moves", [])
+            if not isinstance(signature_moves, list):
+                _issue(issues, section, label, "signature_moves", "must be a list of up to three move IDs")
+            elif len(signature_moves) > 3 or len(signature_moves) != len(set(signature_moves)):
+                _issue(issues, section, label, "signature_moves", "must contain up to three unique move IDs")
+            else:
+                for move_id in signature_moves:
+                    if move_id not in MOVE_REGISTRY:
+                        _issue(issues, section, label, "signature_moves", f"contains unknown move ID {move_id!r}")
             fighter_id = str(record.get("fighter_id", "")).strip()
+            if fighter_schema >= 5 and not fighter_id:
+                _issue(issues, section, label, "fighter_id", "is required by fighter schema 5+")
             if fighter_id:
                 if fighter_id in fighter_ids:
                     _issue(issues, section, label, "fighter_id", "duplicates another fighter ID")

@@ -156,7 +156,11 @@ def exercise_extended_title_live_watch(app, root):
         raw_summary = next(line for line in log["lines"] if line.startswith(f"Round {round_no} summary:"))
         expected_summary = app.display_fighter_names_in_text(raw_summary, log)
         require(f"Round {round_no}:" in rendered, f"Live title watch lost Round {round_no}")
-        require(expected_summary in rendered, f"Live title watch collapsed Round {round_no} commentary")
+        require(
+            expected_summary in rendered,
+            f"Live title watch collapsed Round {round_no} commentary; expected={expected_summary!r}; "
+            f"rendered_tail={rendered[-900:]!r}",
+        )
         if round_no < 7:
             require("OFFICIAL SCORECARDS - RESULT CONFIRMED" not in rendered,
                     "Live title watch revealed scorecards before the final round")
@@ -539,11 +543,42 @@ def exercise_academy_and_sport_edge_cases(app):
     app.repair_academy(repaired)
     require(rng_after == rng_before == random.getstate(), "Academy legacy repair consumed the simulation RNG")
     require(json.loads(json.dumps(repaired)) == first_repair, "Academy legacy repair was not deterministic or idempotent")
-    require(repaired.get("schema_version") == 5, "Academy legacy repair did not migrate the schema version")
+    require(repaired.get("schema_version") == 6, "Academy legacy repair did not migrate the schema version")
     require(repaired.get("auto_card_min_bouts") == 2, "Academy legacy repair did not add the auto-card fight threshold")
     require(repaired.get("showcase_weeks") >= 6, "Legacy academy retained the overactive two-week showcase schedule")
     require(repaired["prospects"][0].get("prospect_id"), "Academy legacy repair did not create a stable prospect ID")
     require(repaired["prospects"][0].get("amateur_bout_records") == [], "Academy legacy repair did not add structured amateur records")
+    null_collections = app.repair_academy({
+        "owned": True, "prospects": None, "talent_pool": None, "card_history": None,
+        "alumni": None, "lost_leads": None, "development_events": None,
+        "challenge_history": None,
+    })
+    require(
+        all(null_collections.get(key) == [] for key in (
+            "prospects", "talent_pool", "card_history", "alumni", "lost_leads",
+            "development_events", "challenge_history",
+        )),
+        "Academy repair did not normalize null-shaped legacy collections",
+    )
+    null_prospect = {"name": "Null Academy Prospect", "amateur_history": None, "opponent_counts": None}
+    app.repair_academy_prospect(null_prospect)
+    require(null_prospect["amateur_history"] == [] and null_prospect["opponent_counts"] == {},
+            "Academy prospect repair did not normalize null-shaped nested collections")
+    malformed_prospect = {
+        "name": "Malformed Academy Prospect", "rating": "bad", "potential": None,
+        "loyalty": 140, "satisfaction": "bad", "amateur_quality_points": -4,
+        "strength_of_schedule": "bad", "notable_wins": -2, "competition_tier": "Galactic",
+        "retention_status": None, "development_plan": {"duration": "bad", "weeks_remaining": None},
+    }
+    app.repair_academy_prospect(malformed_prospect)
+    require(
+        malformed_prospect["rating"] == 42 and malformed_prospect["potential"] >= 62
+        and malformed_prospect["loyalty"] == 100 and malformed_prospect["satisfaction"] == 60
+        and malformed_prospect["amateur_quality_points"] == 0 and malformed_prospect["strength_of_schedule"] == 0.0
+        and malformed_prospect["notable_wins"] == 0 and malformed_prospect["competition_tier"] == "Local"
+        and malformed_prospect["retention_status"] == "Committed" and malformed_prospect["development_plan"] == {},
+        "Academy prospect repair did not normalize malformed schema-six scalar and plan fields",
+    )
 
     academy = app.academy_defaults()
     academy.update({"owned": True, "level": 1, "capacity": 8, "weekly_cost": 4500})
@@ -559,6 +594,9 @@ def exercise_academy_and_sport_edge_cases(app):
     require(academy.get("card_history") and academy["card_history"][0].get("fight_logs"), "Academy card did not retain a replay")
     require(len(academy["card_history"][0]["fight_logs"][0].get("lines", [])) >= 20, "Academy bout did not use the detailed fight engine")
     require(academy.get("total_bouts") == 1 and academy.get("total_cards") == 1, "Academy career totals were not updated")
+    academy["showcase_weeks"] = 99
+    require(app.academy_showcase_status(academy) == "Next eligibility check in 4 week(s)",
+            "Academy showcase status used the stale compatibility field instead of the live card clock")
     require(0 <= app.academy_graduation_readiness(prospect) <= 100, "Academy graduation readiness is invalid")
     lead = app.create_academy_scout_prospect(72, region=app.player_region)
     confidence = lead["scout_confidence"]
@@ -566,10 +604,115 @@ def exercise_academy_and_sport_edge_cases(app):
     require(lead["scout_confidence"] > confidence, "Academy scout report did not improve while observed")
     require(app.academy_preferred_sport(prospect) in ("MMA", "Boxing", "Kickboxing", "Muay Thai", "Wrestling", "Brazilian Jiu-Jitsu"), "Academy pathway recommendation is invalid")
 
+    # The fight engine returns the disposable fighter object. Resolve that
+    # object directly so duplicate display names cannot assign the win to red.
+    same_name_a = app.create_academy_scout_prospect(65, region=app.player_region)
+    same_name_b = app.create_academy_scout_prospect(65, region=app.player_region)
+    same_name_a.update({"name": "Duplicate Academy Amateur", "prospect_id": "academy-duplicate-red", "amateur_w": 0, "amateur_l": 0})
+    same_name_b.update({"name": "Duplicate Academy Amateur", "prospect_id": "academy-duplicate-blue", "amateur_w": 0, "amateur_l": 0})
+    original_simulate_fight = app.simulate_fight
+    try:
+        app.simulate_fight = lambda red, blue, _fight: (blue, red, "Decision", 3, ["Identity-safe academy result"])
+        app.simulate_academy_amateur_bout(same_name_a, same_name_b, "Youth Lightweight")
+    finally:
+        app.simulate_fight = original_simulate_fight
+    require(same_name_a["amateur_l"] == 1 and same_name_b["amateur_w"] == 1,
+            "A same-name academy bout assigned the winner by display name")
+    require(same_name_a["last_amateur_bout"].get("winner_id") == same_name_b["prospect_id"],
+            "Academy replay telemetry omitted the duplicate-name winner identity")
+
+    workload_prospect = app.create_academy_scout_prospect(65, region=app.player_region)
+    workload_prospect.update({"training_intensity": "Standard", "fatigue": 0, "injured": 0})
+    random.seed(91573)
+    for _ in range(4):
+        app.train_academy_prospect(workload_prospect, academy)
+    require(workload_prospect["fatigue"] > 2,
+            "Standard academy training still erased its own weekly fatigue workload")
+
+    ok, _note = app.start_academy_development_plan(
+        workload_prospect, "Boxing", "Standard", "Fix a Weakness", 4,
+    )
+    require(ok and workload_prospect["development_plan"].get("weeks_remaining") == 4,
+            "Academy development block did not start")
+    workload_prospect["striking"] += 2
+    workload_prospect["rating"] += 1
+    for _ in range(4):
+        app.process_academy_development_plan(workload_prospect, academy)
+    require(not workload_prospect.get("development_plan") and workload_prospect.get("development_reports"),
+            "Academy development block did not complete with a report")
+    require(workload_prospect["development_reports"][0].get("success"),
+            "Academy development report did not evaluate its objective")
+
+    promise_loyalty = workload_prospect["loyalty"]
+    ok, _note = app.make_academy_promise(workload_prospect, "Graduation Review", 8)
+    require(ok and app.fulfill_academy_promise(workload_prospect, "Graduation Review"),
+            "Academy promise could not be made and fulfilled")
+    require(workload_prospect["loyalty"] > promise_loyalty,
+            "A fulfilled academy promise did not improve retention")
+
+    retention_academy = app.academy_defaults(); retention_academy.update({"owned": True, "auto_train": True})
+    departure = app.create_academy_scout_prospect(55, region=app.player_region)
+    departure.update({"academy_member": True, "satisfaction": 0, "loyalty": 0, "youth_trait": "Volatile"})
+    retention_academy["prospects"] = [departure]
+    original_random = random.random
+    try:
+        random.random = lambda: 0.0
+        departed = app.process_academy_retention(departure, retention_academy)
+    finally:
+        random.random = original_random
+    require(departed and not retention_academy["prospects"] and retention_academy["departed_prospects"],
+            "A guaranteed at-risk academy departure did not enter the retention history")
+
+    tournament_academy = app.academy_defaults(); tournament_academy.update({"owned": True, "level": 3, "weekly_cost": 8500})
+    tournament_prospect = app.create_academy_scout_prospect(82, region=app.player_region)
+    tournament_prospect.update({"academy_member": True, "age": 18, "rating": 70, "amateur_w": 8, "amateur_l": 1,
+                                "last_amateur_week": -99, "fatigue": 0, "injured": 0})
+    tournament_academy["prospects"] = [tournament_prospect]
+    app.academy = tournament_academy
+    cash_before_tournament = app.cash
+    original_simulate_fight = app.simulate_fight
+    try:
+        app.simulate_fight = lambda red, blue, _fight: (red, blue, "Decision", 3, ["Tournament identity result"])
+        ok, _note, tournament_results = app.run_academy_tournament(tournament_prospect, "International", tournament_academy)
+    finally:
+        app.simulate_fight = original_simulate_fight
+    require(ok and len(tournament_results) == 2 and tournament_prospect.get("amateur_titles"),
+            "Academy tournament did not run a two-bout championship path")
+    require(tournament_prospect.get("amateur_quality_points", 0) > 0 and tournament_prospect.get("strength_of_schedule", 0) > 0,
+            "Academy tournament did not update competition quality and strength of schedule")
+    require(app.cash < cash_before_tournament and tournament_academy.get("competition_history"),
+            "Academy tournament did not preserve its financial and competition ledger")
+
+    rollback_prospect = app.create_academy_scout_prospect(82, region=app.player_region)
+    rollback_prospect.update({"academy_member": True, "age": 18, "rating": 70, "amateur_w": 8, "amateur_l": 1,
+                              "last_amateur_week": -99, "fatigue": 0, "injured": 0})
+    tournament_academy["prospects"].append(rollback_prospect)
+    rollback_cash = app.cash
+    rollback_finance = copy.deepcopy(app.finance)
+    rollback_prospect_state = copy.deepcopy(rollback_prospect)
+    rollback_competition = copy.deepcopy(tournament_academy.get("competition_history", []))
+    rollback_rng = random.getstate()
+    original_simulate_fight = app.simulate_fight
+    try:
+        app.simulate_fight = lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("forced academy tournament failure"))
+        ok, _note, tournament_results = app.run_academy_tournament(rollback_prospect, "International", tournament_academy)
+    finally:
+        app.simulate_fight = original_simulate_fight
+    require(not ok and tournament_results == [], "Academy tournament failure was reported as a completed event")
+    require(app.cash == rollback_cash and app.finance == rollback_finance,
+            "Academy tournament failure retained a cash or finance mutation")
+    require(rollback_prospect == rollback_prospect_state
+            and tournament_academy.get("competition_history", []) == rollback_competition
+            and random.getstate() == rollback_rng,
+            "Academy tournament failure retained prospect, history, or RNG mutations")
+
     # A full academy must put all eight healthy, rested members into bouts.  A
     # second card in the same week must not let any of them fight twice.
     full_academy = app.academy_defaults()
     full_academy.update({"owned": True, "level": 3, "capacity": 8, "weekly_cost": 8500})
+    full_academy["season_history"] = list(academy.get("season_history", []))
+    full_academy["competition_history"] = list(tournament_academy.get("competition_history", []))
+    full_academy["departed_prospects"] = list(retention_academy.get("departed_prospects", []))
     full_prospects = []
     for index in range(8):
         item = app.create_academy_scout_prospect(70, region=app.player_region)
@@ -619,6 +762,24 @@ def exercise_academy_and_sport_edge_cases(app):
     require(ok and challenge_note and not full_academy.get("active_challenge"), "Academy challenge did not resolve through the coaching choice")
     require(challenged.get("confidence", 0) >= confidence_before, "Academy coaching decision reduced confidence unexpectedly")
     require(full_academy.get("challenge_history") and full_academy["challenge_history"][0].get("choice") == "mentor", "Academy challenge resolution was not recorded")
+
+    # A durable challenge ID must never fall through to an earlier same-name
+    # prospect. This protects edited and legacy universes containing duplicates.
+    duplicate = dict(challenged)
+    duplicate["prospect_id"] = challenged["prospect_id"] + "-duplicate"
+    duplicate["confidence"] = 20
+    duplicate["name"] = challenged["name"]
+    full_academy["prospects"].insert(0, duplicate)
+    target_confidence = challenged["confidence"]
+    full_academy["active_challenge"] = {
+        "id": "stability-identity-challenge", "prospect_id": challenged["prospect_id"],
+        "prospect_name": challenged["name"], "focus": "Balanced", "title": "Identity test",
+    }
+    ok, _challenge_note = app.resolve_academy_challenge("mentor", full_academy)
+    require(ok and challenged["confidence"] == min(99, target_confidence + 2),
+            "Academy challenge did not update the ID-selected prospect")
+    require(duplicate["confidence"] == 20, "Academy challenge fell through to a same-name prospect")
+    full_academy["prospects"].remove(duplicate)
 
     # Scout quality should affect the distribution, not guarantee an elite lead
     # on each individual roll.  Fixed seeds keep this statistical check stable.
@@ -671,6 +832,109 @@ def exercise_academy_and_sport_edge_cases(app):
     require(fighter.detailed_skills.get("resilience") == graduate["toughness"], "Academy graduation did not preserve detailed resilience")
     require(fighter.detailed_skills.get("dedication") == graduate["dedication"], "Academy graduation did not preserve detailed dedication")
     require(full_academy["alumni"][0]["amateur_record"] == "7-2-1", "Academy graduate alumni record lost structured W/L/D totals")
+    require(full_academy["alumni"][0].get("fighter_id") == fighter.fighter_id,
+            "Academy alumnus did not retain the graduate fighter ID")
+
+    failed_graduate = dict(graduate)
+    failed_graduate.update({"name": "Rollback Academy Graduate", "prospect_id": "academy-graduate-rollback"})
+    full_academy["prospects"].append(failed_graduate)
+    failed_roster_before = list(app.roster)
+    failed_alumni_before = copy.deepcopy(full_academy["alumni"])
+    failed_graduates_before = full_academy["total_graduates"]
+    failed_rng_before = random.getstate()
+    original_record_world_story = app.record_world_story
+    try:
+        app.record_world_story = lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("forced graduation story failure"))
+        ok, _message, failed_fighter = app.promote_academy_prospect_to_sport(failed_graduate, "MMA Main Roster")
+    finally:
+        app.record_world_story = original_record_world_story
+    require(not ok and failed_fighter is None, "Academy graduation failure was reported as a completed move")
+    require(app.roster == failed_roster_before and full_academy["alumni"] == failed_alumni_before
+            and full_academy["total_graduates"] == failed_graduates_before,
+            "Academy graduation failure retained a roster or alumni mutation")
+    require(any(item is failed_graduate for item in full_academy["prospects"]) and random.getstate() == failed_rng_before,
+            "Academy graduation rollback lost prospect identity or consumed RNG")
+    full_academy["prospects"].remove(failed_graduate)
+    same_name_prospect = dict(graduate)
+    same_name_prospect["prospect_id"] = graduate["prospect_id"] + "-same-name"
+    same_name_fighter = app.academy_prospect_to_fighter(same_name_prospect)
+    app.roster.append(same_name_fighter)
+    app.record_academy_graduate(same_name_prospect, same_name_fighter, "MMA")
+    require(len([row for row in full_academy["alumni"] if row.get("name") == fighter.name]) == 2,
+            "A same-name academy graduate replaced an existing alumnus")
+    require(app.academy_alumnus_fighter(fighter.name, fighter.fighter_id) is fighter,
+            "Academy alumnus profile lookup did not resolve by fighter ID")
+    require(app.academy_alumnus_fighter(fighter.name) is None,
+            "Ambiguous legacy academy alumnus lookup guessed by display name")
+
+    feeder_prospect = dict(graduate)
+    feeder_prospect.update({"name": "Stability Feeder Graduate", "prospect_id": graduate["prospect_id"] + "-feeder", "age": 18})
+    ok, _message, feeder_fighter = app.promote_academy_prospect_to_sport(feeder_prospect, "Regional Feeder")
+    require(ok and feeder_fighter and any(feeder_fighter in promo.roster for promo in app.promotions if getattr(promo, "is_regional_feeder", False)),
+            "Academy regional-feeder graduation pathway did not place the fighter")
+    require(any(row.get("fighter_id") == feeder_fighter.fighter_id for row in full_academy.get("released_rights", [])),
+            "Academy regional-feeder graduation did not retain matching rights")
+    cash_before_right = app.cash
+    ok, _message = app.exercise_academy_matching_right(feeder_fighter.fighter_id)
+    require(ok and feeder_fighter in app.roster and app.cash < cash_before_right,
+            "Academy matching right did not return the feeder graduate through canonical signing finance")
+    require(app.academy_matching_right(feeder_fighter.fighter_id) is None
+            and any(row.get("fighter_id") == feeder_fighter.fighter_id and row.get("status") == "Exercised" for row in full_academy.get("released_rights", [])),
+            "Exercised academy matching right remained active")
+
+    rollback_feeder_prospect = dict(graduate)
+    rollback_feeder_prospect.update({"name": "Rollback Feeder Graduate", "prospect_id": "academy-feeder-rollback", "age": 18})
+    ok, _message, rollback_feeder = app.promote_academy_prospect_to_sport(rollback_feeder_prospect, "Regional Feeder")
+    require(ok and rollback_feeder, "Could not create matching-right rollback fixture")
+    rollback_promo = next(promo for promo in app.promotions if rollback_feeder in promo.roster)
+    rollback_right = app.academy_matching_right(rollback_feeder.fighter_id)
+    right_cash_before = app.cash
+    right_finance_before = copy.deepcopy(app.finance)
+    right_state_before = copy.deepcopy(rollback_right)
+    original_record_finance = app.record_finance_transaction
+    try:
+        app.record_finance_transaction = lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("forced matching-right finance failure"))
+        ok, _message = app.exercise_academy_matching_right(rollback_feeder.fighter_id)
+    finally:
+        app.record_finance_transaction = original_record_finance
+    require(not ok and rollback_feeder in rollback_promo.roster and rollback_feeder not in app.roster,
+            "Matching-right failure retained a partial roster move")
+    require(app.cash == right_cash_before and app.finance == right_finance_before and rollback_right == right_state_before,
+            "Matching-right failure retained cash, finance, or right-state mutations")
+
+    rivals = app.rival_academy_promotions()
+    require(rivals, "No rival promotion was eligible to operate a youth academy")
+    rival = rivals[0]
+    rival_program = app.rival_academy_program(rival)
+    rival_source = dict(graduate)
+    rival_source.update({"name": "Stability Rival Graduate", "prospect_id": "stability-rival-graduate", "age": 18})
+    rival_row = app.add_rival_academy_prospect(rival, rival_source)
+    rival_row["graduation_month"] = app.month
+    rival_roster_before = len(rival.roster)
+    rival_fighter = app.graduate_rival_academy_prospect(rival, rival_row)
+    require(rival_fighter and len(rival.roster) == rival_roster_before + 1,
+            "Rival academy did not graduate a persistent cohort member")
+    require(rival_program.get("graduates", 0) >= 1 and rival_program.get("last_graduate") == rival_fighter.name,
+            "Rival academy did not retain its graduation history")
+    rival_development = app.add_rival_academy_prospect(rival, dict(graduate, name="Rival Rating Floor", prospect_id="rival-rating-floor"))
+    rival_development.update({"rating": 70, "potential": 90, "graduation_month": app.month + 24,
+                              "striking": 40, "wrestling": 40, "grappling": 40, "cardio": 40, "chin": 40, "fight_iq": 40})
+    rival_program["last_intake_month"] = app.month
+    saved_week = app.week
+    original_random = random.random
+    try:
+        app.week = 1
+        random.random = lambda: 0.0
+        app.process_rival_academies()
+    finally:
+        random.random = original_random
+        app.week = saved_week
+    require(rival_development["rating"] >= 70,
+            "Rival academy development reduced a prospect's persistent rating")
+    app.render_academy_screen()
+    app.root.update_idletasks()
+    require(getattr(app, "_academy_window", None) is not None,
+            "Expanded academy management screen did not render")
 
     sport = "Boxing"
     world = app.combat_sport_worlds[sport]
@@ -707,11 +971,14 @@ def exercise_save_roundtrip(app):
     })
     serialized = app.serialize_world()
     serialized_academy = serialized.get("academy", {})
-    require(serialized_academy.get("schema_version") == 5, "Academy schema version was omitted from the save payload")
+    require(serialized_academy.get("schema_version") == 6, "Academy schema version was omitted from the save payload")
     require(len(serialized_academy.get("prospects", [])) == 8, "Full academy roster was omitted from the save payload")
     require(all(item.get("prospect_id") for item in serialized_academy["prospects"]), "Academy prospect IDs were omitted from the save payload")
     require(all(item.get("amateur_bout_records") for item in serialized_academy["prospects"]), "Structured amateur records were omitted from the save payload")
     require(serialized_academy.get("development_events"), "Academy development events were omitted from the save payload")
+    require(serialized_academy.get("season_history") and serialized_academy.get("competition_history"),
+            "Academy development-block or competition history was omitted from the save payload")
+    require(serialized_academy.get("released_rights"), "Academy matching rights were omitted from the save payload")
     latest_academy_bout_week = max(
         int(item.get("last_amateur_week", -99) or -99)
         for item in serialized_academy["prospects"]
@@ -726,6 +993,10 @@ def exercise_save_roundtrip(app):
         for item in serialized_academy["prospects"]
     }
     expected_academy_totals = (serialized_academy["total_cards"], serialized_academy["total_bouts"], serialized_academy["total_graduates"])
+    expected_rival_academies = {
+        promo.name: json.loads(json.dumps((promo.strategy or {}).get("youth_academy", {})))
+        for promo in app.promotions if isinstance((promo.strategy or {}).get("youth_academy"), dict)
+    }
     saved_replay = serialized["result_records"][0]
     require(saved_replay.get("_archive_ref") and "log" not in saved_replay and "fight_logs" not in saved_replay, "AI replay detail was duplicated in the save payload")
     encoded = json.dumps(serialized)
@@ -744,7 +1015,7 @@ def exercise_save_roundtrip(app):
         restored_replay = loaded.result_records[0]
         require(restored_replay.get("log") == replay_package["log"] and restored_replay.get("fight_logs") == replay_package["fight_logs"], "Archived replay detail was not restored after load")
         loaded_academy = loaded.academy
-        require(loaded_academy.get("schema_version") == 5, "Academy schema version did not survive save roundtrip")
+        require(loaded_academy.get("schema_version") == 6, "Academy schema version did not survive save roundtrip")
         require(loaded_academy.get("challenge_history") == serialized_academy.get("challenge_history"), "Academy challenge history changed after save roundtrip")
         require([item.get("prospect_id") for item in loaded_academy.get("prospects", [])] == expected_academy_ids, "Academy prospect identity changed after save roundtrip")
         require(
@@ -756,8 +1027,16 @@ def exercise_save_roundtrip(app):
             "Academy card or graduation totals changed after save roundtrip",
         )
         require(loaded_academy.get("development_events") == serialized_academy["development_events"], "Academy development events changed after save roundtrip")
+        require(loaded_academy.get("season_history") == serialized_academy["season_history"], "Academy development-block reports changed after save roundtrip")
+        require(loaded_academy.get("competition_history") == serialized_academy["competition_history"], "Academy competition history changed after save roundtrip")
+        require(loaded_academy.get("released_rights") == serialized_academy["released_rights"], "Academy matching rights changed after save roundtrip")
         require(loaded_academy.get("last_showcase_week") == serialized_academy["last_showcase_week"], "Academy showcase cooldown changed after save roundtrip")
         require(loaded_academy.get("alumni", [{}])[0].get("amateur_record") == "7-2-1", "Academy alumni record changed after save roundtrip")
+        loaded_promotions = {promo.name: promo for promo in loaded.promotions}
+        require(
+            all((loaded_promotions[name].strategy or {}).get("youth_academy", {}) == program for name, program in expected_rival_academies.items()),
+            "Rival academy programmes changed after save roundtrip",
+        )
         require(not callback_errors, f"Save roundtrip UI callback error: {callback_errors[0][1] if callback_errors else ''}")
     finally:
         destroy_root(root2)
@@ -805,7 +1084,11 @@ def exercise_talent_ecosystem_balance(app):
         ending = [fighter.overall for fighter in cohort]
         mean_gain = sum(end - start for start, end in zip(starting, ending)) / len(cohort)
         require(12 <= mean_gain <= 23, "Ten-year regional development is stagnant or excessively fast")
-        require(sum(value >= 70 for value in ending) >= len(cohort) * 0.70, "Too few regional fighters mature into credible professionals")
+        credible_count = sum(value >= 70 for value in ending)
+        require(
+            credible_count >= len(cohort) * 0.70,
+            f"Too few regional fighters mature into credible professionals ({credible_count}/{len(cohort)})",
+        )
         require(len(cohort) * 0.08 <= sum(value >= 80 for value in ending) <= len(cohort) * 0.35, "High-level regional development is missing or overproduced")
         require(sum(value >= 90 for value in ending) <= len(cohort) * 0.05, "Elite development has become commonplace")
         require(all(fighter.overall <= fighter.potential for fighter in cohort), "Development exceeded a fighter's potential ceiling")

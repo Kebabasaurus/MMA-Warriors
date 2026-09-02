@@ -1,5 +1,6 @@
 """Focused regressions for the Brett-Dev QA/tooling stabilization pass."""
 
+import re
 from pathlib import Path
 
 from admin import AdminMixin
@@ -36,7 +37,8 @@ class AuditHarness(AdminMixin):
         self.audit_runs = Value(10)
         self.audit_text = TextSink()
         self.name_counts = {"existing": 7}
-        self.engine_settings = {"gate_multiplier": 1.0}
+        self.engine_settings = {"config_version": 2, "ko_power": 1.0, "submission_finish": 1.0, "decision_noise": 1.0, "gas_cost": 1.0, "damage": 1.0}
+        self.business_settings = {"config_version": 1, "gate_multiplier": 1.0}
         self._fighter_number = 0
 
     def apply_engine_settings(self):
@@ -102,7 +104,48 @@ def test_windows_launchers_do_not_embed_a_developer_profile():
         assert "%APP_DIR%" in text, name
 
 
+def test_build_specs_are_portable_and_bundle_runtime_graphics():
+    game_spec = (ROOT / "MMA Warriors.spec").read_text(encoding="utf-8")
+    editor_spec = (ROOT / "MMA Warriors Database Editor.spec").read_text(encoding="utf-8")
+    portable_build = (ROOT / "Build Portable.bat").read_text(encoding="utf-8")
+
+    for name, text in (
+        ("MMA Warriors.spec", game_spec),
+        ("MMA Warriors Database Editor.spec", editor_spec),
+    ):
+        assert not re.search(r"[A-Za-z]:\\+", text), name
+        assert "/Users/" not in text and "/home/" not in text, name
+        assert "Path(SPECPATH).resolve()" in text, name
+
+    assert "(str(PROJECT_ROOT / 'assets'), 'assets')" in game_spec
+    assert "(str(PROJECT_ROOT / 'country_flags'), 'country_flags')" in game_spec
+    assert '--add-data "%APP_DIR%assets;assets"' in portable_build
+    assert '--add-data "%APP_DIR%country_flags;country_flags"' in portable_build
+    assert 'BUNDLE_DIR / "country_flags"' in (ROOT / "views.py").read_text(encoding="utf-8")
+    assert any((ROOT / "country_flags").glob("*.png"))
+
+
+def test_shipping_scripts_preserve_failures_and_require_complete_output():
+    portable_build = (ROOT / "Build Portable.bat").read_text(encoding="utf-8")
+    editor_build = (ROOT / "Build Database Editor.bat").read_text(encoding="utf-8")
+    portable_check = (ROOT / "Portable Check.bat").read_text(encoding="utf-8")
+    smoke_launcher = (ROOT / "Run Smoke Tests.bat").read_text(encoding="utf-8")
+
+    assert 'if exist "%RUNTIME_BACKUP%" rmdir /S /Q "%RUNTIME_BACKUP%"' in portable_build
+    assert ":restore_runtime_after_failure" in portable_build
+    assert "if errorlevel 2 goto backup_failed" in portable_build
+    assert portable_build.count("goto build_failed") >= 7
+    assert 'if errorlevel 1 goto build_failed' in portable_build
+    assert 'if not exist "%APP_DIR%output_database_editor\\MMA Warriors Database Editor.exe"' in editor_build
+    assert "could not be copied to the portable package" in editor_build
+    assert 'if not exist "%APP_DIR%MMA Warriors Database Editor.exe"' in portable_check
+    assert '"%PY%" "%APP_DIR%run_regression_suite.py"' in smoke_launcher
+    assert smoke_launcher.count("exit /b 1") >= 2
+
+
 if __name__ == "__main__":
     test_simulation_audit_is_competitive_and_non_mutating()
     test_windows_launchers_do_not_embed_a_developer_profile()
+    test_build_specs_are_portable_and_bundle_runtime_graphics()
+    test_shipping_scripts_preserve_failures_and_require_complete_output()
     print("QA tooling regression tests passed.")

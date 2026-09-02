@@ -3,6 +3,7 @@
 from dataclasses import asdict
 
 from events import EventMixin
+from constants import FINISH_METHODS
 from models import Fighter
 
 
@@ -86,6 +87,16 @@ def assert_finance_and_guarantees(probe):
     assert finance["contract_clauses"] == 8_500
     assert finance["total_expense"] == 55_050
     assert finance["profit"] == 94_950
+
+    for method in sorted(FINISH_METHODS):
+        clauses = probe.event_contract_clause_payouts(
+            [(winner, loser, {"fighters": [winner.name, loser.name]}, method)], finance,
+        )
+        assert clauses["finish_bonuses"] == 2_000, f"{method} lost its contractual finish bonus"
+    decision_clauses = probe.event_contract_clause_payouts(
+        [(winner, loser, {"fighters": [winner.name, loser.name]}, "Decision")], finance,
+    )
+    assert decision_clauses["finish_bonuses"] == 0
 
     cancelled = {
         "ticket_revenue": 100_000, "broadcast_income": 50_000,

@@ -13,6 +13,7 @@ from pathlib import Path
 from tkinter import messagebox, ttk
 
 from constants import *
+from fight_moves import MOVE_REGISTRY
 from models import Fighter, Gym, Promotion
 
 
@@ -21,7 +22,8 @@ class EventMixin:
     def event_transaction_runtime_value(value, seen=None):
         """Identify UI/callback objects that must remain outside event rollback."""
         if (callable(value) or isinstance(value, (tk.Misc, tk.Variable, threading.Thread,
-                                                   type(threading.Lock()), type(threading.RLock())))
+                                                   threading.Event, type(threading.Lock()),
+                                                   type(threading.RLock()), random.SystemRandom))
                 or hasattr(value, "tk")):
             return True
         seen = seen if seen is not None else set()
@@ -239,6 +241,7 @@ class EventMixin:
             "day": self.selected_booking_day(),
             "broadcaster": self.event_broadcaster.get(),
             "fights": scheduled_fights,
+            **self.selected_event_economics(),
         }
         if super_project:
             project = dict(super_project)
@@ -250,11 +253,13 @@ class EventMixin:
                 if offer.get("id") == project.get("id"):
                     offer.update(project)
         self.scheduled_events.append(event)
+        self.record_homecoming_booking(event, self.player_company_name)
         self.assign_event_camps(event)
         prefix = "SUPER EVENT SCHEDULED: " if event.get("super_event") else ""
         self.news.insert(0, f"{prefix}{event['name']} has been scheduled for {self.event_date_label(event)} at {event['venue']}.")
         self.set_schedule_status(f"SCHEDULED: {event['name']} | {self.event_date_label(event)} | {len(event['fights'])} fights.", "success")
         self.booked.clear()
+        self._event_price_user_set = False
         self.event_name.set(self.default_event_name())
         self.set_booking_date(month if week < 4 else month + 1, week + 1 if week < 4 else 1)
         self.event_broadcaster.set(self.broadcasters[0]["name"] if self.broadcasters else "No Coverage")
@@ -392,6 +397,7 @@ class EventMixin:
                 fighter.morale = min(100, fighter.morale + max(0, camp_boost // 2))
                 self.apply_gym_camp_micro_improvement(fighter, gym, weeks_out)
                 self.apply_camp_focus_improvement(fighter, gym, weeks_out)
+                self.develop_fighter_move_mastery(fighter, weeks_out, getattr(fighter, "camp_focus", "Balanced"))
                 self.evolve_trait_from_camp(fighter, quality, weeks_out)
                 if intensity == "Hard" and random.random() < max(0.015, fighter.injury_proneness / 1600):
                     fighter.injured = max(fighter.injured, 1)
@@ -663,6 +669,8 @@ class EventMixin:
         gender_var = tk.StringVar(value="All")
         title_var = tk.BooleanVar(value=False)
         tier_var = tk.StringVar(value="Main Card")
+        red_plan_var = tk.StringVar(value="Balanced")
+        blue_plan_var = tk.StringVar(value="Balanced")
         ttk.Label(filters, text="Weight", style="Inset.TLabel").pack(side="left", padx=(4, 2))
         weight_box = ttk.Combobox(filters, values=["All"] + self.active_player_division_weights("All"), textvariable=weight_var, state="readonly", width=14)
         weight_box.pack(side="left", padx=(0, 7))
@@ -729,6 +737,23 @@ class EventMixin:
         ttk.Checkbutton(add_controls, text="Title", variable=title_var).pack(side="left", padx=(10, 3))
         ttk.Label(add_controls, text="Tier", style="Inset.TLabel").pack(side="left", padx=(8, 2))
         ttk.Combobox(add_controls, values=CARD_TIERS, textvariable=tier_var, state="readonly", width=12).pack(side="left", padx=(0, 3))
+
+        plan_controls = ttk.Frame(available, style="Inset.TFrame")
+        plan_controls.pack(fill="x", padx=6, pady=(0, 6))
+        ttk.Label(plan_controls, text="Corner A plan", style="Inset.TLabel").pack(side="left", padx=(4, 2))
+        red_plan_box = ttk.Combobox(
+            plan_controls, values=FIGHT_PLANS, textvariable=red_plan_var,
+            state="readonly", width=19,
+        )
+        red_plan_box.pack(side="left", padx=(0, 7))
+        ttk.Label(plan_controls, text="Corner B plan", style="Inset.TLabel").pack(side="left", padx=(2, 2))
+        blue_plan_box = ttk.Combobox(
+            plan_controls, values=FIGHT_PLANS, textvariable=blue_plan_var,
+            state="readonly", width=19,
+        )
+        blue_plan_box.pack(side="left", padx=(0, 3))
+        self.attach_tooltip(red_plan_box, "Plan for the first selected fighter, or the known fighter in a TBA bout.")
+        self.attach_tooltip(blue_plan_box, "Plan for the second selected fighter. A future TBA replacement begins Balanced.")
 
         card_tree = ttk.Treeview(card, columns=("slot", "fight", "tier", "title", "weight", "build", "fatigue", "recovery"), show="headings", height=18)
         for key, label, size in (("slot", "Slot", 90), ("fight", "Fight", 240), ("tier", "Tier", 92), ("title", "Stakes", 92), ("weight", "Class", 100), ("build", "Build", 52), ("fatigue", "Fatigue A/B", 92), ("recovery", "Medical Return A/B", 150)):
@@ -896,6 +921,12 @@ class EventMixin:
                 "interim": interim,
                 "main": not event.get("fights"),
                 "tier": tier_var.get(),
+                "fight_plans": {
+                    fighters[0].fighter_id: self.normalize_fight_plan(red_plan_var.get()),
+                    **({} if tba else {
+                        fighters[1].fighter_id: self.normalize_fight_plan(blue_plan_var.get()),
+                    }),
+                },
             }
             if tba:
                 fight.update({"tba_weight": fighters[0].weight, "tba_gender": fighters[0].gender})
@@ -903,6 +934,8 @@ class EventMixin:
             # Only the newly added athletes receive a new camp assignment.
             self.assign_event_camps({"month": event["month"], "week": event.get("week", 1), "fights": [fight]})
             refresh_card_editor(len(event["fights"]) - 1)
+            red_plan_var.set("Balanced")
+            blue_plan_var.set("Balanced")
 
         def remove_selected():
             index = selected_card_index()
@@ -959,6 +992,7 @@ class EventMixin:
             if len(fighter_ids) != len(fight["fighters"]):
                 fighter_ids = [getattr(self.get_fighter(name), "fighter_id", "") if name != "TBA" else "" for name in fight["fighters"]]
             fight["fighter_ids"] = [replacement.fighter_id if not fighter_id else fighter_id for fighter_id in fighter_ids]
+            fight.setdefault("fight_plans", {})[replacement.fighter_id] = "Balanced"
             fight["tba_filled"] = True
             fight["tba_note"] = f"{replacement.name} was confirmed through the booked-card editor."
             named = self.event_fight_fighters(fight)
@@ -979,12 +1013,37 @@ class EventMixin:
             event["fights"][index]["tier"] = tier_var.get()
             refresh_card_editor(index)
 
+        def load_selected_plans(_event=None):
+            index = selected_card_index()
+            if index is None:
+                return
+            fight = event["fights"][index]
+            fighter_ids = list(fight.get("fighter_ids", []))
+            plans = fight.get("fight_plans", {}) if isinstance(fight.get("fight_plans", {}), dict) else {}
+            red_plan_var.set(self.normalize_fight_plan(plans.get(fighter_ids[0], "Balanced")) if fighter_ids else "Balanced")
+            blue_plan_var.set(self.normalize_fight_plan(plans.get(fighter_ids[1], "Balanced")) if len(fighter_ids) > 1 and fighter_ids[1] else "Balanced")
+
+        def apply_selected_plans():
+            index = selected_card_index()
+            if index is None:
+                return
+            fight = event["fights"][index]
+            fighter_ids = list(fight.get("fighter_ids", []))
+            plans = {}
+            if fighter_ids and fighter_ids[0]:
+                plans[fighter_ids[0]] = self.normalize_fight_plan(red_plan_var.get())
+            if len(fighter_ids) > 1 and fighter_ids[1]:
+                plans[fighter_ids[1]] = self.normalize_fight_plan(blue_plan_var.get())
+            fight["fight_plans"] = plans
+            refresh_card_editor(index)
+
         ttk.Button(card_controls, text="Remove", command=remove_selected).pack(side="left", padx=3, pady=4)
         ttk.Button(card_controls, text="Replace TBA", style="Accent.TButton", command=replace_selected_tba).pack(side="left", padx=3, pady=4)
         ttk.Button(card_controls, text="Title / Interim", command=toggle_selected_title).pack(side="left", padx=3, pady=4)
         ttk.Button(card_controls, text="Move Up", command=lambda: move_selected(-1)).pack(side="left", padx=3, pady=4)
         ttk.Button(card_controls, text="Move Down", command=lambda: move_selected(1)).pack(side="left", padx=3, pady=4)
         ttk.Button(card_controls, text="Set Tier", command=set_selected_tier).pack(side="left", padx=3, pady=4)
+        ttk.Button(card_controls, text="Apply Plans", command=apply_selected_plans).pack(side="left", padx=3, pady=4)
         ttk.Button(card_controls, text="Close", style="Accent.TButton", command=window.destroy).pack(side="right", padx=3, pady=4)
 
         def show_selected_profile(_event=None):
@@ -1000,6 +1059,7 @@ class EventMixin:
         sync_editor_divisions()
         available_tree.bind("<Double-1>", show_selected_profile)
         available_tree.bind("<<TreeviewSelect>>", refresh_history_editor, add="+")
+        card_tree.bind("<<TreeviewSelect>>", load_selected_plans, add="+")
         refresh_card_editor()
 
     def prompt_due_event(self):
@@ -1033,6 +1093,8 @@ class EventMixin:
                                 + " will complete their guaranteed comeback commitment in this bout. Normal retirement review can resume afterward.")
         choice = messagebox.askyesnocancel("Fight Day", f"{event['name']} is due in {self.event_date_label(event)}.{retirement_warning}{comeback_warning}\n\nYes = Watch live\nNo = Sim instantly\nCancel = stay on this week")
         if choice is True:
+            if self.focus_active_live_fight_window():
+                return True
             package = self.prepare_event_result(event)
             self.open_live_fight_window(event, package)
             return True
@@ -1113,8 +1175,333 @@ class EventMixin:
         event = self.selected_due_event()
         if not event:
             return
+        if self.focus_active_live_fight_window():
+            return
         package = self.prepare_event_result(event)
         self.open_live_fight_window(event, package)
+
+    @staticmethod
+    def fight_night_event_key(event):
+        """Return a stable presentation key without mutating the scheduled card."""
+        if not isinstance(event, dict):
+            return ()
+        return (
+            str(event.get("event_id", "") or ""),
+            str(event.get("name", "") or ""),
+            int(event.get("month", 0) or 0),
+            int(event.get("week", 0) or 0),
+        )
+
+    @staticmethod
+    def fight_night_commentary_rows(lines, mode="Broadcast"):
+        """Return ``(source index, text)`` rows for a viewer-only transcript.
+
+        Detailed mode is the complete stored transcript. Broadcast mode removes
+        legacy technical suffixes, limits repeated low-value calls within each
+        round, and keeps every structural, evidential, scoring, and result line.
+        Source indexes let the live viewer change density without revealing
+        future commentary or modifying the archived transcript.
+        """
+        source = list(lines or [])
+        normalized_mode = str(mode or "Broadcast").strip().title()
+        if normalized_mode == "Detailed":
+            return list(enumerate(source))
+
+        suffix_pattern = re.compile(
+            r"\s+\[(?=(?:target|defense|next)\b)[^\]]+\]\s*$",
+            re.IGNORECASE,
+        )
+        clock_pattern = re.compile(r"^\s*\[(\d{1,2}:\d{2})\]\s*(.*)$")
+        critical_terms = (
+            "knockdown", "drops ", "is down", "submission", "tap", "choke", "armbar",
+            "cut ", "opens a cut", "swelling", "foul", "point deduct", "referee",
+            "bruising", "reddening", "welt", "visible limp", "laboured breathing",
+            "guarding the midsection", "protecting the midsection", "shifts weight",
+            "shift weight", "weight shifts",
+            "facial damage", "head damage", "body damage", "damaged midsection",
+            "leg damage", "damaged leg",
+            "doctor", "injury", "unconscious", "cannot continue", "stops the fight",
+            "finishes the fight", "official result", "technical fall", "secures the pin",
+            "position change", "takes the back", "mount", "stance switch", "switches stance",
+        )
+        ground_positions = (
+            "guard", "half guard", "side control", "mount", "back control", "turtle",
+            "failed shot", "front headlock", "standing back control", "leg entanglement",
+        )
+        ground_strike_moves = tuple(
+            str(definition.name or "").casefold()
+            for definition in MOVE_REGISTRY.values()
+            if definition.parent_action == "ground_strikes" and definition.name
+        )
+        standing_strike_moves = tuple(
+            str(definition.name or "").casefold()
+            for definition in MOVE_REGISTRY.values()
+            if definition.parent_action in {"jab", "power_punch", "kick", "dirty_boxing"}
+            and definition.name
+        )
+        positive_attack_terms = (
+            " lands ", " lands the ", " gets through ", " finds ", " scores with ",
+            " answers immediately with ",
+        )
+        denied_terms = (
+            " denies ", " stops ", " turned away", " misses ", " does not advance",
+            "attempts the ", "tries the ",
+        )
+
+        def strip_suffix(value):
+            return suffix_pattern.sub("", str(value)).rstrip()
+
+        def repeat_key(value):
+            match = clock_pattern.match(value)
+            body = match.group(2) if match else value
+            body = re.sub(r"\b\d+(?::\d+)?\b", "#", body.casefold())
+            return re.sub(r"\s+", " ", body).strip()
+
+        def is_landed_ground_strike(value):
+            lowered = f" {value.casefold()} "
+            named_ground_strike = any(move in lowered for move in ground_strike_moves)
+            legacy_ground_strike = any(term in lowered for term in (
+                "ground-and-pound", "short punches from top", "elbows from top control",
+                "heavy shots on the mat",
+            ))
+            return (
+                (named_ground_strike or legacy_ground_strike)
+                and any(term in lowered for term in positive_attack_terms)
+                and not any(term in lowered for term in denied_terms)
+            )
+
+        def is_completed_attack(value):
+            """Protect successful offense in every range, not one preferred phase."""
+            lowered = f" {value.casefold()} "
+            return (
+                any(term in lowered for term in positive_attack_terms)
+                and not any(term in lowered for term in denied_terms)
+            )
+
+        def is_meaningful_ground_exchange(value):
+            """Protect completed ground progress while leaving failed/routine work compactable."""
+            lowered = f" {value.casefold()} "
+            if is_landed_ground_strike(value):
+                return True
+            if any(term in lowered for term in denied_terms):
+                return False
+            transition_phrases = (
+                " move the fight from ", " carries ", " completes the ", " completes it into ",
+                " takes the fight to ", " settling in ", " escape from ", " out of ",
+                " clears the control ", " reaching ",
+            )
+            settled_position = any(
+                f" to {position}" in lowered
+                or f" into {position}" in lowered
+                or f" in {position}" in lowered
+                for position in (*ground_positions, "range", "pocket", "clinch", "cage")
+            )
+            return any(term in lowered for term in transition_phrases) and settled_position
+
+        def suppressed_lane(value):
+            """Describe omitted evidence without claiming an unrecorded outcome."""
+            lowered = value.casefold()
+            if any(move in lowered for move in ground_strike_moves) or any(term in lowered for term in (
+                    "ground-and-pound", "short punches from top", "elbows from top control",
+                    "heavy shots on the mat")):
+                return "ground-striking exchange"
+            if any(term in lowered for term in (
+                    "takedown", "single leg", "single-leg", "double leg", "double-leg",
+                    "level change", "shot", "sprawl", "throw", "trip", "mat return", "mat-return")):
+                return "takedown exchange"
+            if any(position in lowered for position in ground_positions) or any(term in lowered for term in (
+                    "on the mat", "from the top", "top control", "ground control", "sweep",
+                    "wall-walk", "stand-up", "back to the feet", "back to standing")):
+                return "ground-control exchange"
+            if any(move in lowered for move in standing_strike_moves) or any(term in lowered for term in (
+                    "punch", "kick", "knee", "elbow", "uppercut", "hook", "cross", "jab")):
+                return "standing-striking exchange"
+            return "standing exchange"
+
+        def summary_copy(suppressed):
+            lanes = Counter(suppressed_lane(value) for _index, value in suppressed)
+            parts = [
+                f"{count} {lane if count == 1 else lane + 's'}"
+                for lane, count in (
+                    ("ground-striking exchange", lanes["ground-striking exchange"]),
+                    ("takedown exchange", lanes["takedown exchange"]),
+                    ("ground-control exchange", lanes["ground-control exchange"]),
+                    ("standing-striking exchange", lanes["standing-striking exchange"]),
+                    ("standing exchange", lanes["standing exchange"]),
+                )
+                if count
+            ]
+            if len(parts) > 1:
+                detail = ", ".join(parts[:-1]) + f", and {parts[-1]}"
+            else:
+                detail = parts[0]
+            return f"{len(suppressed)} quieter exchanges summarised by factual lane: {detail}."
+
+        def compact_timestamped(group, repeat_memory):
+            if not group:
+                return []
+            retained = []
+            suppressed = []
+            for original_index, value in group:
+                cleaned = strip_suffix(value)
+                lowered = cleaned.casefold()
+                base_critical = any(term in lowered for term in critical_terms)
+                added_evidence = (
+                    is_meaningful_ground_exchange(cleaned)
+                    or is_completed_attack(cleaned)
+                )
+                critical = base_critical or added_evidence
+                key = repeat_key(cleaned)
+                # Evidence priority controls the line budget, not duplicate
+                # wording. Even critical facts remain present twice per round,
+                # while a third identical call is compacted into the factual
+                # lane summary instead of making the broadcast sound stuck.
+                if repeat_memory[key] >= 2:
+                    suppressed.append((original_index, cleaned))
+                    continue
+                repeat_memory[key] += 1
+                retained.append((original_index, cleaned, critical))
+
+            critical_rows = [row for row in retained if row[2]]
+            ordinary_rows = [row for row in retained if not row[2]]
+            available = max(0, FIGHT_COMMENTARY_ROUND_LINE_LIMIT - len(critical_rows))
+            if len(ordinary_rows) > available:
+                if available:
+                    # Even coverage keeps the round's opening and closing shape
+                    # without using any simulation or presentation RNG.
+                    if available == 1:
+                        chosen = {0}
+                    else:
+                        chosen = {
+                            round(index * (len(ordinary_rows) - 1) / (available - 1))
+                            for index in range(available)
+                        }
+                    kept_ordinary = [row for index, row in enumerate(ordinary_rows) if index in chosen]
+                    dropped_ordinary = [row for index, row in enumerate(ordinary_rows) if index not in chosen]
+                else:
+                    kept_ordinary, dropped_ordinary = [], ordinary_rows
+                retained = critical_rows + kept_ordinary
+                suppressed.extend((row[0], row[1]) for row in dropped_ordinary)
+
+            output = [(index, value) for index, value, _critical in retained]
+            if suppressed:
+                first_index, first_line = min(suppressed, key=lambda row: row[0])
+                clock = clock_pattern.match(first_line)
+                clock_copy = f"  [{clock.group(1)}] " if clock else ""
+                summary = f"{clock_copy}Broadcast note: {summary_copy(suppressed)}"
+                output.append((first_index, summary))
+            return sorted(output, key=lambda row: row[0])
+
+        rendered = []
+        timestamped = []
+        repeat_memory = Counter()
+        for index, value in enumerate(source):
+            cleaned = strip_suffix(value)
+            if clock_pattern.match(cleaned):
+                timestamped.append((index, value))
+                continue
+            rendered.extend(compact_timestamped(timestamped, repeat_memory))
+            timestamped = []
+            rendered.append((index, cleaned))
+            upper = cleaned.strip().upper()
+            if (
+                re.match(r"^(?:ROUND|PERIOD)\s+\d+", upper)
+                or upper.startswith("MATCH CLOCK")
+                or " SUMMARY:" in upper
+                or upper.startswith(("RESULT:", "OFFICIAL RESULT"))
+            ):
+                repeat_memory.clear()
+        rendered.extend(compact_timestamped(timestamped, repeat_memory))
+        return rendered
+
+    @classmethod
+    def fight_night_commentary_lines(cls, lines, mode="Broadcast"):
+        """Return the text portion of a non-mutating viewer transcript."""
+        return [value for _source_index, value in cls.fight_night_commentary_rows(lines, mode)]
+
+    @classmethod
+    def fight_night_presentation_logs(cls, fight_logs, mode="Broadcast"):
+        """Clone logs for one viewer while retaining their complete transcript."""
+        presented = []
+        for raw in fight_logs or []:
+            row = dict(raw)
+            detailed = list(raw.get("detailed_lines", raw.get("lines", [])) or [])
+            commentary_rows = cls.fight_night_commentary_rows(detailed, mode=mode)
+            row["detailed_lines"] = detailed
+            row["lines"] = [value for _source_index, value in commentary_rows]
+            row["_line_source_indices"] = [source_index for source_index, _value in commentary_rows]
+            presented.append(row)
+        return presented
+
+    @staticmethod
+    def fight_night_source_cutoff(presented_log, displayed_count):
+        """Map visible progress back to the complete archived line stream."""
+        detailed = list(presented_log.get("detailed_lines", presented_log.get("lines", [])) or [])
+        indexes = list(presented_log.get("_line_source_indices", range(len(presented_log.get("lines", [])))) or [])
+        count = max(0, min(int(displayed_count or 0), len(indexes)))
+        if count <= 0:
+            return 0
+        return min(len(detailed), max(indexes[:count]) + 1)
+
+    @classmethod
+    def fight_night_presentation_progress(cls, raw_log, mode, source_cutoff):
+        """Build one density view and locate the same sealed playback frontier."""
+        presented = cls.fight_night_presentation_logs([raw_log], mode=mode)[0]
+        cutoff = max(0, min(int(source_cutoff or 0), len(presented["detailed_lines"])))
+        displayed = sum(index < cutoff for index in presented.get("_line_source_indices", []))
+        return presented, displayed
+
+    def focus_active_live_fight_window(self, event=None):
+        """Focus the matching live broadcast instead of preparing it twice."""
+        window = getattr(self, "_active_live_fight_window", None)
+        if window is None:
+            return False
+        try:
+            if not window.winfo_exists():
+                raise tk.TclError
+            expected = self.fight_night_event_key(event) if event is not None else None
+            if expected is not None and expected != getattr(self, "_active_live_fight_event_key", None):
+                return False
+            window.deiconify()
+            window.lift()
+            window.focus_force()
+            return True
+        except tk.TclError:
+            self._active_live_fight_window = None
+            self._active_live_fight_event_key = None
+            return False
+
+    @staticmethod
+    def fight_night_bout_complete(state, fight_logs, index=None):
+        """Say whether a bout's complete commentary has been presented."""
+        if not fight_logs:
+            return True
+        current = int(state.get("fight", -1))
+        target = current if index is None else int(index)
+        if target < 0 or target >= len(fight_logs):
+            return False
+        if target < current or bool(state.get("finished")):
+            return True
+        if target > current:
+            return False
+        return int(state.get("line", 0)) >= len(fight_logs[target].get("lines", []))
+
+    @classmethod
+    def fight_night_can_review(cls, state, fight_logs, index):
+        """Keep future commentary locked while preserving every completed review."""
+        if bool(state.get("finished")):
+            return 0 <= int(index) < len(fight_logs)
+        return cls.fight_night_bout_complete(state, fight_logs, index)
+
+    def commit_live_fight_package(self, event, package, apply_results=True):
+        """Attempt settlement without making a failed presentation look complete."""
+        if not apply_results:
+            return True, ""
+        try:
+            self.finish_event(event, package)
+        except Exception as exc:
+            return False, str(exc) or exc.__class__.__name__
+        return True, ""
 
     def open_event_replay_window(self, title, package):
         package = dict(package)
@@ -1130,26 +1517,90 @@ class EventMixin:
         body.pack(fill="both", expand=True, padx=8, pady=8)
         fight_list = tk.Listbox(body, width=36, font=("Tahoma", 9), bg=self.colors["tree"], fg=self.colors["text"], selectbackground=self.colors["red"], selectforeground="#ffffff")
         fight_list.pack(side="left", fill="y", padx=(0, 8))
+        round_list = tk.Listbox(body, width=18, font=("Tahoma", 9), bg=self.colors["tree"], fg=self.colors["text"], selectbackground=self.colors["red"], selectforeground="#ffffff")
+        round_list.pack(side="left", fill="y", padx=(0, 8))
         text = tk.Text(body, wrap="word", font=("Courier New", 9), bg=self.colors["cream"], fg=self.colors["text"], padx=10, pady=10)
         text.pack(side="left", fill="both", expand=True)
         logs = package.get("fight_logs", [])
+        replay_mode = tk.StringVar(value=str(self.rules.get("fight_commentary_mode", "Broadcast")))
         for index, fight_log in enumerate(logs, 1):
             heading = fight_log.get("heading", fight_log.get("fight", f"Bout {index}"))
+            heading = self.display_fighter_names_in_text(str(heading), fight_log)
             fight_list.insert("end", f"{index}. {heading[:40]}")
+        def clean_replay_line(line):
+            cleaned = str(line)
+            for replay_log in logs:
+                cleaned = self.display_fighter_names_in_text(cleaned, replay_log)
+            return cleaned
         def show_selected(_event=None):
             selected = fight_list.curselection()
             text.delete("1.0", "end")
+            round_list.delete(0, "end")
             if selected and logs:
-                text.insert("end", "\n".join(logs[selected[0]].get("lines", [])))
+                log = logs[selected[0]]
+                replay_lines = self.fight_night_commentary_lines(
+                    log.get("detailed_lines", log.get("lines", [])), replay_mode.get(),
+                )
+                text.insert("end", "\n".join(self.display_fighter_names_in_text(str(line), log) for line in replay_lines))
+                for row in log.get("round_analysis", []):
+                    round_list.insert("end", f"Round {row.get('round', '?')} analysis")
             else:
-                text.insert("end", "\n".join(package.get("log", [])))
+                text.insert("end", "\n".join(clean_replay_line(line) for line in package.get("log", [])))
+        def show_round(_event=None):
+            fight_selected = fight_list.curselection()
+            round_selected = round_list.curselection()
+            if not fight_selected or not round_selected:
+                return
+            log = logs[fight_selected[0]]
+            rows = log.get("round_analysis", [])
+            if round_selected[0] >= len(rows):
+                return
+            text.delete("1.0", "end")
+            text.insert("end", self.format_round_analysis(rows[round_selected[0]], log))
         fight_list.bind("<<ListboxSelect>>", show_selected)
+        round_list.bind("<<ListboxSelect>>", show_round)
         show_selected()
         replay_controls = ttk.Frame(window, style="Chrome.TFrame")
         replay_controls.pack(fill="x", padx=8, pady=(0, 8))
+        ttk.Label(replay_controls, text="Commentary", style="Panel.TLabel").pack(side="left", padx=(0, 4))
+        replay_mode_box = ttk.Combobox(
+            replay_controls, state="readonly", values=FIGHT_COMMENTARY_MODES,
+            textvariable=replay_mode, width=10,
+        )
+        replay_mode_box.pack(side="left", padx=(0, 8))
+        replay_mode_box.bind("<<ComboboxSelected>>", show_selected)
         if package.get("tournament_brackets"):
             ttk.Button(replay_controls, text="View Tournament Bracket", style="Accent.TButton", command=lambda: self.open_event_tournament_bracket(package, window)).pack(side="left")
         ttk.Button(replay_controls, text="Close", command=window.destroy).pack(side="right")
+
+    @staticmethod
+    def format_round_analysis(row, log=None):
+        log = log or {}
+        names = {"a": log.get("a", "Red corner"), "b": log.get("b", "Blue corner")}
+        lines = [f"ROUND {row.get('round', '?')} ANALYSIS", "=" * 56]
+        for key in ("a", "b"):
+            corner = row.get("corners", {}).get(key, {})
+            moves = sorted(corner.get("moves", {}).items(), key=lambda item: (-item[1], item[0]))[:5]
+            defenses = sorted(corner.get("defenses", {}).items(), key=lambda item: (-item[1], item[0]))[:4]
+            lines.extend([
+                f"\n{names[key]}",
+                f"Effectiveness: {corner.get('effective', 0)}/{corner.get('attempts', 0)}",
+                "Top moves: " + (", ".join(f"{move.replace('_', ' ')} x{count}" for move, count in moves) or "none"),
+                "Defenses: " + (", ".join(f"{move.replace('_', ' ')} x{count}" for move, count in defenses) or "none"),
+                "Sequences: " + (", ".join(f"{item.get('source', '').replace('_', ' ')} -> {item.get('move', '').replace('_', ' ')} ({item.get('branch', 'primary')})" for item in corner.get("sequences", [])[:5]) or "none"),
+                "Visible damage: " + (
+                    ", ".join(
+                        f"{item.get('label', item.get('damage_id', 'damage')).replace('_', ' ')} "
+                        f"({item.get('channel', 'general')} {item.get('total', 0)})"
+                        for item in corner.get("damage_events", [])
+                    ) or "none"
+                ),
+            ])
+        switches = row.get("stance_switches", [])
+        changes = row.get("plan_changes", [])
+        lines.append("\nStance changes: " + (", ".join(f"{names.get(item.get('corner'), item.get('corner'))} {item.get('from')} -> {item.get('to')}" for item in switches) or "none"))
+        lines.append("Plan changes: " + (", ".join(f"{names.get(item.get('corner'), item.get('corner'))} -> {item.get('plan')} ({item.get('reason')})" for item in changes) or "none"))
+        return "\n".join(lines)
 
     def live_fight_official_outcome(self, log):
         """Return (is_draw, winner_name) for current and legacy fight logs."""
@@ -1177,22 +1628,44 @@ class EventMixin:
                 return False, name
         return False, ""
 
+    def live_fight_corner_outcome(self, log, side):
+        """Return one corner's result without conflating duplicate display names."""
+        draw, winner_name = self.live_fight_official_outcome(log)
+        if draw:
+            return "draw"
+        winner_id = str(log.get("winner_id", "") or "")
+        corner_id = str(log.get(f"{side}_id", "") or "")
+        if winner_id and corner_id:
+            return "win" if winner_id == corner_id else "loss"
+        other_side = "b" if side == "a" else "a"
+        corner_name = str(log.get(side, "") or "")
+        other_name = str(log.get(other_side, "") or "")
+        if winner_name and corner_name and corner_name != other_name:
+            return "win" if corner_name == winner_name else "loss"
+        return "unknown"
+
     def open_live_fight_window(self, event, package, apply_results=True, on_complete=None):
         # Matchmaking displays the headline at the top of the bill, but a live
         # broadcast runs from the undercard upward. Copy the package so archived
         # records are not mutated merely by opening a replay.
+        # Only one live broadcast may own the pre-simulated presentation at a
+        # time. A replay or another event must not destroy an unresolved card.
+        if self.focus_active_live_fight_window():
+            return getattr(self, "_active_live_fight_window", None)
         package = dict(package)
         package["fight_logs"] = self.fight_night_log_order(package.get("fight_logs", []))
         window = self.create_managed_window()
+        self._active_live_fight_window = window
+        self._active_live_fight_event_key = self.fight_night_event_key(event)
         window.title(f"Live Fight - {event['name']}")
         self.root.update_idletasks()
         screen_w, screen_h = window.winfo_screenwidth(), window.winfo_screenheight()
         width = min(1180, max(820, screen_w - 80))
-        height = min(800, max(560, screen_h - 120))
+        height = min(760, max(540, screen_h - 120))
         x = max(0, min(screen_w - width, self.root.winfo_rootx() + (self.root.winfo_width() - width) // 2))
         y = max(0, min(screen_h - height - 40, self.root.winfo_rooty() + (self.root.winfo_height() - height) // 2))
         window.geometry(f"{width}x{height}+{x}+{y}")
-        window.minsize(min(820, width), min(560, height))
+        window.minsize(min(820, width), min(540, height))
         window.configure(bg=self.colors["chrome"])
         canvas_hex = self.colors["cream"].lstrip("#")
         canvas_rgb = tuple(int(canvas_hex[index:index + 2], 16) for index in (0, 2, 4)) if len(canvas_hex) == 6 else (32, 32, 32)
@@ -1202,6 +1675,9 @@ class EventMixin:
         result_color = "#8b1010" if light_canvas else "#ff8a8a"
         impact_color = "#8a4500" if light_canvas else "#ffb454"
         cut_color = "#8a2d1a" if light_canvas else "#ffb4a2"
+        round_background = "#e5f2f5" if light_canvas else self.colors["panel_dark"]
+        impact_background = "#fff1d6" if light_canvas else "#38270c"
+        finish_background = "#ffe4e4" if light_canvas else "#3a1111"
 
         header = ttk.Frame(window, style="Header.TFrame")
         header.pack(fill="x", padx=8, pady=(8, 0))
@@ -1239,11 +1715,13 @@ class EventMixin:
         # the edges of a wide monitor.
         portrait_row = tk.Frame(tote, bg=self.colors["chrome"])
         portrait_row.pack(pady=(2, 3))
-        left_portrait = tk.Canvas(portrait_row, width=112, height=100, bg=self.colors["panel_dark"], highlightthickness=1, highlightbackground=self.colors["line"])
+        compact_live = height < 700
+        portrait_height = 72 if compact_live else 92
+        left_portrait = tk.Canvas(portrait_row, width=104, height=portrait_height, bg=self.colors["panel_dark"], highlightthickness=1, highlightbackground=self.colors["line"])
         left_portrait.pack(side="left")
         intro_label = tk.Label(portrait_row, text="TALE OF THE TAPE\nPress Play Fight to begin", font=("Tahoma", 9, "bold"), bg=self.colors["chrome"], fg=self.colors["muted"], justify="center", width=42)
         intro_label.pack(side="left", padx=16)
-        right_portrait = tk.Canvas(portrait_row, width=112, height=100, bg=self.colors["panel_dark"], highlightthickness=1, highlightbackground=self.colors["line"])
+        right_portrait = tk.Canvas(portrait_row, width=104, height=portrait_height, bg=self.colors["panel_dark"], highlightthickness=1, highlightbackground=self.colors["line"])
         right_portrait.pack(side="right")
         title_status_row = tk.Frame(tote, bg=self.colors["chrome"])
         title_status_row.pack(fill="x", padx=72)
@@ -1284,6 +1762,8 @@ class EventMixin:
         tk.Label(momentum_frame, text="ROUND MOMENTUM", font=("Tahoma", 8, "bold"), bg=self.colors["chrome"], fg=self.colors["muted"]).pack(anchor="center")
         momentum_canvas = tk.Canvas(momentum_frame, height=22, bg=self.colors["panel_dark"], highlightthickness=1, highlightbackground=self.colors["line"])
         momentum_canvas.pack(fill="x", padx=4)
+        momentum_text = tk.Label(momentum_frame, text="Momentum: even", bg=self.colors["chrome"], fg=self.colors["text"], font=("Tahoma", 8, "bold"))
+        momentum_text.pack(anchor="center", pady=(1, 0))
 
         moment_panel = tk.Frame(window, bg=self.colors["tree"], highlightthickness=1, highlightbackground=self.colors["line"])
         moment_panel.pack(fill="x", padx=8, pady=(0, 5))
@@ -1355,27 +1835,42 @@ class EventMixin:
         text.configure(yscrollcommand=text_scroll.set)
         text.tag_configure("heading", font=("Tahoma", 12, "bold"), foreground=heading_color, spacing1=7, spacing3=5)
         text.tag_configure("result", font=("Tahoma", 12, "bold"), foreground=result_color, spacing1=10, spacing3=8)
-        text.tag_configure("round", font=("Tahoma", 11, "bold"), foreground=round_color, spacing1=8, spacing3=5)
+        text.tag_configure("round", font=("Tahoma", 11, "bold"), foreground=round_color, background=round_background, lmargin1=8, lmargin2=8, rmargin=8, spacing1=8, spacing3=5)
+        text.tag_configure("round_separator", font=("Consolas", 8), foreground=self.colors["line"], spacing1=5, spacing3=2)
         text.tag_configure("clock", font=("Consolas", 10, "bold"), foreground=heading_color)
         text.tag_configure("analysis", font=("Tahoma", 10, "italic"), foreground=self.colors["muted"], lmargin1=12, lmargin2=12, spacing1=5, spacing3=5)
         text.tag_configure("separator", font=("Consolas", 9), foreground=self.colors["muted"])
         text.tag_configure("metrics", font=("Consolas", 10), foreground=self.colors["text"], lmargin1=8, lmargin2=8)
         # Bright event-critical colors remain readable on the UFC theme's near-black canvas.
-        text.tag_configure("knockdown", font=("Tahoma", 11, "bold"), foreground=impact_color)
-        text.tag_configure("finish", font=("Tahoma", 12, "bold"), foreground=result_color, spacing1=7, spacing3=6)
+        text.tag_configure("knockdown", font=("Tahoma", 11, "bold"), foreground=impact_color, background=impact_background, lmargin1=8, lmargin2=8, rmargin=8, spacing1=4, spacing3=4)
+        text.tag_configure("finish", font=("Tahoma", 12, "bold"), foreground=result_color, background=finish_background, lmargin1=8, lmargin2=8, rmargin=8, spacing1=7, spacing3=6)
         text.tag_configure("cut", foreground=cut_color)
         text.tag_configure("referee", font=("Tahoma", 11, "bold"), foreground=round_color)
         text.config(state="disabled")
 
+        selected_commentary_mode = str(self.rules.get("fight_commentary_mode", "Broadcast"))
+        if selected_commentary_mode not in FIGHT_COMMENTARY_MODES:
+            selected_commentary_mode = "Broadcast"
         state = {
             "fight": -1, "line": 0,
             "delay": max(300, min(3000, self.fight_timer_delay.get() if hasattr(self, "fight_timer_delay") else 1600)),
             "running": False, "finished": False, "after_id": None, "phase": "", "result_shown": False,
             "metrics_rows_remaining": 0, "scorecard_buffer": [], "holding_scorecards": False,
             "momentum": "", "close_armed": False, "walkout_played": False,
+            "skip_armed": False, "commit_error": "",
             "auto": bool(self.rules.get("live_auto_play_card", False)),
+            "commentary_mode": selected_commentary_mode,
+            "rerendering": False,
         }
-        fight_logs = package.get("fight_logs", [{"heading": "Event Report", "lines": package["log"]}])
+        window._fight_night_state = state
+        raw_fight_logs = package.get("fight_logs", [{"heading": "Event Report", "lines": package["log"]}])
+        fight_logs = self.fight_night_presentation_logs(
+            raw_fight_logs, state["commentary_mode"],
+        )
+        commentary_mode_var = tk.StringVar(value=state["commentary_mode"])
+        commentary_personality_var = tk.StringVar(
+            value=f"Voice: {self.rules.get('fight_commentary_personality', 'Balanced')}"
+        )
         follow_var = tk.BooleanVar(value=bool(self.rules.get("live_follow_commentary", True)))
         font_size = tk.IntVar(value=11)
 
@@ -1404,8 +1899,8 @@ class EventMixin:
             right_gas["value"] = gas_b
             current_log = fight_logs[state["fight"]] if 0 <= state["fight"] < len(fight_logs) else {}
             a_name, b_name = current_log.get("a", ""), current_log.get("b", "")
-            left_marker = "  MOMENTUM" if state.get("momentum") == a_name else ""
-            right_marker = "MOMENTUM  " if state.get("momentum") == b_name else ""
+            left_marker = "  MOMENTUM" if state.get("momentum") == "a" else ""
+            right_marker = "MOMENTUM  " if state.get("momentum") == "b" else ""
             left_condition.config(text=f"RED {condition_word(gas_a)}  {gas_a}%{left_marker}")
             right_condition.config(text=f"{right_marker}{gas_b}%  {condition_word(gas_b)} BLUE")
 
@@ -1419,7 +1914,7 @@ class EventMixin:
             current_log = fight_logs[state["fight"]] if 0 <= state["fight"] < len(fight_logs) else {}
             a_name, b_name = current_log.get("a", ""), current_log.get("b", "")
             values = state.get("round_values", {})
-            a_row, b_row = values.get(a_name, {}), values.get(b_name, {})
+            a_row, b_row = values.get("a", {}), values.get("b", {})
             strength_a = sum(float(a_row.get(key, 0) or 0) for key in ("impact", "control", "danger"))
             strength_b = sum(float(b_row.get(key, 0) or 0) for key in ("impact", "control", "danger"))
             total = strength_a + strength_b
@@ -1437,6 +1932,14 @@ class EventMixin:
                 canvas.create_text(canvas_w - 7, canvas_h // 2, text=b_name[:18], anchor="e", fill="#ffffff", font=("Tahoma", 8, "bold"))
             if total > 0:
                 canvas.create_text(canvas_w // 2, canvas_h // 2, text=f"{round(lean_a * 100)}—{round((1 - lean_a) * 100)}", anchor="center", fill="#ffffff", font=("Consolas", 8, "bold"))
+            if total <= 0:
+                momentum_text.config(text="Momentum: even")
+            elif lean_a >= 0.55:
+                momentum_text.config(text=f"Momentum: {self.display_fighter_name_value(a_name)} leads {round(lean_a * 100)}–{round((1 - lean_a) * 100)}")
+            elif lean_a <= 0.45:
+                momentum_text.config(text=f"Momentum: {self.display_fighter_name_value(b_name)} leads {round((1 - lean_a) * 100)}–{round(lean_a * 100)}")
+            else:
+                momentum_text.config(text=f"Momentum: even {round(lean_a * 100)}–{round((1 - lean_a) * 100)}")
 
         momentum_canvas.bind("<Configure>", lambda _event: draw_momentum_bar())
 
@@ -1448,8 +1951,9 @@ class EventMixin:
             for item in live_stats.get_children():
                 live_stats.delete(item)
             for index, name in enumerate(names):
-                row = values.get(name, {})
-                leads = state.get("momentum") == name
+                side = "a" if index == 0 else "b"
+                row = values.get(side, {})
+                leads = state.get("momentum") == side
                 marker = "EDGE" if leads else "-"
                 live_stats.insert("", "end", tags=("edge",) if leads else (), values=(
                     name,
@@ -1473,24 +1977,24 @@ class EventMixin:
             pattern = (
                 rf"^(Round\s+\d+)\s+summary:.*?Metrics\s+-\s+{re.escape(a_name)}:\s*impact\s+([\d.]+),\s*control\s+([\d.]+),\s*danger\s+([\d.]+);\s*"
                 rf"{re.escape(b_name)}:\s*impact\s+([\d.]+),\s*control\s+([\d.]+),\s*danger\s+([\d.]+)\.\s*"
-                rf"Live score\s+{re.escape(a_name)}\s+([\d.]+),\s*{re.escape(b_name)}\s+([\d.]+)\.\s*"
                 rf"Gas:\s*{re.escape(a_name)}\s+([\d.]+),\s*{re.escape(b_name)}\s+([\d.]+)\.\s*Momentum:\s*(.+?)\.?$"
             )
             match = re.match(pattern, value, re.IGNORECASE)
             if not match:
                 return value
             phase = match.group(1).title()
-            numbers = [int(round(float(number))) for number in match.groups()[1:11]]
-            a_impact, a_control, a_danger, b_impact, b_control, b_danger, a_score, b_score, gas_a, gas_b = numbers
-            momentum = match.group(12).strip().rstrip(".")
-            state["momentum"] = momentum
+            numbers = [int(round(float(number))) for number in match.groups()[1:9]]
+            a_impact, a_control, a_danger, b_impact, b_control, b_danger, gas_a, gas_b = numbers
+            a_strength = a_impact + a_control + a_danger
+            b_strength = b_impact + b_control + b_danger
+            state["momentum"] = "a" if a_strength > b_strength else "b" if b_strength > a_strength else ""
             state["round_values"] = {
-                a_name: {"impact": a_impact, "control": a_control, "danger": a_danger},
-                b_name: {"impact": b_impact, "control": b_control, "danger": b_danger},
+                "a": {"impact": a_impact, "control": a_control, "danger": a_danger},
+                "b": {"impact": b_impact, "control": b_control, "danger": b_danger},
             }
             set_condition(gas_a, gas_b)
             refresh_live_stats(state["round_values"])
-            score_label.config(text=f"Round read: {a_name} {a_score}, {b_name} {b_score}  |  Official judges sealed")
+            score_label.config(text="Unofficial round telemetry updated  |  Official judges sealed")
             display_value = self.display_fighter_names_in_text(value, current_log)
             round_read_label.config(text=display_value + " Exact cards remain private.")
             current_moment_label.config(text=display_value)
@@ -1546,10 +2050,14 @@ class EventMixin:
                 tag = "referee"
             elif any(k in lowered for k in ("drops", "hits the mat", "stumbles badly", "knocked down", "wobbl", "buckl", "rocked", "hurt")):
                 tag = "knockdown"
-            elif "cut" in lowered or "swelling" in lowered:
+            elif any(term in lowered for term in (
+                    "cut", "swelling", "bruising", "reddening", "welt", "visible limp",
+                    "laboured breathing", "guarding the midsection", "shifts weight")):
                 tag = "cut"
             elif value and set(value) <= {"-", "=", " "}:
                 tag = "separator"
+            if is_phase_start:
+                text.insert("end", "─" * 64 + "\n", "round_separator")
             if clock_match:
                 text.insert("end", clock_match.group(1) + "  ", "clock")
                 text.insert("end", clock_match.group(2) + "\n", tag or ())
@@ -1567,28 +2075,29 @@ class EventMixin:
             # Cues mirror clearly observable broadcast moments. They never
             # affect fight simulation or event timing, and can be disabled in
             # Game Settings.
-            if is_phase_start:
+            emit_audio = not state.get("rerendering", False)
+            if emit_audio and is_phase_start:
                 phase = str(phase_match.group(1)).upper()
                 play_crowd(
                     "opening" if phase in ("ROUND 1", "PERIOD 1", "MATCH CLOCK") else "round_start"
                 )
-            elif tag == "finish":
+            elif emit_audio and tag == "finish":
                 play_crowd("finish")
-            elif tag == "knockdown":
+            elif emit_audio and tag == "knockdown":
                 play_crowd("knockdown")
-            elif tag == "round" and " summary:" in lowered:
+            elif emit_audio and tag == "round" and " summary:" in lowered:
                 play_crowd("round_end")
-            elif clock_match and any(phrase in lowered for phrase in (
+            elif emit_audio and clock_match and any(phrase in lowered for phrase in (
                 "deep submission", "submission threat", "choke threat", "armbar threat",
                 "triangle threat", "locks the choke", "locks on", "nearly taps",
             )):
                 play_crowd("submission")
-            elif clock_match and any(phrase in lowered for phrase in (
+            elif emit_audio and clock_match and any(phrase in lowered for phrase in (
                 "stalls", "inactive", "inactivity", "stand-up", "restarts them at range",
                 "little action", "crowd grows restless",
             )):
                 play_crowd("inactivity")
-            elif clock_match and any(word in lowered for word in ("lands", "connects", "drives", "slams", "elbow")):
+            elif emit_audio and clock_match and any(word in lowered for word in ("lands", "connects", "drives", "slams", "elbow")):
                 play_crowd("impact")
             # Keep the shared scoreboard live for MMA rounds, boxing/kickboxing/
             # Thai rounds, wrestling periods and BJJ matches.
@@ -1647,8 +2156,26 @@ class EventMixin:
 
         def finish_live_event():
             if state["finished"]:
-                return
+                return True
             cancel_timer()
+            committed, commit_error = self.commit_live_fight_package(event, package, apply_results)
+            if not committed:
+                state["commit_error"] = commit_error
+                state["running"] = False
+                state["skip_armed"] = False
+                phase_label.config(text="COMMIT FAILED")
+                status_label.config(
+                    text=f"Event settlement failed: {state['commit_error']}. The broadcast remains open; retry End Event after resolving the error.",
+                    fg=result_color,
+                )
+                skip_event_button.config(text="Retry End Event")
+                update_control_state()
+                return False
+            if apply_results:
+                state["commit_error"] = ""
+                append_line("\n[Event processed. Results have been applied to the world.]")
+            else:
+                append_line("\n[Simulation complete. No world results were applied.]")
             state["finished"] = True
             self.play_fight_night_sound("card_complete")
             event_progress["value"] = max(1, len(fight_logs))
@@ -1658,13 +2185,10 @@ class EventMixin:
             excitement = int(round(float(package.get("average_excitement", 0) or 0)))
             current_moment_label.config(text=f"{event.get('name', 'Event')} complete  •  Profit ${profit:,}  •  Average excitement {excitement}")
             round_read_label.config(text="Results, bonuses, attendance, finances, and company effects are available in the end-of-event report.")
-            if apply_results:
-                self.finish_event(event, package)
-                append_line("\n[Event processed. Results have been applied to the world.]")
-            else:
-                append_line("\n[Simulation complete. No world results were applied.]")
+            update_control_state()
             if on_complete:
                 on_complete()
+            return True
 
         def mark_fight_done(index):
             log = fight_logs[index]
@@ -1685,11 +2209,25 @@ class EventMixin:
                 return False
             if state["fight"] < 0:
                 return False
-            return state["line"] >= len(fight_logs[state["fight"]].get("lines", []))
+            return self.fight_night_bout_complete(state, fight_logs)
 
         def update_event_button_label():
             try:
                 skip_event_button.config(text="End Event" if all_presented_fights_complete() else "Skip Event")
+            except (NameError, tk.TclError):
+                pass
+
+        def update_control_state():
+            """Keep destructive/advancing actions aligned with presentation state."""
+            try:
+                current_complete = state["fight"] < 0 or self.fight_night_bout_complete(state, fight_logs)
+                active_incomplete = 0 <= state["fight"] < len(fight_logs) and not current_complete and not state["finished"]
+                next_fight_button.config(state="normal" if current_complete and not state["finished"] else "disabled")
+                play_button.config(state="normal" if (state["fight"] < 0 or active_incomplete) and not state["finished"] else "disabled")
+                pause_button.config(state="normal" if active_incomplete else "disabled")
+                quick_navigation = (state["fight"] < 0 or active_incomplete) and not state["finished"]
+                next_round_button.config(state="normal" if quick_navigation else "disabled")
+                skip_fight_button.config(state="normal" if quick_navigation else "disabled")
             except (NameError, tk.TclError):
                 pass
 
@@ -1731,10 +2269,12 @@ class EventMixin:
             stakes = log.get("special_belt") or ("Interim championship" if log.get("interim") else "Championship" if log.get("divisional_title") or log.get("title") else "Featured bout")
             rivalry = self.rivalry_heat_between(a, b) if hasattr(self, "rivalry_heat_between") else 0
             rivalry_copy = f" Rivalry heat {rivalry}/100." if rivalry else ""
+            story_copy = self.fight_story_summary(a, b, log) if hasattr(self, "fight_story_summary") else ""
+            story_copy = f" Why this fight matters: {story_copy}" if story_copy else ""
             local_copy = str((state.get("crowd_profile", {}) or {}).get("summary", "") or "")
             local_copy = f" {local_copy}" if local_copy else ""
             return (f"{stakes}: {a.style} from {a.camp or 'independent camp'} meets {b.style} from {b.camp or 'independent camp'}. "
-                    f"Recent form {self.fighter_display_name(a)}: {form_text(a)} | {self.fighter_display_name(b)}: {form_text(b)}. Odds {self.matchup_odds(a, b)}.{rivalry_copy}{local_copy}")
+                    f"Recent form {self.fighter_display_name(a)}: {form_text(a)} | {self.fighter_display_name(b)}: {form_text(b)}. Odds {self.matchup_odds(a, b)}.{rivalry_copy}{story_copy}{local_copy}")
 
         def broadcast_rundown(index, log):
             """Give each bout a concise place in the event broadcast."""
@@ -1816,6 +2356,10 @@ class EventMixin:
         def start_next_fight():
             if state["finished"]:
                 return
+            if 0 <= state["fight"] < len(fight_logs) and not self.fight_night_bout_complete(state, fight_logs):
+                status_label.config(text="Finish or skip the active bout before starting the next fight.", fg=result_color)
+                update_control_state()
+                return
             cancel_timer()
             state["running"] = False
             if 0 <= state["fight"] < len(fight_logs):
@@ -1836,16 +2380,25 @@ class EventMixin:
                 fight_list.selection_set(state["fight"])
                 fight_list.see(state["fight"])
             log = fight_logs[state["fight"]]
+            personality = str(
+                log.get("commentary_personality")
+                or self.rules.get("fight_commentary_personality", "Balanced")
+            )
+            if personality not in FIGHT_COMMENTARY_PERSONALITIES:
+                personality = "Balanced"
+            commentary_personality_var.set(f"Voice: {personality}")
             a_fighter = self.result_fighter(log.get("a", ""), log.get("a_id", ""), log.get("sport", ""), log.get("weight", ""))
             b_fighter = self.result_fighter(log.get("b", ""), log.get("b_id", ""), log.get("sport", ""), log.get("weight", ""))
             state["crowd_profile"] = self.fight_night_local_crowd_profile(
                 (a_fighter, b_fighter), package.get("region", ""), package.get("city", "")
             )
+            # One neutral arena bed persists across the whole card. Fighter-
+            # specific hometown gain remains on reactions and walkouts so a
+            # preliminary bout cannot set the ambience level for the main event.
+            self.start_fight_night_audio_session()
             if state.get("auto"):
                 state["walkout_played"] = True
                 play_crowd("walkout")
-            else:
-                play_crowd("pre_fight")
             heading = log.get("heading", log.get("fight", "Bout"))
             title_label.config(text=f"LIVE FIGHT: {heading[:70]}")
             stage = f" - {log.get('tournament_stage')}" if log.get("tournament_stage") else ""
@@ -1860,6 +2413,7 @@ class EventMixin:
             lines = log.get("lines", [])
             if lines and str(lines[0]).strip() == str(heading).strip():
                 state["line"] = 1
+            update_control_state()
 
         def cancel_timer():
             after_id = state.get("after_id")
@@ -1911,11 +2465,12 @@ class EventMixin:
                 except (TypeError, ValueError):
                     return record or "-"
             draw, winner_name = self.live_fight_official_outcome(log)
-            winner_fighter = self.result_fighter(winner_name, "", log.get("sport", ""), log.get("weight", "")) if winner_name else None
+            winner_id = str(log.get("winner_id", "") or "")
+            winner_fighter = self.result_fighter(winner_name, winner_id, log.get("sport", ""), log.get("weight", "")) if winner_name or winner_id else None
             display_result = self.display_fighter_names_in_text(result or "Official result", log)
             display_winner = self.fighter_display_name(winner_fighter) if winner_fighter else winner_name
-            a_outcome = "draw" if draw else "win" if log.get("a") == winner_name else "loss" if winner_name else "unknown"
-            b_outcome = "draw" if draw else "win" if log.get("b") == winner_name else "loss" if winner_name else "unknown"
+            a_outcome = self.live_fight_corner_outcome(log, "a")
+            b_outcome = self.live_fight_corner_outcome(log, "b")
             scorecards = log.get("scorecards", "") or "No scorecards required"
             excitement = int(round(float(log.get("excitement", 0) or 0)))
             # Per-fight scores spread far wider than card averages (roughly
@@ -1934,6 +2489,7 @@ class EventMixin:
                 next_log = fight_logs[state["fight"] + 1]
                 append_line(f"Broadcast desk: next up, {next_log.get('heading', 'the next bout')}. The card moves on after the official result.")
             update_event_button_label()
+            update_control_state()
 
         def is_round_boundary(line):
             lowered = str(line).lower()
@@ -1999,6 +2555,7 @@ class EventMixin:
                 play_crowd("walkout")
             state["running"] = True
             state["close_armed"] = False
+            state["skip_armed"] = False
             status_label.config(text="Live playback running", fg=self.colors["muted"])
             close_button.config(text="Close")
             pause_button.config(text="Pause")
@@ -2023,6 +2580,7 @@ class EventMixin:
                 return
             state["running"] = not state["running"]
             state["close_armed"] = False
+            state["skip_armed"] = False
             close_button.config(text="Close")
             pause_button.config(text="Pause" if state["running"] else "Resume")
             if state["running"]:
@@ -2050,6 +2608,7 @@ class EventMixin:
             if state["fight"] < 0:
                 start_next_fight()
             state["running"] = False
+            state["skip_armed"] = False
             cancel_timer()
             lines = fight_logs[state["fight"]]["lines"]
             while state["line"] < len(lines):
@@ -2073,11 +2632,24 @@ class EventMixin:
                 state["after_id"] = window.after(max(450, state["delay"]), continue_auto_card)
 
         def skip_to_end():
+            if state["finished"]:
+                return
             state["running"] = False
             cancel_timer()
+            if not all_presented_fights_complete() and not state.get("skip_armed"):
+                state["skip_armed"] = True
+                skip_event_button.config(text="Confirm Skip Event")
+                status_label.config(text="Skipping ends the live presentation and applies the complete event. Press Confirm Skip Event to continue.", fg=result_color)
+                return
             for index in range(fight_list.size()):
                 mark_fight_done(index)
             finish_live_event()
+
+        def clear_active_live_window(_event=None):
+            if getattr(self, "_active_live_fight_window", None) is window:
+                self.stop_fight_night_audio_session()
+                self._active_live_fight_window = None
+                self._active_live_fight_event_key = None
 
         def close_window():
             cancel_timer()
@@ -2090,7 +2662,9 @@ class EventMixin:
                     action = "apply the completed event package" if apply_results else "discard this presentation"
                     status_label.config(text=f"Fight Night is still in progress. Press Confirm Close to {action}, or Resume to continue.", fg=result_color)
                     return
-                finish_live_event()
+                if not finish_live_event():
+                    return
+            clear_active_live_window()
             window.destroy()
 
         def review_selected_bout(_event=None):
@@ -2099,17 +2673,14 @@ class EventMixin:
                 status_label.config(text="Select a completed bout on the left to review its commentary.", fg=heading_color)
                 return
             index = selected[0]
-            current_complete = (
-                index == state["fight"]
-                and 0 <= index < len(fight_logs)
-                and state["line"] >= len(fight_logs[index].get("lines", []))
-            )
-            if index > state["fight"] or (index == state["fight"] and not current_complete and not state["finished"]):
+            if not self.fight_night_can_review(state, fight_logs, index):
                 status_label.config(text="That bout has not finished. Future commentary remains locked.", fg=result_color)
                 return
             log = fight_logs[index]
             review = self.create_managed_window(parent=window)
-            review.title(f"Fight Review - {log.get('a', '')} vs {log.get('b', '')}")
+            left_copy = self.display_fighter_name_value(log.get("a", "Red corner"))
+            right_copy = self.display_fighter_name_value(log.get("b", "Blue corner"))
+            review.title(f"Fight Review - {left_copy} vs {right_copy}")
             review.geometry(f"{min(920, width - 80)}x{min(680, height - 80)}")
             review.minsize(700, 480)
             review.configure(bg=self.colors["chrome"])
@@ -2120,8 +2691,6 @@ class EventMixin:
             ttk.Label(review_header, text=log.get("label", "BOUT"), style="ScreenTitle.TLabel").pack(side="right", padx=10)
             matchup = tk.Frame(review, bg=self.colors["panel_dark"], highlightthickness=1, highlightbackground=self.colors["line"])
             matchup.pack(fill="x", padx=8, pady=8)
-            left_copy = log.get("a", "Red corner")
-            right_copy = log.get("b", "Blue corner")
             left_role = log.get("a_title_status", "")
             right_role = log.get("b_title_status", "")
             tk.Label(matchup, text=f"{left_copy}\n{left_role}", bg=self.colors["panel_dark"], fg=self.colors["gold"] if left_role else self.colors["text"], font=("Tahoma", 11, "bold"), justify="right").pack(side="left", fill="x", expand=True, padx=12, pady=9)
@@ -2134,15 +2703,101 @@ class EventMixin:
             review_text.configure(yscrollcommand=review_scroll.set)
             review_scroll.pack(side="right", fill="y")
             review_text.pack(side="left", fill="both", expand=True)
-            review_text.insert("end", "\n".join(str(line) for line in log.get("lines", [])))
+            review_lines = self.fight_night_commentary_lines(
+                log.get("detailed_lines", log.get("lines", [])), commentary_mode_var.get(),
+            )
+            review_text.insert("end", "\n".join(
+                self.display_fighter_names_in_text(str(line), log)
+                for line in review_lines
+            ))
             review_text.config(state="disabled")
             review_actions = ttk.Frame(review, style="Chrome.TFrame")
             review_actions.pack(fill="x", padx=8, pady=8)
-            ttk.Label(review_actions, text="Stored commentary and official scorecards from this completed bout", style="Panel.TLabel").pack(side="left", padx=4)
+            ttk.Label(
+                review_actions,
+                text=f"{commentary_mode_var.get()} commentary and official scorecards from this completed bout",
+                style="Panel.TLabel",
+            ).pack(side="left", padx=4)
             ttk.Button(review_actions, text="Close Review", style="Accent.TButton", command=review.destroy).pack(side="right", padx=4)
 
-        ttk.Button(controls, text="Start Next Fight", style="Accent.TButton", command=start_next_fight).pack(side="left", padx=4)
-        ttk.Button(controls, text="Play Fight", command=start).pack(side="left", padx=4)
+        def switch_commentary_mode(_event=None):
+            """Rebuild the visible bout at the same sealed playback frontier."""
+            nonlocal fight_logs
+            requested = str(commentary_mode_var.get() or "Broadcast")
+            if requested not in FIGHT_COMMENTARY_MODES:
+                requested = "Broadcast"
+                commentary_mode_var.set(requested)
+            if requested == state.get("commentary_mode"):
+                return
+
+            was_running = bool(state.get("running"))
+            cancel_timer()
+            state["running"] = False
+            self.rules["fight_commentary_mode"] = requested
+            state["commentary_mode"] = requested
+            if state["fight"] < 0:
+                fight_logs = self.fight_night_presentation_logs(raw_fight_logs, requested)
+                status_label.config(text=f"{requested} commentary selected for the next bout.", fg=self.colors["muted"])
+                return
+
+            index = state["fight"]
+            source_cutoff = self.fight_night_source_cutoff(fight_logs[index], state["line"])
+            refreshed_logs = self.fight_night_presentation_logs(raw_fight_logs, requested)
+            refreshed_log, displayed_count = self.fight_night_presentation_progress(
+                raw_fight_logs[index], requested, source_cutoff,
+            )
+            refreshed_logs[index] = refreshed_log
+            fight_logs = refreshed_logs
+            state["line"] = displayed_count
+            state["phase"] = ""
+            state["result_shown"] = False
+            state["metrics_rows_remaining"] = 0
+            state["scorecard_buffer"] = []
+            state["holding_scorecards"] = False
+
+            log = fight_logs[index]
+            heading = log.get("heading", log.get("fight", "Bout"))
+            state["rerendering"] = True
+            try:
+                if not state.get("finished"):
+                    update_scoreboard(log)
+                text.config(state="normal")
+                text.delete("1.0", "end")
+                text.config(state="disabled")
+                append_line(heading)
+                append_line("-" * 72)
+                append_line(broadcast_rundown(index, log))
+                first_line = 1 if log.get("lines") and str(log["lines"][0]).strip() == str(heading).strip() else 0
+                for line in log.get("lines", [])[first_line:displayed_count]:
+                    present_fight_line(line)
+            finally:
+                state["rerendering"] = False
+
+            complete = state["line"] >= len(log.get("lines", []))
+            if complete and state.get("finished"):
+                phase_label.config(text="EVENT COMPLETE")
+                profit = int(round(float(package.get("profit", 0) or 0)))
+                excitement = int(round(float(package.get("average_excitement", 0) or 0)))
+                current_moment_label.config(
+                    text=f"{event.get('name', 'Event')} complete  •  Profit ${profit:,}  •  Average excitement {excitement}"
+                )
+                round_read_label.config(text="Results, bonuses, attendance, finances, and company effects are available in the end-of-event report.")
+                status_label.config(text=f"Event complete — {requested} commentary view", fg=self.colors["muted"])
+            elif complete:
+                show_result_if_needed()
+                show_fight_complete_status()
+            elif was_running and not state.get("finished"):
+                state["running"] = True
+                status_label.config(text=f"Live playback running — {requested} commentary", fg=self.colors["muted"])
+                schedule_next()
+            else:
+                status_label.config(text=f"{requested} commentary applied at the current fight position.", fg=self.colors["muted"])
+            update_control_state()
+
+        next_fight_button = ttk.Button(controls, text="Start Next Fight", style="Accent.TButton", command=start_next_fight)
+        next_fight_button.pack(side="left", padx=4)
+        play_button = ttk.Button(controls, text="Play Fight", command=start)
+        play_button.pack(side="left", padx=4)
         pause_button = ttk.Button(controls, text="Pause", command=pause_resume)
         pause_button.pack(side="left", padx=4)
         auto_var = tk.BooleanVar(value=bool(self.rules.get("live_auto_play_card", False)))
@@ -2156,8 +2811,10 @@ class EventMixin:
                 state["running"] = True
                 append_next()
         ttk.Checkbutton(controls, text="Auto-play card", variable=auto_var, command=toggle_auto).pack(side="left", padx=6)
-        ttk.Button(controls, text="Next Round", command=next_round).pack(side="left", padx=4)
-        ttk.Button(controls, text="Skip Fight", command=skip_current_fight).pack(side="left", padx=4)
+        next_round_button = ttk.Button(controls, text="Next Round", command=next_round)
+        next_round_button.pack(side="left", padx=4)
+        skip_fight_button = ttk.Button(controls, text="Skip Fight", command=skip_current_fight)
+        skip_fight_button.pack(side="left", padx=4)
         # Second row: speed and event controls.
         ttk.Button(controls2, text="Slower", command=slower).pack(side="left", padx=4)
         ttk.Button(controls2, text="Faster", command=faster).pack(side="left", padx=4)
@@ -2186,6 +2843,17 @@ class EventMixin:
                 text.see("end")
 
         ttk.Checkbutton(controls2, text="Follow live", variable=follow_var, command=toggle_follow).pack(side="left", padx=8)
+        ttk.Label(controls2, text="Commentary", style="Panel.TLabel").pack(side="left", padx=(8, 3))
+        commentary_mode_box = ttk.Combobox(
+            controls2, state="readonly", values=FIGHT_COMMENTARY_MODES,
+            textvariable=commentary_mode_var, width=10,
+        )
+        commentary_mode_box.pack(side="left", padx=(0, 8))
+        commentary_mode_box.bind("<<ComboboxSelected>>", switch_commentary_mode)
+        ttk.Label(
+            controls2, textvariable=commentary_personality_var,
+            style="Panel.TLabel", anchor="e",
+        ).pack(side="right", padx=(8, 4))
 
         skip_event_button = ttk.Button(controls3, text="Skip Event", command=skip_to_end)
         skip_event_button.pack(side="left", padx=4)
@@ -2218,6 +2886,30 @@ class EventMixin:
         close_button = ttk.Button(controls3, text="Close", style="Accent.TButton", command=close_window)
         close_button.pack(side="right", padx=4)
         window.protocol("WM_DELETE_WINDOW", close_window)
+        window.bind("<Destroy>", lambda event: clear_active_live_window(event) if event.widget is window else None, add="+")
+
+        def keyboard_action(action):
+            focused = window.focus_get()
+            if focused is not None and focused.winfo_class() in {"Entry", "TEntry", "Spinbox", "TSpinbox", "Text"}:
+                return
+            action()
+            return "break"
+
+        window.bind("<space>", lambda _event: keyboard_action(pause_resume if state["running"] else start))
+        window.bind("<Return>", lambda _event: keyboard_action(start))
+        window.bind("<Control-n>", lambda _event: keyboard_action(start_next_fight))
+        window.bind("<Control-r>", lambda _event: keyboard_action(next_round))
+        window.bind("<Control-f>", lambda _event: keyboard_action(skip_current_fight))
+        window.bind("<Escape>", lambda _event: keyboard_action(close_window))
+        for profile_label, side in ((left_name, "a"), (right_name, "b")):
+            profile_label.configure(takefocus=True)
+            profile_label.bind("<Return>", lambda _event, selected_side=side: open_header_profile(selected_side))
+            profile_label.bind("<space>", lambda _event, selected_side=side: open_header_profile(selected_side))
+        update_control_state()
+        next_fight_button.focus_set()
+        if state["auto"]:
+            window.after_idle(start)
+        return window
 
     def sign_fighter(self):
         selected = self.market_tree.selection()
@@ -2244,7 +2936,7 @@ class EventMixin:
         fighter.morale = min(100, fighter.morale + 8)
         self.roster.append(fighter)
         self.event_log.append(f"Signed {self.fighter_display_name(fighter)} to a {fighter.contract_months}-month ${fighter.purse:,}/fight contract.")
-        self.news.insert(0, f"{self.player_company_name} signed {self.fighter_display_name(fighter)}, a {fighter.style} {fighter.weight} with {fighter.trait.lower()} reputation.")
+        self.news.insert(0, f"{self.player_company_name} signed {self.fighter_display_name(fighter)}, a {fighter.style_label} {fighter.weight} with {fighter.trait.lower()} reputation.")
         self.refresh_all()
         self.write_log()
 
@@ -2274,15 +2966,44 @@ class EventMixin:
                 return round(low_value + (high_value - low_value) * weight, 4)
         return round(curve[-1][1], 4)
 
+    def contract_negotiation_target_is_current(self, fighter, existing=False, comeback=False, source_promotion=None, transfer_deal=None):
+        """Revalidate a potentially stale Profile action before any contract mutation."""
+        if getattr(self, "spectator_mode", False):
+            return False, "Contracts cannot be negotiated in Spectator Mode."
+        if existing:
+            return (True, "") if self.player_owns_fighter(fighter) else (False, "That fighter is no longer on your roster.")
+        if comeback:
+            available = getattr(fighter, "retired", False) and fighter in getattr(self, "retired_fighters", [])
+            return (True, "") if available else (False, "That fighter is no longer available for a comeback deal.")
+        if source_promotion is not None:
+            available = fighter in getattr(source_promotion, "roster", [])
+            return (True, "") if available else (False, f"That fighter has already left {source_promotion.name}.")
+        if transfer_deal is not None:
+            owner = self.promotion_owning_fighter(fighter) if hasattr(self, "promotion_owning_fighter") else None
+            expected_owner = transfer_deal.get("source") if isinstance(transfer_deal, dict) else None
+            return (True, "") if owner is expected_owner and owner is not None else (False, "That fighter is no longer owned by the promotion in this transfer.")
+        available = (
+            fighter in getattr(self, "free_agents", [])
+            and not self.player_owns_fighter(fighter)
+            and self.promotion_owning_fighter(fighter) is None
+        )
+        return (True, "") if available else (False, "That fighter is no longer a free agent.")
+
     def open_contract_negotiation(self, fighter, existing=False, comeback=False, farewell=False, source_promotion=None, transfer_deal=None):
         # A farewell deal is a comeback that resolves in a single retirement bout
         # rather than a multi-fight commitment.
         if farewell:
             comeback = True
+        available, unavailable_reason = self.contract_negotiation_target_is_current(
+            fighter, existing, comeback, source_promotion, transfer_deal,
+        )
+        if not available:
+            messagebox.showinfo("Contract unavailable", unavailable_reason)
+            return None
         prior_comeback_guaranteed = max(0, int(getattr(fighter, "guaranteed_fights", 0) or 0))
         prior_comeback_completed = max(0, int(getattr(fighter, "contract_fights_completed", 0) or 0))
         report = self.scouting_report_for(fighter)
-        ratings_known = existing or not self.rules.get("scouting_mode", False) or report.get("reveal", 0) >= 100
+        ratings_known = existing or not self.rules.get("scouting_mode", False) or self.scouting_report_is_current_full(report)
         window = self.create_managed_window()
         window.title(f"Negotiate - {self.fighter_display_name(fighter)}")
         window.geometry("660x600")
@@ -2617,6 +3338,13 @@ class EventMixin:
         refresh_meter()
 
         def submit():
+            available, unavailable_reason = self.contract_negotiation_target_is_current(
+                fighter, existing, comeback, source_promotion, transfer_deal,
+            )
+            if not available:
+                result_label.config(text=unavailable_reason + " No money was charged.")
+                submit_button.config(state="disabled")
+                return
             if source_promotion is not None and fighter not in source_promotion.roster:
                 result_label.config(text=f"{self.fighter_display_name(fighter)} has already left {source_promotion.name}. No money was charged.")
                 submit_button.config(state="disabled")
@@ -2726,6 +3454,33 @@ class EventMixin:
                 fighter.main_event_promise = main_event_promise_var.get()
                 fighter.top_opponent_promise = top_opponent_promise_var.get()
                 fighter.promise_deadline_month = self.month + 6 if fighter.main_event_promise or fighter.top_opponent_promise else 0
+                promised_opportunities = []
+                if fighter.main_event_promise:
+                    promised_opportunities.append("main-event")
+                if fighter.top_opponent_promise:
+                    promised_opportunities.append("top-opponent")
+                self.record_contract_promise_story(fighter, promised_opportunities, self.player_company_name)
+                if existing:
+                    self.record_contract_renewal(
+                        fighter, self.player_company_name, term,
+                        source="Direct contract negotiation",
+                    )
+                elif not comeback:
+                    self.record_contract_signing(
+                        fighter, self.player_company_name,
+                        source="Direct contract negotiation",
+                    )
+                competing_company = (
+                    active_offer_company
+                    or (rival.name if rival is not None and state["rival_bid"] else "")
+                )
+                if competing_company and not existing and not comeback:
+                    self.record_promotion_war_event(
+                        self.player_company_name, competing_company, "talent_signing",
+                        f"{self.player_company_name} beat {competing_company} to the signing of {fighter.name}.",
+                        fighters=[fighter], importance=3,
+                        event_ref=f"contract-battle:{fighter.fighter_id}:{self.month}:{self.week}:{self.story_company_key(self.player_company_name)}",
+                    )
                 fighter.relationship_trust = min(100, fighter.relationship_trust + 4)
                 self.clear_ai_contract_offer(fighter)
                 fighter.morale = min(100, fighter.morale + 6)
@@ -2753,6 +3508,11 @@ class EventMixin:
                     fights_note = "1 farewell bout" if farewell else f"{fights} guaranteed fights"
                 duration_note = "fight-counted comeback deal" if comeback else f"{term} months"
                 fighter.fight_history.insert(0, f"Signed contract: {duration_note}, {fights_note}, ${purse:,}/fight, ${signing:,} signing bonus, {bonus}% finish bonus.{clause_text}{contract_note}")
+                if comeback:
+                    self.record_comeback_contract_story(
+                        fighter, farewell=farewell, fights=1 if farewell else fights,
+                        company=self.player_company_name,
+                    )
                 if source_promotion is not None:
                     fighter.fight_history.insert(1, f"Left {source_promotion.name} after a regional record of {fighter.regional_record_w}-{fighter.regional_record_l}-{fighter.regional_record_d}.")
                     self.regional_recruit_fighter(source_promotion, slots=1)
@@ -2772,6 +3532,14 @@ class EventMixin:
                 refresh_meter()
                 return
             if state["attempts"] <= 0:
+                if existing and self.active_contract_saga(fighter):
+                    self.record_contract_saga(
+                        fighter, self.player_company_name, phase="talks_broken_down",
+                        summary=f"Renewal talks between {fighter.name} and {self.player_company_name} broke down.",
+                        importance=4,
+                        beat_ref=f"contract-talks-broken:{fighter.fighter_id}:{self.month}:{self.week}",
+                        former_company=self.player_company_name,
+                    )
                 if active_offer_purse:
                     result_label.config(text=f"Your talks ended. {rival_name}'s live offer remains in place until next month.")
                 elif rival is not None and not existing and not comeback and source_promotion is None and state["rival_bid"] and random.random() < 0.5:
@@ -2781,6 +3549,7 @@ class EventMixin:
                     signed, detail = self.complete_ai_free_agent_signing(
                         fighter, rival, rival_purse, rival_term, rival_bonus,
                         source="Won the bidding after player negotiations broke down",
+                        rival_company=self.player_company_name,
                     )
                     result_label.config(text=(f"{self.fighter_display_name(fighter)} signed with {rival.name} instead." if signed else f"{rival.name}'s bid collapsed: {detail}"))
                 else:
@@ -2831,7 +3600,7 @@ class EventMixin:
         body.pack(fill="both", expand=True, padx=8, pady=8)
         info = (
             f"{fighter.weight} | {fighter.record} | OVR {fighter.overall} | Pop {fighter.popularity}\n"
-            f"Style: {fighter.style} / {fighter.behaviour} | Camp: {fighter.camp}\n"
+            f"Style: {fighter.style_label} / {fighter.behaviour} | Camp: {fighter.camp}\n"
             f"Star {fighter.star_quality} | Media {fighter.media_presence} | Sponsor {fighter.sponsor_appeal} | Pro {fighter.professionalism}\n"
             f"Rival bid: {rival.name} offers about ${rival_offer:,}/fight\n"
             f"Non-exclusive deals are cheaper but allow outside fights."
@@ -2880,6 +3649,27 @@ class EventMixin:
         ttk.Button(body, text="Submit Offer", style="Accent.TButton", command=submit_offer).pack(side="left", padx=12, pady=12)
         ttk.Button(body, text="Walk Away", command=window.destroy).pack(side="right", padx=12, pady=12)
 
+    def selected_event_economics(self):
+        """Read the booking screen's per-event economic levers."""
+        self.ensure_finance_defaults()
+
+        def read(variable, fallback):
+            try:
+                return int(variable.get())
+            except Exception:
+                return int(fallback)
+
+        tier = self.event_production_tier.get() if hasattr(self, "event_production_tier") else DEFAULT_EVENT_PRODUCTION_TIER
+        return {
+            "ticket_price": max(EVENT_TICKET_PRICE_MIN, min(EVENT_TICKET_PRICE_MAX, read(
+                getattr(self, "event_ticket_price", None) or tk.IntVar(value=self.finance["ticket_price"]),
+                self.finance["ticket_price"]))),
+            "marketing_budget": max(0, min(EVENT_MARKETING_BUDGET_MAX, read(
+                getattr(self, "event_marketing_budget", None) or tk.IntVar(value=self.finance["marketing_budget"]),
+                self.finance["marketing_budget"]))),
+            "production_tier": tier if tier in EVENT_PRODUCTION_TIERS else DEFAULT_EVENT_PRODUCTION_TIER,
+        }
+
     def fight_hype(self, a, b, fight, rank_map=None):
         title = 12 if fight.get("title") else 0
         main = 8 if fight.get("main") else 0
@@ -2897,7 +3687,15 @@ class EventMixin:
             elif rank and rank <= 10:
                 rank_bonus += 3
         marketing_lift = self.staff_effect("Marketing", 0.45)
-        return max(1, round(((a.popularity + b.popularity) / 2 + title + main + rivalry / 2 + media + rank_bonus + marketing_lift) * tier_factor))
+        base = (a.popularity + b.popularity) / 2 + title + main + rivalry / 2 + media + rank_bonus + marketing_lift
+        # A booked grudge match is worth more than the sum of its fighters.
+        grudge = self.grudge_match_state(a, b)
+        if grudge["grudge"]:
+            lift = (grudge["heat"] / 100.0) * GRUDGE_MATCH_MAX_HYPE_BONUS
+            if grudge["rematch_due"]:
+                lift *= 1.2
+            base *= 1 + min(GRUDGE_MATCH_MAX_HYPE_BONUS, lift)
+        return max(1, round(base * tier_factor))
 
     def division_rank_number(self, fighter):
         if fighter.champion:
@@ -2963,7 +3761,8 @@ class EventMixin:
 
     def match_build_score(self, a, b, fight, rank_map=None):
         style_clash = 6 if a.style != b.style else 1
-        rivalry = 10 + self.rivalry_heat_between(a, b) * 0.22 if a.rival == b.name or b.rival == a.name else 0
+        rivalry_heat = self.rivalry_heat_between(a, b)
+        rivalry = 10 + rivalry_heat * 0.22 if rivalry_heat else 0
         stakes = (10 if fight.get("title") else 0) + (6 if fight.get("main") else 0)
         competitiveness = max(0, 18 - abs(a.overall - b.overall))
         matchmaker_lift = self.staff_effect("Matchmaker", 0.28)
@@ -2986,10 +3785,12 @@ class EventMixin:
                 for reference in self.event_fight_participant_references(snapshot)
             ]
             immediate_fights.append(snapshot)
-        event = {"name": event_name, "venue": self.venue.get(), "region": self.event_region.get(), "city": self.event_city.get(), "month": self.month, "week": self.week, "fights": immediate_fights}
+        event = {"name": event_name, "venue": self.venue.get(), "region": self.event_region.get(), "city": self.event_city.get(), "month": self.month, "week": self.week, "fights": immediate_fights, **self.selected_event_economics()}
+        self.record_homecoming_booking(event, self.player_company_name)
         package = self.prepare_event_result(event)
         self.finish_event(None, package)
         self.booked.clear()
+        self._event_price_user_set = False
         self.event_name.set(self.default_event_name())
         self.refresh_all()
         self.select_tab("log")
@@ -3024,7 +3825,7 @@ class EventMixin:
 
     def press_faceoff_moment(self, a, b):
         """Generate a face-off beat driven by charisma, media presence, traits and rivalry."""
-        rivalry = a.rival == b.name or b.rival == a.name
+        rivalry = bool(self.rivalry_heat_between(a, b))
         talkers = {"Trash Talker", "Showman", "Media Natural", "Fan Favourite", "Marketable"}
         quiet = {"Quiet Professional", "Coach Favourite"}
         charisma = (a.charisma + b.charisma) / 2 + (a.media_presence + b.media_presence) / 4
@@ -3121,9 +3922,9 @@ class EventMixin:
         ppv_points = 0
         ppv_fighters = set()
         for winner, loser, _fight, method in results:
-            if method != "Draw" and winner in self.roster:
+            if method not in ("Draw", "No Contest") and winner in self.roster:
                 win_bonuses += max(0, int(getattr(winner, "win_bonus", 0) or 0))
-                if any(finish in str(method) for finish in ("KO", "TKO", "Submission")):
+                if method in FINISH_METHODS:
                     finish_pct = max(0, int(getattr(winner, "finish_bonus_pct", 0) or 0))
                     finish_bonuses += round(max(0, int(getattr(winner, "purse", 0) or 0)) * finish_pct / 100)
             # PPV is an event-level revenue share. Tournament entrants who fight
@@ -3279,7 +4080,8 @@ class EventMixin:
             excitement = self.fight_excitement(a, b, winner, loser, method, round_no, fight, hype)
             total_excitement += excitement
             results.append((winner, loser, fight, method))
-            award_pool.append({"winner": winner.name if method != "Draw" else "", "loser": loser.name if method != "Draw" else "", "fighters": [a.name, b.name], "method": method, "excitement": excitement, "round": round_no, "fight": f"{a.name} vs {b.name}"})
+            official_winner = method not in ("Draw", "No Contest")
+            award_pool.append({"winner": winner.name if official_winner else "", "loser": loser.name if official_winner else "", "fighters": [a.name, b.name], "method": method, "excitement": excitement, "round": round_no, "fight": f"{a.name} vs {b.name}"})
             label = f"{fight['special_belt'].upper()} TITLE FIGHT" if fight.get("special_belt") else ("MAIN EVENT" if fight["main"] else ("TITLE FIGHT" if fight["title"] else "BOUT"))
             if fight.get("special_belt") and fight.get("divisional_title"):
                 label += " + " + ("INTERIM TITLE" if fight.get("interim") else "DIVISIONAL TITLE")
@@ -3298,16 +4100,23 @@ class EventMixin:
             if method == "Draw":
                 lines.append(f"Result: {a.name} vs {b.name} ends in a draw, R{round_no} | Fight excitement {excitement}")
                 result_text = f"Draw (R{round_no})"
+            elif method == "No Contest":
+                lines.append(f"Result: {a.name} vs {b.name} is ruled a No Contest, R{round_no} | Fight excitement {excitement}")
+                result_text = f"No Contest (R{round_no})"
             else:
                 lines.append(f"Result: {winner.name} def. {loser.name} by {method}, R{round_no} | Fight excitement {excitement}")
                 result_text = f"{winner.name} - {method} R{round_no}"
             fight_logs.append({
                 "heading": lines[0], "lines": lines,
-                "a": a.name, "b": b.name, "a_id": a.fighter_id, "b_id": b.fighter_id, "a_record": a.record, "b_record": b.record,
+                "a": a.name, "b": b.name, "a_id": a.fighter_id, "b_id": b.fighter_id,
+                "winner": winner.name if official_winner else "", "winner_id": winner.fighter_id if official_winner else "", "draw": method == "Draw", "no_contest": method == "No Contest",
+                "a_record": a.record, "b_record": b.record,
                 "a_rating": a_rating, "b_rating": b_rating,
                 "weight": a.weight, "label": label, "title": bool(fight.get("title", False)), "divisional_title": bool(fight.get("divisional_title", fight.get("title") and not fight.get("special_belt"))), "interim": bool(fight.get("interim", False)), "special_belt": str(fight.get("special_belt", "") or ""), "result": result_text, "excitement": excitement,
                 "a_title_status": a_title_status, "b_title_status": b_title_status,
                 "a_start_gas": a_start_gas, "b_start_gas": b_start_gas, "scorecards": fight["_scorecards"],
+                "commentary_personality": self.commentary_personality(),
+                "round_analysis": deepcopy(getattr(self, "_last_fight_result", None).metrics.get("round_analysis", []) if getattr(self, "_last_fight_result", None) else []),
             })
             log.append("\n" + lines[0])
             log.extend(f"  {line}" for line in lines[1:])
@@ -3754,9 +4563,21 @@ class EventMixin:
         fighter.fight_history = fighter.fight_history or []
         fighter.fight_history.insert(0, note)
         self.news.insert(0, f"{fighter.name} moved from {old_weight} to {target_weight}. {reason}")
+        summary = f"{fighter.name} moved from {old_weight} to {target_weight}. {reason}"
+        self.record_weight_journey_story(
+            fighter, phase="division_reinvention", status="resolved", importance=4,
+            summary=summary, resolution=summary,
+        )
+        self.record_crossroads_reinvention(
+            fighter, self.fighter_company_name(fighter) or self.player_company_name,
+            old_weight, target_weight,
+        )
         return True
 
     def move_fighter_weight_class(self, fighter, target_weight):
+        if getattr(self, "spectator_mode", False) or not self.player_owns_fighter(fighter):
+            messagebox.showwarning("Division move unavailable", "Only a fighter currently on your roster can change division here.")
+            return False
         if (
             self.player_owns_fighter(fighter)
             and self.belt_key(fighter.gender, target_weight) in set(getattr(self, "closed_divisions", set()))
@@ -3815,7 +4636,7 @@ class EventMixin:
                 fighter_ids = list(fight.get("fighter_ids", []))
                 if len(fighter_ids) != len(entrants):
                     fighter_ids = [getattr(self.get_fighter(name), "fighter_id", "") if name != "TBA" else "" for name in entrants]
-                known = next((self.get_fighter(name) for name in entrants if name != "TBA"), None)
+                known = next(iter(self.event_fight_fighters(fight)), None)
                 for index, name in enumerate(entrants):
                     if name != "TBA":
                         continue
@@ -3866,7 +4687,16 @@ class EventMixin:
                 for missed, miss_by in severe:
                     replacement = self.find_tba_replacement(missed.weight, missed.gender, known=missed, short_notice=True)
                     entrants = fight.get("tournament_entrants", [])
-                    entrants[entrants.index(missed.name)] = replacement.name
+                    fighter_ids = list(fight.get("fighter_ids", []))
+                    entrant_index = (
+                        fighter_ids.index(missed.fighter_id)
+                        if len(fighter_ids) == len(entrants) and missed.fighter_id in fighter_ids
+                        else entrants.index(missed.name)
+                    )
+                    entrants[entrant_index] = replacement.name
+                    if len(fighter_ids) == len(entrants):
+                        fighter_ids[entrant_index] = replacement.fighter_id
+                        fight["fighter_ids"] = fighter_ids
                     outcome = self.perform_weigh_in(replacement, title_fight=False, camp_weeks=0, persist=True)
                     lines.append(f"Commission removed {missed.name} after a {miss_by} lb miss; alternate {replacement.name} weighed {outcome['scale_weight']} lb and joined the bracket.")
                 entrants = fight.get("tournament_entrants", [])
@@ -3907,9 +4737,11 @@ class EventMixin:
 
     def simulate_event_tournament(self, event, tournament):
         """Simulate a one-night MMA bracket while preserving the normal career result pipeline."""
-        entrants = [self.get_fighter(name) for name in tournament.get("tournament_entrants", [])]
+        entrants = self.event_fight_fighters(tournament)
         entrants = sorted(entrants, key=lambda fighter: (self.division_rank_number(fighter) or 99, -fighter.elo_rating, -fighter.overall, fighter.name))
-        starting_fatigue = {fighter.name: fighter.fatigue for fighter in entrants}
+        # Tournament preparation is private in-memory state. Object identity
+        # keeps duplicate display names from sharing one fatigue snapshot.
+        starting_fatigue = {id(fighter): fighter.fatigue for fighter in entrants}
         current = entrants
         stages = []
         results = []
@@ -3941,12 +4773,12 @@ class EventMixin:
                 a_rating, b_rating = self.bout_rating_snapshot(a), self.bout_rating_snapshot(b)
                 winner, loser, method, round_no, commentary = self.simulate_fight(a, b, fight)
                 replay = 0
-                while method == "Draw" and replay < 8:
+                while method in ("Draw", "No Contest") and replay < 8:
                     replay += 1
                     commentary.append(f"Tournament rules require an advancing fighter. Sudden-death replay {replay} begins after the drawn bout.")
                     winner, loser, method, round_no, replay_lines = self.simulate_fight(a, b, fight)
                     commentary.extend(replay_lines)
-                if method == "Draw":
+                if method in ("Draw", "No Contest"):
                     winner, loser = ((a, b) if (a.elo_rating, a.overall, a.fight_iq) >= (b.elo_rating, b.overall, b.fight_iq) else (b, a))
                     method = "Decision"
                     commentary.append(f"After repeated level scorecards, the tournament commission's mandatory tiebreak criteria advances {winner.name}.")
@@ -3979,12 +4811,15 @@ class EventMixin:
                 award_pool.append({"winner": winner.name, "loser": loser.name, "fighters": [a.name, b.name], "method": method, "excitement": excitement, "round": round_no, "fight": f"{a.name} vs {b.name}"})
                 fight_logs.append({
                     "heading": lines[0], "lines": lines, "a": a.name, "b": b.name, "a_id": a.fighter_id, "b_id": b.fighter_id,
+                    "winner": winner.name, "winner_id": winner.fighter_id, "draw": False,
                     "a_record": a.record, "b_record": b.record, "a_rating": a_rating, "b_rating": b_rating, "weight": a.weight,
                     "label": label, "title": bool(fight.get("title", False)), "divisional_title": bool(fight.get("divisional_title", fight.get("title") and not fight.get("special_belt"))), "interim": bool(fight.get("interim", False)), "special_belt": str(fight.get("special_belt", "") or ""), "result": result_text, "excitement": excitement,
                     "a_title_status": a_title_status, "b_title_status": b_title_status,
                     "tournament_stage": stage, "tournament_name": tournament.get("tournament_name", "MMA Grand Prix"),
                     "a_start_gas": a_start_gas, "b_start_gas": b_start_gas,
                     "scorecards": fight["_scorecards"],
+                    "commentary_personality": self.commentary_personality(),
+                    "round_analysis": deepcopy(getattr(self, "_last_fight_result", None).metrics.get("round_analysis", []) if getattr(self, "_last_fight_result", None) else []),
                 })
                 stage_matches.append({"a": a.name, "b": b.name, "winner": winner.name, "method": method, "round": round_no, "summary": result_text})
                 winners.append(winner)
@@ -4004,7 +4839,7 @@ class EventMixin:
         # preparation happens before the viewer is completed. Restore the live
         # world here; finish_event applies every bout in order exactly once.
         for fighter in entrants:
-            fighter.fatigue = starting_fatigue[fighter.name]
+            fighter.fatigue = starting_fatigue[id(fighter)]
         return {
             "results": results, "award_pool": award_pool, "fight_logs": fight_logs,
             "hype": total_hype, "build": total_build, "excitement": total_excitement,
@@ -4085,6 +4920,7 @@ class EventMixin:
         replacement = self.find_tba_replacement(fight.get("tba_weight", known.weight), fight.get("tba_gender", known.gender), known=known, short_notice=True)
         fight["fighters"] = [known.name, replacement.name]
         fight["fighter_ids"] = [getattr(known, "fighter_id", ""), getattr(replacement, "fighter_id", "")]
+        fight.setdefault("fight_plans", {})[getattr(replacement, "fighter_id", "")] = "Balanced"
         fight["tba_filled"] = True
         fight["tba_note"] = f"{replacement.name} accepted a short-notice fight against {known.name}."
         self.news.insert(0, fight["tba_note"])
@@ -4210,9 +5046,12 @@ class EventMixin:
                 loser.last_fight_stats = dict(stats.get(getattr(loser, "fighter_id", "") or loser.name, stats.get(loser.name, {})) or {}) or None
             excitement = award_pool[index].get("excitement", 50) if index < len(award_pool) else 50
             round_no = award_pool[index].get("round", 1) if index < len(award_pool) else 1
-            self.record_season_result(winner, loser, method, round_no, fight, excitement, self.player_company_name)
+            if method != "No Contest":
+                self.record_season_result(winner, loser, method, round_no, fight, excitement, self.player_company_name)
             if method == "Draw":
                 self.apply_draw_result(winner, loser, fight)
+            elif method == "No Contest":
+                self.apply_no_contest_result(winner, loser, fight)
             else:
                 self.apply_result(winner, loser, fight, method)
             self.record_standard_guaranteed_fight(winner)
@@ -4226,6 +5065,7 @@ class EventMixin:
         self.record_finance_transaction(
             package["event_name"], revenue=finance.get("total_revenue", 0),
             costs=finance.get("total_expense", 0) + (0 if clauses_included else clause_payout),
+            category="Event", source="Promoted event", event=package["event_name"],
         )
         for bracket in package.get("tournament_brackets", []):
             champion = self.find_fighter_anywhere(bracket.get("champion", ""))
@@ -4256,6 +5096,21 @@ class EventMixin:
                     fighter.relationship_trust = min(100, fighter.relationship_trust + 12)
                     fighter.morale = min(100, fighter.morale + 5)
                     self.news.insert(0, f"Promise kept: {fighter.name}'s {' and '.join(fulfilled)} commitment was fulfilled.")
+                    story = self.resolve_contract_promise_story(
+                        fighter, fulfilled, kept=True, company=self.player_company_name,
+                    )
+                    if story and story.get("status") == "resolved":
+                        self.record_world_story(
+                            "Promise Kept", f"{self.player_company_name} keeps its commitment to {fighter.name}.",
+                            story.get("resolution", ""), [self.player_company_name], [fighter.name], 3,
+                            fighter_ids=[fighter.fighter_id], story_id=story.get("story_id", ""),
+                        )
+                        self.record_staff_contribution(
+                            "Talent Relations", "fighter_promise_fulfilled",
+                            f"The talent-relations team helped fulfil {fighter.name}'s {' and '.join(fulfilled)} commitment.",
+                            event_ref=f"staff-promise-fulfilled:{fighter.fighter_id}:{self.month}:{self.week}",
+                            importance=3,
+                        )
 
         if event and event in self.scheduled_events:
             self.scheduled_events.remove(event)
@@ -4263,6 +5118,7 @@ class EventMixin:
         package["company"] = self.player_company_name
         self.apply_event_awards(package.get("awards", []))
         self.apply_regional_show_effects(package)
+        self.record_event_staff_milestones(package)
         # apply_result/apply_draw_result deliberately deferred these removals so
         # every event subsystem could still resolve the participants safely.
         for winner, loser, _fight, _method in package["results"]:
@@ -4321,12 +5177,19 @@ class EventMixin:
                 connection = self.fighter_event_connection(fighter, region, city)
                 if connection["strength"] <= 0:
                     continue
-                is_winner = fighter is winner
+                is_winner = fighter is winner and method not in ("Draw", "No Contest")
                 hometown_bonus = 2 if connection["level"] == "Hometown" else 1 if connection["strength"] >= 0.66 else 0
                 fighter.morale = min(100, fighter.morale + max(1, round(morale_bonus * connection["strength"])) + hometown_bonus)
                 fighter.motivation = min(99, fighter.motivation + 1 + hometown_bonus)
-                market_delta = (3 if is_winner else 1) + hometown_bonus + (1 if method not in ("Decision", "Draw") and is_winner else 0)
+                market_delta = (3 if is_winner else 1) + hometown_bonus + (1 if method not in ("Decision", "Technical Decision", "Draw", "No Contest") and is_winner else 0)
                 self.update_regional_popularity(fighter, region, market_delta, f"{connection['level']} appearance at {package.get('event_name', 'an event')}")
+                opponent = loser if fighter is winner else winner
+                home_fight = dict(fight or {}, region=region, city=city)
+                self.record_hometown_fight_story(
+                    fighter, opponent, home_fight, method, is_winner,
+                    event_name=package.get("event_name", "an event"),
+                    company=self.player_company_name,
+                )
                 if is_winner:
                     fighter.popularity = min(100, fighter.popularity + 1 + hometown_bonus)
                     fighter.media_heat = min(100, fighter.media_heat + 1 + hometown_bonus)
@@ -4362,13 +5225,37 @@ class EventMixin:
             return
         window = self.create_managed_window()
         window.title("End of Event")
-        window.geometry("1040x760")
-        window.minsize(820, 600)
+        window.update_idletasks()
+        screen_w, screen_h = window.winfo_screenwidth(), window.winfo_screenheight()
+        summary_width = min(1040, max(760, screen_w - 100))
+        summary_height = min(760, max(520, screen_h - 140))
+        window.geometry(f"{summary_width}x{summary_height}")
+        window.minsize(min(760, summary_width), min(520, summary_height))
         window.configure(bg=self.colors["chrome"])
         header = ttk.Frame(window, style="Header.TFrame")
         header.pack(fill="x", padx=8, pady=(8, 0))
         ttk.Label(header, text="END OF EVENT", style="ScreenTitle.TLabel").pack(side="left", padx=10, pady=5)
-        overview = ttk.Frame(window, style="Panel.TFrame")
+        summary_controls = ttk.Frame(window, style="Chrome.TFrame")
+        summary_controls.pack(side="bottom", fill="x", padx=8, pady=(4, 8))
+        if package.get("tournament_brackets"):
+            ttk.Button(summary_controls, text="View Tournament Bracket", style="Accent.TButton", command=lambda: self.open_event_tournament_bracket(package, window)).pack(side="left")
+        close_summary_button = ttk.Button(summary_controls, text="Close", command=window.destroy)
+        close_summary_button.pack(side="right")
+
+        summary_body = ttk.Frame(window, style="Chrome.TFrame")
+        summary_body.pack(fill="both", expand=True, padx=8, pady=4)
+        summary_canvas = tk.Canvas(summary_body, bg=self.colors["chrome"], highlightthickness=0)
+        summary_scroll = ttk.Scrollbar(summary_body, orient="vertical", command=summary_canvas.yview)
+        summary_canvas.configure(yscrollcommand=summary_scroll.set)
+        summary_scroll.pack(side="right", fill="y")
+        summary_canvas.pack(side="left", fill="both", expand=True)
+        content = ttk.Frame(summary_canvas, style="Chrome.TFrame")
+        content_id = summary_canvas.create_window((0, 0), window=content, anchor="nw")
+        content.bind("<Configure>", lambda _event: summary_canvas.configure(scrollregion=summary_canvas.bbox("all")))
+        summary_canvas.bind("<Configure>", lambda event: summary_canvas.itemconfigure(content_id, width=event.width))
+        summary_canvas.bind("<MouseWheel>", lambda event: summary_canvas.yview_scroll(-1 if event.delta > 0 else 1, "units"))
+
+        overview = ttk.Frame(content, style="Panel.TFrame")
         overview.pack(fill="x", padx=8, pady=(8, 4))
         ttk.Label(overview, text=package["event_name"], style="ScreenTitle.TLabel").pack(anchor="w", padx=12, pady=(8, 2))
         finance = package.get("finance", {})
@@ -4430,7 +5317,7 @@ class EventMixin:
             champions = "  |  ".join(f"{bracket.get('title', 'Grand Prix')}: {bracket.get('champion', 'TBD')}" for bracket in package["tournament_brackets"])
             ttk.Label(overview, text=f"TOURNAMENT CHAMPION - {champions}", style="Section.TLabel", anchor="center").pack(fill="x", padx=8, pady=(0, 8))
 
-        result_panel = ttk.Frame(window, style="Panel.TFrame")
+        result_panel = ttk.Frame(content, style="Panel.TFrame")
         result_panel.pack(fill="both", expand=True, padx=8, pady=4)
         ttk.Label(result_panel, text="CARD RESULTS", style="Section.TLabel", anchor="center").pack(fill="x", ipady=3)
         table_frame = ttk.Frame(result_panel, style="Panel.TFrame")
@@ -4452,21 +5339,21 @@ class EventMixin:
         tree.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
         for index, log in enumerate(package.get("fight_logs", []), 1):
-            matchup = f"{log.get('a', '')} vs {log.get('b', '')}" if log.get("a") else log.get("heading", "Bout")
+            matchup = (
+                f"{self.display_fighter_name_value(log.get('a', ''))} vs {self.display_fighter_name_value(log.get('b', ''))}"
+                if log.get("a") else log.get("heading", "Bout")
+            )
             stage = log.get("tournament_stage") or log.get("label", "BOUT")
             tags = ("headline",) if "MAIN" in str(stage).upper() else ("title",) if log.get("title") else ()
-            tree.insert("", "end", values=(index, stage, matchup, log.get("result", "Cancelled"), log.get("excitement", "-")), tags=tags)
+            tree.insert("", "end", values=(index, stage, matchup, self.display_fighter_names_in_text(log.get("result", "Cancelled"), log), log.get("excitement", "-")), tags=tags)
 
-        bonus_panel = ttk.Frame(window, style="Panel.TFrame")
+        bonus_panel = ttk.Frame(content, style="Panel.TFrame")
         bonus_panel.pack(fill="x", padx=8, pady=4)
         ttk.Label(bonus_panel, text="POST-FIGHT BONUSES", style="Section.TLabel", anchor="center").pack(fill="x", ipady=3)
         if package.get("awards"):
             for award in package["awards"]:
-                ttk.Label(bonus_panel, text=f"{award['award']}: {', '.join(award['fighters'])}  |  {award['note']}  |  ${award['bonus']:,}", style="Panel.TLabel").pack(anchor="w", padx=12, pady=2)
+                fighter_names = ", ".join(self.display_fighter_name_value(name) for name in award["fighters"])
+                ttk.Label(bonus_panel, text=f"{award['award']}: {fighter_names}  |  {award['note']}  |  ${award['bonus']:,}", style="Panel.TLabel").pack(anchor="w", padx=12, pady=2)
         else:
             ttk.Label(bonus_panel, text="No bonuses awarded.", style="Panel.TLabel").pack(anchor="w", padx=12, pady=4)
-        summary_controls = ttk.Frame(window, style="Chrome.TFrame")
-        summary_controls.pack(fill="x", padx=8, pady=(0, 8))
-        if package.get("tournament_brackets"):
-            ttk.Button(summary_controls, text="View Tournament Bracket", style="Accent.TButton", command=lambda: self.open_event_tournament_bracket(package, window)).pack(side="left")
-        ttk.Button(summary_controls, text="Close", command=window.destroy).pack(side="right")
+        close_summary_button.focus_set()

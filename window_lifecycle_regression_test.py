@@ -24,7 +24,17 @@ def test_registry_keys_include_callsite_and_entity_identity():
     assert "fighter_id" in source
 
 
+def test_fighter_profile_focus_and_creation_use_the_same_key():
+    source = (ROOT / "views.py").read_text(encoding="utf-8")
+    start = source.index("    def open_fighter_profile_window")
+    end = source.index("    def open_regional_identity_window", start)
+    profile_source = source[start:end]
+    assert "focus_managed_window(profile_key)" in profile_source
+    assert "create_managed_window(profile_key)" in profile_source
+
+
 if __name__ == "__main__":
     test_runtime_popup_creators_use_registry()
     test_registry_keys_include_callsite_and_entity_identity()
+    test_fighter_profile_focus_and_creation_use_the_same_key()
     print("WINDOW LIFECYCLE REGRESSION TEST PASSED")

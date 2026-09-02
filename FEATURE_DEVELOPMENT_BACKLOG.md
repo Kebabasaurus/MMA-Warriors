@@ -30,6 +30,29 @@ blocker.
 
 ### P1 — High-value player-facing development
 
+#### P1.0 — COMPLETED — Make Combat Sports contracts and cards operational
+
+**Delivered:** Player-owned Boxing, Kickboxing, Muay Thai/Lethwei, Wrestling, and BJJ divisions
+now retain ID-first roster and booking links, including duplicate display names. Flagship transfers
+use negotiated contracts, per-bout purses affect card costs, expired athletes receive a final renewal
+window and then leave, and expired deals cannot be booked. Child cards have separate event numbering
+and history from their AI flagship, complete finance metadata, and a one-card-per-month cadence.
+Championships, lineage, season records, awards, and Hall of Fame careers are also ID-first; temporary
+guest opponents are excluded from those permanent tables.
+The player can now schedule a built card for a future month/week, choose production scale and
+marketing spend, inspect a settlement-consistent forecast, cancel the booking, and let the weekly
+calendar execute it with persistent athlete reservations, results, finance, Inbox, and replay data.
+Boxing now uses level-aware six/eight/ten-round matchmaking, 12-round championships, three official
+judge cards, and knockdown-led 10-8/10-7 scoring. Muay Thai uses three-round standard and five-round
+title formats plus a separate effectiveness hierarchy for kicks, knees, elbows, dumps, balance,
+and clinch work; Lethwei retains its five-round knockout-first identity.
+
+**Verification:** `combat_sports_regression_test.py` protects roster and booking identity,
+sport-native bout formats and judging, official scorecard evidence, flagship contract creation,
+expiry departure, purse settlement, scheduled event timing/economics/cancellation, card cadence,
+and circuit-state separation. Future slices should build scouting integration and
+cross-promotion competition on this ownership and event foundation.
+
 #### P1.1 — Put child-promotion cards on the future event calendar
 
 **Evidence:** `docs\CODEX_HANDOFF.md` explicitly records that child promotions support manual and
@@ -109,19 +132,37 @@ decision should have a clear consequence, cancel path, and save-safe state.
 **First slice:** audit messagebox call sites, classify them as notice/decision/destructive
 confirmation, and migrate the highest-frequency advancement paths to the inbox/assistant surface.
 
+#### P1.5 — COMPLETED — Turn the Fighting Academy into a complete youth pathway
+
+**Delivered:** The Academy now supports 4/8/12-week development blocks and reports, tiered amateur
+competition, strength of schedule, two-bout tournaments, titles, personality and retention,
+save-persistent promises, multiple graduation pathways, regional matching rights, and rival AI
+youth programmes that develop cohorts and compete for unsigned leads. The main Academy screen
+exposes these workflows and rival-program intelligence without adding a second state owner.
+
+**Verification:** `stability_test.py` covers legacy schema repair, development-block completion,
+competition quality, tournament titles and finance, promises, forced at-risk departure, main and
+regional graduation, matching rights, rival cohort graduation, duplicate identity and save/load.
+It also injects late tournament, graduation, and matching-right failures to prove their cash,
+finance, roster, prospect, belt, narrative, and RNG rollback guarantees, and guards rival ratings
+against development-time regression. The 100-year audit remains responsible for proving that rival
+intake does not overfill the world.
+
 ### P2 — Strategic depth and long-run quality
 
-#### P2.1 — Turn company milestones into a richer management progression
+#### P2.1 — COMPLETED — Turn company milestones into a richer management progression
 
-**Evidence:** `awards.py` already has `company_milestone_registry()`, progress tracking, safety and
-standing, valuation, and achievement UI. The design document describes richer multi-condition
-progress and projects, so this is an extension rather than a new subsystem.
+**Delivered:** Finance now projects every milestone's cash gap, event gap and approximate ETA from
+the real rolling ledger and event pace while keeping popularity, stability and safety as explicit
+non-predictive blockers. Annual profit, 12-month revenue mix and monthly roster/purse trends explain
+how the company is moving toward those gates. Milestones unlock eight optional capital projects
+across facilities, international operations, staff departments and prestige; each exposes its
+purchase price, monthly upkeep, first-year commitment and bounded operational effect.
 
-**Desired feature:** Show live progress for every condition, explain what can increase/decrease it,
-surface the next unlock in the Companies/Assistant UI, and connect milestone completion to meaningful
-choices such as staffing, venue readiness, or promotion strategy.
-
-**Likely files:** `awards.py`, `views.py`, `world.py`, `persistence.py`, `smoke_test.py`.
+**Verification:** `player_finance_progression_regression_test.py` covers reporting aggregation,
+revenue classification, roster-cost snapshots, milestone projection shape, project eligibility,
+single-purchase protection, canonical capital/upkeep entries, event effects, serialization and
+Finance-screen population. Super-event execution remains tracked separately in P1.2.
 
 #### P2.2 — Complete the 100-year generational simulation audit and balancing pass
 
@@ -165,7 +206,7 @@ records the migration, and leaves healthy saves untouched during ordinary load.
 ### P3 — Content and polish after the above systems stabilize
 
 - Expand super-event venue and ceremonial content only after the first executable format is stable.
-- Add more regional identities, media voices, academy story variants, and crowd/audio variants as
+- Add more regional identities, media voices, academy personality/challenge variants, and crowd/audio variants as
   data-driven content rather than new mechanics.
 - Continue replacing static detail panels with linked profiles, filters, and clear empty states.
 - Add player-facing export/share views for company history and the Chronicle once the underlying
@@ -175,11 +216,10 @@ records the migration, and leaves healthy saves untouched during ordinary load.
 
 1. Child-promotion future scheduling.
 2. Super-event execution using one-night Grand Prix Showcase.
-3. Finance reconciliation and missing transaction coverage.
-4. Routine decision-center migration.
-5. 100-year audit and balancing.
-6. Companies/Assistant/Regions decision-center improvements.
-7. Legacy migration and content expansion.
+3. Routine decision-center migration.
+4. 100-year audit and balancing.
+5. Companies/Assistant/Regions decision-center improvements.
+6. Legacy migration and content expansion.
 
 This order keeps the calendar and money systems coherent before adding more visible endgame content,
 and it reuses the existing event, finance, inbox, achievement, and persistence infrastructure.
@@ -192,3 +232,7 @@ and it reuses the existing event, finance, inbox, achievement, and persistence i
 - Child-promotion ownership, loan, transfer, closed-division, empty-launch, and repair safeguards.
 - Persistent achievement/milestone and super-event offer scaffolding.
 - Isolated regression runner, long-run child-promotion coverage, and build-toolchain verification.
+- Canonical finance transactions, weekly cash reconciliation, repair entries, and reconciliation
+  status in player and promotion finance surfaces.
+- Per-event ticket pricing, marketing spend, production tiers, and identity-safe grudge economics,
+  with legacy scheduled-card defaults and focused save/load coverage.

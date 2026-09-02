@@ -47,6 +47,30 @@ class _SaveAsEditor:
         self.refreshes.append(select_name)
 
 
+class _FighterEditor:
+    add_fighter = UniverseDatabaseEditor.add_fighter
+    duplicate_fighter = UniverseDatabaseEditor.duplicate_fighter
+
+    def __init__(self, records=None):
+        self.root = None
+        self.records = list(records or [])
+        self.fighter_selection = 0 if self.records else None
+
+    def ensure_database_loaded(self):
+        return True
+
+    def fighter_records(self):
+        return self.records
+
+    def selected_fighter(self):
+        if self.fighter_selection is None:
+            return None
+        return self.records[self.fighter_selection]
+
+    def refresh_fighters(self):
+        pass
+
+
 class DatabaseEditorSaveAsTest(unittest.TestCase):
     def setUp(self):
         self.tempdir = tempfile.TemporaryDirectory()
@@ -71,6 +95,7 @@ class DatabaseEditorSaveAsTest(unittest.TestCase):
                     "all_fighters": [{
                         "name": "Test Fighter", "placement": "free_agents", "owner": "Free Agent",
                         "weight": "Lightweight", "gender": "Male", "rating": 70, "age": 28,
+                        "style": "MMA Generalist",
                         "region": "USA", "nationality": "United States", "record_w": 0,
                         "record_l": 0, "record_d": 0,
                     }],
@@ -159,6 +184,19 @@ class DatabaseEditorSaveAsTest(unittest.TestCase):
         self.assertEqual(editor.path, self.source)
         self.assertEqual(editor.refreshes, [])
         self.assertEqual(editor.sync_count, 0)
+
+    def test_add_and_duplicate_fighter_mint_distinct_source_ids(self):
+        editor = _FighterEditor()
+        with patch("database_editor.simpledialog.askstring", return_value="Identity Test"):
+            editor.add_fighter()
+        first_id = editor.records[0]["fighter_id"]
+        self.assertRegex(first_id, r"^FTR-[0-9a-f]{16}$")
+
+        editor.fighter_selection = 0
+        editor.duplicate_fighter()
+        self.assertEqual(editor.records[1]["name"], "Identity Test Copy")
+        self.assertRegex(editor.records[1]["fighter_id"], r"^FTR-[0-9a-f]{16}$")
+        self.assertNotEqual(editor.records[1]["fighter_id"], first_id)
 
 
 if __name__ == "__main__":

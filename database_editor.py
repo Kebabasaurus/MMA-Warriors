@@ -19,7 +19,8 @@ from constants import (
     ASSET_DIR, BEHAVIOURS, CAMPS, COUNTRY_TO_REGION, DATABASE_DIR, DETAILED_SKILL_GROUPS, PLAYER_PROMOTION_NAME,
     REGIONS, STYLES, TRAITS, WEIGHTS,
 )
-from models import Fighter, Promotion
+from models import Fighter, Promotion, deterministic_source_fighter_id, new_fighter_id
+from fight_moves import MOVE_REGISTRY, normalize_signature_moves
 from universe_validation import validate_universe_pack as _validate_universe_pack
 
 
@@ -30,6 +31,8 @@ COMPANY_REQUIRED_FIELDS = ("name", "region", "size", "cash", "roster_key")
 FIGHTER_AUTHOR_FIELDS = {
     "database_type": "mma", "generated": False, "placement": "promotion", "owner": "Free Agent",
     "seed_org": "Free Agent", "rating": 65, "profile_rating": 65, "profile_style": "Well-Rounded",
+    "secondary_style": "",
+    "signature_moves": [],
     "skill_mods": {}, "signature_skills": {}, "special_profile": "", "prime_age": None,
     "nexgen_prospect": False, "regional_feeder_headliner": False, "record_note": "", "record_as_of": "",
 }
@@ -50,6 +53,7 @@ FIGHTER_VALUE_CHOICES = {
     "nationality": (),
     "style": tuple(STYLES),
     "profile_style": tuple(STYLES),
+    "secondary_style": tuple(STYLES),
     "stance": ("Orthodox", "Southpaw", "Switch"),
     "trait": tuple(TRAITS),
     "behaviour": tuple(BEHAVIOURS),
@@ -87,6 +91,7 @@ FIELD_HELP = {
     "placement": "Starting market placement: promotion roster, player roster, or free agency.",
     "detailed_skills": "Advanced full detailed-skill data. Use Skill Ratings (1-99) for normal editing.",
     "signature_skills": "Direct individual-skill overrides. Use Skill Ratings (1-99) for normal editing.",
+    "signature_moves": "Up to three stable move IDs from the canonical MMA registry. Unknown IDs are rejected.",
     "striking": "Broad striking rating. It affects the suggested OVR and the standing fight engine.",
     "wrestling": "Broad wrestling rating. It affects takedown and control exchanges.",
     "grappling": "Broad grappling rating. It affects positional and submission exchanges.",
@@ -176,6 +181,9 @@ def fighter_row_from_record(record):
 
 def sync_fighter_groups(section):
     records = [dict(record) for record in section.get("all_fighters", []) if isinstance(record, dict)]
+    for record in records:
+        if not str(record.get("fighter_id", "")).strip():
+            record["fighter_id"] = deterministic_source_fighter_id(record)
     player_roster, free_agents, promotions = [], [], {}
     seen = set()
     for record in records:
@@ -197,7 +205,7 @@ def sync_fighter_groups(section):
     section["player_roster"] = player_roster
     section["free_agents"] = free_agents
     section["promotions"] = promotions
-    section["schema"] = max(4, int(section.get("schema", 1) or 1))
+    section["schema"] = max(5, int(section.get("schema", 1) or 1))
 
 
 def validate_universe_pack(pack):
@@ -485,10 +493,12 @@ class UniverseDatabaseEditor:
             business_tab = ttk.Frame(notebook)
             ratings_tab = ttk.Frame(notebook)
             skills_tab = ttk.Frame(notebook)
+            signatures_tab = ttk.Frame(notebook)
             notebook.insert(0, profile_tab, text="Profile")
             notebook.insert(1, ratings_tab, text="Core Ratings")
             notebook.add(skills_tab, text="Skills (1-99)")
-            notebook.insert(3, business_tab, text="Business & Contract")
+            notebook.insert(3, signatures_tab, text="Signature Moves")
+            notebook.insert(4, business_tab, text="Business & Contract")
         columns = ("field", "value", "source")
         tree = self.build_tree(fields_tab, columns, ("Field", "Value", "Source"), (195, 390, 80))
         tree.bind("<<TreeviewSelect>>", lambda _event, item_kind=kind: self.select_field(item_kind))
@@ -530,6 +540,7 @@ class UniverseDatabaseEditor:
             self.build_quick_fighter_editor(business_tab, self.FIGHTER_BUSINESS_SECTIONS, "Business & Contract")
             self.build_core_rating_editor(ratings_tab)
             self.build_detailed_skill_editor(skills_tab)
+            self.build_signature_move_editor(signatures_tab)
         else:
             self.company_field_tree, self.company_field_var, self.company_value_text, self.company_value_choice, self.company_value_combo, self.company_value_number, self.company_value_spinbox, self.company_field_box, self.company_raw_text, self.company_field_help = tree, field_var, value, choice_var, choice_box, number_var, number_box, field_box, raw, field_help_var
 
@@ -622,7 +633,7 @@ class UniverseDatabaseEditor:
     )
     FIGHTER_PROFILE_SECTIONS = (
         ("Identity", ("name", "owner", "placement", "seed_org", "gender", "weight", "age", "region", "nationality", "birth_country", "hometown")),
-        ("Career", ("record_w", "record_l", "record_d", "rating", "profile_rating", "potential", "prime_start", "prime_end", "style", "profile_style", "stance", "trait", "behaviour", "camp")),
+        ("Career", ("record_w", "record_l", "record_d", "rating", "profile_rating", "potential", "prime_start", "prime_end", "style", "profile_style", "secondary_style", "stance", "trait", "behaviour", "camp")),
     )
     FIGHTER_BUSINESS_SECTIONS = (
         ("Market", ("popularity", "star_quality", "charisma", "media_presence", "sponsor_appeal", "professionalism", "injury_proneness")),
@@ -714,6 +725,42 @@ class UniverseDatabaseEditor:
                 value = int(value) if increment == 1 else float(value)
             updates[field] = value
         record.update(updates)
+        self.refresh_all()
+
+    def build_signature_move_editor(self, parent):
+        ttk.Label(
+            parent,
+            text="Choose up to three preferred legal techniques. Signatures are attempted more often, but never bypass skill, position, defense, or finish rules.",
+            style="Muted.TLabel", wraplength=760,
+        ).pack(anchor="w", padx=12, pady=(12, 8))
+        self.fighter_signature_move_vars = [tk.StringVar() for _index in range(3)]
+        choices = ("", *sorted(MOVE_REGISTRY, key=lambda move_id: (MOVE_REGISTRY[move_id].name, move_id)))
+        form = ttk.Frame(parent, style="Panel.TFrame")
+        form.pack(fill="x", padx=12, pady=6)
+        for index, variable in enumerate(self.fighter_signature_move_vars, 1):
+            ttk.Label(form, text=f"Signature {index}", style="Panel.TLabel").grid(row=index - 1, column=0, sticky="w", padx=8, pady=6)
+            combo = ttk.Combobox(form, textvariable=variable, values=choices, state="readonly", width=34)
+            combo.grid(row=index - 1, column=1, sticky="ew", padx=8, pady=6)
+            Tooltip(combo, "Stable move ID from fight_moves.py; legality and supporting skill are rechecked in each exchange.")
+        form.columnconfigure(1, weight=1)
+        ttk.Button(parent, text="Apply Signature Moves", style="Accent.TButton", command=self.apply_signature_moves).pack(anchor="w", padx=20, pady=8)
+
+    def refresh_signature_move_editor(self, record):
+        variables = getattr(self, "fighter_signature_move_vars", ())
+        values = normalize_signature_moves(record.get("signature_moves", [])) if isinstance(record, dict) else []
+        for index, variable in enumerate(variables):
+            variable.set(values[index] if index < len(values) else "")
+
+    def apply_signature_moves(self):
+        record = self.selected_fighter()
+        if not isinstance(record, dict):
+            messagebox.showinfo("No fighter selected", "Select a fighter first.")
+            return
+        values = [variable.get().strip() for variable in self.fighter_signature_move_vars if variable.get().strip()]
+        if len(values) != len(set(values)):
+            messagebox.showerror("Duplicate signature", "Choose each signature move only once.")
+            return
+        record["signature_moves"] = normalize_signature_moves(values)
         self.refresh_all()
 
     def build_core_rating_editor(self, parent):
@@ -1627,6 +1674,7 @@ class UniverseDatabaseEditor:
                 self.refresh_quick_fighter_editor(None)
                 self.refresh_core_rating_editor(None)
                 self.refresh_detailed_skill_editor(None)
+                self.refresh_signature_move_editor(None)
             return
         for field in fields:
             authored = field in record
@@ -1645,6 +1693,7 @@ class UniverseDatabaseEditor:
             self.refresh_quick_fighter_editor(record)
             self.refresh_core_rating_editor(record)
             self.refresh_detailed_skill_editor(record)
+            self.refresh_signature_move_editor(record)
 
     def select_field(self, kind):
         if kind == "fighter":
@@ -1902,6 +1951,7 @@ class UniverseDatabaseEditor:
             return
         record = {
             "database_type": "mma", "generated": False, "placement": "free_agents", "owner": "Free Agent", "seed_org": "Free Agent",
+            "fighter_id": new_fighter_id(),
             "name": name.strip(), "weight": "Lightweight", "gender": "Male", "popularity": 20, "rating": 65, "age": 25,
             "record_w": 0, "record_l": 0, "record_d": 0, "region": "USA", "nationality": "American", "style": "Well-Rounded",
         }
@@ -1916,6 +1966,7 @@ class UniverseDatabaseEditor:
             return
         copied = deepcopy(record)
         copied["name"] = f"{record.get('name', 'Fighter')} Copy"
+        copied["fighter_id"] = new_fighter_id()
         self.fighter_records().append(copied)
         self.fighter_selection = len(self.fighter_records()) - 1
         self.refresh_fighters()

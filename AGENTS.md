@@ -166,7 +166,7 @@ behavior; add a true global constant or path anchor to `constants.py`.
 | `persistence.py` | `PersistenceMixin`: serialization, load/apply, slots/folders, database import/export, crash recovery | All persistent model/state changes need a compatibility path here |
 | `awards.py` | `AwardsMixin`: season tracking and end-of-year awards | Decisive player and AI fights must both call `record_season_result` |
 | `media.py` | `MediaMixin`: media desk, stories, broadcaster/media-rights state and presentation | Persistent media fields need save defaults and `media_system_test.py` coverage |
-| `audio.py` | `FightNightAudioMixin`: optional fight-night sound, manifest-driven crowd variants, and playback lifecycle | Crowd WAVs live under `assets/crowd_audio`; the game must still work through procedural fallbacks when assets or playback support are unavailable |
+| `audio.py` | `FightNightAudioMixin`: optional fight-night sound, manifest-driven crowd variants, continuous arena-bed sessions, and reaction playback lifecycle | Crowd WAVs live under `assets/crowd_audio`; the game must still work through procedural fallbacks when assets or playback support are unavailable |
 | `real_sport_profiles.py` | Authored real-sport fighter/profile data | Keep data deterministic and consistent with seeding rules |
 | `database_editor.py` | Standalone universe database editor | Has its own executable, spec, build script, and UI audit |
 
@@ -183,9 +183,42 @@ not the active implementation. Do not copy fixes into them.
   guarantees, and canonical event-payout regressions.
 - `finance_audit_regression_test.py`: canonical player/child transaction metadata, weekly cash
   reconciliation, and repairable direct-cash mutation coverage.
+- `player_finance_progression_regression_test.py`: annual summaries, revenue mix, roster-cost
+  snapshots, milestone projections, strategic investment gates/effects/upkeep, save persistence,
+  and Finance-screen population.
 - `ui_data_regression_test.py`: lazy staff/scouting UI, Results detail, gym capacity, regional data,
   themed Regions, and fighter-identity regressions.
+- `fighter_profile_regression_test.py`: Profile employer/privacy, same-name history, archive identity,
+  championship scoping, child-sport query purity, responsive geometry, and stale-action guards.
+- `scouting_regression_test.py`: scouting identity migration, RNG purity, report lifecycle,
+  rediscovery, staff identity, and recruitment UI-state regressions.
+- `combat_sports_regression_test.py`: child-sport roster/booking identity, flagship contracts,
+  expiry departures, purse settlement, scheduled-event lifecycle/economics, monthly card limits,
+  and AI/player history separation.
 - `qa_tooling_regression_test.py`: Simulation Lab isolation/calibration and portable launcher paths.
+- `fight_engine_regression_test.py`: deterministic MMA audit purity, trace/stat consistency,
+  detailed-attribute usage, and the frozen 3,840-bout finish-distribution parity corpus.
+- `fight_engine_full_system_test.py`: 356 complete MMA bouts across every fight plan, major style
+  matchups, 3/5/6/7-round rules, extreme ratings and same-name identities; reconciles trace evidence,
+  position paths, stoppages, judging knockdowns and final box scores.
+- `analysis/generate_fight_move_report.py`: deterministic 880-fight move report across every supported
+  style plus behaviour, tier, stance and stance matchup; audits reachability, pairwise style distance,
+  dominance, mismatch-only use, legality, move-energy metadata and ordinary use of every exclusive
+  style combination and finisher without changing the frozen baseline. Its targeted reachability probe
+  must adopt a move's preferred style before testing restricted style content; do not weaken runtime
+  exclusivity.
+- `analysis/generate_specialist_transition_report.py`: deterministic 720-fight complete-bout proof for
+  failed-shot/front-headlock, standing-back-control and leg-entanglement states and legal follow-ups.
+- `analysis/generate_fight_commentary_report.py`: deterministic 256-fight, four-voice commentary gate
+  covering every factual outcome lane, stat-profile and failed-submission reaction coverage,
+  standing/ground repetition, Broadcast compaction, actor/move/defense agreement, referee stand-up
+  continuity, finish causality, duplicate results, placeholder removal, technical-suffix leakage,
+  visible-damage actor/subject/symptom facts, exact cut locations, all supported trait introductions,
+  contextual trait/camp evidence and call caps, verified camp-intro retention and Broadcast damage retention.
+  Its `--seeds-per-matchup 64` mode is the 2,048-fight extended transcript audit.
+- `analysis/generate_fight_action_baseline.py`: canonical 3,840-fight release gate for broad-action
+  frequency, effectiveness, damage, energy, counters, positions and finishing contribution. The
+  isolated regression runner verifies the checked-in baseline; do not treat it as an optional report.
 - `stability_test.py`: longer-running deterministic and progression playtests.
 - `media_system_test.py`: media-system state and workflow regressions.
 - `child_promotion_long_run_test.py`: deterministic 48-week MMA child-promotion progression,
@@ -196,29 +229,58 @@ not the active implementation. Do not copy fixes into them.
   ensures annual weight movement cannot place fighters into a custom promotion's closed divisions.
 - `child_promotion_interactions_test.py`: child takeover, empty-launch rollback, champion-loan belt
   protection, closed-division transfer rejection, transfer-ledger accounting, and loan repair.
-- `identity_persistence_regression_test.py`: same-name live-fight identity, event-commit rollback,
+- `identity_persistence_regression_test.py`: same-name live-fight and tournament identity, clinch
+  ownership, unanswered-response semantics, ambiguous legacy relationships, event-commit rollback,
   forward/malformed save rows, and external-block path containment.
 - `database_editor_save_as_test.py`: standalone editor Save As success, cancellation, validation,
   and write-failure state preservation.
 - `database_editor_ui_audit.py`: database-editor UI audit.
 - `universe_validation_regression_test.py`: shared editor/runtime validator malformed-data diagnostics and proof that normal legacy loading does not rewrite source bytes or mtime.
-- `fight_audio_regression_test.py`: temporary fight-cache exception cleanup and concurrent fight-night audio cue-lock lifecycle.
+- `fight_audio_regression_test.py`: temporary fight-cache exception cleanup, continuous ambience
+  lifecycle/crossfade, priority reservation, mastered later-round routing, and concurrent cue locking.
+- `fight_night_experience_regression_test.py`: live-session re-entry, playback/control gating,
+  duplicate-name winner identity, skip/review behavior, commit-failure recovery, replay cleanup, and
+  responsive end-event invariants.
 - `advance_notifications_regression_test.py`: routine contract/broadcast advancement notices collapse into one Inbox summary while due-event decisions remain modal.
 - `window_lifecycle_regression_test.py`: runtime popup creators use the shared call-site/entity window registry.
+- `event_economics_regression_test.py`: per-event ticket, marketing, production, legacy/default,
+  save/load, and identity-safe grudge economics.
+- `narrative_system_regression_test.py`: bounded ID-safe story threads, rivalry/title/redemption
+  lifecycles, injury/academy/contract/staff/feeder/breakout/weight/gym/coaching/relationship/promotion-war/other-sport/crossover
+  chapters, Chronicle linkage, lazy career timelines, annual-review selection, legacy/current save
+  normalization, career-journey outcomes, presentation RNG purity, and indexed event-update performance.
+- `narrative_performance_regression_test.py`: clean 12-week narrative-disabled/enabled calendar A/B
+  comparison across three alternating paired samples, with deterministic test-only generated IDs,
+  identical core-world/RNG assertions, a strict median CPU-time budget, and wall-clock diagnostics.
+  CPU time is the release gate because it measures simulation work without turning an unrelated OS
+  scheduler pause into a false regression; do not remove or loosen the 5% proportional ceiling.
+- `narrative_long_run_storage_regression_test.py`: synthetic 25-/50-/100-year story growth, resolved
+  cap, serialized-size, RNG isolation, and indexed-lookup scaling.
+- `simulation_performance_regression_test.py`: promotion-level card-day caching, precomputed
+  head-to-head reuse, batched regional name collision state, and one-card-per-month feeder
+  staggering across all four calendar weeks.
 - `run_regression_suite.py`: the canonical sequential test runner. It gives every suite an isolated
   `MMA_WARRIORS_DATA_DIR` with copied universe data so tests cannot race through shared saves,
   logs, markers, or caches.
 - `Run Smoke Tests.bat`: runs the canonical isolated regression suite.
 - `Launch MMA Warriors.bat`: starts the source game.
-- `Build Portable.bat`: tests and builds the portable game package.
 - `Build Portable.bat`: tests, validates the universe database, and builds both the game executable and the standalone database editor into `dist\\MMA Warriors`.
-- `Build Database Editor.bat`: builds the standalone database editor.
+- `Build Database Editor.bat`: validates and builds only the standalone database editor when a
+  full portable rebuild is unnecessary.
 - `build-toolchain.json` and `requirements-build.txt`: the checked-in, offline-verifiable portable-build toolchain. Build scripts must validate these and must never install dependencies.
 - `Portable Check.bat`: checks the packaged runtime.
 - `README.md`: player, source-run, test, and build instructions.
 - `FEATURE_DEVELOPMENT_BACKLOG.md`: evidence-backed player-facing feature priorities and phased
   development sequence. Keep it synchronized when a listed feature is shipped or materially
   re-scoped.
+- `FIGHT_ENGINE_MOVES_AND_SKILLS_PLAN.md`: phased expansion of MMA styles, move definitions,
+  combinations, skill coverage, signatures and tactical selection. Each mechanical slice must keep
+  the accepted 60.39% finish, 16.48% KO and 19.04% TKO calibration and must not change
+  `competitive_finish_conversion()`.
+- `NARRATIVE_SYSTEM_DEVELOPMENT_PLAN.md`: audit and staged design for connecting existing simulation
+  facts into persistent story threads. Narrative work must follow its performance guardrails: emit
+  bounded updates from existing domain events, use indexed stable identities, isolate presentation
+  RNG, and never add a second whole-world weekly history scan.
 - `CHANGELOG.md`: release-facing behavior changes.
 - `TAB_ACCESSIBILITY.md`: tab contrast and interaction requirements.
 - `savegame.json`, `Saves/`, `Databases/`: runtime data. Do not delete or overwrite user careers.
@@ -261,10 +323,26 @@ booking UI
   -> viewer and save/refresh
 ```
 
+The watched presentation is a single live session. Never prepare the same due event again while a
+viewer is active: preparation runs mutable press-conference and weigh-in rules. A different replay
+must not replace or destroy an unresolved player card. Playback controls must follow bout state;
+starting the next fight cannot discard an incomplete transcript, full-card skip requires an
+explicit second action, and every bout becomes reviewable after completion or confirmed skip.
+`finish_event` remains the settlement transaction; only mark the viewer finished after that commit
+succeeds, and keep a failed settlement visibly retryable.
+
+Live telemetry and result presentation are ID-first. Red and blue round metrics use corner slots,
+not display names, and current fight logs retain `winner_id` alongside `a_id`/`b_id`. Exact judge
+cards and numerical totals remain sealed until the official result; public round summaries may show
+metrics, gas, momentum, and an explicitly unofficial leader. Archived replay packages preserve
+event economics and location context but always use `apply_results=False`.
+
 `finish_event` is a domain transaction. Stage the pre-event persistent state and RNG before the
 first finance or result mutation; if any downstream award, media, archive, history, or refresh
 hook fails, restore the staged state before surfacing the failure. UI presentation occurs only after
-the commit succeeds.
+the commit succeeds. Runtime synchronization objects such as locks, threads and `threading.Event`
+audio stop signals, plus non-copyable `random.SystemRandom` audio entropy, must remain live and outside
+the deep-copied rollback snapshot.
 
 **Game-AI fight flow**
 
@@ -296,6 +374,22 @@ live dataclasses and world dictionaries
   -> UI refresh
 ```
 
+**Player event-economics flow**
+
+```text
+booking UI
+  -> card-specific ticket price, marketing spend, and production tier
+  -> projected attendance/gate/spend from the shared economics helpers
+  -> scheduled-event serialization (legacy cards receive company defaults)
+  -> finish_event transaction
+       -> final demand, gate, merchandise, broadcast and production accounting
+       -> canonical finance transaction
+```
+
+Forecast and settlement must call the same demand, pricing, production, and grudge helpers. A
+booked rivalry is identified by durable fighter IDs; names are presentation and legacy fallback
+only. A duplicate-name or stale legacy rivalry must never boost an unrelated bout.
+
 ### Calendar model
 
 - A month has four simulation weeks.
@@ -306,6 +400,11 @@ live dataclasses and world dictionaries
   advancing from week 4.
 - `begin_advance_sequence()` is the responsive Tk path. It also consumes `calendar_week_steps()`
   but schedules work through the event queue so the window remains usable.
+- Promotion monthly reviews are assigned to stable, evenly sized weekly groups by
+  `world_week_steps()`, and `world_month_steps()` must not repeat them at the boundary. Every
+  promotion receives one development pass and monthly card opportunity per four-week month; every
+  regional circuit runs one dedicated card. Keep feeder promotions out of the generic weekly
+  `ai_should_run_show()` path.
 - Routine post-advance contract, broadcast, and similar notices are accumulated by
   `queue_advance_notice()` and presented as one Inbox/news summary. Only genuine player decisions,
   such as a due event's watch/simulate choice, may remain modal.
@@ -358,15 +457,25 @@ assert round_trip.morale_trend == original   # current save
 
 - Treat a load as a transaction. Read, validate, migrate, and apply into a guarded candidate state;
   if any phase fails, restore the complete pre-load application state before showing the error.
+  Reject a non-object top-level JSON value before external-block hydration or migration.
 - `ensure_result_index()` is an idempotent migration. A detailed record already represented by the
   same stable archive/detail key is skipped. Only genuinely distinct cards may receive a sequenced
   key, and repeated Quick Loads must never grow the index.
 - Save metadata is auxiliary. A metadata-write problem must not turn an already committed primary
   save into a reported total failure; record it as a recoverable cache warning and rebuild it later
   without leaving a blocking success/failure dialog open.
+- Recovery snapshots taken before Quick Save or switching slots are best-effort and must not block
+  the requested operation when snapshot creation fails. A backup restore is different: validate the
+  source first, then protect the existing destination and atomically replace it; report any failure
+  without changing the destination or letting an exception escape the UI callback.
+- The Game & Saves Career Library keeps `save_slot_list` as the action index and refreshes its active
+  banner, counts, selection inspector, and button state through `refresh_game_menu()` and
+  `refresh_save_selection_summary()`. Selection-only actions must remain disabled when no valid row
+  is selected, and the blank destination-name field must not be populated from the active career.
 - External split-save blocks must use generated `DataBlocks/<save-stamp>/<known-key>.json.gz` paths
   below the owning save slot. Reject rooted paths, traversal, symlink escapes, and unexpected block
-  names before reading them.
+  names before reading them. Pruning must skip symlinked entries rather than following or deleting
+  them.
 - Model rows must be type-checked before dataclass construction. Missing required fields are a
   transactional load error; unknown forward-compatible fields are logged and ignored rather than
   crashing an otherwise usable career.
@@ -392,6 +501,172 @@ presentation but are not the accounting source of truth. `close_finance_week()` 
 regression and use a stable reference so repeated weekly closes are idempotent. Finance UI surfaces
 must show reconciliation status and promotion detail views must read the canonical weekly history.
 
+Per-event ticket price, marketing spend, and production tier belong to the scheduled-event payload.
+Old saves and AI cards that lack those keys must fall back to company-wide defaults without mutating
+the source during serialization. Any new or changed event-economics field needs a legacy-shaped
+load assertion and a current-format scheduled-card round trip in the focused economics regression.
+
+Player career-stage balance has three derived rules. `apply_opening_player_contract_terms()` runs
+only while seeding a new player roster and discounts curated, non-generated talent to the founder
+contract factor; never reapply it during load or repair. `player_monthly_office_cost()` derives the
+current office bill from the save-compatible base plus company popularity, and every player reserve,
+forecast, and month-end charge must use that helper. `player_events_in_month()` drives commercial
+cannibalization for a second or later settled player card in the same simulation month: attendance,
+sponsor value, and broadcast income fall, but contracted purses, medical, marketing, and production
+costs remain whole. Keep `analysis/player_finance_balance_audit.py` and the focused event-economics
+regression synchronized when changing purses, media, sponsors, overhead, cadence, or milestone gates.
+
+Long-career finance reporting is compact persistent state, not a second ledger. Canonical
+`weekly_history` remains the source for the current annual rollup; `annual_history` preserves a
+30-year summary and `roster_cost_history` preserves monthly roster/purse commitments after detailed
+weekly rows expire. Revenue mix uses archived player-event breakdowns for gate, broadcast, sponsors
+and merchandise, then adds non-event canonical income as Other. Never double-count the event-level
+transaction. Milestone ETA may extrapolate cash and event pace, but must show popularity, stability
+and safety as blockers rather than inventing a growth rate.
+
+Strategic investments live in `finance["strategic_investments"]`. Purchases and monthly upkeep must
+use canonical `Investment` transactions with stable references. Effects are applied by
+`strategic_event_multiplier()` and must never reduce contracted fighter pay or bypass event
+settlement. Capital approval and upkeep are transactions: restore cash, ownership, ledger rows and
+change history if a late recording hook fails, and make a repeated monthly upkeep call idempotent.
+New projects require a capital cost, upkeep, milestone/popularity gate, bounded effect,
+safe old-save default, Finance UI row, and progression regression. `player_monthly_office_cost()` is
+separate from strategic upkeep so forecasts and transaction categories remain explainable.
+
+### Rivalry and media-action invariants
+
+Rivalry records and grudge economics resolve fighters by `fighter_id`. Display names may be retained
+for copy and narrowly defined legacy repair, but an ambiguous name is not identity. Matchmaking,
+Media Desk escalation, scheduled cards, and fight settlement must all preserve the same ID pair.
+
+Paid or limited-use Media Desk actions are transactions: validate every selected fighter and rival
+before charging cash, consuming an action, or changing rivalry/media state. If a late hook fails,
+restore the staged cash, action counters, and affected media/rivalry state rather than leaving a
+partial action. Add focused coverage for stale and duplicate-name rivals whenever this flow changes.
+
+### Narrative-thread invariants
+
+`story_threads` is a bounded interpretive index over authoritative fight, rivalry, title, contract,
+academy, company, and career state. Domain methods emit one deduplicated beat after their real state
+change; narrative code must never rescan the whole world, Chronicle, Results archive, or complete
+fighter histories during weekly advancement. Active and resolved limits and per-thread beat limits
+come from `constants.py`. Thread participants use stable fighter IDs, with names retained only as
+presentation snapshots. Rivalries use `rival_fighter_id`, and friendships use `friend_fighter_id`;
+legacy names may be backfilled only when the loaded world has one unambiguous match. The transient story-key index is rebuilt once after initialization/load and
+maintained on writes. Active/resolved counts are maintained incrementally; do not normalize or sort
+the whole collection on an ordinary write, and prune only after a hard cap is exceeded. Narrative
+copy must not consume simulation RNG, and transaction rollback must
+restore story state with the owning event or paid action. Long prose and career timelines are built
+only when their view opens. Run `narrative_system_regression_test.py` after any story trigger,
+identity, persistence, matchmaking-context, or career-journey change; run
+`narrative_performance_regression_test.py` after changing thread indexing, pruning, or calendar
+integration.
+
+Contract Sagas use `Fighter.contract_story_key` as their only live pointer. Renewal warnings,
+renewals, expiry/release, free-agent signing, return and cross-company revenge hooks must receive the
+fighter and known company names from the domain event already in progress; they may not discover
+stories by scanning rosters, free agents, promotions, Results or Chronicle. When
+`narrative_tracking_enabled` is false, the lookup helper must return before reading the story key so
+the paired performance regression measures the entire feature cost. Clear the fighter pointer only
+after a resolving return or revenge outcome; keep the bounded resolved thread as career history.
+
+Staff Tenure stories follow the same pattern through `staff_id` and the optional
+`staff_story_key` stored on the staff dictionary. Appointment, contract-warning, negotiation,
+renewal, release and expiry actions receive the already-known staff record directly and must not
+scan the staff market, promotions, rosters, Chronicle or Results. Normalize missing legacy keys to
+an empty string in `ensure_staff_profiles()`. Store bounded `staff_ids`, `staff_names`, and
+`staff_role` snapshots on the thread, use the direct key for Staff Profile presentation, and return
+before key lookup when narrative tracking is disabled.
+
+Staff career contributions are first-of-kind tenure beats. Scouting reports pass their already-known
+scout; medical clearance, settled player events and fulfilled promises may resolve one lead from the
+small player staff list only after a qualifying outcome exists. Never run a staff-discovery pass or
+inspect archived events to infer a contribution. Bound `contribution_kinds` and
+`staff_milestone_kinds` to 12, clamp `staff_legacy_score` to 0–100, deduplicate before writing, and
+normalize malformed legacy values without consuming simulation RNG. Event-settlement contribution
+writes remain inside the existing event transaction and therefore roll back with a failed commit.
+
+Feeder Pathways use `Fighter.feeder_story_key` as their only live pointer. Loan, recall, paid
+transfer, player/AI fight settlement, contract departure, and retirement hooks must receive the
+already-known fighter and company; they may not discover alumni by scanning child rosters, parent
+rosters, Results, Chronicle, or fight history. `record_feeder_fight_result()` must retain its early
+two-key exit before story/company work, and player/AI result callers must avoid entering it when
+both supplied keys are empty. Child
+undercard results do not need a beat; child main/title results, the first parent bout, one featured
+parent breakthrough, and a parent title can advance the bounded chapter. Clear the live key only on
+resolution. Loan, recall, and paid-transfer commits use the shared domain snapshot so a late story
+failure restores rosters, belts, contracts, cash, ledgers, Chronicle, story indexes, and RNG.
+
+Breakout Runs use `Fighter.breakout_story_key` as their only live pointer. The decisive-result hook
+must reuse the eight-point Giant Slayer comparison already calculated by
+`evaluate_fight_achievements()`; do not recompute derived ratings or discover upsets from Results,
+Chronicle, rankings, rosters, or fight history. A qualifying upset may open one chapter, while only
+the directly linked fighter's later result, draw, or retirement can advance it. Bound follow-up
+counters and recent result references, clear the pointer on resolution, retain the resolved thread
+as career history, and keep the story-aware AI bonus inside already-credible candidate pairs. The
+player event transaction must restore both the pointer and thread after a late settlement failure.
+
+Career Crossroads use `Fighter.crossroads_story_key` as their only live pointer. A new chapter may
+open only from the already-settled third consecutive in-universe MMA loss for an established fighter
+(age 30+, at least 18 professional bouts, or popularity 45+). Origin detection may inspect at most
+the first four `bout_rating_history` rows; it must never reconstruct form from complete fight
+history, Results, Chronicle, rankings, rosters, or a calendar scan. Once active, draws, later wins or
+losses, division moves, release/contract exit, and final-fight retirement must use the direct key and
+known domain participants. Keep recent result references and counters bounded, deduplicate retries,
+clear the pointer only on resolution, and retain the resolved thread as career history. Player event
+rollback must restore the pointer and exact thread, and AI story value remains limited to candidate
+pairs the sporting matchmaker already accepted.
+
+Fighter Relationship chapters use the deterministic pair-ID story key plus each participant's
+bounded `relationship_story_keys` list. Friendship and featured stablemate results may begin a
+chapter; draws, rematches, direct ID-backed rivalry tension, and a later meeting after a camp split
+may advance or resolve it. Never query the story index for every ordinary bout: when neither current
+friendship/stablemate status nor either fighter's active-key list applies, return before constructing
+the pair key. Cap each fighter's list at four, remove the key from both participants on resolution,
+and keep the resolved thread in the participant index for profile/annual history. Result callbacks
+must deduplicate by stable reference, consume no shared RNG, and remain inside the player event
+transaction so rollback restores both fighter-local lists and the exact pair thread. AI story value
+may consider the active thread only for an already-credible candidate pair.
+
+Career Farewell chapters use `Fighter.farewell_story_key` as the direct bridge from a retirement
+decision to the final opponent and result. `mark_retirement_fight_required()` opens the chapter;
+MMA, game-AI, regional, draw, no-contest, and other-sport settlement must resolve it with both known
+participants before roster retirement removes the fighter. Meaningful-opponent scoring may only
+reorder candidates the sporting matchmaker already accepted. Rival, friend and relationship links
+must use fighter IDs; former-opponent meaning must read bounded structured `bout_rating_history`
+opponent IDs, never display-name fight-history text. Do not add a retirement discovery pass. The
+ordinary result path must exit after the existing `retirement_pending` field check, callbacks must
+deduplicate, and player event rollback must restore the pointer, thread, Chronicle and RNG state.
+
+Academy graduation is one such owning transaction: its rollback snapshot includes `story_threads`,
+and the transient story indexes must be rebuilt after restoration. Never allow a failed late
+graduation hook to leave a thread for a fighter who was not actually created or transferred.
+
+Fighter Career Timeline presentation may combine the selected fighter's bounded local histories
+with `story_threads_for_fighter()`. It must not search Results, Chronicle, archived cards, or the
+wider fighter world. Annual review selection may inspect the bounded story-thread collection once
+at year rollover; it must remain capped and must not become a weekly/monthly discovery pass.
+
+AI story intent is a bounded bonus inside the candidate pairs the matchmaker already evaluates. It
+must use cached direct story-key lookups, must never create another all-pairs pass, and must not make
+an otherwise invalid matchup legal. The deterministic calendar A/B disables this decision feature
+in both arms so it measures tracking cost and RNG purity rather than intentionally different cards.
+
+Promotion Rivalry chapters are two-company, 24-month cycles updated only by an owning contested
+signing, academy-recruitment result, or sanctioned superfight. Callers must pass the known companies;
+never discover rivalries by comparing every promotion or roster. Stable event references protect the
+scoreboard from duplicate callbacks. Coaching Loyalty is likewise event-driven: significant gym
+moves open or close a room-specific chapter, and completed meaningful fights update only the two
+participants' direct story keys. `Fighter.academy_prospect_id` is the persistent bridge from academy
+mentorship to senior-career outcomes; old saves default it to empty rather than scanning alumni.
+
+Hometown Hero chapters are also event-owned. `schedule_event()`/the immediate event path may frame
+an already-booked main or title homecoming only when the known fighter has at least 60 market
+popularity (or an existing hometown thread). Player and AI result settlement then update that direct
+fighter/region key through `record_hometown_fight_story()`. Do not search scheduled events, regional
+markets, rosters, or result archives to discover homecomings. Once a home-title or market-icon
+resolution exists, later epilogue beats must not overwrite its phase or resolution.
+
 ### Shipped-universe source of truth
 
 New careers load `Databases\Default Universe.universe.json` through
@@ -408,6 +683,16 @@ All runtime `Toplevel` creators in `admin.py`, `awards.py`, `events.py`, `persis
 `views.py` must call `UIMixin.create_managed_window()`. Its default key combines the call site with
 available fighter/entity identity, so repeated clicks replace stale popups without conflating two
 different fighters. Long-lived screens may provide an explicit stable key.
+
+Fighter Profiles are observational views. Opening or reopening one must not consume simulation RNG,
+generate or synchronize ratings, migrate saved history, initialize child-sport circuits, appoint
+champions, or otherwise mutate career state. Resolve the displayed employer, opponent, result,
+championship and archive by `fighter_id`/stable record identity; ambiguous legacy names may be
+omitted but never guessed. Apply scouting visibility to every rendering surface, including portrait
+text and identity rows. Profile action visibility is only convenience: contract, comeback, transfer,
+and weight-move transactions must revalidate Spectator Mode and current ownership at commit time.
+Keep the fixed Profile footer inside the physical display and register fighter windows with the same
+explicit key used for focus/reuse.
 
 Use `database_editor.py` or a carefully reviewed data edit for starting-universe changes, then
 validate the file. The standalone database editor changes universe database packs; it does **not**
@@ -430,7 +715,7 @@ retain a named identity assertion in `smoke_test.py` after changing either repre
 When `take_control_of_company()` transfers an AI promotion to the player, it must reconcile stale zero-month AI contracts first. Those fighters remain in the inherited roster and receive fresh 12-24 month exclusive contracts; a takeover must never mass-release a company's roster merely because legacy AI contract terms reached zero.
 
 The MMA Child Promotions manager in `views.py` is an operations screen, not just a launch dialog. Keep its promotion table synchronized with child cash, stability, roster size, protected loans, parent distributions, and AI mode. Roster filters must only change display; loan, recall, and parent-transfer actions must continue to use fighter IDs and the world-layer ownership rules.
-The manager must list only child promotions whose `parent_company` matches the active player company. Its child-roster status filter must not be applied to the separate parent-roster loan source. Parent profit-share transfers and child-fighter transfer fees must use the normal finance transaction recorder. Paid transfers require confirmation, respect closed parent divisions, and taking an expired AI-signed child fighter must assign a fresh contract rather than a one-month stub. Ordinary company takeover must reject child promotions. Empty launches must roll back capital and the promotion when no eligible opening roster can be signed. Champion loans vacate the parent belt before moving the fighter. Load repair must clear stale loan markers for missing, mismatched, retired, or retirement-pending fighters; the manager must reset stale detail text after redraw, preserve duplicate identity labels, provide vertical roster scrollbars, and reuse one manager window.
+The manager must list only child promotions whose `parent_company` matches the active player company. Its child-roster status filter must not be applied to the separate parent-roster loan source. Parent profit-share transfers and child-fighter transfer fees must use the normal finance transaction recorder. Paid transfers require confirmation, respect closed parent divisions, and taking an expired AI-signed child fighter must assign a fresh contract rather than a one-month stub. Ordinary company takeover must reject child promotions. Empty launches must roll back capital and the promotion when no eligible opening roster can be signed. Champion loans vacate the parent belt before moving the fighter. Loan, recall, and paid-transfer actions are atomic and must retain their Feeder Pathway hook inside the rollback boundary. Load repair must clear stale loan markers for missing, mismatched, retired, or retirement-pending fighters; the manager must reset stale detail text after redraw, preserve duplicate identity labels, show the selected fighter's active feeder chapter, provide vertical roster scrollbars, and reuse one manager window.
 
 During a normal player career, the player company is represented by player-owned fields such as
 `self.player_company_name`, `self.roster`, `self.cash`, and `self.company_pop`. It must not also be
@@ -479,7 +764,9 @@ Regional feeder promotions are also first-class world objects:
 
 Feeders have `is_regional_feeder=True`, do not use the normal commercial-finance simulation, and
 support young-prospect generation, development cards, and pathways. The Eurasian circuit has
-authored male-only behavior; preserve its origin and roster-depth rules.
+authored male-only behavior; preserve its origin and roster-depth rules. A multi-fighter intake
+batch must build the world-name collision set once, extend it after every generated recruit, and
+reuse it for Eurasian renaming; do not rescan the complete fighter population per slot.
 
 ### Player-funded MMA child promotions
 
@@ -595,6 +882,15 @@ else:
 
 The fight engine must model the bout rather than pick a desired result and work backward.
 
+`Fighter.style` is the supported primary compatibility and search identity. `secondary_style` is an
+optional, distinct supported cross-training identity; display it through `Fighter.style_label` and
+apply it only through bounded shared style helpers. Never store behaviours such as Dynamic Attacker
+or Submission Hunter in either style field. New-universe secondary assignment is deterministic and
+must not consume simulation RNG; old saves safely default to an empty secondary style.
+Every `create_generated_fighter()` result must finish with a supported primary style and a validated
+distinct secondary style. The final generator guard may normalize blank or legacy labels but must be
+deterministic and must not add another random draw; smoke coverage should sample generated entrants.
+
 ### Mechanical intent
 
 - Kicks depend on kick speed, power, technique, stamina, distance, and defense.
@@ -604,6 +900,13 @@ The fight engine must model the bout rather than pick a desired result and work 
 - Stamina and momentum should visibly influence later exchanges.
 - Ground, clinch, and cage position must reset or transition according to the rules; state must not
   leak impossibly across a horn.
+- `clinch_controller`, `top`, `bottom`, damage, stamina, and unanswered offense use private per-bout
+  fighter slots. Compare them through `fight_state_key()`, never a display name. An unanswered
+  sequence advances only when significant strikes land, clears when the pressured fighter lands or
+  creates a meaningful grappling/positional response, and resets at every horn.
+- Tournament participant names are presentation. Resolve the aligned `fighter_ids` list for the
+  bracket, replacements, and temporary state; use object identity for private in-memory snapshots
+  such as pre-view fatigue so same-name entrants remain independent.
 - Commentary must never describe new actions after a finish.
 - Equal score totals must be capable of producing draws.
 - End-of-fight output includes the completed rounds and scorecards where applicable.
@@ -618,9 +921,11 @@ Test title and non-title five-round main events plus an extended configured titl
 ### Commentary structure
 
 Five-round fights generate enough text to exceed a Tk text widget's comfortable live-display size.
-The engine and watcher retain every generated action call and the original round-summary telemetry.
-The Text widget must be scrollable and can pace the stream, but it must not deduplicate calls or
-insert omission markers. Structural lines must always survive:
+The engine and archived fight log retain every generated action call and the original round-summary
+telemetry. The live watcher defaults to a derived `Broadcast` stream that may condense repeated,
+low-value timestamped calls; `Detailed` mode and completed-bout review expose the complete stored
+transcript. Viewer compaction must be deterministic, must not mutate the archive, and must never
+consume a simulation RNG stream. Structural and evidential lines must always survive:
 
 - tale of the tape and opening context;
 - every round introduction;
@@ -635,11 +940,45 @@ the Tk `Text` widget; post-insert formatting cannot repair text that was already
 its tags. `stability_test.py` must advance a real five-round title viewer through each round and
 verify all five original summaries, the scorecard reveal, metrics, and official result remain visible.
 
+The live density control is presentation state. Switching an active or completed bout between
+Broadcast and Detailed must rebuild only the reached visible lines, preserve the same raw-source
+playback frontier, keep sealed scorecards sealed and leave the archived transcript unchanged. Round
+separators, knockdown emphasis and finish emphasis are Tk tags/layout only. The visible personality
+indicator reports the voice saved with that fight log; it must not imply a mechanics setting.
+
 `FIGHT_COMMENTARY_ROUND_LINE_LIMIT`, `FIGHT_COMMENTARY_ROUND_HEAD_LINES`, and
-`FIGHT_COMMENTARY_ROUND_TAIL_LINES` are retained for compatibility with older tuning tools; they
-are not an omission budget. Never deduplicate or slice the finished global commentary list. If a
-long fight is difficult to follow, use the viewer's pacing, scrolling, or round navigation while
-keeping every stored line available.
+`FIGHT_COMMENTARY_ROUND_TAIL_LINES` bound only ordinary timestamped calls in the derived Broadcast
+view. Important middle-round evidence outranks head/tail position, so never use a blind slice. Never
+deduplicate or trim `FightResult.commentary`, the archived `lines`, or the structured trace. A legacy
+technical suffix may be removed from Broadcast prose, while its target, defense, follow-up, move and
+position remain available in Detailed commentary or `round_analysis`.
+
+Completed offense and ground-state progress are important Broadcast evidence. Landed standing
+strikes, successful takedowns, landed ground strikes, passes, sweeps/reversals, escapes and stand-ups
+receive priority over routine movement; identical calls remain capped at two even when their position
+or outcome makes them high-priority, and repeated failed
+attempts or passive control may condense. A same-position sweep is proven by changed
+top/bottom ownership even when the position label remains `guard`. Any compact note must count the
+actual omitted standing, standing-striking, takedown, ground-control and ground-striking lanes without
+inventing success, damage or a position change.
+
+Fact-driven wording variation must be selected from stable trace/bout material or the isolated
+presentation stream; it must never call the mechanics, officiating, judging or process-global RNG.
+Every exchange call must agree with the recorded actor, move, outcome, named defense, counter flag and
+settled position. Context is evidence-bound: signature/mastery comes from the selected move payload,
+stance and plan from trace state, damage/momentum from completed public deltas, camp/coach from fighter
+data, and championship/rivalry stakes from the scheduled bout and identity-safe relationship helpers.
+The bout-local commentary profile may record derived standing, ground and defensive strengths, but it
+is presentation evidence only: use the strength relevant to the recorded weapon or transition, never
+consume RNG or change an exchange. A failed submission trace must retain the actual technique chosen by
+`submission_technique()`, a legal named defense and a natural consequence. A referee inactivity reset
+is a separate structured fact; never credit the preceding ride/cling action with escaping to range or
+append old-position colour after a fighter has reached the feet. Ground presence lines must respect
+current top/bottom ownership and every `GROUND_POSITIONS` state.
+Do not infer a coach, rivalry, stance switch, plan change, blocked strike or successful counter from
+style flavour alone. A failed sweep, stand-up, pass or transition must be described as an attempt,
+not settled success. KO/TKO attribution must use causal damage/impact evidence rather than whichever
+non-damaging move happens to be the final trace row.
 
 Required regression scenarios include:
 
@@ -652,8 +991,304 @@ Required regression scenarios include:
 
 ### Outcome calibration
 
+`fight_engine_audit.py` and `analysis/fight_engine_baseline.json` are the preservation authority for
+the staged fight-engine roadmap. The UI-free harness clones its inputs, restores process RNG, and
+captures per-exchange evidence without changing the underlying engine result. Before and after each
+fight-engine phase, run `analysis/generate_fight_engine_baseline.py --verify
+analysis/fight_engine_baseline.json`. Use `--exact-parity` only for an architecture slice that does
+not intentionally remove legacy presentation draws from the combat stream. RNG separation is
+accepted on the locked distribution gates, with hard overall/KO/TKO limits and confidence-aware
+small-group checks; do not require identical individual outcomes after stream decoupling. Do not
+regenerate the checked-in baseline after a code change merely to make drift disappear. A deliberate
+baseline replacement requires an explicit balance change and synchronized report/document updates.
+`analysis/fight_engine_action_baseline.json` is the pre-move-expansion authority for action frequency,
+effectiveness, damage, energy, counter, position and finishing contribution. Regenerate it only for
+an explicitly approved mechanical baseline replacement; verify it with
+`analysis/generate_fight_action_baseline.py --verify analysis/fight_engine_action_baseline.json`.
+The canonical isolated runner executes this verifier after the result baseline so presentation-only
+changes prove that neither finish rates nor the amount and effectiveness of the ground game moved.
+
+`compare_to_accepted_calibration()` is the exact headline release gate layered over the older
+tolerance report. The canonical isolated runner executes the complete 3,840-fight verifier and must
+reject a one-bout change from 2,319 finishes, 633 KOs or 731 TKOs. Do not weaken this to rounded-rate
+comparison: the displayed 60.39% / 16.48% / 19.04% values are derived from those integer counts.
+It must also reject a competitive finish rate outside 48-54%, a competitive submission-family rate
+outside 15-19%, zero Doctor or Injury Stoppages, missing five-round evidence, or fewer than 6% of
+five-round finishes in rounds four and five. The current accepted corpus has 1,408 competitive
+finishes (48.89%), 488 competitive submission-family finishes (16.94%), four Doctor Stoppages, ten
+Injury Stoppages, and 164 of 839 five-round finishes in rounds four or five (19.55%). These checks
+reconcile the historical finish audit without applying its obsolete global retunes: mismatch bouts
+drive the 60.39% aggregate, while competitive fights already meet its realism bands. Do not lower
+global KO/submission conversion or halve championship dampers unless the user explicitly authorizes
+a new mechanical baseline.
+
+`FINISH_METHODS`, `KO_METHODS`, `SUBMISSION_METHODS`, and `KNOCKOUT_AWARD_METHODS` in `constants.py`
+are the downstream method-classification authority. Career stats, seasonal counters, recovery,
+contractual finish bonuses and excitement use the shared finish families. Knockout of the Year uses
+the narrower highlight set so Doctor and Corner Stoppages cannot win a strike-highlight award.
+Never reintroduce substring or exclusion-based finish detection in a consumer.
+
+The original frozen baseline rates are 59.64% finishes, 15.70% KO, 19.66% TKO, 22.29% submission
+and 1.17% technical submission across 3,840 fights. The accepted post-roadmap calibration is 60.39%
+finishes, 16.48% KO and 19.04% TKO. Competitive low/mid/high and mismatch results are separate groups;
+follow the tolerances in `FIGHT_ENGINE_DEVELOPMENT_PLAN.md`. Detailed-skill coverage also
+distinguishes direct fight inputs from `dedication` and `weight_cutting`, which operate through camp/
+development and weigh-in state respectively. Do not add a detailed fighter attribute without either
+using it mechanically or documenting and testing its pre-fight role.
+
+`FightResult` is the structured MMA result boundary. `simulate_fight_result()` returns it directly;
+legacy callers continue through `simulate_fight()` and its five-item tuple. Native trace events use
+private `a`/`b` slots and retain action, position ownership, gas, location damage, cuts, knockdowns,
+strikes, takedowns and submission deltas, followed by exactly one `official_result` event. Adding
+trace evidence must not consume RNG or change any baseline signature.
+
+`fight_moves.py` is the canonical MMA move registry. Move IDs are stable trace/save-facing identity;
+definitions must use supported positions, styles and detailed skills, and follow-up IDs must resolve.
+Broad actions remain the calibrated resolution boundary. Deterministic move selection may use detailed
+skills, style, stance, matchup and a real counter window, but must not consume mechanics, officiating,
+judging or presentation RNG. Move energy, miss risk and counter vulnerability may only alter later
+legal move identity through bounded, decaying bout-local state; they must not alter broad gas, damage,
+landing or finish conversion. An unavailable move uses
+an explicit `generic_<action>` fallback rather than inventing an illegal technique.
+
+Release move audits must keep the frozen `matchup_specs()` corpus unchanged. Supplemental style coverage
+belongs in `move_report_specs()` so the exact 3,840-fight result/action baselines remain comparable. A move
+missing from the general sample is not automatically dead: the targeted registry reachability check must
+prove whether a legal, skill-supported specialist can select it. Dominance comparisons must use the same
+parent action and legal position, not aggregate techniques that cannot compete in the same state.
+Direct registry reachability is not proof of full-fight reachability when a test supplies a target or position
+that the broad resolver never emits. New ordinary standing and common-position ground content must also appear
+in the representative 880-fight report; reserve probe-only absence for genuinely rare specialist
+positions/actions. The current registry has 176 moves, including one exclusive combination and one
+exclusive finisher for each of the 18 supported styles, ten earlier expanded standing combinations,
+six uncommon authored standing finishers and 23 expanded ground techniques. The turtle wrist-ride striking chain
+is the only latest addition intentionally absent from the representative corpus; targeted reachability and
+the specialist transition path remain its gates.
+
+Moves tagged `style-combination` must name exactly one supported `preferred_styles` owner, retain at
+least three ordered `components`, and be filtered before scoring unless that owner is the fighter's
+primary or secondary style. Signature or mastery data must never bypass this eligibility rule. These
+chains remain identities beneath one already-resolved broad action: their components, follow-ups and
+commentary may change, but they must not add a strike, landing, damage, transition or finish roll.
+
+Moves tagged `style-finisher` follow the same single-owner primary/secondary-style restriction and
+must be either a strike or submission. Their deterministic appearance window may make an already
+selected technique more recognisable, but it must never create or convert a KO, TKO, submission,
+damage event or stoppage. KO/TKO narration must use trace-backed impact from the causal move;
+submission narration must use the last resolved submission payload. Every style finisher must remain
+reachable, appear in the 880-fight representative report and preserve exactly one official result.
+When a fighter owns another legal signature finisher, that individual signature takes selection
+priority over the generic style finisher during the bounded authored-finisher window.
+
+The Standing group includes `combination_punching`, `body_punching` and `counter_timing`. Legacy
+non-empty detailed profiles derive them in `ensure_detailed_skills()` from existing saved ratings;
+never replace them with generic 50s or consume RNG during load. Distance management remains the
+existing footwork/feints/mobility/reach bundle rather than a duplicate detailed attribute.
+When a detailed-skill group expands, preserve development exposure as well as serialization. Standing
+training scales its successful-block point budget for these three added skills; otherwise a fixed budget
+silently dilutes every striker's development even though fight-result calibration remains unchanged.
+
+Kick-tagged registry moves must define a supported target, `side`, `range_band`, and at least one
+`defense_families` entry. Spinning/flying/high-risk techniques require a meaningful minimum-skill
+floor, energy/counter risk above neutral, and the deterministic rarity gate in move selection. Reuse
+the existing high/low/creative kick, knee, elbow, flexibility, mobility and reflex ratings unless a
+future skill audit proves a genuinely distinct axis.
+The `finisher` tag is a rare identity gate, not a finish modifier. A finisher must be a skill-gated
+standing strike with above-neutral energy and counter risk; its shared deterministic gate may select the
+named move only after the broad action has resolved and must not consume RNG or alter finish conversion.
+When a KO or TKO has causal trace evidence, the registry move is the authoritative strike name. Legacy
+finish-color banks may not leave a second, contradictory uppercut/hook/kick beside that causal move.
+
+Takedown-tagged registry moves must define `entry_family`, non-empty `defense_families`, and only
+legal `finish_positions`. The resolved trace remains authoritative for the actual position path and
+controller; registry metadata must never claim a finish position the broad resolver did not reach.
+Hand fighting, underhooks and wall walking currently reuse clinch control/defense, cage wrestling,
+get-ups and scrambles rather than adding duplicate detailed attributes.
+
+Submission-tagged registry moves must define a position-legal `attack_path` and non-empty
+`failure_outcomes`. The resolver's recorded `submission_escape` and actual position path remain
+authoritative; move metadata may describe legal possibilities but must not invent a finish or a
+transition. Chaining currently reuses transitions, positional ability, submission attack, leg locks,
+control, scrambles and fight IQ rather than adding a catch-all submission-chaining rating.
+
+Common ground moves must be restricted to positions where their broad action can actually be chosen.
+Position-specific ground striking still resolves through `ground_strikes`; passes/climbs through
+`advance_position`; sweeps through `sweep`; recoveries/get-ups through `recover_guard` or `stand_up`; and rides
+through `ground_control`. Named identity must not directly change damage, success, position or finish chance.
+Every authored ground-strike chain needs a factual component template that reconciles realistic 10-26-strike
+broad volume, and a ground TKO must name the causal registered strike chain rather than generic legacy copy.
+An effective registry move tagged `control` may seed one legal bounded follow-up from an existing `control`
+outcome; this changes only later move identity and must never grant a free exchange or change control scoring.
+
+`Fighter.signature_moves` contains at most three unique stable registry IDs. New-universe generation
+may derive skill-supported signatures deterministically; ordinary save load must only normalize known
+IDs and must not invent a new set. A legal signature receives a bounded selection preference but
+never bypasses minimum skill, position, target, counter-window, defense, or finish resolution.
+`career_signature_stats` folds the last fight's attempts/effective uses/finishes during the same
+career-stat commit that clears `last_fight_stats`; preserve fighter-ID separation in persistence and UI.
+
+`Fighter.move_mastery` contains normalized 0-100 values keyed by a move ID or `defense:<defense_id>`.
+It is persistent fighter development, but it may only shape named technique selection beneath the broad
+resolver. Camps may improve focus-aligned mastery and grant a signature at the audited threshold;
+academy prospects retain their own mastery dictionary and copy it on graduation; annual veteran decline
+may reduce high mastery after `prime_end + 2`. Legacy load defaults to an empty dictionary and must not
+consume RNG or invent mastery merely by opening a profile.
+
+`DEFENSE_REGISTRY` is the canonical defensive identity surface. Every exchange trace retains a known
+`defense_id` and payload selected from the attacking move's legal defense families and the defender's
+skills. Named defense is evidence, not a second success roll: never use it to retroactively change the
+already-resolved outcome or consume another combat draw.
+
+Tactical move reads are bout-local, derived only from earlier public trace, and capped per counter.
+Plans may weight matching move tags; body/leg/setup evidence may open later families; repeated move IDs
+may be penalized; and opponent-pattern counter bonuses require a real counter window. Preserve
+`selection_reasons` for explainability. Never persist these reads, scan career history during a fight,
+or convert a move-family preference into direct landing/finish probability.
+
+Registry follow-ups may create a bout-local move chain only after effective use. A matching legal
+follow-up receives a bounded selection preference for at most two ticks in the same round, and the trace
+must identify its source and completed step. It remains one ordinary broad action, never a free attack.
+Multiple follow-ups are legal branches. Choose only a branch valid for the resulting position, retain
+the options/reason in trace evidence, and let a named frame/evasion/escape select the alternate branch.
+Authored strike-combination templates must identify their actual component weapons and reconcile sequence
+numbers and landed totals at realistic broad-action volume; a generic action fallback is not sufficient
+coverage for a newly named sequence.
+All supported primary styles must retain explicit tag preferences and stay distinguishable in the
+pairwise release-report distance check. Stance and striker/grappler matchup reasons must remain traceable.
+Dynamic stance changes are bout-local and cooldown-bound. They require a natural switch stance or high
+footwork/adaptability, retain from/to/round/tick/plan evidence, and must not mutate the fighter's saved
+base stance or add a new mechanics RNG draw.
+
+Archived fight logs may persist bounded `round_analysis` derived from their completed trace. Replay UI
+must tolerate old logs without it and show only recorded moves, defenses, sequences, stance switches and
+plan history; it must not reconstruct results, expose sealed cards early or mutate career state.
+
+Fight presentation must render from the completed trace. Natural Broadcast prose uses the recorded
+actor, move, outcome and salient target, defense or position; it must never join a named move to the
+older broad-action `result` text. Detailed commentary and `round_analysis` retain target, defense and
+meaningful follow-up labels without raw bracket metadata. Finish prose must use the final exchange's
+actual move and settled position, retain authored submission/medical/injury/head-kick/walk-off detail,
+and contain at most one intervention clause and one official announcement. A body- or leg-kick
+knockdown is not an `injury_stoppage`; only the separate body/leg stoppage check may assign that
+finish method. Doctor review uses structured cut evidence and may become eligible only at the
+between-round tick. Presentation-only walk-off variation may use the presentation stream, but an
+existing mechanics draw must not be removed, added or reordered merely to select wording.
+Round/UI summaries expose bounded move-family effective/used counts, never raw unbounded dumps or
+unsealed judge totals. `last_fight_stats`, FightResult metrics and `career_move_family_stats` must
+reconcile with the same exchange events; presentation must not draw simulation RNG.
+
+At the start of a bout, `simulate_fight()` establishes explicit mechanics, officiating, and
+presentation streams. All combat draws go through `fight_mechanics_rng()`, referee/stoppage/judging
+draws through `fight_officiating_rng()`, and wording through the presentation helpers. Do not add a
+direct `random.random()`, `random.randint()`, or `random.choice()` call to `fight_engine.py`; the
+focused regression treats one as an accidental stream leak. The caller's public RNG advances to the
+combat stream's final state so sequential unseeded cards continue to vary.
+
+Commentary variation uses the bout-local presentation RNG through `fight_presentation_choice()` and
+`fight_presentation_random()`. Do not add global `random` calls for wording, clocks, ambience, or
+phrase selection. A foul or other event that changes gas, damage, position, scoring, or stoppage
+risk belongs in a mechanical resolver before its text is rendered; `dynamic_flavor_line()` must
+remain presentation-only. The phrase-bank regression must keep winner, method, round, stats and
+cards identical when wording is replaced.
+
+`fight_commentary_mode` defaults to `Broadcast`; `fight_commentary_personality` defaults to
+`Balanced`, with `Technical`, `Excitable`, and `Concise` as presentation-only alternatives. Both live
+in `rules`, require old-save normalization, and may affect wording or density only. Corner advice may
+cite completed public trace evidence such as gas, damage, control, repeated moves and effective
+families; never expose hidden ratings or repeat developer-facing text about an unassigned plan.
+Between-round feedback must name a verified head coach and Gym when available, give a factual round
+read and a separate actionable instruction, and vary delivery by commentary personality without RNG.
+If both opponents share one verified Gym, identify each fighter's camp corner without assigning the
+same head coach to opposing stools. The commentary report permanently gates speaker/fighter identity,
+actionable wording and hidden-rating leakage across representative complete fights.
+
+`TRAIT_COMMENTARY_INTROS` must cover `TRAITS` exactly. Every saved trait receives one natural opening
+line, but a live trait call requires completed trace evidence matching its claim: target, move tag,
+counter, position, submission attempt, plan change, accumulated damage, recorded gas, timing or bout
+context. `record_fight_trace_exchange()` stores the selected line and enforces at most one contextual
+trait call per fighter per round and two per fighter per bout. Rendering that line is deterministic,
+must not consume any RNG stream, and must never imply survival, a finish or an injury that has not
+already been resolved. Do not restore the older random trait branches in `dynamic_flavor_line()`.
+
+Camp commentary must resolve `Fighter.camp` against an actual current `Gym` before naming a coach,
+city, region or specialty. Saved camp strings may instead be promotion, feeder, academy, unknown or
+legacy labels; introduce those with natural neutral wording and never infer Gym facts from the label.
+When both opponents resolve to the same verified Gym, emit one stablemate-room introduction rather
+than assigning the same head coach to two opposing corners. A contextual
+camp call requires a completed exchange matching one of the resolved Gym's recorded specialties:
+boxing, kickboxing, wrestling, BJJ, sambo, clinch, gameplanning or conditioning. Store the selected
+line on the exchange trace, cap it at one per fighter per round and two per bout, preserve it in
+Broadcast, and consume no RNG. `Prospect Development` is opening identity only unless future trace
+evidence provides a genuine live-fight predicate. Focused coverage must compare the same seeded bout
+with and without verified Gym metadata and require identical result, metrics, scoring, mechanical
+trace and process RNG state.
+
 Audit finish rates by fighter tier, not only across a random-paired pool. Random pairing
 over-represents mismatches, which finish more easily than realistic cards.
+
+MMA judging consumes `round_evidence_from_trace()` only. Do not award score value for gas,
+professionalism, discipline, home support, experience, pressure, popularity, or names; those inputs
+may change execution but are not judging criteria. Apply effective striking/grappling first,
+effective aggression only when that evidence is close, and control only when both are close. Judge
+variance belongs on the judging substream and only inside the ambiguity band, so scoring work cannot
+change a later stoppage draw or reverse clear dominance. Store the player-facing verdict separately
+from canonical `Decision`/`Draw` method values for save and downstream compatibility. Every 10-8 and
+point deduction must retain round evidence in the official card and trace.
+
+In-bout `damage`, `head_trauma`, `body`, and `leg` are persistent trauma channels; `hurt` is the
+transient stun/instability channel used by immediate survival and calibrated stoppage checks. The
+legacy `head` channel is a short-term reaction load and may settle during survival, while every head
+impact must also increment `head_trauma`; trace and post-fight metrics expose only the permanent
+channel. Defensive success, `survive`, and `recover_between_rounds()` may reduce `hurt` and restore
+bounded gas, but must never subtract persistent location damage. Body trauma affects output/fatigue,
+leg trauma affects mobility/kicks/shots/stand-ups, and head trauma affects reactions. Cuts use `cut_state`
+  records with location, severity, bleeding, swelling and vision risk while the numeric `cuts` count
+  remains compatibility telemetry. `last_fight_stats` is the shared Fight Night/post-fight medical
+  record; recovery logic must read its damage and `cut_details` rather than inventing unrelated harm.
+  Run `set_post_fight_recovery()` and `apply_visible_trauma_consequences()` before
+  `commit_career_stats()`, because that final commit clears `last_fight_stats` after the medical
+  evidence has been consumed.
+
+Visible damage narration is a deterministic presentation layer over those persistent totals. A bout
+latches each head, body and leg milestone once, records the structured event in its trace, and retains
+the corresponding line in Broadcast and round analysis. It must not consume any RNG, alter trauma,
+or add a stoppage opportunity. Broad milestones may describe only supported visible states such as
+bruising, guarding, a weight shift or a limp; never infer fractures, organ damage, concussion, or an
+exact body-part location. Exact location, bleeding, swelling and vision language must come from the
+structured `cut_state` record. When damage copy changes, run the focused milestone/RNG regression,
+the commentary report and both frozen result/action baselines.
+
+Fight plans are scheduled-bout state keyed by `fighter_id`, never display name. Player-created
+bouts must store an explicit plan for every known corner; `apply_world_data()` normalizes supported
+values and gives legacy missing entries Balanced. AI/world bouts must set `ai_controlled` so
+`ai_fight_plan()` uses the shared execution model. A payload with no plan marker is a compatibility
+bout: it stays Balanced and does not begin automatic between-round switching. Plan effects belong
+in action weights, target shares, counter opportunities and energy cost—not direct result or finish
+modifiers. `adapt_fight_plans()` may read trace evidence, gas and visible trauma only. Evidence-led
+changes retain the repeated opponent move or successful own family, adjustment round and confidence;
+do not oscillate more than once in a round. When changing
+plans, run `fight_engine_regression_test.py`, the save/load smoke test and the frozen 3,840-bout
+verifier; do not alter `competitive_finish_conversion()` or regenerate the baseline to absorb drift.
+
+Each exchange trace must retain a bounded `exchange` chain with setup, defensive response, counter
+opportunity/consumption, follow-up, ordered combination components and no more than five phases.
+Derive semantic labels from the already-resolved action, position and skills; recording trace detail
+must never consume another mechanics draw. A counter is valid only when a prior failed or defended
+attack created its `counter_window`. Combination components are evidence for aggregate strike stats,
+not extra attacks: their landed count must stay at or below attempts. Preserve deterministic chains
+and the controlled Counter-striking-versus-Pressure regression when changing initiative or actions.
+
+`ALLOWED_FIGHT_TRANSITIONS`, `GROUND_POSITIONS`, `validate_fight_transition()` and
+`set_fight_position()` are the MMA positional authority. Ground states require distinct `a`/`b`
+top and bottom owners and no clinch controller; open range retains none. Use
+`record_intermediate_position()` for a real but unconsolidated state inside one exchange, and keep
+its complete validated `position_path` in the trace. Elite specialists may consolidate a failed shot,
+standing rear lock or leg entanglement into a persistent next-tick state only at the audited thresholds;
+the 720-fight specialist report must continue to prove each state has legal follow-up action families.
+Other brief positions require the resolver to award durable control. Submission attempts that do not
+finish must set `last_submission_escape`
+with their retained, recovered, reversed or worsened consequence. Any new grappling position needs
+an allowed entry, exit, action selection, ownership test and commentary consistent with the trace.
 
 Competitive same-tier targets:
 
@@ -743,11 +1378,36 @@ negotiation benefits are separate: use `staff_effect()` for bounded gameplay poi
 Manual drug testing must use the same compliance discount model as event accounting.
 
 Monthly world progression checks staff expiry warnings before decrementing contracts. Expired staff
-leave payroll and the roster unless an active Scout assignment is still using them; a busy Scout is
-held for one month so the assignment can finish. Hiring, renewal, and firing use the Staff screen's
+leave payroll and the roster unless finite Scout work (a report, search, or academy-network setup) is
+still using them; that Scout is held for one month so the assignment can finish. An established
+ongoing academy network is not finite work: contract expiry closes the network and its open leads
+instead of renewing the assigned scout forever. Hiring, renewal, and firing use the Staff screen's
 negotiation/severance actions, and firing a busy Scout is blocked. The Expiring Contracts tab is a
 filtered operational view, not a second staff list: actions must resolve the selected staff member
 by identity and continue to use the world-layer contract rules.
+
+Scouting assignments resolve both fighters and staff by durable IDs. A legacy name-keyed fighter
+report may migrate only when the name identifies exactly one live fighter; ambiguous reports must be
+quarantined and must never become a read-through fallback for every namesake. Load repair must not
+consume simulation RNG, and a legacy report without a trustworthy completion marker is stale rather
+than newly current. Starting a replacement report keeps the prior completed snapshot available until
+the new work succeeds; cancellation or observation expiry restores that snapshot. Cancelled,
+expired, and stale dossiers are eligible for later talent-search rediscovery. Completed searches
+retain their ordered fighter-ID lead list, while long assignment/search histories are bounded.
+Pending reports contain no hidden-rating-derived notes or estimates. Opinion notes are generated only
+at completion and remain separate from structured public/live-fight evidence. Automatic department
+work is paid and capped at one dossier per calendar week. Talent searches rank existing world fighters
+and must never create supply as a fallback; market churn owns new fighter creation. Search Aim selects
+candidate scope, Search Priority changes ranking within that scope, and signing Logic controls the
+post-report recommendation. Age/style constraints may return explicitly labelled Near Matches when
+the exact pool is thin. Standard briefs finish normally, Priority briefs trade extra cost for time,
+and Ongoing briefs retain a scout slot and refresh every 13 weeks; persistence and workload checks
+must treat `Monitoring` searches as active. Region knowledge, current report state, bounded prior snapshots, ID-safe
+watchlists, structured scouting history, and alert dedupe state are persistent. Report ageing begins
+after 26 weeks, and exact current ratings require a comprehensive high-confidence repeated Full
+Evaluation; do not turn a single report into a permanent exact-rating unlock. Every decisive and draw
+MMA result path must pass ID-first opponent, outcome, method, fight context, and `last_fight_stats`
+evidence to `complete_fight_observation()` before `commit_career_stats()` clears the live metrics.
 
 When changing staff behavior, update `constants.py`, seeding, world progression, persistence/load
 repair, `ui.py`, and `views.py` together. Add smoke coverage for role descriptions, offer scoring,
@@ -849,6 +1509,40 @@ finance/amateur ledgers, and be repaired with safe defaults for older saves. The
 must expose the active decision without interrupting calendar advancement with an unconditional
 modal prompt.
 
+Academy prospects and graduates are identity-first. Challenges, amateur opponent ledgers, replay
+telemetry, alumni updates, and graduate Profile actions use `prospect_id` or `fighter_id`; a name is
+only a unique legacy fallback. Academy repair normalizes null or malformed collection fields before
+iterating them. Automatic showcase status must derive from `last_showcase_week` and the four-week
+card check rather than presenting the compatibility-only `showcase_weeks` value as a countdown.
+Individual prospects retain a six-week bout cooldown. Weekly training must preserve a meaningful
+fatigue trade-off between Light, Standard, Intensive, and Recovery workloads.
+
+Academy schema 6 adds five connected systems. `development_plan` is one active 4/8/12-week block;
+completion writes an immutable row to both the prospect's `development_reports` and the academy's
+`season_history`. Amateur records retain competition tier and opponent rating, which drive quality
+points, strength of schedule, tournament eligibility, titles, and graduation readiness. Youth
+trait, satisfaction, loyalty, promise and retention history are persistent; a broken promise or
+unsustainable workload may cause a real recorded departure. Graduation destinations are explicit:
+main roster, MMA developmental, an open player combat-sport division, or a regional feeder with a
+12-month `released_rights` row. Active rights are exercised from Academy Alumni through
+`exercise_academy_matching_right()`, which revalidates the fighter, division, cash and feeder belt,
+then records canonical signing finance. Do not implement these as UI-only labels.
+
+Major non-child, non-feeder AI promotions store their youth programme under
+`Promotion.strategy["youth_academy"]`, which is already covered by Promotion serialization. Rival
+cohorts are compact academy prospect dictionaries until graduation, then become ordinary Fighters
+on the owning promotion roster. `process_rival_academies()` runs once at week 1, and rival bids on
+player-network leads must preserve the lead's `prospect_id`. Keep intake bounded and include rival
+academy throughput in long-run population audits before increasing its cadence.
+
+Tournament entry, academy graduation, and matching-right exercise are domain transactions. Stage
+cash, canonical finance, the prospect/academy ledgers, affected rosters and belts, narrative queues,
+and RNG before their first mutation; a late fight, story, finance, or roster hook must restore that
+state and return a failed action. Schema-six scalar repair must normalize malformed values as well as
+missing ones. Rival cohort development may raise a stored readiness rating but must never lower it
+when recalculating the compact broad-skill average. Keep the rollback assertions in
+`stability_test.py` whenever these flows change.
+
 Fighting Academy and Combat Sports are main notebook pages, not Toplevels. Their ownership and
 refresh rules:
 
@@ -871,6 +1565,39 @@ refresh rules:
   existing entry points (Finance, Scouting, World news) keep working. They must not open a window.
 - Retained detail popups — prospect profiles, card replays, child-promotion management, circuit
   records and history — still create Toplevels, parented to `self.root` rather than the page.
+
+Player-owned Combat Sports divisions are persistent child promotions, distinct from each sport's
+AI flagship circuit. `roster_ids` and booked-bout `a_id`/`b_id` fields are authoritative; retained
+names are presentation and unambiguous legacy fallback only. Championship maps use `title_ids`, and
+lineage, season statistics, records, awards, and Hall of Fame entries retain fighter IDs. One-fight
+independent opponents are transient and must not enter persistent circuit statistics or awards.
+Load/world repair must be deterministic, deduplicate by fighter ID, and never merge same-name
+athletes. Every recruitment source, including flagship buyouts, must set
+a negotiated purse, term, exclusivity, employer, and canonical finance transaction. A contract at
+zero months receives the displayed renewal window and leaves on the next monthly review if it is
+not renewed; expired athletes are not bookable. Player card costs pay the stored purse for both
+corners, use a card-specific transaction reference and event label, and may settle at most once per
+division per month. Player event counters, completed-card history, and media must not increment or
+rewrite the AI flagship's equivalents. Changes to this flow require
+`combat_sports_regression_test.py` plus the smoke suite.
+
+Boxing and Muay Thai must remain mechanically distinct, not just commentary skins. Boxing bout
+length is level-aware (six/eight/ten rounds) with 12-round title fights; three judge cards own the
+official verdict and knockdowns can create 10-8/10-7 rounds. Standard Muay Thai is three rounds and
+title Muay Thai is five, with effective kicks, knees, elbows, dumps, balance, and clinch control
+weighted above undifferentiated punch volume. Lethwei shares the Muay Thai circuit but keeps five
+rounds and a knockout-first/no-winner draw outcome. Preserve `scorecards` and `round_metrics` in
+result and replay payloads, and route every new decision/draw label through
+`combat_sport_is_decision()` so it cannot count as a finish or receive a stoppage round suffix.
+
+Future Combat Sports cards live in each player division's `scheduled_events`, never in the MMA
+`self.scheduled_events` collection. Their payload keeps event ID, month/week, production, marketing,
+forecast, and ID-first bouts. Scheduling validates future date, roster ownership, medical
+availability, contract coverage, duplicate corners, and the one-card-per-month rule. Scheduled
+athletes are unavailable to manual/automatic card generation. `calendar_week_steps()` executes due
+cards after entering the new week; forecast and settlement call `combat_sport_event_forecast()` so
+the displayed business decision cannot diverge from the charged result. Cancellation removes only
+the selected event and does not mutate fighter recovery or contracts.
 
 Every `ttk.Treeview` is sortable by heading. Main tabs may call `make_tree_sortable` explicitly for
 custom behavior, but secondary and popup tables rely on the shared Treeview class fallback in
@@ -897,6 +1624,18 @@ fail on an undefined schedule set.
   narrative and belt-history text. Use company, market, division, or profile context when the
   player needs to distinguish same-name snapshots. Audit the opening world for duplicate IDs and
   normalized base names before changing seeded records.
+- Fighter database schema 5 requires a non-empty unique `fighter_id` on every canonical
+  `all_fighters` row. New universes preserve that source ID; grouped compatibility tuples omit it.
+  Renaming, editing, or moving a source record must preserve its ID, while an intentional duplicate
+  must mint a fresh ID. Legacy schema-four packs receive deterministic IDs in memory without source
+  rewrites until explicitly saved through the Database Editor.
+- The shipped database keeps `birth_country` and `hometown` non-empty for every canonical MMA
+  fighter and synchronizes those fields to compatibility tuples. Preserve authored values.
+  Deterministic regional fallbacks must carry `birthplace_source: regional_fallback_v1` and must
+  not be described as verified biography; verified bundled matches use
+  `birthplace_source: bundled_verified_identity`.
+- Rights packages presented as global or broad-reach coverage must include every current `REGIONS`
+  entry. Add a shipped-database regression whenever the region model or media market list changes.
 - Never create names with a `2` suffix as a collision workaround.
 - Keep male and female fighters correctly gendered.
 - When adding women whose names are absent from `FEMALE_FIRST_NAMES`, update `infer_gender`.
@@ -959,9 +1698,13 @@ describe player-visible behavior and important compatibility changes, not merely
 | --- | --- |
 | Documentation only | Read rendered Markdown, check links/commands, run `git diff --check` |
 | Models, seeding, saves, calendar, game AI | Syntax check + smoke + stability |
-| Fight mechanics or commentary | Syntax check + smoke regressions + relevant tier/long-run audit |
+| Scouting reports, searches, staff identity, or recruitment UI | Syntax check + `scouting_regression_test.py` + smoke |
+| Fight mechanics or commentary | Syntax check + `fight_engine_regression_test.py` + `fight_engine_full_system_test.py` + frozen 3,840-bout result and action audits + smoke |
+| Fight Night viewer, replay, or event presentation | Syntax check + smoke + `fight_night_experience_regression_test.py` + stability |
 | Media Desk or rights | Syntax check + smoke + media-system test |
+| Event economics or rivalries | Syntax check + smoke + `event_economics_regression_test.py` + media-system test when media actions change |
 | Shared UI/theme/layout | Syntax check + smoke + manual maximized-window check in representative themes |
+| Fighter Profile, history, or Profile-launched actions | Syntax check + `fighter_profile_regression_test.py` + smoke |
 | Universe data or database editor | Syntax check + universe `--validate` command + `database_editor_ui_audit.py`; build if packaging changed |
 | Packaging, assets, paths, startup | Full shipping suite + portable build + launch packaged executable briefly |
 
@@ -973,15 +1716,26 @@ bands, prefer overall gaps of six or less, report finish rates per band, and res
 after the run. Its lightweight gate/profit stress figures are labelled synthetic and must not be
 presented as the player event-finance model.
 
+Fight tuning and business tuning are separate persisted surfaces. `engine_settings` contains only
+the versioned, bounded mechanics keys declared by `FIGHT_ENGINE_SETTING_DEFAULTS`; Gate Multiplier
+lives in versioned `business_settings`. Load through the normalization helpers so malformed values
+are clamped and legacy saves migrate `engine_settings.gate_multiplier` without changing behavior.
+Simulation Lab must label mechanics controls separately from business-only controls. No Contest is
+a participation/medical settlement: it completes contracted participation and recovery but must not
+change W/L/D records, Elo, season awards, rivalries or titles. Technical decisions require the
+completed-round threshold and the already-sealed cards. Referee review flags are observational and
+must never rewrite an official result. Do not restore the removed `finish_chance()` or
+`finish_method()` shortcut; all finishes resolve through the active exchange/stoppage mechanics.
+
 ### Portable builds
 
-For the game:
+For the complete portable package:
 
 ```powershell
 .\Build Portable.bat
 ```
 
-For the standalone universe editor:
+To rebuild only the standalone universe editor:
 
 ```powershell
 .\Build Database Editor.bat
@@ -1000,6 +1754,12 @@ Logs
 README.md
 Portable Check.bat
 ```
+
+`Build Portable.bat` is the canonical release build and must produce both `MMA Warriors.exe` and
+`MMA Warriors Database Editor.exe`; do not require a second editor build in release instructions.
+Failure paths must restore any staged `Saves`, `Databases`, and `Logs`, and stale staging data must
+not resurrect files deliberately removed from the package. `Portable Check.bat` must verify both
+executables.
 
 Never solve a build problem by deleting runtime saves. After a packaging or core-runtime change,
 start the packaged `MMA Warriors.exe` briefly and run the portable check when available.
@@ -1079,9 +1839,13 @@ build widget with flexible geometry
   as Variant 1 and name additions `_02`, `_03`, and so on so random playback can group files by
   `family` without breaking the stable base filename. The player must avoid immediate variant
   repeats, retain per-family cooldowns and a simultaneous-cue ceiling, and fall back procedurally if
-  a manifest entry cannot be decoded. A manifest `loop` flag means the asset is safe for a future
-  sustained ambience channel; current event triggers deliberately play one bounded pass so a bed
-  cannot continue across the wrong fight phase. Derive local crowd gain through
+  a manifest entry cannot be decoded. A manifest `loop` flag is required for the session-scoped
+  ambience bed: `start_fight_night_audio_session()` opens one crossfaded loop across the live card,
+  one-shot cues remain independently bounded, and `stop_fight_night_audio_session()` must run when
+  the owning viewer closes so no sound bleeds into another screen or session. Keep the bed neutral;
+  fighter-specific location gain belongs to the current bout's reactions and walkout. Audio variant
+  choice and procedural fallbacks use the audio-only `SystemRandom`; never consume simulation RNG
+  for sound presentation. Derive local crowd gain through
   `fighter_event_connection`: exact hometowns receive the largest bounded lift, followed by national
   home, adopted home, and training-base connections. Keep this effect presentation-only; it must not
   alter fight mechanics or create a second geographic-proximity model in `audio.py`. The live Fight

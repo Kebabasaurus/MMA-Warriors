@@ -42,6 +42,7 @@ class FightNightAudioMixin:
         "bout_start": "pre_fight_arena_murmur",  # Backward-compatible alias.
         "walkout": "walkout_crowd_swell",
         "opening": "opening_bell_roar",
+        "round_start": "opening_bell_roar",
         "impact": "clean_strike_ooh",
         "knockdown": "knockdown_gasp_roar",
         "submission": "submission_attempt_swell",
@@ -68,6 +69,9 @@ class FightNightAudioMixin:
         "respectful_postfight_applause": 5.0,
     }
     _MAX_SIMULTANEOUS_CUES = 4
+    _HIGH_PRIORITY_CUES = {
+        "knockdown", "finish", "decision", "controversial_decision", "card_complete",
+    }
 
     def available_fight_night_outputs(self):
         """Return visible output choices without requiring optional audio modules."""
@@ -137,7 +141,18 @@ class FightNightAudioMixin:
                 self._fight_night_audio_lock = lock
             if not hasattr(self, "_fight_night_active_cues"):
                 self._fight_night_active_cues = 0
+            if not hasattr(self, "_fight_night_audio_session_stop"):
+                self._fight_night_audio_session_stop = threading.Event()
+            if not hasattr(self, "_fight_night_ambience_thread"):
+                self._fight_night_ambience_thread = None
+            if not hasattr(self, "_fight_night_audio_rng"):
+                self._fight_night_audio_rng = random.SystemRandom()
             return lock
+
+    def _fight_night_rng(self):
+        """Return audio-only entropy that cannot advance simulation RNG."""
+        self._ensure_fight_night_audio_runtime()
+        return self._fight_night_audio_rng
 
     # ---- Bundled crowd recordings ---------------------------------------
 
@@ -187,7 +202,7 @@ class FightNightAudioMixin:
         family = self._CROWD_CUE_FAMILIES[str(cue)]
         previous = getattr(self, "_fight_night_last_crowd_variant", {}).get(family)
         choices = [entry for entry in entries if entry["path"].name != previous] or entries
-        selected = random.choice(choices)
+        selected = self._fight_night_rng().choice(choices)
         if not hasattr(self, "_fight_night_last_crowd_variant"):
             self._fight_night_last_crowd_variant = {}
         self._fight_night_last_crowd_variant[family] = selected["path"].name
@@ -219,6 +234,43 @@ class FightNightAudioMixin:
         if sys.byteorder != "little":
             samples.byteswap()
         return samples.tobytes()
+
+    def _crossfade_pcm16_loop(self, frames, channels, sample_rate, crossfade_ms=180):
+        """Return a seamless PCM loop by blending its tail back into its head.
+
+        The loop starts immediately after the original head and ends on the
+        sample immediately before that point. This keeps both joins contiguous
+        while the tail/head overlap removes the audible restart in crowd beds.
+        """
+        channels = max(1, int(channels))
+        sample_rate = max(1, int(sample_rate))
+        samples = array.array("h")
+        samples.frombytes(frames)
+        if sys.byteorder != "little":
+            samples.byteswap()
+        frame_count = len(samples) // channels
+        overlap = min(
+            max(2, int(sample_rate * max(20, int(crossfade_ms)) / 1000)),
+            frame_count // 4,
+        )
+        if frame_count < 8 or overlap < 2:
+            return frames
+        head_end = overlap * channels
+        tail_start = (frame_count - overlap) * channels
+        middle = samples[head_end:tail_start]
+        blended = array.array("h")
+        denominator = max(1, overlap - 1)
+        for frame_index in range(overlap):
+            blend = frame_index / denominator
+            for channel in range(channels):
+                head_sample = samples[frame_index * channels + channel]
+                tail_sample = samples[tail_start + frame_index * channels + channel]
+                blended.append(int(round(tail_sample * (1.0 - blend) + head_sample * blend)))
+        loop_samples = array.array("h", middle)
+        loop_samples.extend(blended)
+        if sys.byteorder != "little":
+            loop_samples.byteswap()
+        return loop_samples.tobytes()
 
     def fight_night_decision_reaction(self, scorecard_lines):
         """Use the boos family only for a close 2-1 judges' vote."""
@@ -292,12 +344,13 @@ class FightNightAudioMixin:
             for ratio, amp, decay in partials:
                 sample += amp * math.sin(2 * math.pi * freq * ratio * t) * math.exp(-t * decay)
             if i < strike:
-                sample += random.uniform(-0.4, 0.4)
+                sample += self._fight_night_rng().uniform(-0.4, 0.4)
             wave_data[i] = sample * gain
         return wave_data
 
     def _smooth_noise(self, frame_count, kernel):
-        noise = [random.uniform(-1.0, 1.0) for _ in range(frame_count)]
+        rng = self._fight_night_rng()
+        noise = [rng.uniform(-1.0, 1.0) for _ in range(frame_count)]
         kernel = max(2, int(kernel))
         smoothed = [0.0] * frame_count
         window = 0.0
@@ -373,9 +426,10 @@ class FightNightAudioMixin:
         if cue == "round_start":
             return self._mix([(self._bell(820, 0.5, 0.6, sr), 0.0)], sr)
         if cue == "impact":
-            tone = random.uniform(120, 185)
-            gain = random.uniform(0.5, 0.72)
-            return self._impact(random.uniform(0.14, 0.2), gain, sr, tone=tone, sharpness=random.uniform(20, 27))
+            rng = self._fight_night_rng()
+            tone = rng.uniform(120, 185)
+            gain = rng.uniform(0.5, 0.72)
+            return self._impact(rng.uniform(0.14, 0.2), gain, sr, tone=tone, sharpness=rng.uniform(20, 27))
         if cue == "knockdown":
             return self._mix([
                 (self._impact(0.26, 0.85, sr, tone=95.0, sharpness=13.0), 0.0),
@@ -472,7 +526,7 @@ class FightNightAudioMixin:
             return ""
         return str(caps.szPname).strip()
 
-    def _play_fight_night_pcm(self, frames, channels, sample_rate, device_index=None):
+    def _play_fight_night_pcm(self, frames, channels, sample_rate, device_index=None, cancel_event=None):
         if ctypes is None or wintypes is None:
             path = self._write_fight_night_pcm_wav(frames, channels, sample_rate)
             try:
@@ -539,6 +593,8 @@ class FightNightAudioMixin:
             duration = len(frames) / max(1, sample_rate * block_align)
             deadline = time.monotonic() + max(1.0, duration + 1.0)
             while not (header.dwFlags & WHDR_DONE) and time.monotonic() < deadline:
+                if cancel_event is not None and cancel_event.is_set():
+                    break
                 time.sleep(0.01)
             winmm.waveOutReset(handle)
         finally:
@@ -549,18 +605,174 @@ class FightNightAudioMixin:
                     pass
             winmm.waveOutClose(handle)
 
-    def _play_fight_night_samples(self, samples, volume, device_index=None):
+    def _play_fight_night_looping_pcm(self, frames, channels, sample_rate, stop_event, device_index=None):
+        """Loop one prepared crowd bed on a persistent Windows output stream."""
+        if ctypes is None or wintypes is None:
+            while not stop_event.is_set():
+                self._play_fight_night_pcm(
+                    frames, channels, sample_rate, device_index, cancel_event=stop_event,
+                )
+            return
+
+        winmm = ctypes.WinDLL("winmm")
+        CALLBACK_NULL = 0
+        WAVE_FORMAT_PCM = 1
+        WAVE_MAPPER = ctypes.c_uint(-1).value
+        WHDR_BEGINLOOP = 0x00000004
+        WHDR_ENDLOOP = 0x00000008
+
+        class WAVEFORMATEX(ctypes.Structure):
+            _fields_ = [
+                ("wFormatTag", wintypes.WORD),
+                ("nChannels", wintypes.WORD),
+                ("nSamplesPerSec", wintypes.DWORD),
+                ("nAvgBytesPerSec", wintypes.DWORD),
+                ("nBlockAlign", wintypes.WORD),
+                ("wBitsPerSample", wintypes.WORD),
+                ("cbSize", wintypes.WORD),
+            ]
+
+        class WAVEHDR(ctypes.Structure):
+            _fields_ = [
+                ("lpData", wintypes.LPSTR),
+                ("dwBufferLength", wintypes.DWORD),
+                ("dwBytesRecorded", wintypes.DWORD),
+                ("dwUser", ctypes.c_size_t),
+                ("dwFlags", wintypes.DWORD),
+                ("dwLoops", wintypes.DWORD),
+                ("lpNext", ctypes.c_void_p),
+                ("reserved", ctypes.c_size_t),
+            ]
+
+        data = ctypes.create_string_buffer(frames)
+        block_align = channels * 2
+        fmt = WAVEFORMATEX(
+            WAVE_FORMAT_PCM,
+            channels,
+            sample_rate,
+            sample_rate * block_align,
+            block_align,
+            16,
+            0,
+        )
+        handle = wintypes.HANDLE()
+        device = WAVE_MAPPER if device_index is None else int(device_index)
+        if winmm.waveOutOpen(ctypes.byref(handle), device, ctypes.byref(fmt), 0, 0, CALLBACK_NULL) != 0:
+            raise RuntimeError("waveOutOpen failed")
+        header = WAVEHDR(
+            ctypes.cast(data, wintypes.LPSTR),
+            len(frames),
+            0,
+            0,
+            WHDR_BEGINLOOP | WHDR_ENDLOOP,
+            0xFFFFFFFF,
+            None,
+            0,
+        )
+        prepared = False
+        try:
+            if winmm.waveOutPrepareHeader(handle, ctypes.byref(header), ctypes.sizeof(header)) != 0:
+                raise RuntimeError("waveOutPrepareHeader failed")
+            prepared = True
+            if winmm.waveOutWrite(handle, ctypes.byref(header), ctypes.sizeof(header)) != 0:
+                raise RuntimeError("waveOutWrite failed")
+            stop_event.wait()
+            winmm.waveOutReset(handle)
+        finally:
+            if prepared:
+                try:
+                    winmm.waveOutUnprepareHeader(handle, ctypes.byref(header), ctypes.sizeof(header))
+                except Exception:
+                    pass
+            winmm.waveOutClose(handle)
+
+    def _play_fight_night_samples(self, samples, volume, device_index=None, cancel_event=None):
         frames = bytearray()
         for sample in samples:
             clamped = max(-1.0, min(1.0, sample * volume))
             frames.extend(struct.pack("<h", int(clamped * 32767)))
-        self._play_fight_night_pcm(bytes(frames), 1, self._SAMPLE_RATE, device_index)
+        self._play_fight_night_pcm(
+            bytes(frames), 1, self._SAMPLE_RATE, device_index, cancel_event=cancel_event,
+        )
 
-    def _play_crowd_audio_entry(self, entry, volume, device_index=None):
+    def _play_crowd_audio_entry(self, entry, volume, device_index=None, cancel_event=None):
         frames, channels, sample_rate = self._read_crowd_audio(entry["path"])
         manifest_gain = 10 ** (float(entry.get("suggested_gain_db", 0.0)) / 20.0)
         frames = self._scale_pcm16(frames, volume * manifest_gain)
-        self._play_fight_night_pcm(frames, channels, sample_rate, device_index)
+        self._play_fight_night_pcm(
+            frames, channels, sample_rate, device_index, cancel_event=cancel_event,
+        )
+
+    def start_fight_night_audio_session(self, context_gain=1.0):
+        """Start one continuous arena bed for the lifetime of a live card."""
+        self.ensure_audio_defaults()
+        if not self.rules.get("fight_night_audio_enabled", True):
+            return False
+        volume = self.fight_night_audio_volume() / 100
+        if volume <= 0:
+            return False
+        context_gain = max(0.75, min(1.20, float(context_gain or 1.0)))
+        audio_lock = self._ensure_fight_night_audio_runtime()
+        with audio_lock:
+            active_thread = self._fight_night_ambience_thread
+            active_stop = self._fight_night_audio_session_stop
+            if active_thread is not None and active_thread.is_alive() and not active_stop.is_set():
+                return True
+            session_stop = threading.Event()
+            self._fight_night_audio_session_stop = session_stop
+            self._fight_night_last_sound_at = 0.0
+            self._fight_night_last_cue_at = {}
+            crowd_entry = self._choose_crowd_audio("pre_fight")
+            if not crowd_entry or not bool(crowd_entry.get("loop", False)):
+                return False
+            device = self.resolve_fight_night_output()
+
+        def ambience_worker():
+            try:
+                frames, channels, sample_rate = self._read_crowd_audio(crowd_entry["path"])
+                manifest_gain = 10 ** (float(crowd_entry.get("suggested_gain_db", 0.0)) / 20.0)
+                frames = self._scale_pcm16(frames, volume * context_gain * manifest_gain)
+                frames = self._crossfade_pcm16_loop(frames, channels, sample_rate)
+                self._play_fight_night_looping_pcm(
+                    frames, channels, sample_rate, session_stop, device,
+                )
+            except Exception:
+                # The arena bed is optional. One-shot procedural reactions remain
+                # available if the manifest or selected device cannot sustain it.
+                pass
+            finally:
+                with audio_lock:
+                    if self._fight_night_audio_session_stop is session_stop:
+                        self._fight_night_ambience_thread = None
+
+        thread = threading.Thread(
+            target=ambience_worker,
+            name="FightNightAudio-Ambience",
+            daemon=True,
+        )
+        with audio_lock:
+            self._fight_night_ambience_thread = thread
+        try:
+            thread.start()
+        except Exception:
+            with audio_lock:
+                if self._fight_night_ambience_thread is thread:
+                    self._fight_night_ambience_thread = None
+            return False
+        return True
+
+    def stop_fight_night_audio_session(self, wait=False):
+        """Stop the arena bed and cancel active reactions from the live card."""
+        audio_lock = self._ensure_fight_night_audio_runtime()
+        with audio_lock:
+            stop_event = self._fight_night_audio_session_stop
+            thread = self._fight_night_ambience_thread
+            stop_event.set()
+            self._fight_night_last_sound_at = 0.0
+            self._fight_night_last_cue_at = {}
+        if wait and thread is not None and thread is not threading.current_thread():
+            thread.join(timeout=0.75)
+        return True
 
     def play_fight_night_sound(self, cue, context_gain=1.0):
         """Play a short cue without blocking commentary playback or simulation."""
@@ -574,36 +786,46 @@ class FightNightAudioMixin:
             return False
         audio_lock = self._ensure_fight_night_audio_runtime()
         family = self._CROWD_CUE_FAMILIES.get(str(cue))
+        cue_key = str(cue)
+        high_priority = cue_key in self._HIGH_PRIORITY_CUES
         with audio_lock:
             now = time.monotonic()
             if now - getattr(self, "_fight_night_last_sound_at", 0.0) < 0.10:
                 return False
-            if self._fight_night_active_cues >= self._MAX_SIMULTANEOUS_CUES:
+            cue_ceiling = self._MAX_SIMULTANEOUS_CUES if high_priority else self._MAX_SIMULTANEOUS_CUES - 1
+            if self._fight_night_active_cues >= cue_ceiling:
                 return False
             if family:
-                last_family_times = getattr(self, "_fight_night_last_family_at", {})
+                last_cue_times = getattr(self, "_fight_night_last_cue_at", {})
                 cooldown = self._CROWD_CUE_COOLDOWNS.get(family, 0.0)
-                if now - last_family_times.get(family, 0.0) < cooldown:
+                if now - last_cue_times.get(cue_key, 0.0) < cooldown:
                     return False
             self._fight_night_active_cues += 1
             if family:
-                if not hasattr(self, "_fight_night_last_family_at"):
-                    self._fight_night_last_family_at = {}
-                self._fight_night_last_family_at[family] = now
+                if not hasattr(self, "_fight_night_last_cue_at"):
+                    self._fight_night_last_cue_at = {}
+                self._fight_night_last_cue_at[cue_key] = now
             self._fight_night_last_sound_at = now
             crowd_entry = self._choose_crowd_audio(cue)
+            session_stop = self._fight_night_audio_session_stop
+            if session_stop.is_set():
+                session_stop = None
         device = self.resolve_fight_night_output()
 
         def worker():
             try:
                 if crowd_entry:
                     try:
-                        self._play_crowd_audio_entry(crowd_entry, volume, device)
+                        self._play_crowd_audio_entry(
+                            crowd_entry, volume, device, cancel_event=session_stop,
+                        )
                         return
                     except Exception:
                         pass
                 samples = self._render_cue(cue, self._SAMPLE_RATE)
-                self._play_fight_night_samples(samples, volume, device)
+                self._play_fight_night_samples(
+                    samples, volume, device, cancel_event=session_stop,
+                )
             except Exception:
                 try:
                     import winsound

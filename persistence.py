@@ -22,6 +22,7 @@ from tkinter import messagebox, ttk
 
 from constants import *
 from models import Fighter, Gym, Promotion
+from fight_moves import normalize_move_mastery, normalize_signature_moves
 from universe_validation import validate_universe_section as shared_validate_universe_section
 
 
@@ -52,7 +53,26 @@ def load_model_row(row, model_type, field_names, context):
     if missing:
         raise ValueError(f"{context} is missing required field(s): {', '.join(missing)}.")
     try:
-        return model_type(**filtered)
+        value = model_type(**filtered)
+        if model_type is Fighter:
+            value.style = normalize_mma_style(getattr(value, "style", ""))
+            value.secondary_style = normalize_secondary_style(
+                getattr(value, "secondary_style", ""), value.style,
+            )
+            value.signature_moves = normalize_signature_moves(getattr(value, "signature_moves", []))
+            value.move_mastery = normalize_move_mastery(getattr(value, "move_mastery", {}))
+            value.move_mastery_last_month = max(0, int(getattr(value, "move_mastery_last_month", 0) or 0))
+            if not isinstance(getattr(value, "career_signature_stats", None), dict):
+                value.career_signature_stats = {}
+            if not isinstance(getattr(value, "career_move_family_stats", None), dict):
+                value.career_move_family_stats = {}
+            if value.trait not in TRAITS:
+                value.trait = "Gym Rat"
+            if value.behaviour not in BEHAVIOURS:
+                value.behaviour = "Dynamic Attacker"
+            if value.stance not in ("Orthodox", "Southpaw", "Switch"):
+                value.stance = "Orthodox"
+        return value
     except (TypeError, ValueError) as exc:
         raise ValueError(f"{context} could not be loaded: {exc}") from exc
 
@@ -178,7 +198,10 @@ def hydrate_external_save_blocks(path, data):
 def load_save_payload(path):
     """Read either a legacy single-file save or the split primary+blocks format."""
     path = Path(path)
-    return hydrate_external_save_blocks(path, json.loads(read_json_text(path)))
+    payload = json.loads(read_json_text(path))
+    if not isinstance(payload, dict):
+        raise ValueError("Save payload is not a valid JSON object.")
+    return hydrate_external_save_blocks(path, payload)
 
 
 def prune_external_save_blocks(path, active_relatives):
@@ -194,6 +217,9 @@ def prune_external_save_blocks(path, active_relatives):
             active_roots.add(block_root / parts[1])
     for child in block_root.iterdir():
         if child in active_roots:
+            continue
+        if child.is_symlink():
+            LOGGER.warning("Skipping symlinked save block entry during prune: %s", child)
             continue
         try:
             if child.is_dir():
@@ -417,7 +443,10 @@ class PersistenceMixin:
         data["_save_meta"] = self.save_metadata(self.active_save_name)
         try:
             if path.exists():
-                self.backup_save_file(path, "before_quick_save")
+                try:
+                    self.backup_save_file(path, "before_quick_save")
+                except Exception:
+                    LOGGER.exception("Quick save backup failed; continuing with direct write: %s", path)
             atomic_write_split_save(path, data)
             self.write_save_metadata_sidecar(path, data["_save_meta"])
             self.prune_save_backups()
@@ -625,6 +654,18 @@ class PersistenceMixin:
         atomic_write_json_gzip(target, data)
         self.write_save_metadata_sidecar(target, metadata)
         self.prune_rolling_snapshot_files(backup_dir, "backup")
+        return target
+
+    def restore_backup_file(self, source, target):
+        """Validate a snapshot before protecting and atomically replacing its destination."""
+        source = Path(source)
+        target = Path(target)
+        payload = load_save_payload(source)
+        if not isinstance(payload, dict):
+            raise ValueError("Backup payload is not a valid save object.")
+        if target.exists():
+            self.backup_save_file(target, "before_restore")
+        atomic_write_split_save(target, payload)
         return target
 
     def prune_save_backups(self, keep=None):
@@ -864,6 +905,27 @@ class PersistenceMixin:
                     fighter_id = f"FTR-{uuid4().hex[:16]}"
                     fighter.fighter_id = fighter_id
                 seen.add(fighter_id)
+        # Legacy friendships stored names only. Backfill an ID only when the
+        # complete loaded world contains exactly one possible person.
+        fighters = []
+        seen_objects = set()
+        for group in fighter_groups:
+            for fighter in group:
+                if id(fighter) not in seen_objects:
+                    seen_objects.add(id(fighter))
+                    fighters.append(fighter)
+        by_name = {}
+        for fighter in fighters:
+            by_name.setdefault(str(getattr(fighter, "name", "") or ""), []).append(fighter)
+        valid_ids = {str(getattr(fighter, "fighter_id", "") or "") for fighter in fighters}
+        for fighter in fighters:
+            friend_id = str(getattr(fighter, "friend_fighter_id", "") or "")
+            if friend_id in valid_ids:
+                continue
+            fighter.friend_fighter_id = ""
+            matches = [candidate for candidate in by_name.get(str(getattr(fighter, "friend", "") or ""), []) if candidate is not fighter]
+            if len(matches) == 1:
+                fighter.friend_fighter_id = matches[0].fighter_id
 
     def backfill_archived_fight_log_ids(self):
         """Attach IDs to legacy bout logs only when sport/division gives one answer."""
@@ -932,7 +994,11 @@ class PersistenceMixin:
             "free_agents": [serialize_fighter_model(f) for f in self.free_agents],
             "promotions": [serialize_promotion_model(p) for p in self.promotions],
             "combat_sport_worlds": {sport: {**world, "roster": [serialize_fighter_model(fighter) for fighter in world.get("roster", [])]} for sport, world in getattr(self, "combat_sport_worlds", {}).items()},
-            "player_combat_divisions": getattr(self, "player_combat_divisions", {}),
+            # The nested division dictionaries must not alias live state. Load
+            # transactions clear/repair the application before applying this
+            # candidate, and a shared reference could erase scheduled cards
+            # from the serialized snapshot itself.
+            "player_combat_divisions": deepcopy(getattr(self, "player_combat_divisions", {})),
             "standings_history": getattr(self, "standings_history", {}),
             "regions": self.regions,
             "gyms": [serialize_gym_model(g) for g in getattr(self, "gyms", [])],
@@ -949,12 +1015,32 @@ class PersistenceMixin:
             "media_market_history": getattr(self, "media_market_history", []),
             "media_market_last_month": getattr(self, "media_market_last_month", 0),
             "engine_settings": self.engine_settings,
+            "business_settings": getattr(self, "business_settings", self.seed_business_settings()),
             "staff": self.staff,
             "staff_candidates": self.staff_candidates,
-            "scouting": self.scouting,
-            "scouting_reports": getattr(self, "scouting_reports", {}),
-            "scouting_searches": getattr(self, "scouting_searches", []),
-            "scouting_shortlist": list(getattr(self, "scouting_shortlist", [])),
+            "scouting": list(self.scouting)[-500:] if isinstance(getattr(self, "scouting", None), list) else [],
+            "scouting_reports": {
+                str(key): value for key, value in (getattr(self, "scouting_reports", {}) or {}).items()
+                if isinstance(value, dict)
+            } if isinstance(getattr(self, "scouting_reports", None), dict) else {},
+            "scouting_searches": (
+                [value for value in (getattr(self, "scouting_searches", []) or []) if isinstance(value, dict) and value.get("status") in ("In progress", "Monitoring")]
+                + [value for value in (getattr(self, "scouting_searches", []) or []) if isinstance(value, dict) and value.get("status") not in ("In progress", "Monitoring")][-500:]
+            ),
+            "scouting_shortlist": list(dict.fromkeys(
+                str(value) for value in (getattr(self, "scouting_shortlist", []) or []) if value
+            ))[-2000:],
+            "scouting_watchlists": [
+                value for value in (getattr(self, "scouting_watchlists", []) or []) if isinstance(value, dict)
+            ][:20],
+            "scouting_history": [
+                value for value in (getattr(self, "scouting_history", []) or []) if isinstance(value, dict)
+            ][-1000:],
+            "scouting_knowledge": dict(getattr(self, "scouting_knowledge", {}) or {}),
+            "scouting_alert_state": dict(getattr(self, "scouting_alert_state", {}) or {}),
+            "scouting_quarantined_reports": [
+                value for value in (getattr(self, "scouting_quarantined_reports", []) or []) if isinstance(value, dict)
+            ][-250:],
             "achievement_log": getattr(self, "achievement_log", []),
             "historical_records": getattr(self, "historical_records", {}),
             "fanbase": getattr(self, "fanbase", {}),
@@ -976,6 +1062,7 @@ class PersistenceMixin:
             "pending_rebookings": getattr(self, "pending_rebookings", []),
             "news": self.news,
             "world_chronicle": getattr(self, "world_chronicle", []),
+            "story_threads": self.json_safe_save_value(getattr(self, "story_threads", [])),
             "defunct_promotions": getattr(self, "defunct_promotions", []),
             "event_log": self.event_log,
             "season_stats": getattr(self, "season_stats", {}),
@@ -1071,6 +1158,8 @@ class PersistenceMixin:
             if hasattr(self, "engine_vars"):
                 for key, var in self.engine_vars.items():
                     var.set(self.engine_settings.get(key, 1.0))
+            if hasattr(self, "gate_multiplier_var"):
+                self.gate_multiplier_var.set(self.business_settings.get("gate_multiplier", 1.0))
             if hasattr(self, "fight_timer_delay"):
                 self.fight_timer_delay.set(max(120, min(3000, int(getattr(self, "_loaded_fight_timer_delay", 2150)))))
             self.set_player_event_location_default()
@@ -1225,6 +1314,17 @@ class PersistenceMixin:
             self.ensure_fighter_business_stats(fighter)
         self.repair_premature_retirements()
         self.ensure_fighter_ids()
+        for sport, division in list(self.player_combat_divisions.items()):
+            if not isinstance(division, dict) or sport not in self.combat_sport_worlds:
+                self.player_combat_divisions.pop(sport, None)
+                continue
+            for key in ("roster", "roster_ids", "rankings", "events", "scheduled_events", "booked_bouts", "awards", "hall_of_fame", "finance_history"):
+                if not isinstance(division.get(key, []), list):
+                    division[key] = []
+            for key in ("titles", "title_ids", "title_history", "rankings_by_division", "records", "record_book", "season_stats"):
+                if not isinstance(division.get(key, {}), dict):
+                    division[key] = {}
+            self.ensure_player_combat_division_identity(sport, self.combat_sport_worlds[sport])
         if hasattr(self, "repair_child_promotion_state"):
             self.repair_child_promotion_state()
         self.backfill_archived_fight_log_ids()
@@ -1232,15 +1332,42 @@ class PersistenceMixin:
         self.media_companies = data.get("media_companies", []) or []
         self.media_market_history = data.get("media_market_history", []) or []
         self.media_market_last_month = data.get("media_market_last_month", 0)
-        self.engine_settings = data.get("engine_settings", self.seed_engine_settings())
+        raw_engine_settings = data.get("engine_settings", {})
+        self.engine_settings = self.normalize_engine_settings(raw_engine_settings)
+        self.business_settings = self.normalize_business_settings(
+            data.get("business_settings"), legacy_engine_settings=raw_engine_settings,
+        )
         self.ensure_finance_defaults()
         self.staff = data.get("staff", self.seed_staff())
         self.staff_candidates = data.get("staff_candidates", self.seed_staff_candidates())
         self.ensure_staff_profiles()
-        self.scouting = data.get("scouting", [])
-        self.scouting_reports = data.get("scouting_reports", {})
-        self.scouting_searches = data.get("scouting_searches", [])
-        self.scouting_shortlist = list(dict.fromkeys(str(key) for key in data.get("scouting_shortlist", []) if key))
+        raw_scouting = data.get("scouting", [])
+        self.scouting = list(raw_scouting)[-500:] if isinstance(raw_scouting, list) else []
+        raw_reports = data.get("scouting_reports", {})
+        self.scouting_reports = {
+            str(key): dict(value) for key, value in raw_reports.items() if isinstance(value, dict)
+        } if isinstance(raw_reports, dict) else {}
+        raw_searches = data.get("scouting_searches", [])
+        self.scouting_searches = (
+            [dict(value) for value in raw_searches if isinstance(value, dict) and value.get("status") in ("In progress", "Monitoring")]
+            + [dict(value) for value in raw_searches if isinstance(value, dict) and value.get("status") not in ("In progress", "Monitoring")][-500:]
+        ) if isinstance(raw_searches, list) else []
+        raw_shortlist = data.get("scouting_shortlist", [])
+        self.scouting_shortlist = list(dict.fromkeys(
+            str(key) for key in raw_shortlist if key
+        ))[-2000:] if isinstance(raw_shortlist, list) else []
+        raw_watchlists = data.get("scouting_watchlists", [])
+        self.scouting_watchlists = [dict(value) for value in raw_watchlists if isinstance(value, dict)][:20] if isinstance(raw_watchlists, list) else []
+        raw_history = data.get("scouting_history", [])
+        self.scouting_history = [dict(value) for value in raw_history if isinstance(value, dict)][-1000:] if isinstance(raw_history, list) else []
+        raw_knowledge = data.get("scouting_knowledge", {})
+        self.scouting_knowledge = dict(raw_knowledge) if isinstance(raw_knowledge, dict) else {}
+        raw_alert_state = data.get("scouting_alert_state", {})
+        self.scouting_alert_state = dict(raw_alert_state) if isinstance(raw_alert_state, dict) else {}
+        raw_quarantined = data.get("scouting_quarantined_reports", [])
+        self.scouting_quarantined_reports = [
+            dict(value) for value in raw_quarantined if isinstance(value, dict)
+        ][-250:] if isinstance(raw_quarantined, list) else []
         self._scouting_state_migrated = False
         self.migrate_scouting_state()
         self.achievement_log = data.get("achievement_log", [])
@@ -1318,6 +1445,14 @@ class PersistenceMixin:
         self.pending_rebookings = data.get("pending_rebookings", [])
         for event in self.scheduled_events:
             event.setdefault("week", 1)
+            for fight in event.get("fights", []):
+                supplied_plans = fight.get("fight_plans", {})
+                supplied_plans = supplied_plans if isinstance(supplied_plans, dict) else {}
+                fighter_ids = [str(fighter_id or "") for fighter_id in fight.get("fighter_ids", [])]
+                fight["fight_plans"] = {
+                    fighter_id: self.normalize_fight_plan(supplied_plans.get(fighter_id, "Balanced"))
+                    for fighter_id in fighter_ids if fighter_id
+                }
         booking_restore = self.repair_player_scheduled_fighter_references()
         if booking_restore["unresolved"]:
             refs = ", ".join(booking_restore["unresolved"][:3])
@@ -1327,6 +1462,7 @@ class PersistenceMixin:
         # Chronicle entries are newest-first; retain the newest 800 from older,
         # oversized saves rather than accidentally keeping their oldest stories.
         self.world_chronicle = data.get("world_chronicle", [])[:800]
+        self.repair_story_threads(data.get("story_threads", []))
         self.event_log = list(data.get("event_log", []))[:EVENT_LOG_LIMIT]
         self.season_stats = data.get("season_stats", {})
         self.awards_history = data.get("awards_history", [])
@@ -1801,6 +1937,12 @@ class PersistenceMixin:
         fighter.career_goal_progress = max(0, min(100, getattr(fighter, "career_goal_progress", 0) or 0))
         fighter.career_goal_history = getattr(fighter, "career_goal_history", None) or []
         fighter.career_win_streak = max(0, getattr(fighter, "career_win_streak", 0) or 0)
+        fighter.crossroads_story_key = str(getattr(fighter, "crossroads_story_key", "") or "")
+        fighter.farewell_story_key = str(getattr(fighter, "farewell_story_key", "") or "")
+        relationship_keys = getattr(fighter, "relationship_story_keys", None)
+        fighter.relationship_story_keys = list(dict.fromkeys(
+            str(value) for value in relationship_keys if value
+        ))[-4:] if isinstance(relationship_keys, list) else []
         fighter.career_goal_last_review = max(0, getattr(fighter, "career_goal_last_review", 0) or 0)
         fighter.career_arc = getattr(fighter, "career_arc", None) or None
         if not isinstance(fighter.career_arc, dict):
@@ -1997,6 +2139,47 @@ class PersistenceMixin:
         if hasattr(self, "save_manager_status"):
             self.save_manager_status.config(text=str(message))
 
+    def refresh_save_selection_summary(self, _event=None):
+        """Keep the save inspector and selection-dependent actions synchronized."""
+        selected = self.save_slot_list.curselection() if hasattr(self, "save_slot_list") else ()
+        files = getattr(self, "save_slot_files", [])
+        has_selection = bool(selected and selected[0] < len(files))
+        for button_name in (
+            "save_load_button", "save_copy_button", "save_delete_button",
+            "save_backup_button", "save_move_button",
+        ):
+            button = getattr(self, button_name, None)
+            if button is not None:
+                button.configure(state="normal" if has_selection else "disabled")
+        if not has_selection:
+            if hasattr(self, "save_selection_title"):
+                self.save_selection_title.set("No save selected")
+            if hasattr(self, "save_selection_detail"):
+                self.save_selection_detail.set("Choose a career above to load, copy, move, back up, or delete it.")
+            return
+        path = Path(files[selected[0]])
+        slot_name = getattr(self, "save_slot_sources", {}).get(path, self.save_slot_name_from_path(path))
+        group = getattr(self, "save_slot_groups", {}).get(path, self.save_slot_group_from_path(path))
+        kind = "Spectator snapshot" if path.parent.name == "Snapshots" else "Career save"
+        try:
+            metadata = self.read_save_metadata_fast(path) or {}
+        except Exception:
+            metadata = {}
+        company = str(metadata.get("company", "Unknown company"))
+        saved_at = str(metadata.get("saved_at", "Unknown time"))[:16].replace("T", " ")
+        month = metadata.get("month", "?")
+        week = metadata.get("week", "?")
+        game_date = self.format_game_date(month, week) if month != "?" else "Unknown game date"
+        try:
+            active = path.resolve() == self.active_save_path().resolve()
+        except (OSError, ValueError):
+            active = False
+        active_note = " | ACTIVE" if active else ""
+        if hasattr(self, "save_selection_title"):
+            self.save_selection_title.set(f"{slot_name}  |  {group}{active_note}")
+        if hasattr(self, "save_selection_detail"):
+            self.save_selection_detail.set(f"{kind}  |  {company}  |  {game_date}  |  Saved {saved_at}")
+
     def create_save_folder(self):
         name = self.normalized_save_group(self.save_new_folder_name.get() if hasattr(self, "save_new_folder_name") else "")
         if name == "Main":
@@ -2172,6 +2355,14 @@ class PersistenceMixin:
             self.save_slot_groups[file] = group
             self.save_slot_list.insert("end", label)
         self._save_metadata_cache = {key: value for key, value in metadata_cache.items() if key in live_cache_keys}
+        if hasattr(self, "save_library_status"):
+            self.save_library_status.set(f"{len(primary_paths)} careers  |  {len(entries)} shown")
+        if hasattr(self, "save_active_title"):
+            self.save_active_title.set(f"ACTIVE  |  {getattr(self, 'active_save_name', 'Unsaved Session')}")
+        if hasattr(self, "save_active_detail"):
+            active_group = getattr(self, "active_save_group", "Main")
+            active_company = "Spectator Mode" if getattr(self, "spectator_mode", False) else getattr(self, "player_company_name", "Unknown company")
+            self.save_active_detail.set(f"{active_company}  |  {active_group}  |  {self.format_game_date(self.month, self.week)}")
         self.database_list.delete(0, "end")
         self.database_files = []
         if hasattr(self, "ensure_default_universe_database"):
@@ -2189,6 +2380,7 @@ class PersistenceMixin:
             self.database_list.insert("end", f"[Legacy/Section] {file.stem}")
         if current_save and self.save_slot_list.size():
             self.save_slot_list.selection_set(min(current_save[0], self.save_slot_list.size() - 1))
+        self.refresh_save_selection_summary()
         if current_db and self.database_list.size():
             self.database_list.selection_set(min(current_db[0], self.database_list.size() - 1))
         if hasattr(self, "autosave_status_label"):
@@ -2391,6 +2583,11 @@ class PersistenceMixin:
         self.scouting_reports = {}
         self.scouting_searches = []
         self.scouting_shortlist = []
+        self.scouting_watchlists = []
+        self.scouting_history = []
+        self.scouting_knowledge = {}
+        self.scouting_alert_state = {}
+        self.scouting_quarantined_reports = []
         self._scouting_state_migrated = True
         self.inbox = promo.inbox or []
         self.owner_goals = promo.owner_goals or self.seed_owner_goals()
@@ -2763,7 +2960,10 @@ class PersistenceMixin:
             current_path = self.active_save_path()
             if current_path.exists() and current_path != path:
                 self.update_busy_overlay("Creating a recovery snapshot of the current save...", 18)
-                self.backup_save_file(current_path, "before_slot_load")
+                try:
+                    self.backup_save_file(current_path, "before_slot_load")
+                except Exception:
+                    LOGGER.exception("Slot load backup failed; continuing with load into target slot: %s", current_path)
             self.update_busy_overlay("Reading save data...", 28)
             data = load_save_payload(path)
             self.update_busy_overlay("Rebuilding fighters, companies, and world history...", 42)
@@ -2909,9 +3109,12 @@ class PersistenceMixin:
             target = self.save_slot_dir(target_name) / "savegame.json"
             if not messagebox.askyesno("Restore Backup", f"Restore this backup to slot '{target_name}'?\n\n{item.name}"):
                 return
-            if target.exists():
-                self.backup_save_file(target, "before_restore")
-            atomic_write_split_save(target, json.loads(read_json_text(item)))
+            try:
+                self.restore_backup_file(item, target)
+            except Exception as exc:
+                LOGGER.exception("Backup restore failed from %s to %s", item, target)
+                messagebox.showerror("Restore Backup Failed", f"The destination slot was left untouched.\n\n{type(exc).__name__}: {exc}")
+                return
             self.refresh_game_menu()
             messagebox.showinfo("Backup Restored", f"Restored to {target.name}.")
 
@@ -3445,6 +3648,11 @@ class PersistenceMixin:
         self.scouting_reports = {}
         self.scouting_searches = []
         self.scouting_shortlist = []
+        self.scouting_watchlists = []
+        self.scouting_history = []
+        self.scouting_knowledge = {}
+        self.scouting_alert_state = {}
+        self.scouting_quarantined_reports = []
         self._scouting_state_migrated = True
         self.academy = self.academy_defaults() if hasattr(self, "academy_defaults") else {}
         self.inbox = []
@@ -3534,9 +3742,12 @@ class PersistenceMixin:
         if isinstance(player_spec.get("finance"), dict):
             self.finance.update(deepcopy(player_spec["finance"]))
         self.engine_settings = self.seed_engine_settings()
+        self.business_settings = self.seed_business_settings()
         if hasattr(self, "engine_vars"):
             for key, var in self.engine_vars.items():
                 var.set(self.engine_settings.get(key, 1.0))
+        if hasattr(self, "gate_multiplier_var"):
+            self.gate_multiplier_var.set(self.business_settings.get("gate_multiplier", 1.0))
         self.staff = self.seed_staff()
         if isinstance(player_spec.get("staff"), list):
             self.staff = deepcopy(player_spec["staff"])
@@ -3546,6 +3757,11 @@ class PersistenceMixin:
         self.scouting_reports = {}
         self.scouting_searches = []
         self.scouting_shortlist = []
+        self.scouting_watchlists = []
+        self.scouting_history = []
+        self.scouting_knowledge = {}
+        self.scouting_alert_state = {}
+        self.scouting_quarantined_reports = []
         self._scouting_state_migrated = True
         self.academy = self.academy_defaults() if hasattr(self, "academy_defaults") else {"owned": False, "level": 0, "capacity": 0, "prospects": [], "talent_pool": [], "weekly_cost": 0, "auto_train": True}
         if isinstance(player_spec.get("academy"), dict):
@@ -3571,6 +3787,8 @@ class PersistenceMixin:
         self.post_show_bonuses = deepcopy(player_spec.get("post_show_bonuses", {"fight": 5000, "ko": 5000, "sub": 5000}))
         self.news = ["A new game has started."]
         self.world_chronicle = []
+        self.story_threads = []
+        self._story_thread_index = {}
         self.fanbase = {"core_support": 42, "casual_reach": 30, "identity": "Regional Fight Community", "home_region": self.player_region, "event_history": []}
         self.defunct_promotions = []
         self.booked = []

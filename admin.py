@@ -69,14 +69,23 @@ class AdminMixin:
 
     def apply_engine_settings(self):
         for key, var in self.engine_vars.items():
-            self.engine_settings[key] = round(max(0.5, min(2.0, var.get())), 2)
-        self.inbox.append({"subject": "Engine Settings Updated", "body": f"Simulation engine settings updated: {self.engine_settings}", "type": "Rules", "resolved": False})
+            minimum, maximum = FIGHT_ENGINE_SETTING_BOUNDS[key]
+            self.engine_settings[key] = round(max(minimum, min(maximum, var.get())), 2)
+        if hasattr(self, "gate_multiplier_var"):
+            minimum, maximum = BUSINESS_SIMULATION_SETTING_BOUNDS["gate_multiplier"]
+            self.business_settings["gate_multiplier"] = round(
+                max(minimum, min(maximum, self.gate_multiplier_var.get())), 2
+            )
+        self.inbox.append({"subject": "Simulation Settings Updated", "body": f"Fight mechanics: {self.engine_settings}; business simulation: {self.business_settings}", "type": "Rules", "resolved": False})
         self.refresh_all()
 
     def reset_engine_settings(self):
         self.engine_settings = self.seed_engine_settings()
+        self.business_settings = self.seed_business_settings()
         for key, var in self.engine_vars.items():
             var.set(self.engine_settings[key])
+        if hasattr(self, "gate_multiplier_var"):
+            self.gate_multiplier_var.set(self.business_settings["gate_multiplier"])
         self.refresh_all()
 
     @staticmethod
@@ -236,7 +245,7 @@ class AdminMixin:
         return (
             f"{fighter.name}  |  OVR {fighter.overall}  |  ELO {fighter.elo_rating}\n"
             f"{fighter.gender} {fighter.weight}  |  {fighter.record}  |  Age {fighter.age}  |  {fighter.nationality}\n"
-            f"{company}  |  {fighter.style} / {fighter.stance}  |  {fighter.trait}\n"
+            f"{company}  |  {fighter.style_label} / {fighter.stance}  |  {fighter.trait}\n"
             f"Strike {fighter.striking}  Wrestle {fighter.wrestling}  Ground {fighter.grappling}  Cardio {fighter.cardio}  Chin {fighter.chin}\n"
             f"Power {fighter.power}  TD Def {fighter.takedown_defence}  Control {fighter.ground_control}  Subs {fighter.submissions}/{fighter.submission_defence}\n"
             f"Walk {fighter.walk_weight or self.default_walk_weight(fighter)} lb  Cut skill {self.ds(fighter, 'weight_cutting', fighter.cardio)}  Last cut penalty {fighter.weight_cut_penalty}\n"
@@ -521,6 +530,55 @@ class AdminMixin:
             f"Sandbox weigh-ins: {a.name} {a_weigh['scale_weight']} lb ({a_weight_note}, cut penalty {a_weigh['penalty']}) | {b.name} {b_weigh['scale_weight']} lb ({b_weight_note}, cut penalty {b_weigh['penalty']})",
         ]
         lines.extend(commentary)
+        result_metrics = getattr(getattr(self, "_last_fight_result", None), "metrics", {})
+        move_metrics = result_metrics.get("exchanges", {})
+        def family_line(slot, fighter):
+            rows = move_metrics.get(slot, {}).get("move_families", {})
+            leaders = sorted(rows.items(), key=lambda item: (-item[1].get("attempts", 0), item[0]))[:4]
+            summary = ", ".join(f"{family} {row.get('effective', 0)}/{row.get('attempts', 0)}" for family, row in leaders)
+            return f"{fighter.name}: {summary or 'no established family'}"
+        move_line = "Move families (effective/used) - " + family_line("a", a) + " | " + family_line("b", b)
+        analysis_lines = [move_line]
+
+        def technique_line(slot, fighter):
+            techniques = result_metrics.get("techniques", {}).get(slot, {})
+            top_moves = techniques.get("top_moves", [])
+            top = ", ".join(
+                f"{row.get('move_id', '').replace('_', ' ')} x{row.get('attempts', 0)}"
+                for row in top_moves[:3]
+            ) or "none"
+            mechanics = techniques.get("average_mechanics", {})
+            stance = ", ".join(
+                f"{name} {count}" for name, count in sorted(techniques.get("stance_matchups", {}).items())
+            ) or "none"
+            return (
+                f"{fighter.name}: top {top}; sequences {techniques.get('completed_sequences', 0)}; "
+                f"technique load E{mechanics.get('energy', 1.0):.2f}/M{mechanics.get('miss_risk', 1.0):.2f}/C{mechanics.get('counter_risk', 1.0):.2f}; "
+                f"stance lanes {stance}"
+            )
+
+        def signature_line(slot, fighter):
+            rows = result_metrics.get("signature_moves", {}).get(slot, {})
+            attempts = sum(int(row.get("attempts", 0)) for row in rows.values())
+            effective = sum(int(row.get("landed", 0)) for row in rows.values())
+            return f"{fighter.name} {effective}/{attempts}"
+
+        analysis_lines.extend([
+            "Technique analysis - " + technique_line("a", a),
+            "Technique analysis - " + technique_line("b", b),
+            "Signature moves (effective/used) - " + signature_line("a", a) + " | " + signature_line("b", b),
+            (
+                f"Fight-plan evolution - {a.name}: {a.last_fight_stats.get('fight_plan', 'Balanced')} -> "
+                f"{a.last_fight_stats.get('final_fight_plan', 'Balanced')} "
+                f"({a.last_fight_stats.get('plan_adjustments', 0)} adjustments, "
+                f"{a.last_fight_stats.get('plan_confidence', 0.5):.0%} confidence) | "
+                f"{b.name}: {b.last_fight_stats.get('fight_plan', 'Balanced')} -> "
+                f"{b.last_fight_stats.get('final_fight_plan', 'Balanced')} "
+                f"({b.last_fight_stats.get('plan_adjustments', 0)} adjustments, "
+                f"{b.last_fight_stats.get('plan_confidence', 0.5):.0%} confidence)"
+            ),
+        ])
+        lines.extend(analysis_lines)
         if method == "Draw":
             lines.append(f"Result: {a.name} vs {b.name} ends in a draw, R{round_no} | Fight excitement {excitement}")
         else:
@@ -532,10 +590,11 @@ class AdminMixin:
             "summary": lines[-1],
         }
         if hasattr(self, "sim_result"):
-            self.sim_result.config(text="Fight prepared. Watch it to reveal the result." if watch else lines[-1])
+            revealed = lines[-1] + "\n" + "\n".join(analysis_lines)
+            self.sim_result.config(text="Fight prepared. Watch it to reveal the result." if watch else revealed)
         if watch:
             event = {"name": "Quick Fight Simulator", "venue": "Simulation Lab", "region": self.player_region, "city": "Sandbox", "month": self.month, "week": self.week, "fights": [fight]}
-            self.open_live_fight_window(event, package, apply_results=False, on_complete=lambda: self.sim_result.config(text=lines[-1]))
+            self.open_live_fight_window(event, package, apply_results=False, on_complete=lambda: self.sim_result.config(text=revealed))
 
     def run_simulation_audit(self):
         """Audit competitive fight outcomes without mutating the active career.
@@ -593,7 +652,7 @@ class AdminMixin:
             regional_pull = random.uniform(0.8, 1.35)
             attendance = min(venue_capacity, max(120, round(total_hype * random.uniform(8, 24) * regional_pull)))
             ticket_price = random.randint(32, 92)
-            gate = round(attendance * ticket_price * self.engine_settings.get("gate_multiplier", 1.0))
+            gate = round(attendance * ticket_price * self.business_settings.get("gate_multiplier", 1.0))
             rights = round(total_hype * random.randint(550, 1700) * (0.65 + total_build / 210))
             production = len(fights) * random.randint(19000, 45000) + venue_capacity * 16
             sponsorship = round(total_hype * random.randint(380, 1100) * (0.6 + total_build / 220))
@@ -854,6 +913,7 @@ class AdminMixin:
             row = dict(value) if isinstance(value, dict) else {}
             row["name"] = name
             row["holder"] = str(row.get("holder", "") or "")
+            row["holder_id"] = str(row.get("holder_id", "") or "")
             row["defenses"] = max(0, int(row.get("defenses", 0) or 0))
             row["history"] = list(row.get("history", []) or [])[:80]
             normalized[name] = row
@@ -865,21 +925,26 @@ class AdminMixin:
         if not belt:
             return False
         previous = belt.get("holder", "")
-        defense = previous == winner.name
+        previous_id = str(belt.get("holder_id", "") or "")
+        defense = previous_id == winner.fighter_id if previous_id else previous == winner.name
         belt["holder"] = winner.name
+        belt["holder_id"] = winner.fighter_id
         belt["defenses"] = belt.get("defenses", 0) + (1 if defense else 0)
         action = "Defense" if defense else "Champion Crowned"
         belt["history"].insert(0, {
             "date": f"Month {getattr(self, 'month', 1)} Week {getattr(self, 'week', 1)}",
-            "action": action, "fighter": winner.name, "previous": previous,
+            "action": action, "fighter": winner.name, "fighter_id": winner.fighter_id, "previous": previous, "previous_id": previous_id,
             "note": f"Defeated {loser.name} by {method}.",
         })
         belt["history"] = belt["history"][:80]
         winner.special_titles = list(getattr(winner, "special_titles", None) or [])
         if belt_name not in winner.special_titles:
             winner.special_titles.append(belt_name)
-        if previous and previous != winner.name:
-            former = next((fighter for fighter in self.roster if fighter.name == previous), None)
+        if previous and not defense:
+            former = next((fighter for fighter in self.roster if fighter.fighter_id == previous_id), None) if previous_id else None
+            if former is None:
+                matches = [fighter for fighter in self.roster if fighter.name == previous]
+                former = matches[0] if len(matches) == 1 else None
             if former:
                 former.special_titles = [name for name in (getattr(former, "special_titles", None) or []) if name != belt_name]
         return True
@@ -887,22 +952,26 @@ class AdminMixin:
     def vacate_special_belts_held_by(self, fighter, reason):
         self.special_belts = self.normalize_special_belts(getattr(self, "special_belts", {}))
         for belt in self.special_belts.values():
-            if belt.get("holder") != fighter.name:
+            holder_id = str(belt.get("holder_id", "") or "")
+            if (holder_id and holder_id != fighter.fighter_id) or (not holder_id and belt.get("holder") != fighter.name):
                 continue
             belt["holder"] = ""
+            belt["holder_id"] = ""
             belt["history"].insert(0, {
                 "date": f"Month {getattr(self, 'month', 1)} Week {getattr(self, 'week', 1)}",
-                "action": "Vacated", "fighter": fighter.name, "previous": fighter.name, "note": reason,
+                "action": "Vacated", "fighter": fighter.name, "fighter_id": fighter.fighter_id,
+                "previous": fighter.name, "previous_id": fighter.fighter_id, "note": reason,
             })
             belt["history"] = belt["history"][:80]
         fighter.special_titles = []
 
-    def belt_history_entry(self, action, key, fighter_name="", note=""):
+    def belt_history_entry(self, action, key, fighter_name="", note="", fighter_id=""):
         entry = {
             "date": f"Month {getattr(self, 'month', 1)} Week {getattr(self, 'week', 1)}",
             "action": action,
             "division": key,
             "fighter": fighter_name,
+            "fighter_id": str(fighter_id or ""),
             "note": note,
         }
         # A title change belongs to the day its card ran, so a lineage reads as
@@ -913,9 +982,9 @@ class AdminMixin:
             entry["day"] = self.normalize_day(day)
         return entry
 
-    def record_belt_history(self, history, key, action, fighter_name="", note=""):
+    def record_belt_history(self, history, key, action, fighter_name="", note="", fighter_id=""):
         history = self.normalize_belt_history(history)
-        history[key].insert(0, self.belt_history_entry(action, key, fighter_name, note))
+        history[key].insert(0, self.belt_history_entry(action, key, fighter_name, note, fighter_id))
         return history
 
     def set_primary_champion(self, roster, belts, belt_history, champion, note, defense=False, appointed=False):
@@ -925,19 +994,20 @@ class AdminMixin:
         previous = belts.get(key, "")
         for fighter in roster:
             if fighter.gender == champion.gender and fighter.weight == champion.weight:
-                fighter.champion = fighter.name == champion.name
-                if fighter.name == champion.name:
+                is_champion = fighter is champion or self.fighter_identity_key(fighter) == self.fighter_identity_key(champion)
+                fighter.champion = is_champion
+                if is_champion:
                     fighter.interim_champion = False
         belts[key] = champion.name
         if previous != champion.name:
             prior_lineage = bool(belt_history.get(key))
             action = "Champion Crowned" if previous or prior_lineage else ("Inaugural Champion Appointed" if appointed else "Inaugural Champion")
-            belt_history = self.record_belt_history(belt_history, key, action, champion.name, note)
+            belt_history = self.record_belt_history(belt_history, key, action, champion.name, note, champion.fighter_id)
             if not appointed:
                 champion.title_wins = getattr(champion, "title_wins", 0) + 1
         elif defense:
             champion.title_defenses = getattr(champion, "title_defenses", 0) + 1
-            belt_history = self.record_belt_history(belt_history, key, "Title Defense", champion.name, note)
+            belt_history = self.record_belt_history(belt_history, key, "Title Defense", champion.name, note, champion.fighter_id)
         return belts, belt_history
 
     def set_interim_champion(self, roster, interim_belts, belt_history, champion, note):
@@ -947,14 +1017,14 @@ class AdminMixin:
         previous = interim_belts.get(key, "")
         for fighter in roster:
             if fighter.gender == champion.gender and fighter.weight == champion.weight:
-                fighter.interim_champion = fighter.name == champion.name
+                fighter.interim_champion = fighter is champion or self.fighter_identity_key(fighter) == self.fighter_identity_key(champion)
         interim_belts[key] = champion.name
         if previous != champion.name:
-            belt_history = self.record_belt_history(belt_history, key, "Interim Champion Crowned", champion.name, note)
+            belt_history = self.record_belt_history(belt_history, key, "Interim Champion Crowned", champion.name, note, champion.fighter_id)
             champion.interim_title_wins = getattr(champion, "interim_title_wins", 0) + 1
         else:
             champion.interim_title_defenses = getattr(champion, "interim_title_defenses", 0) + 1
-            belt_history = self.record_belt_history(belt_history, key, "Interim Title Defense", champion.name, note)
+            belt_history = self.record_belt_history(belt_history, key, "Interim Title Defense", champion.name, note, champion.fighter_id)
         return interim_belts, belt_history
 
     def clear_interim_belt(self, roster, interim_belts, belt_history, key, note):
@@ -981,13 +1051,13 @@ class AdminMixin:
         if belts.get(key) == fighter.name:
             belts[key] = ""
             fighter.champion = False
-            belt_history = self.record_belt_history(belt_history, key, "Vacated", fighter.name, reason)
+            belt_history = self.record_belt_history(belt_history, key, "Vacated", fighter.name, reason, fighter.fighter_id)
             if roster is getattr(self, "roster", None):
                 self.queue_vacant_title_alert(key, f"{fighter.name}'s reign ended. Reason: {reason}", getattr(fighter, "fighter_id", ""))
         if interim_belts.get(key) == fighter.name:
             interim_belts[key] = ""
             fighter.interim_champion = False
-            belt_history = self.record_belt_history(belt_history, key, "Interim Vacated", fighter.name, reason)
+            belt_history = self.record_belt_history(belt_history, key, "Interim Vacated", fighter.name, reason, fighter.fighter_id)
         return belts, interim_belts, belt_history
 
     def queue_vacant_title_alert(self, key, reason="No champion is currently recognized.", fighter_id=""):

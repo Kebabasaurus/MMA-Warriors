@@ -13,9 +13,9 @@ All cues are stereo, 16-bit PCM at 44.1 kHz. `manifest.json` lists their family 
 source recordings, intended
 phase, trigger, loop behavior, duration, and suggested playback gain. `LICENSES.md` contains the
 required Gregor Quendel attribution and documents the CC0 sources. A `loop` value marks a file as
-safe to loop in a future sustained ambience channel; the current player uses one bounded pass per
-trigger so ambience cannot mask commentary. Keep the calmer beds beneath commentary and reserve
-the loudest reactions for knockdowns and finishes.
+safe for the sustained Fight Night ambience channel. The player crossfades that loop and keeps one
+quiet arena bed open across a live card while bounded reactions play above it. Keep the calmer beds
+beneath commentary and reserve the loudest reactions for knockdowns and finishes.
 Short vocal reactions are deliberately tucked below the sustained arena response: the clean-strike
 "ooh" uses a lower master target, and the knockdown gasp is attenuated inside the layered roar.
 Runtime gain also follows the shared fighter-location model: an exact hometown appearance gets the

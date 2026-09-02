@@ -19,19 +19,20 @@ if not defined PY (
 
 if not defined PY (
     echo Python was not found. Install Python 3 with Tkinter, then run this again.
-    goto done
+    pause
+    exit /b 1
 )
 
-%PY% "%APP_DIR%run_regression_suite.py"
+"%PY%" "%APP_DIR%run_regression_suite.py"
 if errorlevel 1 goto failed
 
 echo.
 echo All isolated shipping and focused regression playtests passed.
-goto done
+pause
+exit /b 0
 
 :failed
 echo.
 echo A shipping test failed. Review the traceback above before building.
-
-:done
 pause
+exit /b 1

@@ -8,12 +8,14 @@ import tempfile
 import threading
 import tkinter as tk
 import wave
+from copy import deepcopy
 from dataclasses import asdict
 from pathlib import Path
 from tkinter import ttk
 from types import SimpleNamespace
 
 import test_support
+from fight_moves import MOVE_REGISTRY
 
 
 ROOT = Path(__file__).resolve().parent
@@ -189,7 +191,7 @@ def assert_crowd_audio_runtime(game):
         "fight_night_audio_output": probe.AUDIO_DEFAULT,
     }
 
-    def capture_playback(entry, volume, device_index=None):
+    def capture_playback(entry, volume, device_index=None, cancel_event=None):
         played.append((entry, volume, device_index))
         playback_finished.set()
 
@@ -203,14 +205,14 @@ def assert_crowd_audio_runtime(game):
     played.clear()
     playback_finished.clear()
     probe._fight_night_last_sound_at = 0.0
-    probe._fight_night_last_family_at = {}
+    probe._fight_night_last_cue_at = {}
     probe.set_fight_night_audio_volume(25)
     assert_true(probe.play_fight_night_sound("decision"),
                 "A cue was not accepted after changing the live volume")
     assert_true(playback_finished.wait(2.0) and abs(played[0][1] - 0.25) < 0.001,
                 "The next Fight Night cue did not use the adjusted live volume")
     probe._fight_night_last_sound_at = 0.0
-    probe._fight_night_last_family_at = {}
+    probe._fight_night_last_cue_at = {}
     probe.set_fight_night_audio_volume(0)
     assert_true(not probe.play_fight_night_sound("decision"),
                 "Zero Fight Night volume did not silence new cues")
@@ -345,6 +347,62 @@ def _run_smoke_suite():
         arc_probe = game.Fighter("Career Arc Probe", "Lightweight", 20, 0, 0, 58, 58, 58, 58, 58, 10, 0, 70, 5000)
         arc_probe.potential = 88
         arc_probe.academy_graduate = True
+        arc_probe.academy_prospect_id = "smoke-academy-prospect"
+        arc_round_trip = game.Fighter(**asdict(arc_probe))
+        assert_true(arc_round_trip.academy_prospect_id == "smoke-academy-prospect",
+                    "Academy mentorship identity did not survive fighter serialization")
+        legacy_arc_row = asdict(arc_probe)
+        legacy_arc_row.pop("academy_prospect_id")
+        assert_true(game.Fighter(**legacy_arc_row).academy_prospect_id == "",
+                    "Legacy fighter data did not receive a safe academy mentorship identity default")
+        arc_probe.contract_story_key = "contract-saga:smoke:company:1:1"
+        contract_story_round_trip = game.Fighter(**asdict(arc_probe))
+        assert_true(contract_story_round_trip.contract_story_key == arc_probe.contract_story_key,
+                    "Active contract saga identity did not survive fighter serialization")
+        legacy_contract_row = asdict(arc_probe)
+        legacy_contract_row.pop("contract_story_key")
+        assert_true(game.Fighter(**legacy_contract_row).contract_story_key == "",
+                    "Legacy fighter data did not receive a safe empty contract saga identity")
+        arc_probe.feeder_story_key = "feeder-pathway:smoke:child-company:1:1"
+        feeder_story_round_trip = game.Fighter(**asdict(arc_probe))
+        assert_true(feeder_story_round_trip.feeder_story_key == arc_probe.feeder_story_key,
+                    "Active feeder pathway identity did not survive fighter serialization")
+        legacy_feeder_row = asdict(arc_probe)
+        legacy_feeder_row.pop("feeder_story_key")
+        assert_true(game.Fighter(**legacy_feeder_row).feeder_story_key == "",
+                    "Legacy fighter data did not receive a safe empty feeder pathway identity")
+        arc_probe.breakout_story_key = "breakout:smoke:1:1:opponent:5:2:0"
+        breakout_story_round_trip = game.Fighter(**asdict(arc_probe))
+        assert_true(breakout_story_round_trip.breakout_story_key == arc_probe.breakout_story_key,
+                    "Active breakout-run identity did not survive fighter serialization")
+        legacy_breakout_row = asdict(arc_probe)
+        legacy_breakout_row.pop("breakout_story_key")
+        assert_true(game.Fighter(**legacy_breakout_row).breakout_story_key == "",
+                    "Legacy fighter data did not receive a safe empty breakout-run identity")
+        arc_probe.crossroads_story_key = "crossroads:smoke:1:1:opponent:12:8:0"
+        crossroads_story_round_trip = game.Fighter(**asdict(arc_probe))
+        assert_true(crossroads_story_round_trip.crossroads_story_key == arc_probe.crossroads_story_key,
+                    "Active Career Crossroads identity did not survive fighter serialization")
+        legacy_crossroads_row = asdict(arc_probe)
+        legacy_crossroads_row.pop("crossroads_story_key")
+        assert_true(game.Fighter(**legacy_crossroads_row).crossroads_story_key == "",
+                    "Legacy fighter data did not receive a safe empty Career Crossroads identity")
+        arc_probe.farewell_story_key = "farewell:smoke:12"
+        farewell_story_round_trip = game.Fighter(**asdict(arc_probe))
+        assert_true(farewell_story_round_trip.farewell_story_key == arc_probe.farewell_story_key,
+                    "Active Career Farewell identity did not survive fighter serialization")
+        legacy_farewell_row = asdict(arc_probe)
+        legacy_farewell_row.pop("farewell_story_key")
+        assert_true(game.Fighter(**legacy_farewell_row).farewell_story_key == "",
+                    "Legacy fighter data did not receive a safe empty Career Farewell identity")
+        arc_probe.relationship_story_keys = ["relationship:smoke:opponent"]
+        relationship_story_round_trip = game.Fighter(**asdict(arc_probe))
+        assert_true(relationship_story_round_trip.relationship_story_keys == arc_probe.relationship_story_keys,
+                    "Active fighter-relationship identity did not survive fighter serialization")
+        legacy_relationship_row = asdict(arc_probe)
+        legacy_relationship_row.pop("relationship_story_keys")
+        assert_true(game.Fighter(**legacy_relationship_row).relationship_story_keys == [],
+                    "Legacy fighter data did not receive a safe empty relationship-story identity")
         app.roster.append(arc_probe)
         assert_true(app.start_career_arc(arc_probe, "Homegrown Champion", "Smoke-test academy graduation"),
                     "Academy graduate could not begin a homegrown career story")
@@ -450,6 +508,96 @@ def _run_smoke_suite():
         fighter_ids = [fighter.fighter_id for fighter in all_objects]
         assert_true(len(fighter_ids) == len(set(fighter_ids)),
                     "Opening world contains duplicate fighter identities")
+        source_records = app.starting_fighter_records()
+        source_ids = [str(record.get("fighter_id", "")).strip() for record in source_records]
+        assert_true(len(source_ids) == 1534 and len(source_ids) == len(set(source_ids)) and all(source_ids),
+                    "The shipped universe does not provide one durable ID per canonical MMA source fighter")
+        source_identity_probe = next(record for record in source_records if record["name"] == "Tony Ferguson" and record["owner"] == "BAMMA")
+        runtime_identity_probe = next(fighter for fighter in all_objects if fighter.fighter_id == source_identity_probe["fighter_id"])
+        assert_true(
+            (runtime_identity_probe.birth_country, runtime_identity_probe.hometown)
+            == (source_identity_probe["birth_country"], source_identity_probe["hometown"]),
+            "A canonical source fighter did not retain their authored ID and birthplace in the opening world",
+        )
+        expected_style_repairs = {
+            "Jiri Prochazka": "Kickboxer", "Brandon Royval": "BJJ",
+            "Lito Adiwang": "Sanda", "Kevin Belingon": "Sanda",
+        }
+        seeded_by_name = {fighter.name: fighter for fighter in all_objects}
+        assert_true(
+            all(seeded_by_name[name].style == style for name, style in expected_style_repairs.items()),
+            "Unsupported shipped MMA styles survived new-universe seeding",
+        )
+        invalid_style_identities = [
+            (fighter.name, fighter.style, fighter.secondary_style)
+            for fighter in all_objects
+            if (fighter.style not in game.STYLES
+                or (fighter.secondary_style
+                    and (fighter.secondary_style not in game.STYLES
+                         or fighter.secondary_style == fighter.style)))
+        ]
+        assert_true(
+            not invalid_style_identities,
+            "Opening world contains unsupported or duplicate fighter styles: "
+            + repr(invalid_style_identities[:8]),
+        )
+        mixed_style_count = sum(bool(fighter.secondary_style) for fighter in all_objects)
+        assert_true(
+            mixed_style_count >= round(len(all_objects) * 0.55),
+            "Opening world did not seed the intended breadth of mixed-style fighters",
+        )
+        invalid_signatures = [
+            (fighter.name, fighter.signature_moves)
+            for fighter in all_objects
+            if len(fighter.signature_moves) > 3
+            or len(fighter.signature_moves) != len(set(fighter.signature_moves))
+            or any(move_id not in MOVE_REGISTRY for move_id in fighter.signature_moves)
+        ]
+        assert_true(not invalid_signatures,
+                    "Opening world contains missing, duplicate, or unknown signature moves: " + repr(invalid_signatures[:8]))
+        assert_true(sum(bool(fighter.signature_moves) for fighter in all_objects) >= round(len(all_objects) * 0.65),
+                    "Too few skill-supported opening fighters received deterministic signature moves")
+        assert_true(all(isinstance(fighter.move_mastery, dict)
+                        and all((move_id in MOVE_REGISTRY or move_id.startswith("defense:")) and 0 <= value <= 100
+                                for move_id, value in fighter.move_mastery.items())
+                        for fighter in all_objects),
+                    "Opening fighter technique mastery was not normalized")
+        authored_signatures = {
+            "Jon Jones": {"spinning_elbow", "body_lock_trip", "step_in_elbow"},
+            "Islam Makhachev": {"outside_trip", "rear_naked_choke", "arm_triangle"},
+            "Charles Oliveira": {"rear_naked_choke", "guillotine_choke", "guard_armbar"},
+            "Max Holloway": {"double_jab_cross", "body_head_change", "cross_hook_cross"},
+            "Alex Pereira": {"lead_hook_cross", "calf_kick", "body_head_change"},
+            "Israel Adesanya": {"pull_counter", "question_mark_kick", "side_kick"},
+            "Georges St-Pierre": {"jab_to_shot", "double_leg_finish", "rear_naked_choke"},
+            "Anderson Silva": {"pull_counter", "intercepting_knee", "lead_teep"},
+            "Conor McGregor": {"pull_counter", "cross_body_kick", "lead_hook_cross"},
+            "Kayla Harrison": {"hip_toss", "inside_trip", "top_armbar"},
+            "Merab Dvalishvili": {"chained_reshot", "lift_mat_return", "rear_waist_ride"},
+            "Valentina Shevchenko": {"spinning_back_kick", "outside_trip", "step_in_elbow"},
+            "Lyoto Machida": {"side_kick", "pull_counter", "head_round_kick"},
+            "Kazushi Sakuraba": {"single_leg_entry", "kimura_guard", "toe_hold"},
+            "Zhang Weili": {"hook_low_kick", "clinch_knee", "spinning_elbow"},
+            "Fedor Emelianenko Legend": {"body_lock_trip", "straight_ankle_lock", "ride_control"},
+            "Sean O'Malley": {"cross_body_kick", "calf_kick", "slip_cross"},
+            "Royce Gracie": {"guard_submission_chain", "back_take_transition", "rear_naked_choke"},
+        }
+        assert_true(all(set(seeded_by_name[name].signature_moves) == expected
+                        for name, expected in authored_signatures.items()),
+                    "Authored first-cohort signature moves did not survive new-universe seeding")
+        rare_specialists = {
+            "anaconda_choke", "body_jab", "chained_reshot", "darce_choke",
+            "front_headlock_go_behind", "guillotine_choke", "heel_hook", "kneebar",
+            "lift_mat_return", "limp_leg_escape", "rear_waist_ride", "sit_out_reversal",
+            "snapdown_front_headlock", "straight_ankle_lock", "toe_hold",
+            "turtle_breakdown", "whizzer_recovery",
+        }
+        authored_move_ids = {
+            move_id for fighter in all_objects for move_id in fighter.signature_moves
+        }
+        assert_true(rare_specialists <= authored_move_ids,
+                    "The shipped authored cohort omitted representative specialist identities: "
+                    + repr(sorted(rare_specialists - authored_move_ids)))
         source_marked = [fighter for fighter in all_objects if re.search(r"\s+(?:Legend|FA|BAMMA)$", fighter.name, re.IGNORECASE)]
         assert_true(len(source_marked) == 57,
                     "Opening world source-marker audit changed unexpectedly; inspect seeded snapshots before changing labels")
@@ -506,6 +654,16 @@ def _run_smoke_suite():
         app.ensure_rule_defaults()
         for rule_key in ("ui_owner_goals_collapsed", "ui_show_details_collapsed", "ui_matchup_insight_collapsed"):
             assert_true(rule_key in app.rules, f"Legacy saves do not receive the {rule_key} UI default")
+        app.rules.pop("fight_commentary_mode", None)
+        app.rules.pop("fight_commentary_personality", None)
+        app.ensure_rule_defaults()
+        assert_true(app.rules["fight_commentary_mode"] == "Broadcast" and app.rules["fight_commentary_personality"] == "Balanced",
+                    "Legacy saves do not receive safe Fight Night commentary defaults")
+        app.rules["fight_commentary_mode"] = "unsupported"
+        app.rules["fight_commentary_personality"] = None
+        app.ensure_rule_defaults()
+        assert_true(app.rules["fight_commentary_mode"] == "Broadcast" and app.rules["fight_commentary_personality"] == "Balanced",
+                    "Malformed Fight Night commentary preferences were not normalized")
         assert_true(not hasattr(app, "inbox_discovery_hint") and not hasattr(app, "matchmaking_discovery_hint"),
                     "Removed full-width NEW HERE guidance was rebuilt on Inbox or Matchmaking")
         assert_true(int(app.inbox_tree.cget("height")) <= 8 and int(app.goals_tree.cget("height")) <= 8,
@@ -597,6 +755,8 @@ def _run_smoke_suite():
         app.configure_show_details_layout(1700)
         assert_true(app._show_details_layout_mode == "wide" and [int(group.grid_info()["row"]) for group in show_groups] == [0, 0, 1, 1, 0],
                     "Wide Show Details does not use its compact two-row layout")
+        assert_true(int(app.show_details_economics_fields.grid_info()["row"]) == 1,
+                    "Wide Show Details does not keep per-event economics on its second row")
         assert_true(int(app.schedule_status.grid_info()["row"]) == int(app.event_broadcaster_status.grid_info()["row"]) == 0,
                     "Wide Show Details does not share one compact status row")
         app.configure_show_details_layout(1200)
@@ -1048,6 +1208,13 @@ def _run_smoke_suite():
         assert_true(expected_uk_male.issubset(uk_pools["male"]),
                     "UK male generation pool did not load the complete gendered directory")
         identity_sample = [app.create_generated_fighter(region="Europe") for _ in range(80)]
+        assert_true(all(fighter.style in game.STYLES for fighter in identity_sample),
+                    "Generated fighters did not receive a supported primary MMA style")
+        assert_true(all(not fighter.secondary_style or (
+                        fighter.secondary_style in game.STYLES
+                        and fighter.secondary_style != fighter.style
+                    ) for fighter in identity_sample),
+                    "Generated fighters received an invalid or duplicate secondary style")
         assert_true(all(fighter.nationality != "European" for fighter in identity_sample),
                     "Generated European fighters still use a generic continental nationality")
         assert_true(len({fighter.nationality for fighter in identity_sample}) >= 8,
@@ -1366,9 +1533,25 @@ def _run_smoke_suite():
             fighter.camp_weeks, fighter.camp_boost = saved_camps[fighter.fighter_id]
         app.refresh_upcoming()
         before_ovr, before_elo, before_record = snapshot_a.overall, snapshot_a.elo_rating, snapshot_a.record
+        trauma_recurrence_before = snapshot_a.serious_injury_recurrence
+        snapshot_a.last_fight_stats = {
+            "sig": 12, "sig_att": 20, "td": 1, "td_att": 2, "sub_att": 0,
+            "control_secs": 40, "knockdowns": 0, "rounds": 3,
+            "head_damage": 39, "body_damage": 30, "leg_damage": 30,
+            "cut_details": [], "signature_moves": {}, "move_families": {},
+        }
+        snapshot_b.last_fight_stats = {
+            "sig": 8, "sig_att": 18, "td": 0, "td_att": 1, "sub_att": 0,
+            "control_secs": 10, "knockdowns": 0, "rounds": 3,
+            "head_damage": 4, "body_damage": 0, "leg_damage": 0,
+            "cut_details": [], "signature_moves": {}, "move_families": {},
+        }
         app.apply_result(snapshot_a, snapshot_b, {"main": False, "title": False}, "Decision")
         rating_entry = snapshot_a.bout_rating_history[0]
         assert_true((rating_entry["self_overall"], rating_entry["self_elo"], rating_entry["self_record"]) == (before_ovr, before_elo, before_record), "Historical result ratings were not captured before the bout changed them")
+        assert_true(snapshot_a.serious_injury_recurrence > trauma_recurrence_before
+                    and snapshot_a.last_fight_stats is None,
+                    "Settled MMA result cleared visible trauma before medical consequences consumed it")
         assert_true(0 <= app.fighter_activity_rating(snapshot_a) <= 100 and 0 <= app.fighter_competitiveness_rating(snapshot_a) <= 100, "Fighter activity or competitiveness rating is out of range")
         archive_probe = {"date": "Month 1 Week 1", "company": "Smoke Test", "event": "Archive Card 1", "summary": "Archive probe", "fights": 1, "gate": "$0", "profit": "$0", "log": ["Archive probe"], "fight_logs": []}
         app.archive_result_record(archive_probe)
@@ -1414,6 +1597,26 @@ def _run_smoke_suite():
         assert_true(app.morale_fight_edge(type("MoraleProbe", (), {"morale": 0})()) == -2.5, "Low morale fight edge exceeded or missed its bound")
         app.record_change("Popularity", app.player_company_name, 2, "Smoke-test attributed change")
         assert_true(app.change_journal[-1]["reason"] == "Smoke-test attributed change", "Attributed change journal did not record causality")
+        plan_a = app.roster[0]
+        plan_b = next(
+            fighter for fighter in app.roster[1:]
+            if fighter.gender == plan_a.gender and fighter.weight == plan_a.weight
+        )
+        economics_event = {
+            "name": "Per-Event Economics Round Trip", "venue": "Regional Arena",
+            "region": "UK", "city": "London", "month": app.month + 1, "week": 2,
+            "broadcaster": "No Coverage", "fights": [{
+                "fighters": [plan_a.name, plan_b.name],
+                "fighter_ids": [plan_a.fighter_id, plan_b.fighter_id],
+                "fight_plans": {
+                    plan_a.fighter_id: "Wrestle early",
+                    plan_b.fighter_id: "Counter striking",
+                },
+            }],
+            "ticket_price": 135, "marketing_budget": 42_500,
+            "production_tier": "Premium",
+        }
+        app.scheduled_events.append(economics_event)
         ufc = next(promo for promo in app.promotions if promo.name == "Ultimate Fighting Championship")
         paddy = next(fighter for fighter in ufc.roster if fighter.name == "Paddy Pimblett")
         assert_true(paddy.camp == "NexGen MMA", "Paddy Pimblett was not assigned to NexGen MMA")
@@ -1430,6 +1633,44 @@ def _run_smoke_suite():
         islam_after = next(fighter for fighter in ufc.roster if fighter.name == "Islam Makhachev")
         assert_true((islam_after.age, islam_after.record, islam_after.overall, islam_after.camp) == islam_snapshot, "Save loading changed serialized real-fighter state")
         assert_true(any(entry.get("reason") == "Smoke-test attributed change" for entry in app.change_journal), "Attributed change journal did not survive save/load")
+        loaded_economics_event = next(
+            event for event in app.scheduled_events
+            if event.get("name") == "Per-Event Economics Round Trip"
+        )
+        assert_true(
+            (loaded_economics_event.get("ticket_price"), loaded_economics_event.get("marketing_budget"), loaded_economics_event.get("production_tier"))
+            == (135, 42_500, "Premium"),
+            "Per-event ticket price, marketing budget, or production tier did not survive save/load",
+        )
+        loaded_plan_fight = loaded_economics_event["fights"][0]
+        assert_true(
+            loaded_plan_fight.get("fight_plans") == {
+                loaded_plan_fight["fighter_ids"][0]: "Wrestle early",
+                loaded_plan_fight["fighter_ids"][1]: "Counter striking",
+            },
+            "ID-keyed player fight plans did not survive save/load",
+        )
+        legacy_plan_event = dict(
+            loaded_economics_event,
+            name="Legacy Plan Defaults",
+            fights=[{
+                "fighters": list(loaded_plan_fight["fighters"]),
+                "fighter_ids": list(loaded_plan_fight["fighter_ids"]),
+            }],
+        )
+        legacy_world = app.serialize_world()
+        legacy_world["scheduled_events"] = [legacy_plan_event]
+        app.apply_world_data(legacy_world)
+        assert_true(
+            set(app.scheduled_events[0]["fights"][0]["fight_plans"].values()) == {"Balanced"},
+            "Legacy scheduled fight did not receive safe Balanced plan defaults",
+        )
+        app.apply_world_data(saved_world)
+        loaded_economics_event = next(
+            event for event in app.scheduled_events
+            if event.get("name") == "Per-Event Economics Round Trip"
+        )
+        app.scheduled_events.remove(loaded_economics_event)
         assert_true(app.ai_roster_target(ufc) == 400, "UFC should target a 400-fighter roster")
         assert_true(app.ai_roster_cap(ufc) > 370, "UFC roster cap should permit a deep world-class roster")
         assert_true(app.ai_division_target(ufc) == 25, "UFC division depth target is too low for its roster plan")
@@ -1697,7 +1938,10 @@ def _run_smoke_suite():
         candidates = sorted((fighter for fighter in boxing_world["roster"] if fighter.sport_employer == boxing_world["promotion"]), key=lambda fighter: (app.combat_sport_display_rating(fighter, "Boxing"), fighter.potential), reverse=True)[12:24]
         for fighter in candidates:
             fighter.sport_employer = app.player_company_name
+            fighter.contract_type = "Boxing Player Deal"
+            fighter.contract_months = 12
         division["roster"] = [signed_youth.name] + [fighter.name for fighter in candidates]
+        division["roster_ids"] = [signed_youth.fighter_id] + [fighter.fighter_id for fighter in candidates]
         existing_windows = set(root.winfo_children())
         app.open_player_combat_division_window("Boxing")
         root.update_idletasks()
@@ -1934,6 +2178,12 @@ def _run_smoke_suite():
         sport_history_probe = app.combat_sport_worlds["Boxing"]["roster"][0]
         app.record_combat_sport_rating_snapshot(sport_history_probe, "Boxing")
         sport_history_probe_name = sport_history_probe.name
+        app.player_combat_divisions["Boxing"]["scheduled_events"] = [{
+            "event_id": "smoke-future-boxing", "sport": "Boxing", "month": app.month + 1, "week": 2,
+            "event_name": "Saved Future Boxing", "production": "Arena", "marketing": 25000,
+            "forecast": {"revenue": 90000, "cost": 70000, "profit": 20000},
+            "bouts": [], "status": "Scheduled",
+        }]
         data = app.serialize_world()
         for sport_world in data["combat_sport_worlds"].values():
             sport_world.pop("roster_target", None)
@@ -1955,6 +2205,9 @@ def _run_smoke_suite():
         assert_true(app.gym_by_name("American Top Team") is not None, "Gym load repair failed")
         loaded_sport_history_probe = next(fighter for fighter in app.combat_sport_worlds["Boxing"]["roster"] if fighter.name == sport_history_probe_name)
         assert_true(loaded_sport_history_probe.sport_rating_history.get("Boxing"), "Child-sport development history did not survive save/load")
+        loaded_boxing_division = app.player_combat_divisions["Boxing"]
+        assert_true(loaded_boxing_division.get("scheduled_events", [])[0].get("event_id") == "smoke-future-boxing", "Scheduled child-sport card did not survive save/load")
+        assert_true(loaded_boxing_division["scheduled_events"][0].get("production") == "Arena" and loaded_boxing_division["scheduled_events"][0].get("marketing") == 25000, "Scheduled child-sport event plan did not survive save/load")
         yair = app.find_fighter_anywhere("Yair Rodriguez")
         assert_true(yair and yair.rating_profile_version == 0, "Save load recalibrated an existing real fighter from the database")
         gsp = app.find_fighter_anywhere("Georges St-Pierre")
@@ -1996,6 +2249,41 @@ def _run_smoke_suite():
             if pair:
                 break
         assert_true(pair is not None, "No valid same-division fight pair found")
+
+        # Fight-night history must resolve the opponent by stable identity.
+        # Two fighters may legitimately share a display name, so a same-name
+        # decoy's result and an ambiguous legacy text row cannot become part of
+        # the active matchup's broadcast story.
+        history_a = game.Fighter(**asdict(pair[0]))
+        history_b = game.Fighter(**asdict(pair[1]))
+        history_b.name = "Shared Fight-Night Name"
+        history_decoy = game.Fighter(**asdict(pair[1]))
+        history_decoy.name = history_b.name
+        history_decoy.fighter_id = "FTR-fight-night-decoy"
+        history_a.bout_rating_history = [
+            {"date": "Month 8 Week 1", "opponent_name": history_b.name, "opponent_id": history_b.fighter_id, "result": "W"},
+            {"date": "Month 4 Week 2", "opponent_name": history_decoy.name, "opponent_id": history_decoy.fighter_id, "result": "L"},
+        ]
+        history_a.fight_history = [f"Month 1 Week 1: {history_decoy.name} def. {history_a.name} by Decision"]
+        head_to_head = app.commentary_head_to_head(history_a, history_b)
+        assert_true(
+            (head_to_head["meetings"], head_to_head["a_wins"], head_to_head["b_wins"]) == (1, 1, 0),
+            "Fight-night head-to-head commentary conflated same-name fighter identities",
+        )
+
+        transition_state = {
+            "fighter_keys": {id(history_a): "a", id(history_b): "b"},
+            "commentary_memory": {
+                "leader": "a", "a_damage": 3, "b_damage": 18,
+                "a_gas": 82, "b_gas": 61, "round": 1,
+            },
+        }
+        transition = app.commentary_round_transition(history_a, history_b, transition_state)
+        assert_true(
+            history_b.name in transition and "heavier damage" in transition,
+            "Between-round commentary compared a fighter-state key with a fighter object",
+        )
+
         winner, loser, method, round_no, lines = app.simulate_fight(pair[0], pair[1], {"main": True, "title": False})
         assert_true(winner.name != loser.name, "Fight sim returned same winner and loser")
         assert_true(method, "Fight sim returned no method")
@@ -2043,6 +2331,11 @@ def _run_smoke_suite():
                                 f"Five-round commentary lost or duplicated the Round {expected_round} summary")
                 assert_true(sum(line.startswith("Between rounds:") for line in verbose_lines) == 4,
                             "Five-round commentary lost a between-round transition")
+                round_summaries = [line for line in verbose_lines if re.match(r"Round \d+ summary:", line)]
+                assert_true(
+                    all("official cards remain sealed" in line and "judge cards" not in line.lower() and "Live score" not in line for line in round_summaries),
+                    "Round summaries leaked exact official judge cards before the decision",
+                )
                 assert_true("Official scorecards:" in verbose_lines and "FIGHT METRICS" in verbose_lines,
                             "Five-round commentary lost its scorecards or fight metrics")
                 assert_true(not any("middle exchanges are summarized" in line for line in verbose_lines),
@@ -2312,6 +2605,8 @@ def _run_smoke_suite():
                     "Fight-night title presentation does not distinguish the champion from the challenger")
         app.rules["live_auto_play_card"] = True
         app.rules["live_follow_commentary"] = False
+        app.rules["fight_commentary_mode"] = "Detailed"
+        app.rules["fight_commentary_personality"] = "Technical"
         app.rules["ui_owner_goals_collapsed"] = True
         app.rules["ui_show_details_collapsed"] = True
         app.rules["ui_matchup_insight_collapsed"] = True
@@ -2319,11 +2614,32 @@ def _run_smoke_suite():
         serialized_preferences = app.serialize_world()["rules"]
         assert_true(serialized_preferences["live_auto_play_card"] is True and serialized_preferences["live_follow_commentary"] is False,
                     "Fight-night viewer preferences are not persisted with the save")
+        assert_true(serialized_preferences["fight_commentary_mode"] == "Detailed"
+                    and serialized_preferences["fight_commentary_personality"] == "Technical",
+                    "Fight Night commentary preferences are not persisted with the save")
         assert_true(serialized_preferences["ui_owner_goals_collapsed"] is True and serialized_preferences["ui_show_details_collapsed"] is True
                     and serialized_preferences["ui_matchup_insight_collapsed"] is True,
                     "Inbox or Matchmaking disclosure preferences did not persist with the save")
         assert_true(serialized_preferences["fight_night_audio_volume"] == 37,
                     "The live Fight Night volume does not persist with the save")
+
+        saved_scouting_state = (
+            deepcopy(getattr(app, "scouting_watchlists", [])), deepcopy(getattr(app, "scouting_history", [])),
+            deepcopy(getattr(app, "scouting_knowledge", {})), deepcopy(getattr(app, "scouting_alert_state", {})),
+        )
+        app.scouting_watchlists = [{"watchlist_id": "WATCH-main", "name": "Main Watchlist", "fighter_ids": [], "alerts_enabled": True}]
+        app.scouting_history = [{"history_id": "SCOUT-smoke", "week": 1, "type": "Smoke", "fighter_id": "", "detail": "Round trip"}]
+        app.scouting_knowledge = {"USA": {"knowledge": 42, "last_week": 1, "looks": 2}}
+        app.scouting_alert_state = {"FTR-smoke": {"record": "1-0-0"}}
+        serialized_scouting = app.serialize_world()
+        assert_true(serialized_scouting["scouting_watchlists"][0]["watchlist_id"] == "WATCH-main",
+                    "Scouting watchlists did not serialize by durable ID")
+        assert_true(serialized_scouting["scouting_history"][0]["history_id"] == "SCOUT-smoke",
+                    "Structured scouting history did not serialize")
+        assert_true(serialized_scouting["scouting_knowledge"]["USA"]["knowledge"] == 42
+                    and serialized_scouting["scouting_alert_state"]["FTR-smoke"]["record"] == "1-0-0",
+                    "Scouting knowledge or alert dedupe state did not serialize")
+        app.scouting_watchlists, app.scouting_history, app.scouting_knowledge, app.scouting_alert_state = saved_scouting_state
 
         rival_fighter = next(fighter for promo in app.promotions for fighter in promo.roster if not fighter.retired)
         saved_reports = dict(app.scouting_reports)

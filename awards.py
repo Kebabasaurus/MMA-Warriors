@@ -72,16 +72,20 @@ class AwardsMixin:
             self.unlock_achievement("Fighter", winner.name, company, "ten_career_wins", "Ten-Win Club", "Reached ten professional wins.", fighter=winner)
         if winner.record_w == 20:
             self.unlock_achievement("Fighter", winner.name, company, "twenty_career_wins", "Twenty-Win Veteran", "Reached twenty professional wins.", fighter=winner)
-        if winner.overall + 8 <= loser.overall:
+        major_upset = winner.overall + 8 <= loser.overall
+        if major_upset:
             self.unlock_achievement("Fighter", winner.name, company, "giant_slayer", "Giant Slayer", f"Defeated the higher-rated {loser.name} by {method}.", fighter=winner)
         if fight.get("title") and winner.champion:
             self.unlock_achievement("Fighter", winner.name, company, "world_title", "World Champion", f"Captured the {winner.gender} {winner.weight} title.", fighter=winner)
         if getattr(winner, "title_defenses", 0) == 5:
             self.unlock_achievement("Fighter", winner.name, company, "five_title_defenses", "Dynasty Builder", "Reached five successful title defenses.", fighter=winner)
-        if method not in ("Decision", "Draw") and winner.record_w >= 10:
+        if method not in ("Decision", "Technical Decision", "Draw", "No Contest") and winner.record_w >= 10:
             finishes = sum(1 for item in (winner.fight_history or []) if " by KO" in str(item) or " by TKO" in str(item) or " by Submission" in str(item))
             if finishes >= 10:
                 self.unlock_achievement("Fighter", winner.name, company, "ten_finishes", "Finishing Machine", "Recorded ten documented professional finishes.", fighter=winner)
+        self.record_breakout_fight_story(
+            company, winner, loser, method, fight, major_upset=major_upset,
+        )
 
     def evaluate_promotion_achievements(self, company, package):
         """Promotion milestones are checked after an event is committed to results."""
@@ -413,6 +417,8 @@ class AwardsMixin:
     def record_season_result(self, winner, loser, method, round_no, fight, excitement, company):
         """Log a result for later award scoring, including draws without false W/L credit."""
         try:
+            if method == "No Contest":
+                return
             bucket = self.season_bucket()
             if not isinstance(bucket, dict):
                 bucket = {"fighters": {}, "fights": [], "companies": {}}
@@ -421,9 +427,9 @@ class AwardsMixin:
             bucket["fights"] = bucket.get("fights") if isinstance(bucket.get("fights"), list) else []
             bucket["companies"] = bucket.get("companies") if isinstance(bucket.get("companies"), dict) else {}
             fighters = bucket["fighters"]
-            is_finish = method not in ("Decision", "Draw")
-            is_ko = method in ("KO", "TKO")
-            is_sub = method in ("Submission", "Technical Submission")
+            is_finish = method in FINISH_METHODS
+            is_ko = method in KO_METHODS
+            is_sub = method in SUBMISSION_METHODS
             is_title = bool(fight.get("title"))
 
             wrec = fighters.setdefault(winner.name, self.blank_season_fighter(winner))
@@ -516,14 +522,14 @@ class AwardsMixin:
             f"(R{foty_fight['round']}) - excitement {foty_fight['excitement']}.", foty_fight["company"])
 
         # Knockout of the Year
-        kos = [r for r in fights if r["method"] in ("KO", "TKO")]
+        kos = [r for r in fights if r["method"] in KNOCKOUT_AWARD_METHODS]
         if kos:
             best_ko = max(kos, key=lambda r: r["excitement"])
             add("Knockout of the Year", best_ko["winner"],
                 f"{best_ko['method']} over {best_ko['loser']} (R{best_ko['round']}).", best_ko["company"])
 
         # Submission of the Year
-        subs = [r for r in fights if r["method"] in ("Submission", "Technical Submission")]
+        subs = [r for r in fights if r["method"] in SUBMISSION_METHODS]
         if subs:
             best_sub = max(subs, key=lambda r: r["excitement"])
             add("Submission of the Year", best_sub["winner"],
@@ -593,6 +599,51 @@ class AwardsMixin:
             history.insert(0, f"Won {award['category']}.")
             fighter.fight_history = history
 
+    def annual_story_review_rows(self, year, limit=8):
+        """Select a bounded year's defining threads without rebuilding history."""
+        target_year = int(year)
+        self.ensure_story_thread_index()
+        candidates = []
+        for thread in getattr(self, "story_threads", []) or []:
+            month = int(thread.get("last_updated_month", 0) or 0)
+            if not month or 2026 + (month - 1) // 12 != target_year:
+                continue
+            beats = list(thread.get("beats", []) or [])
+            latest = str(beats[-1].get("summary", "") or "") if beats else str(thread.get("resolution", "") or thread.get("stakes", "") or "")
+            if not latest:
+                continue
+            candidates.append({
+                "story_id": str(thread.get("story_id", "") or ""),
+                "type": str(thread.get("type", "World") or "World"),
+                "status": str(thread.get("status", "active") or "active"),
+                "importance": int(thread.get("importance", 1) or 1),
+                "month": month, "week": int(thread.get("last_updated_week", 1) or 1),
+                "summary": latest,
+                "fighter_ids": list(thread.get("fighter_ids", []) or []),
+                "fighter_names": list(thread.get("fighter_names", []) or []),
+                "companies": list(thread.get("companies", []) or []),
+            })
+        candidates.sort(
+            key=lambda row: (row["importance"], row["month"], row["week"], row["type"]),
+            reverse=True,
+        )
+        selected = []
+        seen_types = set()
+        for row in candidates:
+            # Prefer breadth first, then fill remaining places by importance.
+            if row["type"] in seen_types:
+                continue
+            selected.append(row)
+            seen_types.add(row["type"])
+            if len(selected) >= limit:
+                return selected
+        for row in candidates:
+            if row not in selected:
+                selected.append(row)
+                if len(selected) >= limit:
+                    break
+        return selected
+
     def record_legacy_year(self, year, awards):
         """Archive eras and company achievement alongside individual awards."""
         for promo in self.promotions:
@@ -603,7 +654,35 @@ class AwardsMixin:
                 promo.era_history.insert(0, {"year": self.year_label(year), "note": f"{executive.get('name', 'Executive')} led an award-winning year: {', '.join(won)}."})
             promo.legacy_score = round(promo.reputation_score * 1.2 + promo.size * 0.6 + len(promo.show_history or []) * 2 + len(promo.era_history) * 3)
             promo.era_history = promo.era_history[:40]
-        self.record_world_story("Year In Review", f"{self.year_label(year)} MMA awards are recorded.", f"{len(awards)} major awards entered the historical record.", importance=4)
+        defining_stories = self.annual_story_review_rows(year)
+        year_text = self.year_label(year)
+        for history in getattr(self, "awards_history", []) or []:
+            if str(history.get("year", "")) == year_text:
+                history["stories"] = defining_stories
+                break
+        story_lines = [f"{row['type']}: {row['summary']}" for row in defining_stories]
+        detail = (
+            f"{len(awards)} major awards entered the historical record.\n" + "\n".join(story_lines)
+            if story_lines else f"{len(awards)} major awards entered the historical record."
+        )
+        review_key = f"annual-review:{year_text}"
+        review_thread = self.upsert_story_thread(
+            review_key, "Annual Review", status="resolved", phase="year_complete", importance=5,
+            companies=list(dict.fromkeys(company for row in defining_stories for company in row.get("companies", []) if company))[:6],
+            origin_ref=review_key, beat_kind="annual_review", beat_ref=review_key,
+            summary=f"{year_text} closed with {len(defining_stories)} defining connected stories.",
+            stakes="The year's most important careers and company eras are now part of the permanent record.",
+            resolution=detail,
+        )
+        self.record_world_story(
+            "Year In Review", f"{year_text} MMA awards and defining stories are recorded.", detail,
+            importance=5, story_id=review_thread.get("story_id", "") if review_thread else "",
+        )
+        if defining_stories:
+            subject = f"{year_text} End-of-Year Awards"
+            message = next((row for row in reversed(self.inbox) if row.get("subject") == subject), None)
+            if message is not None:
+                message["body"] += "\n\nDefining stories:\n" + "\n".join(f"- {line}" for line in story_lines)
 
     def prune_season_stats(self, year):
         """Keep the awarded year (for history) but drop older seasons."""

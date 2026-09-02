@@ -195,6 +195,7 @@ class FightEmpireApp(
         self.retired_fighters = []
         self.finance = self.seed_finance()
         self.engine_settings = self.seed_engine_settings()
+        self.business_settings = self.seed_business_settings()
         self.staff = self.seed_staff()
         self.staff_candidates = self.seed_staff_candidates()
         self.ensure_staff_profiles()
@@ -202,6 +203,11 @@ class FightEmpireApp(
         self.scouting_reports = {}
         self.scouting_searches = []
         self.scouting_shortlist = []
+        self.scouting_watchlists = []
+        self.scouting_history = []
+        self.scouting_knowledge = {}
+        self.scouting_alert_state = {}
+        self.scouting_quarantined_reports = []
         self._scouting_state_migrated = True
         self.academy = self.academy_defaults()
         self.inbox = []
@@ -221,6 +227,8 @@ class FightEmpireApp(
             "Managers are watching prospect development, contract expiry, and divisional depth closely.",
         ]
         self.world_chronicle = []
+        self.story_threads = []
+        self._story_thread_index = {}
         self.defunct_promotions = []
         self.booked = []
         self.scheduled_events = []
@@ -242,7 +250,12 @@ class FightEmpireApp(
         self.event_region = tk.StringVar(value="USA")
         self.event_city = tk.StringVar(value="Las Vegas")
         self.event_broadcaster = tk.StringVar(value="Regional Webcast")
+        self.event_ticket_price = tk.IntVar(value=55)
+        self.event_marketing_budget = tk.IntVar(value=18000)
+        self.event_production_tier = tk.StringVar(value=DEFAULT_EVENT_PRODUCTION_TIER)
         self.card_tier = tk.StringVar(value="Main Card")
+        self.red_fight_plan = tk.StringVar(value="Balanced")
+        self.blue_fight_plan = tk.StringVar(value="Balanced")
         self.event_month = tk.IntVar(value=1)
         self.event_week = tk.IntVar(value=1)
         self.event_day_choice = tk.StringVar(value=CALENDAR_DAYS[DEFAULT_EVENT_DAY - 1])

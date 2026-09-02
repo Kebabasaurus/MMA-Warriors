@@ -373,12 +373,20 @@ class MediaMixin:
             return False, f"Only {remaining} media action point(s) remain this week.", None
         if action == "Call Out" and (not target or target is fighter or target.gender != fighter.gender or target.weight != fighter.weight):
             return False, "Callouts require a different fighter in the same division.", None
+        rivalry_target = None
+        if action in ("Press Conference", "Press Tour") and getattr(fighter, "rival", ""):
+            resolver = getattr(self, "resolve_rivalry_target", None)
+            rivalry_target = resolver(fighter) if resolver else None
+            if rivalry_target is None:
+                return False, "That rivalry reference is missing or ambiguous. Repair it before promoting the feud.", None
         company_name, company_region, _pop, _stability, cash, _roster = self._media_company_values(promotion)
         if cash < spec["cost"]:
             return False, f"This campaign costs ${spec['cost']:,}.", None
         marker = (self.month - 1) * 4 + self.week
-        fighter_key = f"fighter:{fighter.name}"
-        pair_key = f"callout:{fighter.name}:{getattr(target, 'name', '')}"
+        fighter_identity = getattr(fighter, "fighter_id", "") or fighter.name
+        target_identity = getattr(target, "fighter_id", "") or getattr(target, "name", "")
+        fighter_key = f"fighter:{fighter_identity}"
+        pair_key = f"callout:{fighter_identity}:{target_identity}"
         cooldowns = finance["media_campaign_cooldowns"]
         if cooldowns.get(fighter_key, -99) >= marker:
             return False, f"{fighter.name} has already completed a media appearance this week.", None
@@ -390,7 +398,7 @@ class MediaMixin:
                 self.record_finance_transaction(
                     f"Media campaign: {action}", costs=spec["cost"], category="Media",
                     source="Media desk", counterparty=getattr(fighter, "name", ""),
-                    reference=f"media-campaign:{self.month}:{self.week}:{action}",
+                    reference=f"media-campaign:{self.month}:{self.week}:{action}:{fighter_identity}",
                 )
             marketing = self.staff_skill("Marketing") if hasattr(self, "staff_skill") else 45
         else:
@@ -399,7 +407,7 @@ class MediaMixin:
                 self.record_promotion_finance_transaction(
                     promotion, f"Media campaign: {action}", costs=spec["cost"], category="Media",
                     source="Media desk", counterparty=getattr(fighter, "name", ""),
-                    reference=f"media-campaign:{promotion.name}:{self.month}:{self.week}:{action}",
+                    reference=f"media-campaign:{promotion.name}:{self.month}:{self.week}:{action}:{fighter_identity}",
                 )
             marketing = int((promotion.strategy or {}).get("commercial_strength", promotion.size))
         strategy = finance.get("media_strategy", "Balanced")
@@ -440,14 +448,33 @@ class MediaMixin:
         cooldowns[fighter_key] = marker
         if action == "Call Out":
             cooldowns[pair_key] = marker + 4
-            if hasattr(self, "establish_rivalry"):
+            existing_heat = self.rivalry_heat_between(fighter, target) if hasattr(self, "rivalry_heat_between") else 0
+            if existing_heat and hasattr(self, "build_rivalry_heat"):
+                # Calling out an existing rival escalates the feud rather than
+                # resetting it, so a grudge can be built over several weeks.
+                self.build_rivalry_heat(
+                    fighter, target, max(4, 8 + heat_delta // 2),
+                    note=f"{fighter.name} escalated the feud with {target.name} in the media.",
+                )
+            elif hasattr(self, "establish_rivalry"):
                 try:
                     self.establish_rivalry(fighter, target, origin="Media callout", heat=max(35, 45 + heat_delta))
                 except TypeError:
                     fighter.rival, target.rival = target.name, fighter.name
+                    fighter.rival_fighter_id = getattr(target, "fighter_id", "")
+                    target.rival_fighter_id = getattr(fighter, "fighter_id", "")
             else:
                 fighter.rival, target.rival = target.name, fighter.name
+                fighter.rival_fighter_id = getattr(target, "fighter_id", "")
+                target.rival_fighter_id = getattr(fighter, "fighter_id", "")
             target.media_heat = max(0, min(100, target.media_heat + max(2, heat_delta // 2)))
+        elif action in ("Press Conference", "Press Tour") and hasattr(self, "build_rivalry_heat"):
+            # Promoting a fighter who is already in a feud builds that feud too.
+            if rivalry_target is not None and self.rivalry_heat_between(fighter, rivalry_target):
+                self.build_rivalry_heat(
+                    fighter, rivalry_target, max(2, 4 + heat_delta // 3),
+                    note=f"{fighter.name}'s {action.lower()} kept the feud with {rivalry_target.name} in the headlines.",
+                )
         subject = fighter.name
         target_name = target.name if target else (region or company_region if action == "Regional Tour" else "")
         outcome_text = f"{band}: {fighter.name}'s {action.lower()} produced {heat_delta:+} heat and {pop_delta:+} popularity."

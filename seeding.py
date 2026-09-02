@@ -12,7 +12,8 @@ from pathlib import Path
 from tkinter import messagebox, ttk
 
 from constants import *
-from models import Fighter, Gym, Promotion
+from fight_moves import MOVE_DEFINITIONS, normalize_signature_moves
+from models import Fighter, Gym, Promotion, deterministic_source_fighter_id
 from real_sport_profiles import SPORT_PROFILE_VERSION, build_fallback_sport_profile, build_real_sport_profiles
 from universe_validation import validate_universe_pack
 
@@ -69,7 +70,7 @@ CAREER_ARCHETYPE_TABLE = weighted_choice_table(
     (16, 53, 17, 14),
 )
 REGIONAL_FEEDER_AGE_TABLE = weighted_choice_table(range(17, 22), (5, 8, 10, 8, 5))
-MMA_FIGHTER_DATABASE_SCHEMA = 4
+MMA_FIGHTER_DATABASE_SCHEMA = 5
 COMBAT_SPORT_DATABASE_SCHEMA = 5
 COMBAT_SPORT_NAMES = ("Boxing", "Kickboxing", "Muay Thai", "Lethwei", "Wrestling", "Brazilian Jiu-Jitsu")
 
@@ -573,6 +574,9 @@ class SeedMixin:
                 for record in records
                 if isinstance(record, dict)
             ]
+            for record in records:
+                if not str(record.get("fighter_id", "")).strip():
+                    record["fighter_id"] = deterministic_source_fighter_id(record)
             data["all_fighters"] = records
             player_roster, free_agents, promotions = [], [], {}
             for record in records:
@@ -809,6 +813,7 @@ class SeedMixin:
         closed_divisions = self.bamma_initial_closed_divisions()
         self.reassign_closed_division_fighters(roster, closed_divisions)
         self.ensure_bamma_womens_division_depth(roster)
+        self.apply_opening_player_contract_terms(roster)
         self.seed_relationships(roster)
         self.belts, self.interim_belts, self.belt_history = self.ensure_company_champions(
             roster, self.belts, self.player_company_name, self.player_region, self.company_pop,
@@ -816,6 +821,22 @@ class SeedMixin:
             closed_divisions=closed_divisions,
         )
         return roster
+
+    def apply_opening_player_contract_terms(self, roster):
+        """Give authored opening talent affordable, time-limited founder deals.
+
+        Generated depth is already priced for a regional company.  Curated
+        veterans use global market purses in the database, which made a normal
+        mixed opening card less viable than benching every recognizable name.
+        This new-career-only adjustment does not touch free agents, AI rosters,
+        imported databases, or existing saves; renewal leverage can still move
+        each deal back toward the live market.
+        """
+        for fighter in roster:
+            if getattr(fighter, "generated", False):
+                continue
+            purse = max(0, int(getattr(fighter, "purse", 0) or 0))
+            fighter.purse = max(4_000, round(purse * OPENING_PLAYER_CONTRACT_FACTOR / 500) * 500)
 
     def bamma_initial_closed_divisions(self):
         return {
@@ -953,6 +974,18 @@ class SeedMixin:
                 # they retain their generated/profile baseline.
                 if value in ("", None) and isinstance(getattr(fighter, key), (bool, int, float)):
                     continue
+                if key == "style":
+                    profile_style = record.get("profile_style")
+                    fallback = profile_style if profile_style in STYLES else fighter.style
+                    value = normalize_mma_style(value, fallback)
+                elif key == "secondary_style":
+                    value = normalize_secondary_style(value, fighter.style)
+                elif key == "trait" and value not in TRAITS:
+                    continue
+                elif key == "behaviour" and value not in BEHAVIOURS:
+                    continue
+                elif key == "stance" and value not in ("Orthodox", "Southpaw", "Switch"):
+                    continue
                 setattr(fighter, key, deepcopy(value))
         fighter.weight = self.game_weight_class(fighter.weight)
         # Only synchronize broad ratings when the author supplied a detailed
@@ -969,6 +1002,71 @@ class SeedMixin:
             fighter.detailed_skills = generated_details
             self.sync_broad_skills_from_details(fighter)
         return fighter
+
+    def assign_secondary_fighter_style(self, fighter, *, replace=False):
+        """Assign a supported cross-training identity without consuming RNG."""
+        fighter.style = normalize_mma_style(getattr(fighter, "style", ""))
+        current = normalize_secondary_style(getattr(fighter, "secondary_style", ""), fighter.style)
+        if current and not replace:
+            fighter.secondary_style = current
+            return current
+        identity = str(getattr(fighter, "fighter_id", "") or fighter.name)
+        gate = sum((index + 1) * ord(char) for index, char in enumerate(identity)) % 100
+        if gate >= 65:
+            fighter.secondary_style = ""
+            return ""
+
+        details = getattr(fighter, "detailed_skills", None) or {}
+        def average(keys, fallback):
+            values = [details.get(key, fallback) for key in keys]
+            return sum(values) / max(1, len(values))
+
+        scores = {
+            "Kickboxer": average(STANDING_SKILLS, fighter.striking),
+            "Wrestler": average(WRESTLING_SKILLS, fighter.wrestling),
+            "BJJ": average(GROUND_SKILLS, fighter.grappling),
+            "Muay Thai": average(CLINCH_SKILLS, round((fighter.striking + fighter.wrestling) / 2)),
+            "Sanda": (average(STANDING_SKILLS, fighter.striking)
+                      + average(WRESTLING_SKILLS, fighter.wrestling)) / 2,
+        }
+        primary_family = (
+            "Kickboxer" if fighter.style in ("Boxer", "Kickboxer", "Dutch Kickboxer", "Karate", "Taekwondo")
+            else "Wrestler" if fighter.style in ("Wrestler", "Freestyle Wrestler", "Catch Wrestler")
+            else "BJJ" if fighter.style in ("BJJ", "Luta Livre", "Grappler", "Submission Grappler")
+            else "Muay Thai" if fighter.style == "Muay Thai"
+            else "Sanda" if fighter.style == "Sanda"
+            else ""
+        )
+        candidates = [style for style in scores if style != primary_family and style != fighter.style]
+        fighter.secondary_style = max(candidates, key=lambda style: (scores[style], style)) if candidates else ""
+        return fighter.secondary_style
+
+    def assign_fighter_signature_moves(self, fighter):
+        """Assign one-to-three legal, skill-supported signatures without RNG."""
+        authored = normalize_signature_moves(getattr(fighter, "signature_moves", []))
+        if authored:
+            fighter.signature_moves = authored
+            return authored
+        details = getattr(fighter, "detailed_skills", None) or {}
+        styles = {fighter.style, getattr(fighter, "secondary_style", "")}
+        identity = str(getattr(fighter, "fighter_id", "") or fighter.name)
+        count = 1 + sum((index + 3) * ord(char) for index, char in enumerate(identity)) % 3
+
+        def score(definition):
+            if not definition.attack_skills or definition.parent_action in {"survive", "cling"}:
+                return None
+            values = [details.get(key, fighter.overall) for key in definition.attack_skills]
+            proficiency = sum(values) / len(values)
+            if proficiency < max(48, definition.minimum_skill):
+                return None
+            style_bonus = 9 if styles.intersection(definition.preferred_styles) else 0
+            variety = sum((index + 1) * ord(char) for index, char in enumerate(identity + definition.move_id)) % 701 / 100
+            return proficiency + style_bonus + variety - (5 if "high-risk" in definition.tags else 0)
+
+        ranked = [(score(definition), definition.move_id) for definition in MOVE_DEFINITIONS]
+        ranked = [row for row in ranked if row[0] is not None]
+        fighter.signature_moves = [move_id for _value, move_id in sorted(ranked, reverse=True)[:count]]
+        return fighter.signature_moves
 
     def create_real_fighter(self, name, weight, org, popularity, skill, age, wins, losses, region, style, player_owned=False, source_url="", gender="", potential=None, nationality="", birth_country="", hometown="", seed_record=None):
         record = seed_record if isinstance(seed_record, dict) else self.seed_fighter_record_for(name, org)
@@ -992,6 +1090,9 @@ class SeedMixin:
             gender=gender or self.infer_gender(name),
         )
         self.enrich_fighter(fighter, player_owned=player_owned)
+        # Real records receive their final cross-training identity only after
+        # authored primary styles and detailed sheets have been applied.
+        fighter.secondary_style = ""
         fighter.region = region
         fighter.nationality = self.infer_nationality(name, region)
         fighter.style = style if style in STYLES else "Well-Rounded"
@@ -1051,6 +1152,8 @@ class SeedMixin:
         fighter.contract_type = "Exclusive" if player_owned else "Non-Exclusive"
         fighter.rank_score = self.rank_value(fighter)
         self.apply_authored_fighter_overrides(fighter, record)
+        self.assign_secondary_fighter_style(fighter)
+        self.assign_fighter_signature_moves(fighter)
         if "rank_score" not in record:
             fighter.rank_score = self.rank_value(fighter)
         return fighter
@@ -1261,10 +1364,14 @@ class SeedMixin:
             return
         markets = getattr(fighter, "regional_popularity", None) or {}
         markets.setdefault(region, 0)
+        previous = markets[region]
         markets[region] = max(0, min(100, markets[region] + delta))
         fighter.regional_popularity = markets
         if note:
             fighter.home_event_history = ([{"month": self.month, "region": region, "note": note, "market_popularity": markets[region]}] + (getattr(fighter, "home_event_history", None) or []))[:18]
+        crossed = next((threshold for threshold in (90, 75, 60) if previous < threshold <= markets[region]), None)
+        if crossed and hasattr(self, "record_hometown_story"):
+            self.record_hometown_story(fighter, region, markets[region], note)
 
     def real_fighter_profiles(self):
         profiles = {}
@@ -1623,6 +1730,8 @@ class SeedMixin:
         fighter.fight_iq = max(25, min(99, round((fighter.cardio + fighter.overall) / 2 + random.randint(-10, 14))))
         self.generate_detailed_skills(fighter)
         self.sync_broad_skills_from_details(fighter)
+        self.assign_secondary_fighter_style(fighter)
+        self.assign_fighter_signature_moves(fighter)
         # Potential room follows a centred curve. Most entrants receive useful
         # but not elite runway, while both limited prospects and exceptional
         # late bloomers remain possible. The old 62% bottom bucket pulled the
@@ -2099,13 +2208,13 @@ class SeedMixin:
                 continue
             world = current_worlds[sport]
             promotion = seeded_world.get("promotion", "")
-            seeded_by_name = {fighter.name: fighter for fighter in seeded_world.get("roster", [])}
+            seeded_by_id = {fighter.fighter_id: fighter for fighter in seeded_world.get("roster", [])}
             repaired_roster = []
             seen = set()
             for fighter in world.get("roster", []):
                 if not isinstance(fighter, Fighter):
                     fighter = Fighter(**fighter)
-                if fighter.name in seen:
+                if fighter.fighter_id in seen:
                     continue
                 self.ensure_detailed_skills(fighter)
                 self.ensure_fighter_business_stats(fighter)
@@ -2137,16 +2246,17 @@ class SeedMixin:
                 else:
                     fighter.weight = self.combat_sport_mma_equivalent(native_sport, current, fighter.gender)
                 repaired_roster.append(fighter)
-                seen.add(fighter.name)
-            for name, fighter in seeded_by_name.items():
-                if name not in seen:
+                seen.add(fighter.fighter_id)
+            for fighter_id, fighter in seeded_by_id.items():
+                if fighter_id not in seen:
                     repaired_roster.append(fighter)
-                    seen.add(name)
+                    seen.add(fighter_id)
             ranked = sorted(repaired_roster, key=lambda fighter: (fighter.overall, fighter.popularity, fighter.record_w - fighter.record_l), reverse=True)
             world["promotion"] = promotion
             world["roster"] = repaired_roster
             world["rankings"] = [fighter.name for fighter in ranked[:15]]
-            if world.get("champion") not in seen:
+            active_names = {fighter.name for fighter in repaired_roster}
+            if world.get("champion") not in active_names:
                 world["champion"] = ranked[0].name if ranked else ""
             for key, value in {
                 "events": 0, "records": {}, "record_book": {}, "season_stats": {}, "titles": {}, "title_history": {},
@@ -2205,8 +2315,10 @@ class SeedMixin:
         for key in PHYSICAL_SKILLS:
             base_map[key] = self.skill_noise(round((fighter.cardio + fighter.chin) / 2))
         if fighter.style in ("Boxer", "Kickboxer", "Dutch Kickboxer", "Karate", "Taekwondo", "Sanda", "Muay Thai"):
-            for key in ("footwork", "punch_technique", "hand_speed", "kick_defence"):
+            for key in ("footwork", "punch_technique", "hand_speed", "combination_punching", "counter_timing", "kick_defence"):
                 base_map[key] = min(99, base_map[key] + random.randint(4, 12))
+        if fighter.style == "Boxer" or fighter.trait == "Body Hunter":
+            base_map["body_punching"] = min(99, base_map["body_punching"] + random.randint(4, 12))
         if fighter.style in ("Wrestler", "Freestyle Wrestler", "Catch Wrestler", "Sambo"):
             for key in ("takedowns", "takedown_setup", "sprawl", "chain_wrestling", "cage_wrestling"):
                 base_map[key] = min(99, base_map[key] + random.randint(5, 14))
@@ -2348,10 +2460,13 @@ class SeedMixin:
                 if len(division) > 1 and random.random() < 0.38:
                     rival = division[(index + 1) % len(division)]
                     fighter.rival = rival.name
+                    fighter.rival_fighter_id = rival.fighter_id
                     fighter.rivalry_origin = "Pre-existing divisional rivalry"
                     fighter.rivalry_heat = random.randint(18, 46)
                 if len(division) > 2 and random.random() < 0.25:
-                    fighter.friend = division[(index + 2) % len(division)].name
+                    friend = division[(index + 2) % len(division)]
+                    fighter.friend = friend.name
+                    fighter.friend_fighter_id = friend.fighter_id
 
     def generated_name_parts(self, gender, region=None):
         pool = REGIONAL_NAME_POOLS.get(region or "", {})
@@ -2435,6 +2550,14 @@ class SeedMixin:
             potential_floor = 12 if age <= 21 else 9 if age <= 25 else 7
             fighter.potential = min(98, max(fighter.potential, fighter.overall + potential_floor))
         self.assign_regional_identity(fighter, market_region, birth_region=birth_region, generated=True, force=True)
+        # The generator is the authority for new entrants. Keep the style
+        # channel valid even if a future enrichment/profile path leaves it
+        # blank or carries a legacy behaviour label; this repair is
+        # deterministic and does not introduce another random draw.
+        fighter.style = normalize_mma_style(getattr(fighter, "style", ""), "Well-Rounded")
+        fighter.secondary_style = normalize_secondary_style(
+            getattr(fighter, "secondary_style", ""), fighter.style,
+        )
         return fighter
 
     def division_depth_targets(self, size):
@@ -2703,6 +2826,8 @@ class SeedMixin:
                              ("creative_kicks", -6), ("high_kick_technique", -5), ("feints", -4)):
             fighter.detailed_skills[skill] = max(1, min(99, fighter.detailed_skills.get(skill, 50) + delta))
         self.sync_broad_skills_from_details(fighter)
+        self.assign_secondary_fighter_style(fighter, replace=True)
+        self.assign_fighter_signature_moves(fighter)
         return fighter
 
     def apply_eurasian_identity(self, fighter, sub_region):
@@ -3266,17 +3391,38 @@ class SeedMixin:
             "ledger": [],
             "weekly_history": [],
             "week_transactions": [],
+            "annual_history": [],
+            "roster_cost_history": [],
+            "strategic_investments": {},
         }
 
     def seed_engine_settings(self):
-        return {
-            "ko_power": 1.0,
-            "submission_finish": 1.0,
-            "decision_noise": 1.0,
-            "gas_cost": 1.0,
-            "damage": 1.0,
-            "gate_multiplier": 1.0,
-        }
+        return {"config_version": FIGHT_ENGINE_CONFIG_VERSION, **FIGHT_ENGINE_SETTING_DEFAULTS}
+
+    def seed_business_settings(self):
+        return {"config_version": BUSINESS_SIMULATION_CONFIG_VERSION, **BUSINESS_SIMULATION_SETTING_DEFAULTS}
+
+    def normalize_engine_settings(self, saved=None):
+        settings = self.seed_engine_settings()
+        if isinstance(saved, dict):
+            for key, (minimum, maximum) in FIGHT_ENGINE_SETTING_BOUNDS.items():
+                try:
+                    settings[key] = round(max(minimum, min(maximum, float(saved.get(key, settings[key])))), 2)
+                except (TypeError, ValueError):
+                    pass
+        return settings
+
+    def normalize_business_settings(self, saved=None, legacy_engine_settings=None):
+        settings = self.seed_business_settings()
+        source = saved if isinstance(saved, dict) else {}
+        legacy = legacy_engine_settings if isinstance(legacy_engine_settings, dict) else {}
+        for key, (minimum, maximum) in BUSINESS_SIMULATION_SETTING_BOUNDS.items():
+            raw = source.get(key, legacy.get(key, settings[key]))
+            try:
+                settings[key] = round(max(minimum, min(maximum, float(raw))), 2)
+            except (TypeError, ValueError):
+                pass
+        return settings
 
     def seed_staff(self):
         return [

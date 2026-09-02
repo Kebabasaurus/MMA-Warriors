@@ -115,18 +115,71 @@ ROLLING_SAVE_SLOT_COUNT = 2
 # never vanish from the results database simply because its replay aged out.
 RESULT_INDEX_LIMIT = 100000
 GLOBAL_RESULT_REPLAY_LIMIT = 2000
+# --- Per-event economics -------------------------------------------------
+# Ticket price, production tier and marketing spend are decided per card, not
+# once for the company. Each lever trades cash against turnout, presentation
+# quality or reach, so a card is a decision rather than a formality.
+# Production mostly pays for itself through the people watching at home, so a
+# richer tier is worth buying in step with your broadcast reach rather than at
+# every show. The cost curve is deliberately steep: without real coverage a big
+# production is money burned.
+EVENT_PRODUCTION_TIERS = {
+    "Lean": {
+        "cost": 0.55, "build": -8, "atmosphere": -0.06, "broadcast": 0.86,
+        "note": "Cheap to stage. Thin presentation costs you build, atmosphere and broadcast appeal.",
+    },
+    "Standard": {
+        "cost": 1.00, "build": 0, "atmosphere": 0.0, "broadcast": 1.00,
+        "note": "The baseline show your production budget already covers.",
+    },
+    "Premium": {
+        "cost": 2.05, "build": 4, "atmosphere": 0.03, "broadcast": 1.12,
+        "note": "Better staging and cameras. Worth it once a mid-tier network is carrying you.",
+    },
+    "Spectacle": {
+        "cost": 3.60, "build": 8, "atmosphere": 0.06, "broadcast": 1.30,
+        "note": "Full arena spectacle. Only pays off behind a wide-reach broadcast deal.",
+    },
+}
+EVENT_PRODUCTION_TIER_ORDER = ("Lean", "Standard", "Premium", "Spectacle")
+DEFAULT_EVENT_PRODUCTION_TIER = "Standard"
+EVENT_TICKET_PRICE_MIN = 10
+EVENT_TICKET_PRICE_MAX = 750
+EVENT_MARKETING_BUDGET_MAX = 500_000
+# Curated opening-roster fighters arrive on founder-era contracts.  Their
+# public market value remains high, but a regional player company must be able
+# to promote a credible first card without one show exceeding its cash reserve.
+OPENING_PLAYER_CONTRACT_FACTOR = 0.55
+# Additional cards in one calendar month compete for the same audience,
+# sponsors and broadcast attention.  Costs and signed purses remain whole.
+PLAYER_EVENT_CADENCE_DECAY = 0.35
+# A grudge match sells. Heat is capped so a feud lifts a card without
+# overwhelming ability, ranking and title stakes.
+GRUDGE_MATCH_MAX_HYPE_BONUS = 0.22
+GRUDGE_MATCH_MAX_GATE_BONUS = 0.14
 # Long careers retain searchable result records separately.  These are the
 # player-facing summary and raw commentary buffers, so cap them to keep saves,
 # startup, and the Results/Log views responsive.
 RESULT_HISTORY_LIMIT = 5000
 EVENT_LOG_LIMIT = 12000
-# Retained for compatibility with older tuning/save tooling. Fight commentary
-# is streamed in full; the live viewer may use these values for future pacing.
-FIGHT_COMMENTARY_ROUND_LINE_LIMIT = 24
-FIGHT_COMMENTARY_ROUND_HEAD_LINES = 14
-FIGHT_COMMENTARY_ROUND_TAIL_LINES = 8
+STORY_THREAD_ACTIVE_LIMIT = 300
+STORY_THREAD_RESOLVED_LIMIT = 1200
+STORY_THREAD_ACTIVE_BEAT_LIMIT = 12
+STORY_THREAD_RESOLVED_BEAT_LIMIT = 4
+# The complete technical transcript remains stored with the fight. The live
+# Broadcast view derives a shorter, deterministic round feed from that record;
+# these limits apply only to low-value timestamped presentation calls and may
+# never remove structural lines, scorecards, incidents, or finishes.
+FIGHT_COMMENTARY_ROUND_LINE_LIMIT = 14
+FIGHT_COMMENTARY_ROUND_HEAD_LINES = 8
+FIGHT_COMMENTARY_ROUND_TAIL_LINES = 4
+FIGHT_COMMENTARY_MODES = ("Broadcast", "Detailed")
+FIGHT_COMMENTARY_PERSONALITIES = ("Balanced", "Technical", "Excitable", "Concise")
 WEIGHTS = ["Flyweight", "Bantamweight", "Featherweight", "Lightweight", "Welterweight", "Middleweight", "Light Heavyweight", "Heavyweight"]
 SCOUTING_SEARCH_FOCUSES = ("Free Agent Pool", "Rival Rosters", "Regional Prospects", "Young Prospects", "Any Market")
+SCOUTING_SEARCH_PRIORITIES = ("Balanced", "Immediate Ability", "High Potential", "Value", "Marketability", "Roster Need")
+SCOUTING_BRIEF_LEVELS = ("Standard", "Priority", "Ongoing")
+SCOUTING_AGE_BANDS = ("Any Age", "Under 23", "Under 26", "Under 30", "30+")
 SCOUTING_RECOMMENDATION_MODES = ("Balanced", "Aggressive", "Strict", "Prospect Focus", "Value Focus", "Roster Need")
 # What each verdict actually instructs the player to do. Shown beside every
 # verdict so "MONITOR" is never read as a softer "PASS".
@@ -544,11 +597,41 @@ REGION_PROMO_BENEFITS = {
     "Africa": {"media": 1.00, "gate": 1.03, "morale": 4},
 }
 CARD_TIERS = ["Main Card", "Prelims", "Early Prelims"]
+FIGHT_PLANS = [
+    "Balanced", "Pressure and volume", "Counter striking", "Wrestle early",
+    "Cage grind", "Attack the body", "Damage the lead leg", "Submission hunt",
+    "Conserve energy", "Protect a lead", "Chase a finish",
+]
 STYLES = [
     "Boxer", "Kickboxer", "Dutch Kickboxer", "Muay Thai", "Karate", "Taekwondo", "Sanda",
     "Wrestler", "Freestyle Wrestler", "Catch Wrestler", "BJJ", "Luta Livre", "Sambo", "Judo",
     "Grappler", "Submission Grappler", "Well-Rounded", "MMA Generalist",
 ]
+# Narrow compatibility aliases for authored databases and old careers. Values
+# that are actually behaviours must not remain in the style channel.
+LEGACY_STYLE_ALIASES = {
+    "Wushu": "Sanda",
+    "Submission Hunter": "BJJ",
+    "Dynamic Attacker": "Well-Rounded",
+}
+
+
+def normalize_mma_style(value, fallback="Well-Rounded"):
+    """Return one supported MMA style without accepting behaviour labels."""
+    candidate = str(value or "").strip()
+    candidate = LEGACY_STYLE_ALIASES.get(candidate, candidate)
+    if candidate in STYLES:
+        return candidate
+    safe_fallback = str(fallback or "Well-Rounded").strip()
+    safe_fallback = LEGACY_STYLE_ALIASES.get(safe_fallback, safe_fallback)
+    return safe_fallback if safe_fallback in STYLES else "Well-Rounded"
+
+
+def normalize_secondary_style(value, primary_style):
+    candidate = str(value or "").strip()
+    candidate = LEGACY_STYLE_ALIASES.get(candidate, candidate)
+    primary = normalize_mma_style(primary_style)
+    return candidate if candidate in STYLES and candidate != primary else ""
 TRAITS = [
     "Fan Favourite", "Fragile", "Clutch", "Slow Starter", "Big Finisher", "Marketable", "Gym Rat", "Erratic",
     "Weight Bully", "Cardio Machine", "Fast Starter", "Comeback Artist", "Iron Chin", "Glass Cannon",
@@ -1078,7 +1161,7 @@ for _regional_pools in REGIONAL_NAME_POOLS.values():
     _remove_shared_first_names(_regional_pools)
 _remove_shared_first_names({"male": FIRST_NAMES, "female": FEMALE_FIRST_NAMES})
 
-STANDING_SKILLS = ["footwork", "feints", "head_movement", "punch_power", "punch_technique", "hand_speed", "high_kick_power", "high_kick_technique", "high_kick_speed", "low_kick_power", "low_kick_technique", "low_kick_speed", "creative_punches", "creative_kicks", "guard_defence", "kick_defence"]
+STANDING_SKILLS = ["footwork", "feints", "head_movement", "punch_power", "punch_technique", "hand_speed", "combination_punching", "body_punching", "counter_timing", "high_kick_power", "high_kick_technique", "high_kick_speed", "low_kick_power", "low_kick_technique", "low_kick_speed", "creative_punches", "creative_kicks", "guard_defence", "kick_defence"]
 GROUND_SKILLS = ["guard_work", "scrambles", "transitions", "positional_ability", "ground_striking", "submission_attack", "submission_defence_detail", "top_control", "bottom_control", "back_control", "mount_control", "leg_locks"]
 WRESTLING_SKILLS = ["takedowns", "takedown_setup", "takedown_speed", "takedown_defence_detail", "sprawl", "throws", "slams", "chain_wrestling", "cage_wrestling", "ride_control", "get_ups"]
 CLINCH_SKILLS = ["clinch_control", "dirty_boxing", "elbows", "knees", "thai_plum", "cage_pressure", "clinch_takedowns", "clinch_defence"]
@@ -1092,6 +1175,31 @@ DETAILED_SKILL_GROUPS = {
     "Mental": MENTAL_SKILLS,
     "Physical": PHYSICAL_SKILLS,
 }
+
+# Canonical MMA result families. Doctor and corner stoppages are recorded as
+# knockout-family wins because both end from accumulated striking damage;
+# injury stoppages remain a distinct non-KO finish.
+KO_METHODS = frozenset({"KO", "TKO", "Doctor Stoppage", "Corner Stoppage"})
+SUBMISSION_METHODS = frozenset({"Submission", "Technical Submission"})
+FINISH_METHODS = KO_METHODS | SUBMISSION_METHODS | frozenset({"Injury Stoppage"})
+# Highlight awards require a strike knockout rather than a medical or corner
+# stoppage, even though all four methods belong to the broader KO record family.
+KNOCKOUT_AWARD_METHODS = frozenset({"KO", "TKO"})
+
+# Versioned, save-compatible tuning surfaces. Combat settings affect fight
+# mechanics; business settings affect only financial projections/settlement.
+FIGHT_ENGINE_CONFIG_VERSION = 2
+FIGHT_ENGINE_SETTING_DEFAULTS = {
+    "ko_power": 1.0,
+    "submission_finish": 1.0,
+    "decision_noise": 1.0,
+    "gas_cost": 1.0,
+    "damage": 1.0,
+}
+FIGHT_ENGINE_SETTING_BOUNDS = {key: (0.5, 2.0) for key in FIGHT_ENGINE_SETTING_DEFAULTS}
+BUSINESS_SIMULATION_CONFIG_VERSION = 1
+BUSINESS_SIMULATION_SETTING_DEFAULTS = {"gate_multiplier": 1.0}
+BUSINESS_SIMULATION_SETTING_BOUNDS = {"gate_multiplier": (0.5, 2.0)}
 GYM_SPECIALTY_SKILLS = {
     "Boxing": ("punch_power", "punch_technique", "hand_speed", "head_movement"),
     "Kickboxing": ("high_kick_power", "high_kick_technique", "low_kick_technique", "creative_kicks"),

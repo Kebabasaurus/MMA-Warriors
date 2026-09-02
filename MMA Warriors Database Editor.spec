@@ -1,11 +1,16 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(SPECPATH).resolve()
+
 a = Analysis(
-    ['D:\\CodexFILES\\MMA Warriors\\database_editor.py'],
+    [str(PROJECT_ROOT / 'database_editor.py')],
     pathex=[],
     binaries=[],
     datas=[
-        ('D:\\CodexFILES\\MMA Warriors\\assets\\database_editor_icon.ico', 'assets'),
+        (str(PROJECT_ROOT / 'assets' / 'database_editor_icon.ico'), 'assets'),
     ],
     hiddenimports=[],
     hookspath=[],
@@ -34,5 +39,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['D:\\CodexFILES\\MMA Warriors\\assets\\database_editor_icon.ico'],
+    icon=[str(PROJECT_ROOT / 'assets' / 'database_editor_icon.ico')],
 )

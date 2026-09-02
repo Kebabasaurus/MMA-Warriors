@@ -1,10 +1,28 @@
 from dataclasses import dataclass, field
-from uuid import uuid4
+from unicodedata import normalize
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from constants import DETAILED_SKILL_GROUPS
 
 MENTAL_OVERALL_KEYS = tuple(DETAILED_SKILL_GROUPS["Mental"])
 PHYSICAL_OVERALL_KEYS = tuple(DETAILED_SKILL_GROUPS["Physical"])
+
+
+def new_fighter_id():
+    """Return a fresh runtime/editor identity for a newly created fighter."""
+    return f"FTR-{uuid4().hex[:16]}"
+
+
+def deterministic_source_fighter_id(record):
+    """Derive a reproducible ID for a legacy source row that does not have one."""
+    parts = (
+        record.get("database_type", "mma"),
+        record.get("name", ""),
+        record.get("owner", ""),
+        record.get("placement", ""),
+    )
+    identity = "\x1f".join(normalize("NFKC", str(value)).strip().casefold() for value in parts)
+    return f"FTR-DU-{uuid5(NAMESPACE_URL, f'mma-warriors/default-universe/mma-fighter/{identity}').hex}"
 
 
 @dataclass(eq=False)
@@ -57,6 +75,17 @@ class Fighter:
     home_event_history: list = field(default_factory=list)
     height: str = ""
     style: str = "Well-Rounded"
+    # Optional supported cross-training identity. The primary style remains the
+    # compatibility/search key; this field lets fighters express a real second
+    # discipline without inventing free-text hybrid styles.
+    secondary_style: str = ""
+    # Stable registry IDs preferred beneath legal broad actions. Unknown IDs
+    # are ignored safely so old/new databases remain forward-compatible.
+    signature_moves: list = field(default_factory=list)
+    # Technique-specific proficiency. Keys are move IDs or ``defense:<id>``.
+    # Broad ratings remain the outcome authority; mastery shapes technique identity.
+    move_mastery: dict = field(default_factory=dict)
+    move_mastery_last_month: int = 0
     stance: str = "Orthodox"
     trait: str = "Gym Rat"
     potential: int = 70
@@ -83,7 +112,15 @@ class Fighter:
     behaviour: str = "Dynamic Attacker"
     camp: str = "Independent"
     rival: str = ""
+    # Display names are not unique.  Keep the legacy name for presentation and
+    # old saves, but bind newly-created rivalries to the opponent's stable ID.
+    rival_fighter_id: str = ""
     friend: str = ""
+    # Friend identity mirrors rival identity: names are presentation only.
+    friend_fighter_id: str = ""
+    # Active pair-story keys let former stablemates continue a chapter after
+    # changing camps without making every ordinary bout query the story index.
+    relationship_story_keys: list = field(default_factory=list)
     exclusive: bool = True
     contract_type: str = "Exclusive"
     negotiation_heat: int = 0
@@ -156,6 +193,8 @@ class Fighter:
     career_knockouts: int = 0
     career_stat_rounds: int = 0
     career_stat_fights: int = 0
+    career_signature_stats: dict = field(default_factory=dict)
+    career_move_family_stats: dict = field(default_factory=dict)
     available_week: int = 0
     # Day-precision clearance. available_week stays the coarse gate so older
     # saves keep working; this refines it once a fighter has fought on a dated
@@ -204,6 +243,20 @@ class Fighter:
     main_event_promise: bool = False
     top_opponent_promise: bool = False
     promise_deadline_month: int = 0
+    # Direct link to an unresolved contract narrative. It survives free agency
+    # and promotion changes so later signing/revenge beats need no market scan.
+    contract_story_key: str = ""
+    # Direct link to a child-promotion development/graduate chapter. Transfer,
+    # recall and later parent results can advance it without finding alumni.
+    feeder_story_key: str = ""
+    # Direct link from one major upset into its bounded prove-it follow-up run.
+    breakout_story_key: str = ""
+    # Direct link from a sustained losing run into one recovery, reinvention,
+    # release, or retirement chapter. Result hooks never search for this story.
+    crossroads_story_key: str = ""
+    # Direct link from a retirement decision to the final opponent and result.
+    # Matchmaking and settlement use this pointer without searching old stories.
+    farewell_story_key: str = ""
     relationship_trust: int = 55
     serious_injury: str = ""
     serious_injury_pending: bool = False
@@ -231,12 +284,15 @@ class Fighter:
     career_arc_last_offer_month: int = 0
     academy_graduate: bool = False
     academy_graduated_month: int = 0
+    # Retain the academy identity after graduation so mentorship stories can
+    # continue into the professional career without scanning the alumni list.
+    academy_prospect_id: str = ""
     ranking_position: int = 0
     previous_ranking_position: int = 0
     ranking_reason: str = ""
     # Stable career identity. Names, employers, sports and weight classes can all
     # change; this value must not. It is intentionally not player-facing.
-    fighter_id: str = field(default_factory=lambda: f"FTR-{uuid4().hex[:16]}")
+    fighter_id: str = field(default_factory=new_fighter_id)
     # Record carried into the current universe. The individual bouts behind this
     # baseline were not simulated here, so profile history labels it separately.
     record_history_baseline_w: int = -1
@@ -274,6 +330,11 @@ class Fighter:
         # Always show the full MMA record. A visible zero makes it clear that
         # draws are tracked, rather than silently omitted from the display.
         return f"{self.record_w}-{self.record_l}-{self.record_d}"
+
+    @property
+    def style_label(self):
+        secondary = str(getattr(self, "secondary_style", "") or "")
+        return f"{self.style} / {secondary}" if secondary and secondary != self.style else self.style
 
     @property
     def status(self):

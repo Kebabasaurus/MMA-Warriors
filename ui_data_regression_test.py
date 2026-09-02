@@ -11,6 +11,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from models import Gym
+from fight_engine import FightEngineMixin
 from seeding import SeedMixin
 from views import ViewMixin
 from world import WorldMixin
@@ -67,7 +68,7 @@ class Text:
         self.value += str(value)
 
 
-class ViewHarness(ViewMixin):
+class ViewHarness(ViewMixin, FightEngineMixin):
     def event_fight_participants(self, fight):
         return list(fight.get("tournament_entrants", fight.get("fighters", [])))
 
@@ -255,6 +256,8 @@ class UIDataRegressionTests(unittest.TestCase):
         harness.title_fight = Var(False)
         harness.main_event = Var(False)
         harness.card_tier = Var("Main Card")
+        harness.red_fight_plan = Var("Balanced")
+        harness.blue_fight_plan = Var("Balanced")
         harness.special_belt_choice = Var("None")
         harness.set_matchmaking_notice = lambda *_args: None
         harness.belt_key = lambda gender, weight: f"{gender}:{weight}"

@@ -1,5 +1,599 @@
 # Changelog
 
+## Unreleased
+
+- Hardened generated-fighter style assignment. Every new entrant now finishes generation with a
+  supported primary style and a validated non-duplicate secondary style, even if an enrichment path
+  supplies a blank or legacy behaviour label; the repair is deterministic and adds no RNG draw.
+- Improved between-round coach feedback. Verified head coaches and gyms now deliver a factual round
+  read followed by a clear instruction based on knockdowns, damaging offense, gas, repeated moves,
+  successful families or control. Balanced, Technical, Excitable and Concise voices present that
+  feedback differently without consuming RNG; stablemate bouts do not assign one coach to both corners.
+- Added fact-driven camp commentary. Fighters with a real matching Gym receive natural pre-fight
+  corner introductions naming their saved camp, coach, location and specialties, plus bounded live
+  calls when completed boxing, kickboxing, wrestling, BJJ, sambo, clinch, gameplanning or conditioning
+  evidence matches that Gym's strengths. Promotion, academy, unknown and legacy camp strings are
+  described naturally but conservatively without invented coaches or specialties, while opponents
+  from the same verified Gym receive one shared stablemate introduction instead of contradictory
+  corner claims. Live camp calls are deterministic, capped at one per fighter per round and two per
+  bout, and seeded A/B coverage proves they cannot affect fight mechanics, stats, scoring or results.
+- Added natural fight-night commentary for all 46 saved fighter traits. Every bout now introduces
+  each fighter's trait in broadcast language, while combat-relevant traits receive additional live
+  callouts only when recorded targets, moves, positions, damage, gas, timing or fight context support
+  them. Contextual calls are deterministically capped at one per fighter per round and two per bout;
+  they consume no RNG and do not affect actions, damage, scoring or finish rates.
+- Added one exclusive authored finisher for every supported MMA style. Striking disciplines receive
+  style-native knockout techniques, wrestlers receive causal ground-and-pound stoppage sequences,
+  and submission styles receive distinct chokes, joint locks and leg locks. Primary or secondary
+  style ownership is required even when a move is saved as a signature. All 18 finishers appear in
+  the representative 880-fight corpus and only identify the technique beneath an already-resolved
+  KO, TKO or submission, so no damage, finish or stoppage roll was added.
+- Added one exclusive authored combination for every supported MMA style. Boxing, kickboxing, Dutch
+  kickboxing, Muay Thai, karate and taekwondo receive distinct ordered striking chains; Sanda,
+  wrestling, catch wrestling, jiu-jitsu, Luta Livre, sambo, judo and the mixed disciplines receive
+  style-native strike-to-entry, takedown, transition or submission-threat sequences. All 18 retain
+  ordered component evidence, are available through a fighter's primary or secondary style, and are
+  excluded from unrelated styles. The 880-fight representative report observes every addition with
+  no dominance, legality, style-distance or reachability diagnostic; no broad action, damage or
+  finish roll was added.
+- Added twelve one-time visible-damage milestones across persistent head, body and leg trauma,
+  including facial marking, torso bruising, guarded movement, leg welts, weight shifts and a
+  visible limp. Exact structured cuts now name their recorded location and describe heavy bleeding
+  or threatened vision only when those facts exist. These deterministic lines survive Broadcast,
+  appear chronologically in replay analysis and consume no fight RNG or add damage/stoppage rolls.
+  Post-fight recovery now also consumes the completed bout's trauma before career-stat cleanup;
+  a 256-fight gate found 1,043 damage events with complete factual narration and Broadcast retention
+  while the locked finish and action baselines remain the mechanical authority.
+- Expanded the ground catalogue from 117 to 140 moves without changing grappling resolution. Six
+  position-specific striking chains now distinguish guard, half guard, side control, mount, back
+  control and turtle offense; five passing/climbing transitions, four sweeps, four recoveries/get-ups
+  and four retention/control rides add further ground identity. Twenty-two additions appear in the ordinary
+  880-fight representative corpus, while the turtle wrist-ride chain remains legally reachable in
+  its specialist state. Ground-strike components reconcile at realistic volume and mounted TKO
+  narration follows the causal registered move. The exact finish and broad-action baselines remain
+  the authority, so none of this content adds a strike, pass, sweep, escape or finish roll.
+- Expanded the standing technique catalogue from 101 to 117 moves. Ten new combinations add
+  body-to-head boxing, stance shifts, pressure flurries, hand-to-kick chains and punch/elbow/knee
+  sequences; six uncommon finishers add uppercuts, corkscrew crosses, spinning backfists, axe kicks,
+  jumping front kicks and switch flying knees. These identities are selected after broad exchange
+  resolution and never add a landing or finish roll, preserving the exact 2,319/633/731 frozen
+  finish/KO/TKO corpus. Every addition appears in the representative 880-fight report, combination
+  components reconcile at realistic volume, and causal registry moves now replace contradictory
+  legacy strike names in both sudden and ordinary KO/TKO finish narration.
+- Made MMA play-by-play reflect who the fighters are without changing what the fight engine decides.
+  Standing calls now rotate by the recorded technique, relevant detailed strength and style family,
+  with broader survival, clinch, transition, escape and damage language instead of a few repeated
+  resets. Ground sequences now preserve the actual submission technique, named escape defense,
+  top/bottom ownership, live position and natural escape consequence; referee stand-ups are recorded
+  as officiating resets rather than false fighter escapes. Broadcast duplicate limiting now applies
+  to important position calls as well as routine lines. A 256-fight permanent gate and 2,048-fight
+  extended audit verify profile coverage, submission continuity and low repetition while the frozen
+  result and action baselines remain the mechanical authority.
+- Completed the finish-system follow-up audit without replacing the accepted fight balance. The
+  canonical corpus remains exactly 2,319 finishes (60.39%), 633 KOs (16.48%) and 731 TKOs
+  (19.04%); competitive bouts independently remain inside the 48-54% finish and 15-19%
+  submission bands, while 19.55% of five-round finishes occur in rounds four or five. Permanent
+  gates now reject lost doctor/injury reachability or deficient late-round finishes. Body- and
+  leg-kick knockdowns no longer masquerade as injury stoppages, serious-cut doctor checks remain
+  between-round only, and authored submission, doctor, injury, head-kick and walk-off endings now
+  survive the final commentary sequence. Finish, KO, submission and highlight-KO method families
+  are centralized so career stats, awards, recovery, excitement and contractual bonuses agree.
+- Restored the visible fight story in the default Broadcast feed without changing fight resolution.
+  Landed standing offense, completed takedowns, landed ground strikes, passes, sweeps, reversals and
+  escapes are now prioritised during round compaction, while identical wording remains capped and
+  condensed notes count the actual omitted standing,
+  standing-striking, takedown, ground-control and ground-striking lanes. Successful sweeps that retain the same named position
+  now use the recorded top/bottom ownership change instead of being miscalled as denied. The
+  canonical release runner also verifies the frozen 3,840-fight action-frequency baseline alongside
+  the unchanged 60.39% finish, 16.48% KO and 19.04% TKO gates.
+- Made Fight Night audio continuous across the full live card. A loop-safe, crossfaded arena bed now
+  stays open beneath walkouts, round bells and factual reactions instead of reopening the Windows
+  output for every stretch of crowd ambience; later-round bells use the mastered crowd pack, and
+  closing the live viewer cancels its bed and in-flight reactions. Knockdowns and finishes retain a
+  reserved reaction slot, while decision and card-complete calls no longer suppress one another.
+  Live audio stop events and audio-only system entropy are excluded from event rollback snapshots so
+  an active audio session cannot prevent a completed card from settling.
+- Expanded the fact-driven MMA broadcast without changing combat resolution. Landed, blocked,
+  slipped, countered, transitioned and escaped exchanges now have deterministic wording variation;
+  recorded signatures, technique mastery, stance lanes, plan changes, momentum, damage, camps,
+  championship stakes and rivalries can add context only when the trace or bout data proves it.
+  The live viewer can switch between Broadcast and Detailed feeds in place, shows the selected
+  voice, separates rounds more clearly and highlights knockdowns and finishes. New commentary
+  quality gates reject excessive repetition, missing or contradictory facts, broken finish
+  continuity, duplicate results, technical-suffix leakage and any one-bout change to the accepted
+  3,840-fight finish/KO/TKO calibration.
+- Reworked MMA commentary as a presentation-only three-phase upgrade. Fight Night now defaults to a
+  compact Broadcast feed that suppresses repeated low-value calls while preserving the complete
+  stored transcript, every structural/evidential line, sealed-scorecard flow, and Detailed review.
+  Exchange prose now comes from the recorded move, target, defense, outcome and position; finish copy
+  follows the actual final technique; corner advice cites visible fight evidence; and persistent
+  Balanced, Technical, Excitable and Concise voices change wording without changing fight mechanics.
+- Improved full-world calendar performance without reducing simulated activity. AI promotions now
+  compute their card day and fatigue policy once per readiness pass, fight commentary reuses the
+  head-to-head result already stored in bout state, and regional intake batches reuse one collision
+  set instead of rescanning the world for every recruit. Promotion monthly reviews are now assigned
+  to stable, evenly distributed weekly groups; the sixteen regional circuits retain one card and
+  one development review per circuit each month without a month-boundary card pile-up.
+- Added named defensive technique identity beneath every exchange. Eighteen registry-backed defenses
+  cover guards, parries, evasions, kick checks/catches, sprawls, whizzers, cage frames, underhook turns,
+  hand fighting, wall walks, submission escapes and technical scrambles; traces and release reports
+  retain the attempted defense without changing whether the calibrated broad action succeeds.
+- Added persistent technique mastery for offensive moves and defenses. Camps develop focus-aligned
+  techniques, sufficiently mastered moves can become signatures, academy prospects develop and carry
+  mastery into their professional careers, and veteran mastery declines gradually after the athlete's
+  prime. Profiles and academy reports expose the strongest techniques; legacy saves default safely.
+- Added deliberate in-fight stance switching and defense/position-aware branching sequences. Skilled
+  switchers and adaptable fighters can change side from plan and matchup evidence, while authored
+  follow-ups can select an alternate legal branch after frames, evasions or escapes. Every switch and
+  branch is retained in the trace and remains one ordinary broad action.
+- Added a per-round replay analysis explorer showing effectiveness, top moves, named defenses, sequence
+  paths, stance changes and corner-plan changes. Expanded the shipped authored-signature cohort from 40
+  to 114 fighters across 13 styles, including natural homes for all 17 legal specialist techniques that
+  are rare in the representative synthetic sample, and strengthened their legal selection priority. The locked 3,840-fight rates remain
+  exactly 60.39% finishes, 16.48% KO and 19.04% TKO.
+- Deepened the technique layer without changing the calibrated broad outcome model. Complete fights
+  now retain elite failed-shot/front-headlock, standing-back-control and leg-entanglement states;
+  registry energy, miss risk and counter vulnerability shape later move choice; successful authored
+  follow-ups create bounded two-tick sequences; and all 18 styles have explicit technique-tag identities.
+  Stance lanes and striker/grappler matchups also influence legal technique selection, while corners
+  evolve plans from repeated opponent moves and effective move families with evidence and confidence.
+- Expanded the shipped authored-signature cohort from nine to 40 fighters across 11 styles. The
+  Simulation Lab now reports top moves, completed sequences, signature effectiveness, average technique
+  load/risk, stance-lane usage and fight-plan evolution. The general release report has grown to 880
+  fights with distinct style-distance and open/closed/switch-stance checks, while a separate 720-fight
+  specialist-transition report proves the rare positions and their legal follow-ups occur in complete
+  bouts. The frozen 3,840-fight finish percentages and competitive finish converter remain unchanged.
+- Completed the fight-move release audit. A deterministic 840-fight report now samples every supported
+  style plus behaviour, tier and stance, and checks registry reachability, dominance, mismatch-only use,
+  counter/position/target legality and energy bounds. All 101 moves are reachable and the safety checks
+  are clean; the frozen 3,840-fight result and action baselines remain exact. Turtle breakdown and sit-out
+  traces now use their real broad actions. Standing-skill development preserves its prior per-skill
+  exposure after the three-skill boxing expansion, and the Database Editor audit safely handles sparse
+  legacy skill overrides without mutating them on view.
+- Expanded Fight Night and analysis presentation around the exact recorded technique. Calls now label
+  target, defense and meaningful follow-up in text; completed rounds show bounded move-family
+  effectiveness, Quick Fight Simulator results summarize each corner's main families, and fighter
+  statistics retain career family/signature totals. Raw trace counts reconcile with every summary,
+  official cards remain sealed, and presentation consumes no mechanics RNG.
+- Added bounded tactical move selection beneath the existing fight plans. Prior public trace can make
+  body/leg work and feints open later families, repeated techniques become less selectable, and
+  adaptable counter fighters exploit real patterns only inside a counter window. Every choice retains
+  explainable selection reasons, bout-local read counts cap at 12, and no new RNG or direct finish
+  modifier was added.
+- Added stable fighter signature moves. The Database Editor exposes three registry-backed selections,
+  nine authored stars have first-cohort move sets, and skill-supported generated fighters receive
+  deterministic signatures without RNG. Legal signatures are preferred but never guaranteed; traces,
+  post-fight telemetry and career totals track attempts, effective uses and finishes. Unknown future
+  IDs degrade safely, duplicate-name fighters remain independent, and outcome calibration is unchanged.
+- Expanded the MMA registry to 101 moves with ground-strike chains, pressure passes, mount/back/turtle
+  transitions, sweeps and reversals, major choke/arm-lock families, and legal ankle/knee/heel/toe-lock
+  attacks. Every submission now validates its positional attack path and explicit failed-attempt
+  outcomes; major grappling styles produce distinct legal technique mixes without adding a redundant
+  submission-chaining rating or changing finish conversion.
+- Expanded the MMA registry to 77 techniques with over-under, underhook and Thai-plum entries; cage
+  pummels and exits; mixed shot entries; trips, throws, knee taps and high-crotch finishes; re-shots,
+  whizzers, mat returns, standing rides, escapes and front-headlock go-behinds. Every takedown now
+  validates an entry family, legal defenses and possible finish positions, with distinct Wrestling,
+  Judo, Sambo and Sanda move mixes and unchanged calibrated outcomes.
+- Expanded MMA standing technique coverage to 54 registered moves. Kicks now retain target, lead/rear
+  side, range band and legal defensive families; new options include calf kicks, teeps, side/switch/
+  question-mark/wheel/spinning kicks, punch-kick chains, intercepting/flying knees and step-in/spinning
+  elbows. High-risk moves are skill-gated and uncommon, five major kicking styles produce distinct
+  move mixes, and the exact 60.39% / 16.48% / 19.04% calibration remains unchanged.
+- Added three distinct MMA boxing ratings—combination punching, body punching and counter timing—
+  with deterministic legacy-save derivation, generation, development and editor/profile support.
+  Seven new boxing sequences include double-jab-cross, cross-hook-cross, body/head changes and three
+  counter-only returns. Technique skill now governs which legal sequence appears, counter moves need
+  a real counter window, and broad damage/gas resolution remains unchanged at the exact 60.39% /
+  16.48% / 19.04% calibration.
+- Added the canonical MMA move registry and trace contract. The initial 32 named punches, combinations,
+  kicks, entries, takedowns, clinch actions, ground transitions and submission families now retain
+  stable IDs, legal positions, targets, skill/defense bundles, risk metadata and follow-ups beneath
+  the existing calibrated actions. Technique selection is deterministic and uses an explicit generic
+  fallback; broad action resolution and the 60.39% / 16.48% / 19.04% outcome calibration remain unchanged.
+- Completed the move-expansion foundation. Jiri Prochazka and Brandon Royval now retain supported
+  Kickboxer/BJJ styles, Lito Adiwang and Kevin Belingon use the supported Sanda identity, and shared
+  universe validation rejects unsupported MMA styles, profile styles, secondary styles, traits and
+  behaviours. Legacy Wushu/behaviour-as-style saves normalize safely. New universes deterministically
+  give roughly 65% of fighters a distinct supported secondary discipline, displayed as a mixed style
+  and contributing a bounded 35% action-selection influence. A new 3,840-bout action baseline freezes
+  pre-expansion frequency and effectiveness; headline calibration remains exactly 60.39% finishes,
+  16.48% KO and 19.04% TKO.
+- Added a phased fight-engine moves, skills and combinations roadmap. It begins with the confirmed
+  four-record unsupported-style repair and validator gap, then separates technique identity from
+  style and behaviour before expanding boxing, kicks, clinch, wrestling, ground work, submissions,
+  fighter signatures and tactical chains. Every phase retains the accepted 60.39% finish, 16.48% KO
+  and 19.04% TKO calibration without changing competitive finish conversion.
+- Repaired the shipped universe's source identity coverage. All 1,534 canonical MMA fighters now
+  carry durable source IDs, all previously blank birthplace/hometown pairs have deterministic
+  provenance-marked regional data, and the four broad-reach media packages now serve Russia,
+  South Korea, the Middle East, and Africa. Legacy custom databases still receive stable IDs only
+  in memory until explicitly saved, while Database Editor additions and duplicates mint fresh IDs.
+- Added a narrative-system audit and phased development plan covering rivalries, title chases,
+  career journeys, injuries, academies, contracts, promotion histories, relationships, and combat
+  sports. The plan makes calendar speed a release constraint: narrative updates must be event-driven,
+  indexed, bounded, transaction-safe, RNG-isolated, and verified against long-career performance
+  budgets rather than adding a new whole-world weekly scan.
+- Implemented the first narrative-system phase. Rivalries, title chases, championship reigns, title
+  losses, and redemption runs now advance persistent ID-safe story threads directly from existing
+  simulation events; matchmaking and Fight Night explain why a connected bout matters, while a new
+  Storylines browser separates active and resolved chapters. Thread/beat limits, direct-key lookup,
+  deduplication, legacy-save defaults, transaction rollback, and presentation-RNG isolation prevent
+  narrative history from becoming a second simulation cost. Champion-retention title losses no
+  longer receive success rewards, declined veteran runs cannot be penalized twice, and homegrown
+  title projects receive at most one backed extension.
+- Extended persistent narratives through serious-injury treatment, recovery clearance, return-fight
+  payoff and medical retirement; contracted comeback/farewell commitments; academy graduate to
+  homegrown champion lineage; and contract-promise fulfilment or breach. Fighter Profiles now read
+  connected chapters from the direct participant index. Added a deterministic 12-week A/B calendar
+  regression that requires identical gameplay and shared-RNG outcomes while enforcing the narrative
+  overhead budget. Story status counts are now maintained incrementally, so routine writes remain
+  constant-time and full bounded pruning occurs only when a hard active/resolved limit is exceeded.
+- Expanded narrative memory across weight-cut turnarounds and division reinvention, camp-fit reviews
+  and gym moves, ID-backed friendship/stablemate bouts, AI promotion strategy and ownership eras,
+  other-sport contender/title/retirement careers, MMA transitions, and crossover-superfight results.
+  Fighter Profiles now assemble a unified bounded Career Timeline lazily from direct story and
+  fighter-local indexes. End-of-year awards select and archive at most eight defining current-year
+  threads instead of reconstructing historical results. Friend relationships now persist a stable
+  fighter ID and only migrate legacy names when one unambiguous loaded-world match exists.
+- Added academy mentorship through graduation, fit/attention-driven gym splits, hometown-hero market
+  milestones, talent-war signings, and bounded story-aware AI matchmaking. AI story value is cached
+  only for already-credible candidate pairs and cannot bypass readiness, division, ranking, title,
+  or stale-rematch rules. Replaced the noisy one-shot performance gate with three alternating paired
+  samples; repeated 12-week aggregate runs remain inside the no-slowdown budget, with the current
+  full-suite measurement at +2.69%. Added a synthetic 25-/50-/100-year
+  storage regression that kept indexed update time flat and the current century payload below 800 KB.
+  Academy graduation rollback now restores story threads and rebuilds their transient indexes when
+  a late graduation hook fails.
+- Expanded narrative scope with scored Promotion Rivalry chapters. Contested contract signings,
+  academy recruitment and sanctioned superfights now build a deduplicated two-year series between
+  known companies, with decisive and cycle-end resolutions but no recurring promotion scan.
+  Significant fighters also retain room-specific coaching-loyalty chapters through arrivals,
+  breakthroughs, title wins, setbacks and gym splits. Academy mentorship remains active after
+  graduation through a persisted prospect ID and can resolve with the graduate's senior title win.
+  The current canonical post-expansion paired calendar gate measured +2.69% overhead across 12 aggregate
+  weeks, inside the 5% budget; its disabled arm exits before the new story-key work so the
+  comparison includes the real helper cost.
+- Expanded Hometown Hero stories beyond popularity thresholds. Main-event and title bookings in an
+  established fighter's hometown or birth market now announce a homecoming, expose its stakes in
+  fight context, and settle as a triumph, setback, heartbreak, unresolved result, or home-title
+  payoff. Player and AI paths emit these beats from existing booking and regional-settlement events;
+  the post-homecoming performance gate measured -2.28% overhead and added no calendar scan.
+- Added persistent Contract Sagas connecting renewal pressure, stalled or broken talks, expiry,
+  release, rival-company signings, returns and cross-company revenge fights. A fighter carries one
+  direct optional thread key, duplicate names remain ID-safe, and legacy/current saves default and
+  round-trip correctly. Contract helpers exit before story-key lookup when narratives are disabled,
+  and the narrative plan now treats calendar-speed limits as an explicit release-blocking gate. The
+  current deterministic paired test measured +0.68% median overhead with identical world/RNG state.
+- Added ID-safe Staff Tenure stories connecting appointment, renewal warnings, stalled talks,
+  renewal, release and natural expiry. Staff Profiles expose the current chapter and Storylines use
+  the saved staff identity, while legacy staff default safely to no active key. Hooks reuse existing
+  staff actions and the existing warning loop rather than adding calendar work; the post-change
+  canonical paired test preserved identical world/RNG state.
+- Expanded Staff Tenure into performance-backed staff careers. First-of-kind scouting dossiers,
+  medical clearances, event matchmaking results, marketing outcomes, broadcast breakthroughs and
+  fulfilled fighter promises now create bounded achievements or setbacks for the responsible staff
+  lead. Profiles and Storylines expose a 0–100 legacy score and distinct milestone count; duplicate
+  outcomes cannot farm beats or legacy. The post-expansion paired gate measured +0.49% CPU overhead
+  with identical world/RNG state. Both arms now collect deferred startup garbage before timing so
+  unrelated load cleanup cannot create a false calendar regression.
+- Hardened the narrative performance gate after a Windows scheduling pause produced contradictory
+  wall-clock results on unchanged code. The same alternating paired A/B now gates on process CPU
+  time—the simulation work controlled by the game—while still reporting wall-clock medians for
+  diagnosis; the existing 5% proportional ceiling and world/RNG equivalence checks remain unchanged.
+- Added persistent Feeder Pathway careers for player-funded child promotions. Development loans and
+  paid transfers now follow the same fighter through child main/title results, recall or promotion,
+  parent debut, featured breakthrough, parent championship, departure, or retirement. Matchmaking,
+  Fighter Profiles, Storylines, and the child operations screen expose the connected chapter by
+  durable fighter ID. Rejected moves create no story, late hook failures restore rosters, belts,
+  cash, ledgers, Chronicle, story indexes, and RNG, and ordinary fight settlement exits after two
+  direct key checks without scanning rosters, alumni, Results, or history. Three post-change paired
+  calendar runs retained identical gameplay/RNG state and ranged from −1.94% to +2.06% total
+  narrative CPU variance, showing no repeatable slowdown and remaining inside the noise-tolerant
+  rejection gate. The full 30-suite isolated regression run passes.
+- Turned the one-shot Giant Slayer achievement into a persistent Breakout Run. An eight-point
+  underdog win now carries prove-it pressure into draws, follow-up wins, setbacks, main events,
+  title tests, championship arrivals, retirement, or a stalled run. The same ID-safe chapter appears
+  in matchup context, Fighter Profile timelines, Storylines, annual review, Chronicle, and bounded AI
+  matchmaking intent. The result hook reuses the achievement's already-computed upset flag, performs
+  only direct-key lookups, consumes no simulation RNG, and added no calendar scan. Focused and clean
+  canonical paired runs measured +0.64% and −1.61% CPU variance with identical gameplay/RNG state,
+  showing no repeatable slowdown; all 30 isolated suites pass.
+- Added ID-safe Career Crossroads for established fighters after a third consecutive simulated MMA
+  loss. The chapter carries decline pressure into draws, deeper losing runs, division reinvention,
+  recovery or championship wins, roster release, contract exit, and final-fight retirement; its
+  current stakes appear in matchmaking, Fight Night, Fighter Profiles, Storylines, Chronicle,
+  annual review, and bounded AI booking intent. Player, AI, and regional result hooks reuse the
+  bout record already being settled, while inactive paths use direct empty-key checks and a
+  four-result bounded origin lookup rather than a calendar or history scan. Current/legacy saves,
+  duplicate callbacks and names, event rollback, and presentation RNG are covered. Three clean paired
+  calendar runs ranged from -19.04% to +2.66% CPU variance with identical gameplay/RNG state, showing
+  no repeatable slowdown and passing the noise-tolerant release gate; the complete isolated regression
+  runner also passes.
+- Expanded Fighter Relationship stories beyond a one-fight headline. Friends and featured
+  stablemates now carry the first result into an unresolved draw, a respectful series conclusion,
+  rivalry-driven fallout, a three-fight verdict, or a former-stablemate rematch after changing camps.
+  Matchmaking, Fight Night, Fighter Profiles, Storylines, Chronicle, annual review, and bounded AI
+  intent read the same pair-ID thread. Active keys are stored only on the involved fighters, capped
+  at four, so unrelated bouts return before constructing a pair key or querying the story index;
+  draws and regional cards now use the same relationship interpreter. Duplicate callbacks/names,
+  legacy/current saves, thread normalization, RNG purity, and event rollback are covered. A rejected
+  unconditional-lookup version failed the performance gate and was replaced; three optimized clean
+  calendar runs ranged from -3.70% to +1.88% CPU variance with identical gameplay/RNG state, showing
+  no repeatable slowdown. The complete isolated regression runner also passes.
+- Turned retirement decisions into persistent Career Farewell chapters. Final-fight stakes now
+  surface in matchmaking and Fight Night; automated retirement shows prefer an already-eligible
+  career rival, friend, former stablemate, significant ID-backed former opponent, champion, or fellow
+  veteran without expanding the candidate pool. The result retains the final opponent, relationship,
+  outcome, Chronicle payoff, and both fighter IDs across MMA, AI, regional, draw, no-contest, and
+  other-sport paths. Current and legacy saves, duplicate callbacks and names, normalization, RNG
+  purity, and player-event rollback are covered. Three clean paired calendar runs ranged from -1.96%
+  to +4.44% CPU variance, and the canonical run measured +3.10%, with identical gameplay/RNG state,
+  no new recurring simulation pass, and the complete isolated regression runner passing.
+- Added the fight-engine preservation foundation for the staged realism roadmap. A UI-free audit
+  harness now freezes 3,840 fixed-seed bouts across competitive low/mid/high tiers, mismatches,
+  styles, behaviours and bout lengths; records per-exchange position, action, damage and stat
+  evidence; publishes confidence intervals; classifies every detailed fighter attribute as a direct
+  fight input or documented pre-fight input; and restores caller RNG and fighter state. The new
+  dedicated regression suite locks the existing 59.64% total finish rate, 15.70% KO rate, 19.66%
+  TKO rate and 23.46% combined submission-family rate before later engine phases begin. MMA fights
+  now also retain a structured `FightResult` containing per-exchange position, action, gas, damage,
+  strike, takedown, submission and knockdown deltas plus scorecards, metrics and a terminal official
+  result; the legacy result tuple remains unchanged. Presentation now uses a bout-local random
+  stream, mechanically meaningful fouls are separated from atmospheric flavour, and changing the
+  commentary phrase bank cannot alter a result. Combat, officiating and presentation now have
+  explicit bout-local streams; exchange commentary renders through the recorded trace, whose events
+  classify outcomes and retain hurt, cut, knockdown, position, control and stoppage evidence. The
+  post-separation 3,840-bout audit remains at 59.79% finishes, 16.25% KO and 18.98% TKO without
+  changing competitive finish conversion.
+- Rebuilt MMA judging around round-local trace evidence. Judges now apply effective striking and
+  grappling first, effective aggression only when offense is close, and control only when both are
+  close; gas, home, experience, pressure and discipline no longer score by themselves. Clear
+  dominance cannot be overturned by ordinary variance, evidence-backed 10-8 and rare 10-10 rounds
+  are supported, and cards expose unanimous/split/majority decision and draw verdicts while keeping
+  canonical save-compatible methods. Repeated fouls can produce a visible round-specific deduction.
+  The post-judging corpus remains at 59.32% finishes, 16.25% KO and 19.24% TKO.
+- Separated transient hurt from lasting head, body and leg trauma. Defensive success, survival and
+  corner work can now settle hurt and restore bounded gas without healing accumulated damage. Body
+  damage taxes sustained output, leg damage impairs kicks/shots/movement, and head trauma degrades
+  reactions. Cuts retain location, severity, bleeding, swelling and vision risk; doctor stoppages
+  identify that evidence, and the same Fight Night metrics now extend medical layoffs and severe
+  injury holds. The calibrated corpus passes at 60.39% finishes, 16.48% KO and 19.04% TKO.
+- Added a 356-bout full-system fight-engine regression spanning every fight plan, major style
+  matchups, 3/5/6/7-round rules, extreme ratings and duplicate-name fighters. It reconciles every
+  exchange with the final box score, position path, stoppage, scorecards and judging evidence. The
+  audit found and fixed knockdowns being classified and scored against the defending corner,
+  No Contest audit rows retaining winner/loser IDs, and survival erasing reported head trauma. A
+  separate permanent trauma channel fixes the evidence without changing calibrated mechanics: the
+  3,840-bout audit remains exactly 60.39% finishes, 16.48% KO and 19.04% TKO.
+- Added ID-safe pre-fight plans for both player and game-AI MMA bouts. Matchmaking and the booked-card
+  editor offer Balanced, pressure, counter, wrestling, cage, body, leg, submission, conservation,
+  lead-protection and finish-chasing instructions. Plans alter action mix, targets and energy rather
+  than overriding results; defended attacks create real counter windows, and adaptable corners can
+  change approach between rounds using only visible fight evidence. Existing scheduled cards load as
+  legacy Balanced bouts. The frozen 3,840-fight audit remains unchanged at 60.39% finishes, 16.48%
+  KO and 19.04% TKO, without changing competitive finish conversion.
+- Upgraded each MMA trace beat into a coherent exchange containing its setup, attack, explicit
+  defensive response, counter opportunity or consumption, and follow-up. Failed attacks can now be
+  audited as the source of a real counter window; fixed-seed samples confirm counter plans produce
+  more successful counters than comparable pressure plans. Strike combinations retain each ordered
+  attempted/landed component with a hard per-exchange bound. These additions consume no extra combat
+  randomness, and the locked corpus remains at 60.39% finishes, 16.48% KO and 19.04% TKO.
+- Added a validated MMA positional state machine. Failed shots, front headlocks, turtle, standing
+  back control and leg entanglements now have legal ownership and escape routes alongside cage
+  takedowns, re-shots, mat returns, wall get-ups and submission-defense consequences. Brief scramble
+  positions are retained in the exchange path without pretending they were consolidated into the
+  following beat. Impossible ownership and illegal transitions fail immediately in focused tests;
+  wrestler, submission-specialist and striker samples follow distinct paths. The full audit remains
+  unchanged at 60.39% finishes, 16.48% KO and 19.04% TKO.
+- Completed the referee and foul-consequence pass without recalibrating finishes. Explicit referee
+  profiles preserve the existing stoppage and stand-up values; foul records now include warnings,
+  recovery time, intent and the responsible official, with a three-incident cap and scorecard
+  deductions. Severe accidental fouls can produce a rules-correct No Contest or technical decision,
+  and No Contests leave records, Elo and titles untouched across player, AI, academy and independent
+  cards. Visible trauma also drives bounded medical, confidence and recurrence consequences, while
+  early/late stoppage review flags never rewrite the official result.
+- Finished the fight-engine cleanup and tuning migration. Removed two unused finish helpers, added
+  versioned and validated fight-setting defaults, and moved Gate Multiplier into a separate
+  versioned business setting with automatic old-save migration. Simulation Lab now identifies which
+  controls affect mechanics and which affect business only. The accepted 3,840-bout calibration
+  remains exactly 60.39% finishes, 16.48% KO and 19.04% TKO.
+
+This development cycle expands the playable Combat Sports and Fighting Academy management loops,
+turns Scouting into a persistent evidence-led department, hardens fighter identity and Fight Night,
+and adds card-specific event economics backed by a broader release regression suite.
+
+### Finance and Company Growth
+
+- Expanded Finance into a long-career operating dashboard. A new History & Outlook page retains up
+  to 30 annual revenue/cost/profit summaries, breaks the last 12 months of event revenue into ticket,
+  broadcast, sponsor and merchandise streams, records monthly roster size and purse exposure, and
+  projects milestone cash/event timing without pretending that popularity, stability or safety
+  growth is predictable. Compact annual and roster snapshots remain useful after detailed weekly
+  transaction retention rolls forward.
+- Added eight persistent late-game strategic investments across facilities, international operations,
+  staff departments and prestige projects. Each has an explicit milestone/popularity/cash gate,
+  capital price, monthly upkeep and bounded event effect covering medical cost, attendance,
+  broadcasting, sponsorship or merchandise. Purchases and upkeep use canonical finance transactions,
+  existing saves default safely to no projects, and Finance exposes total first-year commitment and
+  current monthly strategic burn before approval.
+
+### Combat Sports
+
+- Reworked Boxing and Muay Thai as distinct rulesets instead of presentation variants of one
+  striking calculation. Boxing now scales non-title contests through six, eight, and ten rounds,
+  uses 12-round title fights, records knockdown-led 10-8/10-7 rounds, and returns three official
+  cards with unanimous, split, majority, and draw verdicts. Standard Muay Thai runs three rounds,
+  title bouts run five, and its judges prioritize effective kicks, knees, elbows, dumps, balance,
+  and clinch control; Lethwei remains a five-round knockout-first ruleset. Replays retain official
+  cards and round evidence, while decision variants no longer inflate finish statistics.
+- Completed the ownership-and-economics foundation for Boxing, Kickboxing, Muay Thai/Lethwei,
+  Wrestling, and BJJ child promotions. Persistent player rosters and booked corners now repair to
+  fighter IDs, including same-name athletes; flagship prospects use the same negotiated term,
+  purse, exclusivity, and finance workflow as private-market recruits. Contracted purses are paid
+  during card settlement, expired deals receive one renewal window before the athlete returns to
+  the flagship, and expired athletes cannot be booked. Player cards now keep their own numbering
+  and history, are limited to one per month, and write complete, collision-resistant finance
+  metadata without incrementing the AI circuit. Added a focused Combat Sports regression suite.
+- Fixed remaining Combat Sports identity leaks. Championship ownership, defenses, vacancies,
+  lineage, season statistics, records, awards, Hall of Fame entries, card rotation, and world-roster
+  repair now distinguish same-name athletes by `fighter_id`. Fight-night readiness commentary reads
+  the ID-keyed telemetry instead of displaying false zeroes, and one-fight independent opponents no
+  longer pollute permanent circuit records or win annual awards.
+- Expanded player-owned Combat Sports into a future-event management loop. Matchmakers can now
+  schedule a built card for a future month/week, choose Local, Regional, or Arena production,
+  set a marketing budget, and see the same revenue/cost/profit forecast used at settlement.
+  Scheduled cards persist across saves, reserve their athletes from smart cards, execute when the
+  calendar enters their week, produce a completion Inbox item and replay, and can be cancelled from
+  the new Upcoming Scheduled Cards panel. Contract, medical, duplicate-date, and one-card-per-month
+  checks prevent invalid or overlapping shows.
+
+### Fighting Academy
+
+- Rebuilt the Fighting Academy into a long-term youth-development system. Prospects can follow
+  measurable 4/8/12-week blocks with objectives and end-of-block reports; compete from local through
+  international level with opponent quality, strength of schedule, two-bout tournaments and amateur
+  titles; and develop persistent personalities, satisfaction, loyalty, promises and departure risk.
+  Graduation now supports the main roster, a 12-month MMA developmental deal, player combat-sport
+  divisions, or a regional feeder with retained matching rights that can be exercised from Alumni.
+  Major rival promotions operate persistent regional youth programmes, graduate their own cohorts
+  and compete for unsigned leads.
+  The Academy page exposes the complete workflow plus a Rival Academies view. Null-shaped old saves
+  repair safely, every identity-bearing ledger uses durable IDs, the live four-week card clock is
+  accurate, and training fatigue remains consequential. Tournament entry, graduation and matching-
+  right signing now roll back cash, finance, roster, belt, prospect and RNG state after a late
+  failure; malformed schema-six prospect values are normalized, and rival development can no longer
+  reduce a prospect's stored rating. Stability coverage exercises every phase and these failure paths.
+
+### Fighter Profiles and Scouting
+
+- Hardened fighter Profiles as observational, identity-safe views. Unscouted portraits no longer
+  print exact ratings or private style details, duplicate-name fighters retain the correct employer,
+  championship, opponent and W/L history, and distinct same-labelled archives remain searchable.
+  Reopening a Profile now preserves its active window, laptop-sized displays keep the fixed action
+  footer reachable, and child-sport Profile queries no longer initialize titles or rewrite rankings.
+  Spectator Mode and stale Profile windows cannot sign, transfer, or move fighters after ownership
+  changes; contract submission revalidates the live owner, and expired scouting reports stay hidden
+  when negotiation opens. New championship history records retain durable fighter IDs.
+- Made championship administration and belt history ID-first. Administrative belt awards,
+  vacancies, previous-champion references, and history rows now retain `fighter_id` alongside
+  display names so a same-name athlete cannot inherit another fighter's reign or Profile lineage.
+- Hardened scouting across saves, staff assignments, report upgrades, and the recruitment UI.
+  Ambiguous legacy name-keyed reports no longer leak intelligence between same-name fighters, and
+  legacy migration no longer consumes simulation RNG or refreshes old dossiers as current. Scouts
+  and their workloads use durable IDs, null-shaped old-save collections repair safely, and replacing
+  a report preserves the last completed intelligence through cancellation or an expired observation.
+  Talent searches can rediscover unusable reports, retain their ranked lead list, and open the
+  headline fighter. The Scouting screen now reflows its controls at laptop widths, scrolls assignment
+  history in both directions, shows real completion dates, and exposes cancelled/expired filters.
+- Deepened scouting into an evidence-led recruitment department. Pending assignments no longer leak
+  conclusions derived from hidden ratings, automatic dossiers are limited to one discounted paid
+  assignment per week, and talent searches rank existing fighters without manufacturing new market
+  supply. Searches now accept age and style constraints plus an ability, potential, value,
+  marketability, or roster-need priority. Standard, faster paid Priority, and quarterly Ongoing
+  briefs create explicit capacity choices, while thin pools return labelled Near Matches;
+  completed work builds regional knowledge, durable dossier history, and deduplicated watchlist
+  alerts. Live observations retain opponent, result and fight metrics, prior intelligence remains
+  visible during upgrades, ageing reports lose certainty after six months, and exact current ratings
+  require a high-confidence repeated full evaluation. Established academy networks now close when
+  their assigned scout's contract expires instead of extending that contract forever.
+
+### Fight Night and Simulation
+
+- Hardened the watched Fight Night experience end to end. A live card is now a single guarded
+  session, so reopening Watch cannot rerun press conferences or weigh-ins, active bouts cannot be
+  skipped accidentally through the next-fight control, full-card skips require confirmation, and a
+  failed transactional settlement remains retryable. Exact judge cards stay sealed until the
+  result while public round telemetry continues to update. Duplicate-name corners retain distinct
+  metrics, winner identity, projected records, and replay labels. Archived replays preserve their
+  original location and event economics, while compact live layouts and the scrollable end-event
+  report keep controls reachable on laptop displays.
+- Fixed fight-state identity and response tracking: clinch controllers now retain their private
+  per-bout slot, only landed strikes build unanswered-offense streaks, meaningful grappling and
+  positional responses clear those streaks, and the horn resets them. Same-name tournament
+  entrants now resolve and restore fatigue by identity, including alternate replacements, while
+  ambiguous legacy friend names no longer alter fight-night context.
+
+### Persistence and Save Safety
+
+- Rebuilt Game & Saves as a clearer Career Library with an active-career banner, visible library
+  counts, a scrollable save browser, selected-save metadata, grouped actions, and selection-aware
+  controls that stay disabled until a valid career or snapshot is chosen.
+- Hardened save operations against partial I/O failures: Quick Save and slot-load now continue when
+  optional backup creation fails, while backup restore validates the source before touching the
+  destination and reports backup/write failures without escaping the UI callback. Non-object JSON
+  saves are now rejected cleanly before split-save hydration.
+- Hardened save-folder housekeeping by skipping symlinked entries during external block pruning,
+  preventing accidental deletion outside the intended save slot tree.
+
+### Event Economics and Rivalries
+
+- Made every card an economic decision. Ticket price was a single company-wide number nudged in $5
+  steps, and it had no effect on turnout at all: raising it lifted the gate and cost nothing.
+  Ticket price, production tier and marketing spend are now booked per event, and price drives
+  attendance against what that specific card can carry. Gate revenue peaks a little above the
+  market rate, so undercutting leaves money on the table and gouging empties seats and costs gate,
+  atmosphere and merchandise. Marketing spend buys turnout with diminishing returns. The booking
+  screen projects attendance, fill, gate and total spend live, names the market price, says whether
+  you are priced about right, and warns when a card commits a dangerous share of your cash before a
+  ticket is sold. Cards saved before this change, and every AI card, keep using the company-wide
+  defaults.
+- Tied production quality to who is actually watching. The four production tiers (Lean, Standard,
+  Premium, Spectacle) trade staging cost against build, atmosphere and broadcast value, and the
+  richer tiers only repay their cost behind real broadcast reach. With no coverage a lean show is
+  correct; a regional webcast or streaming deal wants Standard; a cable deal justifies Premium; and
+  Spectacle pays off once a wide-reach network is carrying the card. Production is now something to
+  upgrade in step with your broadcast contract rather than a setting to leave alone.
+- Priced untouched cards at the market rate. The company-wide default never scaled with the
+  promotion, so a player who ignored the pricing lever drifted further from a sensible number the
+  bigger they got, and could lose money on a card that should have been profitable. A card you have
+  not priced yourself now follows the market rate automatically; editing the price takes manual
+  control until the show is scheduled, and the next card starts on the market rate again.
+- Made feuds bookable. A rivalry already fed hype quietly, but nothing surfaced it and nothing let
+  the player build one, so the Media Desk and Matchmaking were effectively separate games.
+  Selecting two rivals in Matchmaking now reports the grudge, its heat, its origin and whether a
+  rematch is being demanded, and a booked grudge lifts both projected hype and the gate in
+  proportion to heat, weighted down when the feud is buried on the prelims. Calling out an existing
+  rival in the Media Desk escalates the feud instead of resetting it, and press conferences and
+  press tours keep a live feud in the headlines, so a grudge can be built over several weeks and
+  cashed in on fight night.
+- Balanced the new event economics against the rest of the simulation before release. A demand floor
+  meant gate revenue climbed for ever once it bound, making the maximum price the correct answer at
+  up to nine times what a card could carry; demand now decays to zero and a badly priced show is
+  allowed to flop. The market-price curve let drawing power compound with venue prestige, inflating
+  a mature promotion's gate roughly sixfold against purses, overhead and production costs that do
+  not grow at that rate; the curve is now shallow enough to keep late-career gates in proportion.
+  Production tiers were cheap enough that the richest option was correct from the first televised
+  card, so their costs were raised and their compounding build bonus reduced until each tier is the
+  right answer somewhere on the broadcast ladder. Regression coverage pins the elasticity peak, the
+  reach-dependent tier crossover, and the auto-pricing contract.
+- Rebalanced player-company finances across career stages. Curated opening-roster fighters now begin
+  on 55% founder-era contracts, making a credible first card affordable without discounting generated
+  regional depth or changing existing saves. Monthly office costs now grow with company popularity,
+  from the existing $12,000 regional base to meaningful national and global infrastructure, and a
+  second or later player event in the same month suffers progressive audience, sponsor, and broadcast
+  cannibalization while every signed purse and production cost remains fully payable. Finance forecasts
+  expose the scaled office cost, focused regressions pin all three rules, and a reproducible early/mid/
+  late audit lives under `analysis/`.
+- Hardened the release candidate around those systems. Grudge matches and Media Desk escalation now
+  resolve rivals by durable fighter ID so duplicate names cannot award hype or gate demand to the
+  wrong bout; invalid or stale rival selections are rejected before cash or a limited media action
+  is consumed. Scheduled-event economics retain safe defaults for older saves and round-trip their
+  card-specific values. The focused regression is deterministic and part of the canonical isolated
+  suite.
+
+### Release and Verification
+
+- Unified the release workflow: `Build Portable.bat` runs the shipping suite, validates the universe,
+  and builds both the game and Database Editor, while the editor-only script remains an optional
+  focused build. Build failure restores staged runtime data, stale staging data is cleared, and the
+  portable check verifies both executables.
+- Expanded the canonical isolated suite with focused Fighter Profile, Scouting, Combat Sports,
+  Fight Night experience, and event-economics regressions. The release runner now exercises those
+  systems alongside persistence, finance, UI data, media, child promotions, identity, audio,
+  database validation/editor coverage, advancement notifications, popup lifecycle, and the
+  multi-seed stability playtest.
+
 ## 3.0.9 - 2026-08-17
 
 This release consolidates the child-promotion safeguards, persistence and identity hardening,

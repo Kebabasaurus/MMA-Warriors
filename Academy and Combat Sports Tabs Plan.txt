@@ -1,0 +1,164 @@
+MMA Warriors
+Academy and Combat Sports Normal Tabs
+Planning Note
+
+Status
+------
+This is a planning document only. No implementation work is included yet.
+
+Idea
+----
+Make Fighting Academy and Combat Sports normal screens inside the main MMA Warriors
+navigation area instead of opening their primary workspaces in separate windows.
+
+The player should be able to switch between Roster, Contracts, Fighting Academy, Combat
+Sports, Finance, and other management areas without losing the main application context.
+The existing Academy and Combat Sports systems, data, saves, and simulation rules should
+remain unchanged.
+
+Current structure
+-----------------
+The main navigation is built in ui.py. Academy and Combat Sports are listed as navigation
+buttons, but their buttons call open_academy_window() and open_combat_sports_window() rather
+than selecting a page in the main notebook.
+
+The main notebook currently has no academy or combat_sports pages and select_tab() has no
+routes for either screen.
+
+The primary Academy interface is built by open_academy_window() in views.py. It contains:
+- academy status and operating summary;
+- scouting-network controls;
+- development challenges;
+- recruitment leads;
+- signed prospects and training plans;
+- facilities and upgrades;
+- academy card history;
+- alumni records;
+- amateur-card actions and graduation actions.
+
+The primary Combat Sports interface is built by open_combat_sports_window() in views.py. It
+contains:
+- the sport and AI-flagship table;
+- player child-division status;
+- circuit summary details;
+- launch and manage actions;
+- circuit records and history actions.
+
+Combat Sports also has separate child-promotion and records/history windows. Academy has
+separate prospect-profile and replay/detail windows. These smaller windows do not all need to
+be converted in the first pass.
+
+Recommended scope
+-----------------
+Convert the two primary workspaces into normal main-navigation tabs first.
+
+Keep detailed secondary views as popups initially:
+- Academy prospect profiles;
+- Academy card replay/live fight views;
+- Combat Sports child-promotion management;
+- Combat Sports records and history;
+- fighter profiles and detailed reports.
+
+This gives the player the normal-tab workflow without requiring a risky rewrite of every
+existing detail viewer at the same time.
+
+Implementation process
+----------------------
+1. Preserve the working tree
+   - Inspect git status before editing.
+   - Do not overwrite unrelated user changes.
+   - Confirm the existing Academy and Combat Sports save/state behavior remains untouched.
+
+2. Add main notebook pages
+   - Add academy and combat_sports entries to the tab_specs structure in ui.py.
+   - Add both pages to tab_pages and the screen_builders map.
+   - Add routes to select_tab().
+   - Change the left-navigation commands to call select_tab() instead of opening a Toplevel.
+
+3. Extract the Academy tab builder
+   - Split the UI construction currently inside open_academy_window() into a builder that
+     receives a parent frame.
+   - Replace the top-level window geometry and destruction logic with notebook-page layout.
+   - Preserve the current nested controls and callbacks.
+   - Replace the popup singleton lifecycle with a tab refresh callback or stored widget refs.
+   - Keep the build-academy setup dialog if the player has not purchased an academy, unless
+     the final design calls for an inline empty-state panel.
+
+4. Extract the Combat Sports tab builder
+   - Split the overview table and detail panel from open_combat_sports_window() into a
+     parent-frame builder.
+   - Preserve launch, manage, refresh, and history actions.
+   - Keep child-promotion management and records/history as secondary windows in the first
+     pass.
+   - Make the overview table refresh when a child division is opened, athletes are signed,
+     cards are run, or results are applied.
+
+5. Integrate refresh behavior
+   - Update refresh_all() so an already-built Academy tab refreshes safely.
+   - Update refresh_all() so an already-built Combat Sports tab refreshes safely.
+   - Ensure refreshing a hidden tab does not create widgets or advance simulation state.
+   - Preserve selected sport, selected prospect, selected table row, and current inner tab
+     where practical.
+
+6. Handle related entry points
+   - Finance's Academy Management button should select the Academy tab.
+   - Scouting's Academy action should select the Academy tab.
+   - World/news Combat Sports actions should select the Combat Sports tab.
+   - Academy graduation destination controls should continue to recognize player combat
+     divisions.
+
+7. Theme and layout verification
+   - Confirm both screens use the current selected theme when first opened.
+   - Confirm retheming does not require destroying and rebuilding a popup.
+   - Check maximized, desktop, and smaller laptop-sized layouts.
+   - Confirm long names, tables, horizontal scrolling, and action rows do not overlap.
+
+8. Tests
+   - Add a focused UI regression for the two notebook pages and navigation routing.
+   - Verify lazy screen construction does not mutate Academy or Combat Sports state.
+   - Verify refresh_all() updates both tabs after representative actions.
+   - Keep the existing Academy and Combat Sports state/save tests unchanged and passing.
+   - Run ui_data_regression_test.py, smoke_test.py, stability_test.py, and the media suite.
+   - Perform a manual maximized-window check because Tk layout behavior is not fully covered
+     by the headless tests.
+
+Files expected to change
+------------------------
+- ui.py: main notebook pages, navigation routing, screen-builder registration.
+- views.py: Academy and Combat Sports parent-frame builders, refresh/lifecycle integration,
+  related entry points.
+- ui_data_regression_test.py: tab construction, routing, refresh, and no-state-mutation checks.
+- CHANGELOG.md: player-visible navigation improvement after implementation.
+- README.md: describe Academy and Combat Sports as main management screens.
+- AGENTS.md: document the ownership and refresh rules for the new tab builders.
+
+Files expected to remain unchanged in the first pass
+-----------------------------------------------------
+- models.py: no new persistent fields are required.
+- persistence.py: no save schema change is required.
+- world.py: Academy and Combat Sports simulation rules should not change.
+- events.py: fight and card simulation rules should not change.
+- database files: no universe data change is required.
+
+Main risks
+----------
+- The Academy method contains many nested callbacks that currently close over a Toplevel.
+  They must receive the new parent frame without losing their widget references.
+- Existing refresh_all() calls may refresh popup widgets that no longer exist. Those references
+  need to become page-safe and optional.
+- A tab can remain built while hidden, so refresh code must not assume the page is visible.
+- Child-promotion and history workflows may still create detail windows. Their parent should be
+  the main root or the active tab as appropriate.
+- Converting every nested viewer at once would increase scope and make layout regressions more
+  likely.
+
+Definition of done
+------------------
+- Academy and Combat Sports are selectable through the normal main navigation.
+- Neither primary workspace opens a Toplevel when selected.
+- Existing Academy and Combat Sports actions still work.
+- State and save behavior are unchanged.
+- Main tabs refresh after relevant game actions.
+- Detail popups still open where intentionally retained.
+- Tests and manual layout checks pass.
+- Release documentation is updated before committing.
