@@ -965,7 +965,7 @@ class FightEngineMixin:
             repeats = actor_reads.get("moves", {}).get(definition.move_id, 0)
             if repeats >= 2:
                 adaptability = self.ds(actor, "adaptability", actor.fight_iq)
-                penalty = min(7.0, (repeats - 1) * (1.5 + max(0, 65 - adaptability) / 80))
+                penalty = min(14.0, (repeats - 1) * (2.6 + max(0, 65 - adaptability) / 55))
                 bonus -= penalty
                 reasons.append("pattern-repetition-penalty")
             opponent_repeats = max(defender_reads.get("moves", {}).values(), default=0)
@@ -1025,14 +1025,31 @@ class FightEngineMixin:
                 f"{action}|{position}|{target}|{definition.move_id}"
             )
             fingerprint = zlib.crc32(material.encode("utf-8"))
-            if "high-risk" in definition.tags and fingerprint % 100 >= 14:
-                return -10_000
+            # Authored rarity is a property of the fighter, not a global constant.
+            # Flat gates of 14/12/18 suppressed spinning attacks to four uses per
+            # 300 fights and left eight of eighteen style finishers unreachable,
+            # so the thresholds now scale with the attributes that should decide
+            # whether a fighter reaches for a flashy or fight-ending technique.
+            if "high-risk" in definition_tags:
+                creativity = (
+                    self.ds(actor, "creative_kicks", 50)
+                    if definition_tags.intersection({"kick", "spinning"})
+                    else self.ds(actor, "creative_punches", 50)
+                )
+                high_risk_frequency = 30 + max(-12, min(26, (creativity - 50) * 0.52))
+                if fingerprint % 100 >= high_risk_frequency:
+                    return -10_000
             if definition_tags.intersection({"finisher", "style-finisher"}):
                 finisher_material = (
                     f"{identity}|{state.get('round', 1)}|{state.get('tick', 1)}|"
                     f"{action}|{position}|{target}|authored-finisher"
                 )
-                authored_frequency = 18 if "style-finisher" in definition_tags else 12
+                instinct = max(
+                    self.ds(actor, "killer_instinct", 50),
+                    getattr(actor, "finishing_instinct", 50) or 50,
+                )
+                authored_frequency = 35 if "style-finisher" in definition_tags else 28
+                authored_frequency += max(-14, min(22, (instinct - 50) * 0.48))
                 if zlib.crc32(finisher_material.encode("utf-8")) % 100 >= authored_frequency:
                     return -10_000
             variety = fingerprint % 901 / 100
@@ -1054,7 +1071,46 @@ class FightEngineMixin:
                 "sequence_source_id": "", "sequence_step": 0,
                 "generic": True,
             }
-        definition = max(eligible, key=lambda row: (row[0], row[1].move_id))[1]
+        # A plain argmax over scores made the highest-proficiency technique win
+        # every time the spread exceeded the 0-9 variety term, which drove a 21%
+        # consecutive-repeat rate. Draw from the strongest handful instead,
+        # indexed by the same deterministic fingerprint so replays stay stable
+        # and no RNG stream is consumed.
+        eligible.sort(key=lambda row: (-row[0], row[1].move_id))
+        # A live counter window must still resolve into a counter technique --
+        # the weighted draw below is allowed to vary which counter, never
+        # whether one is thrown at all.
+        if active_counter:
+            counter_rows = [row for row in eligible if "counter" in row[1].tags]
+            if counter_rows:
+                eligible = counter_rows
+        # Authored style content -- combinations, style finishers and a fighter's
+        # own signature moves -- is already rarity-gated upstream, so when it wins
+        # on score it is taken as-is rather than diluted by the variety draw. The
+        # draw exists to break up ordinary technique repetition, not to suppress
+        # the moments that give a style its identity.
+        authored_tags = {"style-combination", "style-finisher"}
+        top_definition = eligible[0][1]
+        authored_top = (
+            bool(set(top_definition.tags).intersection(authored_tags))
+            or top_definition.move_id in signature_moves
+        )
+        pool = eligible[:1] if authored_top else eligible[:5]
+        best = pool[0][0]
+        weights = [max(0.02, 0.5 ** ((best - value) / 2.2)) for value, _definition in pool]
+        weight_total = sum(weights)
+        selector_material = (
+            f"{identity}|{state.get('round', 1)}|{state.get('tick', 1)}|"
+            f"{action}|{position}|{target}|move-selection"
+        )
+        selector = (zlib.crc32(selector_material.encode("utf-8")) % 10_000) / 10_000 * weight_total
+        definition = pool[-1][1]
+        cursor = 0.0
+        for weight, (_value, candidate) in zip(weights, pool):
+            cursor += weight
+            if selector <= cursor:
+                definition = candidate
+                break
         _context_bonus, selection_reasons = contextual_score(definition)
         return {
             "move_id": definition.move_id, "name": definition.name,
@@ -6328,10 +6384,38 @@ class FightEngineMixin:
         share_total = sum(shares.values())
         return {target: share / share_total for target, share in shares.items()}
 
+    def punch_target_shares(self, actor, state):
+        """Return normalized punch-target weights before the single target draw.
+
+        Punches were previously hard-coded to the head, which stranded every
+        body-tagged punch technique and closed the body-damage/gas-drain path
+        to boxers. Body work is a real, skill-driven choice, so it is drawn the
+        same way kick targets are."""
+        body_skill = self.ds(actor, "body_punching", actor.striking)
+        body_share = 0.16 + max(0, body_skill - 50) / 260
+        if actor.trait == "Body Hunter":
+            body_share += 0.14
+        plan_row = self.fight_plan_for(actor, state)
+        if plan_row["current"] == "Attack the body":
+            body_share += 0.26 * plan_row["execution"]
+        body_share = max(0.05, min(0.55, body_share))
+        return {"head": 1 - body_share, "body": body_share}
+
     def resolve_strike(self, actor, defender, action, margin, state, round_stats):
         attempts, _ = self.strike_volume(action, margin, landed=False, actor=actor)
         state["stats"][self.fight_state_key(actor, state)]["sig_att"] += attempts
         state["last_strike_target"] = "head"
+        if action in ("jab", "power_punch"):
+            # Drawn from a stable fingerprint rather than the mechanics RNG so the
+            # engine's replay determinism and RNG-purity contract are preserved:
+            # adding a draw to the shared stream would resequence every seeded fight.
+            shares = self.punch_target_shares(actor, state)
+            target_material = (
+                f"{getattr(actor, 'fighter_id', '') or actor.name}|{state.get('round', 1)}|"
+                f"{state.get('tick', 1)}|{action}|punch-target"
+            )
+            if (zlib.crc32(target_material.encode("utf-8")) % 10_000) / 10_000 < shares["body"]:
+                state["last_strike_target"] = "body"
         if action == "kick":
             roll = self.fight_mechanics_rng().random()
             shares = self.kick_target_shares(actor, state)
@@ -6504,6 +6588,12 @@ class FightEngineMixin:
         if action == "kick":
             state["body"][self.fight_state_key(defender, state)] += self.fight_mechanics_rng().randint(1, 4)
         state["damage"][self.fight_state_key(defender, state)] += impact
+        # Body punching is currently a targeting and presentation feature only:
+        # the damage channels stay exactly as calibrated. Routing full punch
+        # impact into state["body"] plus a gas drain moved the locked corpus from
+        # 60.39% to 66.43% finishes, mostly by making the body>24 injury stoppage
+        # reachable for the first time. Giving body punches real mechanical
+        # consequences needs its own calibrated phase, not a side effect here.
         damage_zone = "body" if action == "dirty_boxing" and weapon == "knee" else "head"
         if damage_zone == "head":
             head_trauma = state.setdefault("head_trauma", {key: 0 for key in state["head"]})

@@ -936,6 +936,93 @@ MOVE_DEFINITIONS = (
     move("composed_survival", "composed survival", "survive", ALL_POSITIONS,
          attack_skills=("composure", "conditioning", "stun_recovery"), defense_skills=("killer_instinct",),
          preferred_styles=("Well-Rounded", "MMA Generalist"), tags=("defense", "recovery")),
+
+    # --- Shallow-pool expansion -------------------------------------------------
+    # "survive" and "cling" alone accounted for 26% of every move selection in the
+    # game while holding a single technique each, so the two busiest actions in the
+    # engine had no variety at all. These give the high-frequency actions a real
+    # pool to draw from.
+    move("shell_and_reset", "high shell and reset", "survive", STANDING_POSITIONS | CLINCH_POSITIONS,
+         attack_skills=("guard_defence", "composure", "footwork"), defense_skills=("killer_instinct", "combination_punching"),
+         preferred_styles=("Boxer", "Kickboxer"), tags=("defense", "recovery", "shell")),
+    move("circling_breather", "circling breather", "survive", STANDING_POSITIONS,
+         attack_skills=("footwork", "mobility", "conditioning"), defense_skills=("cage_pressure", "killer_instinct"),
+         preferred_styles=("Karate", "Taekwondo", "MMA Generalist"), tags=("defense", "recovery", "movement")),
+    move("clinch_lean_recovery", "clinch lean recovery", "survive", CLINCH_POSITIONS,
+         attack_skills=("clinch_defence", "strength", "composure"), defense_skills=("clinch_control", "dirty_boxing"),
+         preferred_styles=("Muay Thai", "Judo", "Wrestler"), tags=("defense", "recovery", "clinch")),
+    move("bottom_frame_survival", "framing survival from bottom", "survive", GROUND_POSITIONS,
+         attack_skills=("bottom_control", "guard_work", "composure"), defense_skills=("top_control", "ground_striking"),
+         preferred_styles=("BJJ", "Luta Livre"), tags=("defense", "recovery", "ground")),
+    move("heavy_top_breather", "heavy top breather", "survive", GROUND_POSITIONS,
+         attack_skills=("top_control", "ride_control", "conditioning"), defense_skills=("scrambles", "bottom_control"),
+         preferred_styles=("Wrestler", "Catch Wrestler"), tags=("defense", "recovery", "ground", "control")),
+
+    move("wrist_ride_neutralize", "wrist-control neutralization", "cling", GROUND_POSITIONS,
+         attack_skills=("bottom_control", "guard_work", "composure"), defense_skills=("ground_striking", "top_control"),
+         preferred_styles=("BJJ", "Submission Grappler"), tags=("ground", "defense", "wrist-control")),
+    move("closed_guard_hold", "closed guard hold", "cling", frozenset({"guard", "half guard"}),
+         attack_skills=("guard_work", "flexibility", "strength"), defense_skills=("top_control", "positional_ability"),
+         preferred_styles=("BJJ", "Luta Livre"), tags=("ground", "defense", "guard")),
+    move("underhook_stall", "deep underhook stall", "cling", GROUND_POSITIONS,
+         attack_skills=("bottom_control", "strength", "scrambles"), defense_skills=("ride_control", "top_control"),
+         preferred_styles=("Wrestler", "Sambo"), tags=("ground", "defense", "underhook")),
+    move("head_pinch_stall", "head-pinch stall", "cling", GROUND_POSITIONS,
+         attack_skills=("guard_work", "composure", "submission_defence_detail"), defense_skills=("ground_striking", "transitions"),
+         preferred_styles=("BJJ", "Catch Wrestler"), tags=("ground", "defense", "smother")),
+
+    move("knee_on_belly_pressure", "knee-on-belly pressure", "ground_control", frozenset({"side control", "half guard"}),
+         attack_skills=("top_control", "positional_ability", "ride_control"), defense_skills=("bottom_control", "scrambles"),
+         preferred_styles=("BJJ", "Wrestler"), minimum_skill=54, tags=("ground", "control", "pressure")),
+    move("chest_to_chest_pin", "chest-to-chest pin", "ground_control", GROUND_POSITIONS,
+         attack_skills=("top_control", "strength", "conditioning"), defense_skills=("bottom_control", "guard_work"),
+         preferred_styles=("Wrestler", "Judo", "Sambo"), tags=("ground", "control", "pressure")),
+    move("hip_pressure_ride", "hip-pressure ride", "ground_control", GROUND_POSITIONS,
+         attack_skills=("ride_control", "top_control", "discipline"), defense_skills=("scrambles", "get_ups"),
+         preferred_styles=("Catch Wrestler", "Freestyle Wrestler"), tags=("ground", "control", "ride")),
+
+    move("frame_and_pivot_exit", "frame and pivot exit", "break_clinch", CLINCH_POSITIONS,
+         attack_skills=("clinch_defence", "footwork", "mobility"), defense_skills=("clinch_control", "cage_wrestling"),
+         preferred_styles=("Karate", "Kickboxer", "Boxer"), tags=("clinch", "escape", "footwork")),
+    move("post_and_push_exit", "post and push off the fence", "break_clinch", CLINCH_POSITIONS,
+         attack_skills=("strength", "clinch_defence", "conditioning"), defense_skills=("cage_wrestling", "clinch_control"),
+         preferred_styles=("Wrestler", "Sanda"), tags=("clinch", "escape", "cage")),
+    move("swim_to_space", "swim inside and cut the angle", "break_clinch", CLINCH_POSITIONS,
+         attack_skills=("clinch_defence", "scrambles", "reflexes"), defense_skills=("clinch_control", "strength"),
+         preferred_styles=("MMA Generalist", "Freestyle Wrestler"), minimum_skill=54, tags=("clinch", "escape", "pummel")),
+
+    move("inside_uppercut", "short inside uppercut", "dirty_boxing", CLINCH_POSITIONS,
+         attack_skills=("dirty_boxing", "punch_technique", "hand_speed"), defense_skills=("clinch_defence", "guard_defence"),
+         preferred_styles=("Boxer", "Muay Thai"), tags=("strike", "punch", "clinch")),
+    move("collar_tie_elbow", "collar-tie elbow", "dirty_boxing", CLINCH_POSITIONS,
+         attack_skills=("elbows", "clinch_control", "punch_technique"), defense_skills=("clinch_defence", "guard_defence"),
+         preferred_styles=("Muay Thai", "Sanda"), minimum_skill=55, tags=("strike", "elbow", "clinch")),
+    move("inside_body_hook", "inside body hook", "dirty_boxing", CLINCH_POSITIONS, targets=frozenset({"body"}),
+         attack_skills=("body_punching", "dirty_boxing", "strength"), defense_skills=("clinch_defence", "conditioning"),
+         preferred_styles=("Boxer", "Catch Wrestler"), tags=("strike", "punch", "body", "clinch")),
+    move("shoulder_grind", "shoulder grind on the fence", "dirty_boxing", CLINCH_POSITIONS,
+         attack_skills=("cage_pressure", "strength", "dirty_boxing"), defense_skills=("clinch_defence", "composure"),
+         preferred_styles=("Wrestler", "Sambo"), tags=("strike", "clinch", "cage")),
+
+    move("flicker_jab", "flicker jab", "jab", STANDING_POSITIONS,
+         attack_skills=("hand_speed", "punch_technique", "footwork"), defense_skills=("head_movement", "reflexes"),
+         preferred_styles=("Boxer", "Karate"), energy=0.94, follow_ups=("one_two",), tags=("strike", "punch", "setup")),
+    move("power_jab", "stiff power jab", "jab", STANDING_POSITIONS,
+         attack_skills=("punch_power", "punch_technique", "strength"), defense_skills=("guard_defence", "head_movement"),
+         preferred_styles=("Boxer", "Dutch Kickboxer"), minimum_skill=54, energy=1.06, tags=("strike", "punch", "power")),
+    move("up_jab", "up-jab from the low hand", "jab", STANDING_POSITIONS,
+         attack_skills=("creative_punches", "punch_technique", "feints"), defense_skills=("head_movement", "guard_defence"),
+         preferred_styles=("Karate", "MMA Generalist"), minimum_skill=55, counter_risk=1.06, tags=("strike", "punch", "setup")),
+
+    # Actions the engine can already choose but that had no technique defined at
+    # all, so every one of them fell through to the generic fallback.
+    move("fence_drive", "drive to the fence", "force_cage", CLINCH_POSITIONS,
+         attack_skills=("cage_wrestling", "clinch_control", "strength"), defense_skills=("clinch_defence", "footwork"),
+         preferred_styles=("Wrestler", "Sambo", "Judo"), tags=("clinch", "cage", "control")),
+    move("front_headlock_posture_out", "posture out of the front headlock", "front_headlock_escape",
+         frozenset({"front headlock", "turtle"}),
+         attack_skills=("submission_defence_detail", "scrambles", "guard_work"), defense_skills=("ride_control", "top_control"),
+         preferred_styles=("Wrestler", "Freestyle Wrestler"), tags=("escape", "scramble")),
 )
 
 MOVE_REGISTRY = {definition.move_id: definition for definition in MOVE_DEFINITIONS}
