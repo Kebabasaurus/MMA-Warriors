@@ -1,7 +1,8 @@
 # Fight Move System Plan — Architecture and Expansion
 
-How to grow the fight engine's technique catalogue from **200 moves** to **800+** — the code
-structure that has to change first, then the content phases that fill it.
+**Goal: double the catalogue from 200 moves to 400**, with the structure left able to reach 800+
+without another rewrite. This document covers the code changes that have to land first, then the
+per-action authoring budget that gets to 400.
 
 Continues `FIGHT_ENGINE_MOVES_AND_SKILLS_PLAN.md`, whose Phases 0–28 are complete. Phase numbering
 resumes at 29; Phases 16 (fight-plan evolution) and 17 (analysis UI) remain open there and are
@@ -71,9 +72,12 @@ select_exchange_move    2,198 calls    0.539 s    10% of total sim time
 ```
 
 `legal_moves()` is a **linear scan of the whole tuple on every call** — 7.4 µs at 200 moves. Two
-things scale badly: the scan itself, and candidates scored per call (mean 6.3 today, ~25 at 800
-moves). At 800 moves with no changes, selection becomes roughly **a third of simulation time**.
-World advancement already has performance regression coverage, so this is a hard constraint.
+things scale badly: the scan itself, and candidates scored per call (mean 6.3 today).
+
+Both are roughly linear in catalogue size, so **doubling to 400 moves roughly doubles selection
+cost to ~20% of simulation time**, and 800 moves would take it to about a third. World advancement
+already has performance regression coverage, so this is a hard constraint, and it is the reason
+Step 2 must land *before* the authoring rather than after it.
 
 **But the workload is almost perfectly cacheable:** only **65 distinct `(action, position)` keys**
 are ever used, each hit ~34 times per 60 fights.
@@ -418,7 +422,99 @@ with its own contract, not a refactor.
 
 ---
 
-# Part 4 — Content Phases
+# Part 4 — The Doubling Budget
+
+## 4.0 Reachable content is the real constraint
+
+**184 of the 200 current moves sit in positions the engine can actually enter. 16 do not** (§2.4).
+That splits the doubling into two routes, and they have very different costs:
+
+| Route | What it is | Class | Recalibration |
+|---|---|---|---|
+| **A — Reachable now** | +155 moves into the 9 positions the engine already enters | **B** | none |
+| **B — Position-gated** | +45 moves into the 5 positions Phase 34 unlocks | **C** | required |
+
+**Route A is free and should be done first.** It is pure selection-space work: no new damage
+channel, no new transition, no mechanics RNG. The corpus must come back at exactly
+60.39 / 16.48 / 19.04.
+
+**Route B cannot be authored until Phase 34 lands.** Writing techniques into `turtle` or
+`leg entanglement` today just manufactures more dead content — which is precisely how
+`front_headlock_posture_out` became the sixteenth orphan.
+
+## 4.1 Per-action budget
+
+Current counts are exact, from the live registry.
+
+### Route A — +155 into reachable positions
+
+| Action | Now | Target | Add | Notes |
+|---|---:|---:|---:|---|
+| `submission` | 9 | 25 | **+16** | Phase 29 — one technique serves 31.4% of the fight |
+| `power_punch` | 33 | 43 | +10 | body-target variants now that targeting exists |
+| `kick` | 28 | 38 | +10 | kick share is low; give it depth at range |
+| `recover_guard` | 4 | 14 | **+10** | 1–2 per position today |
+| `advance_position` | 12 | 20 | +8 | passing chains |
+| `ground_strikes` | 12 | 20 | +8 | weapon typing: elbow / hammerfist / posture punch |
+| `dirty_boxing` | 6 | 14 | +8 | |
+| `sweep` | 7 | 15 | +8 | weighted toward the bottom fighter winning |
+| `bottom_submission` | 8 | 16 | +8 | |
+| `clinch` | 9 | 16 | +7 | |
+| `cage_control` | 3 | 10 | +7 | only 1 legal at range |
+| `takedown` | 9 | 16 | +7 | |
+| `ground_control` | 7 | 14 | +7 | |
+| `shoot` | 10 | 16 | +6 | |
+| `jab` | 6 | 12 | +6 | |
+| `stand_up` | 3 | 9 | +6 | |
+| `break_clinch` | 5 | 10 | +5 | |
+| `cling` | 5 | 10 | +5 | |
+| `leg_attack` | 2 | 7 | +5 | |
+| `force_cage` | 1 | 5 | +4 | |
+| `survive` | 6 | 10 | +4 | |
+| | **184** | **339** | **+155** | |
+
+### Route B — +45, gated on Phase 34
+
+| Family | Now | Target | Add | Unlocked by |
+|---|---:|---:|---:|---|
+| front headlock (incl. guillotine family) | 3 | 13 | +10 | `front headlock` |
+| turtle attacks and escapes | 0 | 10 | +10 | `turtle` |
+| leg entanglement / leg locks | 2 | 12 | +10 | `leg entanglement` |
+| standing back control | 0 | 8 | +8 | `standing back control` |
+| failed shot / re-shot scrambles | 0 | 7 | +7 | `failed shot` |
+| | **5** | **50** | **+45** | |
+
+**200 + 155 + 45 = 400.**
+
+Defenses are a separate registry and are not counted in the 400: **18 → 40 (+22)**, Phase 33.
+
+## 4.2 Style quotas cut across the budget
+
+Style signature content attaches to the parent actions above rather than adding to the totals, but
+it carries its own floor (Phase 32):
+
+- every one of the 18 playable styles owns **≥ 1 `style-combination` and ≥ 1 `style-finisher`**;
+- no style holds fewer than **18** authored moves — today `Grappler` has 2, `Well-Rounded` 3,
+  `Taekwondo` 12.
+
+## 4.3 Authoring rules for every new move
+
+1. **Reachable position only**, unless the move is explicitly Route B and Phase 34 has landed.
+2. **No new mechanical consequence.** A new technique is a name, a skill set and a selection
+   weight. If it needs a damage channel or a transition, it is Class C and belongs in its own
+   calibrated phase.
+3. **Tag from the closed vocabulary** (Step 1), so behavioural tags cannot be typo'd into silence.
+4. **Declare 1–3 `follow_ups`** — new content should not add to the 151 moves that have none.
+5. **Satisfy the per-tag validator contract:** kicks need target / side / range band / defense
+   families; takedowns need entry family and finish positions; submissions need attack path and
+   failure outcomes; finishers must be skill-gated standing strikes with energy and counter risk
+   above 1; style combinations need exactly one owning style and ≥ 3 components.
+6. **Batch by domain, verify per batch.** One commit per action family, each ending in a corpus
+   verify. A single 200-move commit is unreviewable and unbisectable.
+
+---
+
+# Part 5 — Content Phases
 
 ## Phase 29 — Guard and half-guard submissions
 
@@ -557,9 +653,9 @@ explicitly accepted and written into the parent plan.
 
 ---
 
-# Part 5 — Sequencing
+# Part 6 — Sequencing
 
-## 5.1 Architecture steps
+## 6.1 Architecture steps
 
 | Step | Class | Depends on | Behaviour change |
 |---|---|---|---|
@@ -575,22 +671,27 @@ explicitly accepted and written into the parent plan.
 **Steps 0–4 and 6–7 are all behaviour-preserving.** Each must end with a byte-identical parity dump
 and an exact corpus verify. If either moves, the step is wrong — find the cause, do not absorb it.
 
-## 5.2 Combined delivery order
+## 6.2 Combined delivery order
 
 | Slice | Contents | Rationale |
 |---|---|---|
-| **1** | Steps 0, 1, 2 | Parity harness, schema, index. Removes the scaling wall before any bulk authoring. |
-| **2** | Step 6 | Reachability tests. Would have caught the 16 orphans the day they were written; needed before adding 600 more. |
-| **3** | Phase 29 | Biggest single concentration in the game, self-contained, immediately visible. |
-| **4** | Steps 3, 4, 7 | Decompose, cache, presets. Do once the index is proven and before the largest authoring phases. |
-| **5** | Step 5 + Phase 31 | Chain graph and the follow-up wiring it validates — same work, land together. |
-| **6** | Phases 30, 33 | Bottom-position and defensive vocabulary. |
-| **7** | Phase 32 | Style parity pass. |
-| **8** | Phase 34 | Class C surgery, sub-stepped and recalibrated throughout. |
+| **1** | Steps 0, 1, 2 | Parity harness, schema, index. **Mandatory before authoring** — doubling the catalogue doubles selection cost without the index. |
+| **2** | Steps 6, 7 | Reachability tests and authoring presets. The tests stop new orphans; the presets make 155 moves tractable to write. |
+| **3** | Phase 29 (+16) | Biggest single concentration in the game, self-contained, immediately visible. |
+| **4** | Phases 30, 33 (+37, +22 defenses) | Bottom-position and defensive vocabulary — the thinnest reachable pools. |
+| **5** | Striking and clinch depth (+61) | `power_punch`, `kick`, `jab`, `clinch`, `dirty_boxing`, `cage_control`, `break_clinch`, `force_cage`. |
+| **6** | Wrestling and ground top (+41) | `shoot`, `takedown`, `advance_position`, `ground_control`, `ground_strikes`. |
+| **7** | Step 5 + Phase 31 | Chain graph and the follow-up wiring it validates — same work, land together. |
+| **8** | Phase 32 | Style parity pass across everything authored in slices 3–6. |
+| **9** | Steps 3, 4 | Decompose selection and add score caching, once the real 355-move cost is measurable. |
+| **10** | Phase 34 + Route B (+45) | Class C surgery, sub-stepped and recalibrated, then the content it unlocks. |
 
-Slices 1–2 pay for themselves immediately and should land before anything else.
+Slices 1–2 pay for themselves immediately and must land before anything else. Slices 3–6 are all
+Route A: pure Class B work that must leave the corpus at 60.39 / 16.48 / 19.04 exactly. Reaching
+**a 355-move registry at the end of slice 8 — 339 of them reachable — is the doubling milestone
+that costs no recalibration**; the final 45 (Phase 34 plus Route B) is the part that does.
 
-## 5.3 Working rules
+## 6.3 Working rules
 
 1. **Classify before writing code.** A/B work must leave the corpus untouched; if the verify moves,
    something leaked into Class C — find it.
@@ -603,14 +704,15 @@ Slices 1–2 pay for themselves immediately and should land before anything else
 
 ---
 
-# Part 6 — Targets
+# Part 7 — Targets
 
 ## Content
 
-| Metric | Now (`4a73923`) | After 29–33 | After 34 |
+| Metric | Now (`4a73923`) | After Route A | After Route B |
 |---|---|---|---|
-| Registry size | 200 | ~270 | ~275 |
-| Defenses | 18 | ~40 | ~40 |
+| Registry size | 200 | **355** | **400** |
+| Reachable moves | 184 | 339 | 400 |
+| Defenses | 18 | 40 | 40 |
 | Moves orphaned by unreachable position | **16** | 16 | **0** |
 | Moves unused in a 300-fight sample | 27–34 | ~25 | **≤ 8** |
 | Distinct moves per fighter per fight | 12.6 | 17–19 | **20–24** |
