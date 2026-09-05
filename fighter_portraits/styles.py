@@ -36,11 +36,16 @@ SKIN = (
     ("#d8a176", "#b07764", "#8e5951"), ("#b87c51", "#8f574c", "#6e3f3b"),
     ("#8f5939", "#6a3d39", "#4e2a2c"), ("#683e28", "#4a2a2c", "#331c21"),
     ("#482a1c", "#311d21", "#211318"),
+    ("#f4c9ad", "#d89a87", "#b7796f"), ("#cd8b65", "#a66458", "#7f4642"),
+    ("#a86a46", "#7b483f", "#59302f"), ("#77482e", "#55302f", "#3b2025"),
+    ("#58331f", "#3d2528", "#291820"),
 )
 HAIR = (
     ("#1c181e", "#0e0c13"), ("#352620", "#1f1617"), ("#563924", "#37221c"),
     ("#7c542e", "#523423"), ("#aa7c40", "#765030"), ("#d4aa5e", "#987344"),
     ("#b24c26", "#7a3020"), ("#cbc6be", "#949090"),
+    ("#17151a", "#09080d"), ("#452d22", "#291a18"), ("#96683c", "#664327"),
+    ("#e5d5ad", "#b2a37f"),
 )
 DYE = {
     "rainbow": ("#e83b50", "#f08a24", "#f2d036", "#4ac062", "#368ee0", "#8b4fd0"),
@@ -56,6 +61,29 @@ BACKGROUND = (
     ("#2c3038", "#191c22"), ("#5c242c", "#39151c"), ("#143a4c", "#0c2331"),
     ("#40203c", "#281326"), ("#254b59", "#16323e"), ("#4b3032", "#2e1b20"),
 )
+
+# Existing IDs remain at the front of every tuple.  Additions are appended
+# only; a saved numeric trait must always retain its visual meaning.
+BROW_STYLES = (
+    "flat", "arched", "angled_down", "heavy", "thin", "soft_arch", "high_arch",
+    "straight_heavy", "broken", "tapered",
+)
+EYE_SHAPES = (
+    "almond", "round", "hooded", "narrow", "downturned", "upturned", "deep_set",
+    "wide_lid", "monolid", "sharp_almond",
+)
+EYE_SPACINGS = ("close", "normal", "wide", "very_close", "slightly_close", "soft_normal", "slightly_wide", "far_wide", "high_set", "low_set")
+EYE_SIZES = ("small", "normal", "large", "very_small", "soft_small", "open", "very_large", "tall", "wide", "compact")
+NOSE_SHAPES = (
+    "straight", "broad", "aquiline", "snub", "broken_left", "broken_right", "roman",
+    "button", "long_bridge", "wide_tip",
+)
+MOUTH_SHAPES = ("neutral", "wide", "thin", "full", "downturned", "bowed", "short", "long", "soft_full", "firm")
+JAW_SHAPES = ("narrow", "soft", "balanced", "broad", "square", "tapered", "round", "angular", "wide", "long")
+CHIN_SHAPES = ("round", "square", "cleft", "pointed", "short", "broad", "narrow", "projecting", "soft", "long")
+CHEEK_SHAPES = ("flat", "subtle", "high", "pronounced", "full", "hollow", "wide", "narrow", "sharp", "soft")
+FACE_LENGTHS = ("short", "normal", "long", "very_short", "soft_short", "slightly_long", "very_long", "compact", "oval", "elongated")
+EAR_SHAPES = ("small", "medium", "large", "very_large", "very_small", "soft_small", "broad", "tall", "round", "angled")
 
 IDENTITY_TRAITS = (
     "skin", "hair_colour", "hair_style", "facial_hair", "dye", "brow", "eye_shape",

@@ -86,12 +86,14 @@ class _Raster:
 
 def _head_profile(size, identity):
     cx = size / 2
-    face_scale = (0.91, 1.0, 1.10)[identity["face_length"]]
+    face_scale = (.91, 1.0, 1.10, .84, .96, 1.04, 1.18, .88, 1.06, 1.14)[identity["face_length"]]
     top, bottom = size * 0.17, size * (0.69 + (face_scale - 1) * 0.16)
     head_width = size * 0.184 * (0.94 + identity["head_w"] / 100 * 0.16)
-    cheek = 0.94 + identity["cheek"] * 0.055
-    jaw = 0.86 + identity["jaw"] * 0.075
-    chin = 0.82 + identity["chin"] * 0.14
+    # The first entries retain the pre-expansion proportions; appended IDs add
+    # visibly different but still anatomical construction variants.
+    cheek = (.94, .995, 1.05, 1.105, 1.13, .90, 1.16, .92, 1.14, .98)[identity["cheek"]]
+    jaw = (.86, .935, 1.01, 1.085, 1.16, .80, .90, 1.12, 1.22, 1.02)[identity["jaw"]]
+    chin = (.82, .96, 1.10, 1.24, .74, 1.17, .88, 1.12, .92, 1.30)[identity["chin"]]
     stops = (0.00, 0.08, 0.18, 0.32, 0.46, 0.60, 0.72, 0.84, 0.93, 1.00)
     widths = (0.62, 0.86, 0.97, 1.00, .99 * cheek, .94 * cheek, .87 * jaw, .74 * jaw, .56 * chin, .34 * chin)
 
@@ -125,7 +127,7 @@ def rasterize_portrait(fighter, size=180):
     raster.ellipse(cx + hw * .20, bottom + size * .055, hw * .41, size * .11, skin_deep)
     # Ears are behind the profile and swell only up to the documented cap.
     eye_y = top + (bottom - top) * .50
-    ear_radius = size * (.026 + .012 * identity["ear"] + .013 * state["cauli"])
+    ear_radius = size * ((.026, .038, .050, .062, .020, .032, .056, .054, .046, .050)[identity["ear"]] + .013 * state["cauli"])
     for direction in (-1, 1):
         raster.ellipse(cx + direction * hw * .98, eye_y + size * .02, ear_radius * .76, ear_radius * 1.16, skin_shadow)
         if state["cauli"] > .25:
@@ -204,34 +206,40 @@ def rasterize_portrait(fighter, size=180):
         for x in range(round(cx - hw), round(cx + hw) + 1, step):
             raster.line(x, top - volume * size, x, bottom if side == 2 else eye_y + size * .06, max(1, size // 130), INK)
     # Brows and eyes are positionally distinct enough to survive the small card.
-    spacing = (.38, .46, .54)[identity["eye_spacing"]]
-    eye_scale = (.78, 1.0, 1.18)[identity["eye_size"]]
+    spacing = (.38, .46, .54, .32, .42, .47, .50, .60, .44, .49)[identity["eye_spacing"]]
+    eye_scale = (.78, 1.0, 1.18, .64, .88, 1.08, 1.30, 1.12, 1.15, .72)[identity["eye_size"]]
     brow_kind = identity["brow"]
     for direction in (-1, 1):
         ex = cx + direction * hw * spacing
-        brow_y = eye_y - size * (.044 + (.008 if brow_kind == 3 else 0))
-        slope = (brow_kind - 2) * size * .005 * direction
-        raster.line(ex - hw * .24, brow_y - slope, ex + hw * .24, brow_y + slope, max(1, round(size * (.014 + (brow_kind == 3) * .010))), hair_shadow, inside)
+        brow_height = (0, .002, .004, .010, -.002, .003, .007, .006, .001, -.004)[brow_kind]
+        brow_y = eye_y - size * (.044 + brow_height)
+        slope = (0, .003, .006, .002, -.002, .004, .009, -.004, .006, -.006)[brow_kind] * size * direction
+        brow_width = hw * (.24, .23, .24, .28, .20, .22, .21, .30, .23, .18)[brow_kind]
+        brow_ink = max(1, round(size * (.014, .014, .016, .024, .009, .013, .012, .022, .015, .010)[brow_kind]))
+        raster.line(ex - brow_width, brow_y - slope, ex + brow_width, brow_y + slope, brow_ink, hair_shadow, inside)
         eye_w, eye_h = hw * .23 * eye_scale, size * .018 * eye_scale
-        if identity["eye_shape"] == 2: eye_h *= .65
-        if identity["eye_shape"] == 3: eye_h *= .55
-        raster.ellipse(ex, eye_y, eye_w, eye_h, EYE_WHITE, inside)
-        raster.ellipse(ex, eye_y, max(1, eye_h * .72), max(1, eye_h * .72), hair_shadow, inside)
-        raster.ellipse(ex, eye_y, max(1, eye_h * .35), max(1, eye_h * .35), INK, inside)
-        raster.line(ex - eye_w, eye_y - eye_h, ex + eye_w, eye_y - eye_h, max(1, size // 120), INK, inside)
+        eye_kind = identity["eye_shape"]
+        eye_h *= (1.0, 1.18, .65, .55, .82, .86, .68, 1.08, .62, .72)[eye_kind]
+        eye_w *= (1.0, .92, 1.0, 1.12, .98, .98, .88, 1.15, 1.10, 1.05)[eye_kind]
+        eye_y_shift = (0, 0, .002, 0, .004, -.004, .002, -.002, .001, 0)[eye_kind] * size * direction
+        raster.ellipse(ex, eye_y + eye_y_shift, eye_w, eye_h, EYE_WHITE, inside)
+        raster.ellipse(ex, eye_y + eye_y_shift, max(1, eye_h * .72), max(1, eye_h * .72), hair_shadow, inside)
+        raster.ellipse(ex, eye_y + eye_y_shift, max(1, eye_h * .35), max(1, eye_h * .35), INK, inside)
+        raster.line(ex - eye_w, eye_y + eye_y_shift - eye_h, ex + eye_w, eye_y + eye_y_shift - eye_h, max(1, size // 120), INK, inside)
     # Nose uses shadow planes instead of a boxed outline.
     nose_y, nose_kind = top + (bottom - top) * .655, identity["nose"]
     if nose_kind < 4 and state["nose_damage"] > .60:
         nose_kind = 4 + trait_hash(str(getattr(fighter, "fighter_id", "")), "career_nose_side", 2)
-    nose_width = hw * (.15 + nose_kind * .020)
+    nose_width = hw * (.15, .17, .19, .21, .23, .25, .18, .13, .16, .28)[nose_kind]
     shift = (-size * .012 if nose_kind == 4 else size * .012 if nose_kind == 5 else 0)
     raster.line(cx + nose_width * .34 + shift, eye_y + size * .005, cx + nose_width * .46 + shift, nose_y, max(1, size // 55), skin_shadow, inside)
     raster.ellipse(cx + shift, nose_y, nose_width * .78, size * .019, skin_shadow, inside)
     for direction in (-1, 1):
         raster.ellipse(cx + shift + direction * nose_width * .55, nose_y + size * .005, max(1, nose_width * .18), max(1, size * .007), skin_deep, inside)
     mouth_y = top + (bottom - top) * .795
-    mouth_width = hw * (.25 + identity["mouth"] * .028)
-    mouth_slope = (identity["mouth"] - 1) * size * .004
+    mouth_kind = identity["mouth"]
+    mouth_width = hw * (.25, .278, .306, .334, .362, .29, .20, .39, .34, .24)[mouth_kind]
+    mouth_slope = (-.004, 0, .004, .008, .012, -.006, -.002, .002, -.001, .006)[mouth_kind] * size
     raster.line(cx - mouth_width, mouth_y + mouth_slope, cx + mouth_width, mouth_y - mouth_slope, max(1, size // 85), INK, inside)
     raster.ellipse(cx, mouth_y + size * .018, mouth_width * .60, max(1, size * .007), skin_shadow, inside)
     # Facial-hair masks never reach higher than the jaw band, apart from an

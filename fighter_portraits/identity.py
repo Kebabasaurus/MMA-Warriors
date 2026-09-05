@@ -3,7 +3,11 @@
 import hashlib
 
 from .regions import HAIR_WEIGHTS, REGION_APPEARANCE, appearance_region
-from .styles import BACKGROUND, FACIAL_HAIR, HAIR, HAIR_STYLES, IDENTITY_TRAITS, SKIN
+from .styles import (
+    BACKGROUND, BROW_STYLES, CHEEK_SHAPES, CHIN_SHAPES, EAR_SHAPES, EYE_SHAPES,
+    EYE_SIZES, EYE_SPACINGS, FACIAL_HAIR, FACE_LENGTHS, HAIR, HAIR_STYLES,
+    IDENTITY_TRAITS, JAW_SHAPES, MOUTH_SHAPES, NOSE_SHAPES, SKIN,
+)
 
 CURRENT_PORTRAIT_VERSION = 1
 
@@ -40,12 +44,12 @@ def derived_portrait_identity(fighter):
         "hair_colour": _weighted_trait(fighter_id, "hair_colour", hair_choices, hair_weights),
         "hair_style": trait_hash(fighter_id, "hair_style", len(HAIR_STYLES)),
         "facial_hair": trait_hash(fighter_id, "facial_hair", len(FACIAL_HAIR)),
-        "dye": "", "brow": trait_hash(fighter_id, "brow", 5),
-        "eye_shape": trait_hash(fighter_id, "eye_shape", 6), "eye_spacing": trait_hash(fighter_id, "eye_spacing", 3),
-        "eye_size": trait_hash(fighter_id, "eye_size", 3), "nose": trait_hash(fighter_id, "nose", 6),
-        "mouth": trait_hash(fighter_id, "mouth", 5), "jaw": trait_hash(fighter_id, "jaw", 5),
-        "chin": trait_hash(fighter_id, "chin", 4), "cheek": trait_hash(fighter_id, "cheek", 4),
-        "face_length": trait_hash(fighter_id, "face_length", 3), "ear": trait_hash(fighter_id, "ear", 4),
+        "dye": "", "brow": trait_hash(fighter_id, "brow", len(BROW_STYLES)),
+        "eye_shape": trait_hash(fighter_id, "eye_shape", len(EYE_SHAPES)), "eye_spacing": trait_hash(fighter_id, "eye_spacing", len(EYE_SPACINGS)),
+        "eye_size": trait_hash(fighter_id, "eye_size", len(EYE_SIZES)), "nose": trait_hash(fighter_id, "nose", len(NOSE_SHAPES)),
+        "mouth": trait_hash(fighter_id, "mouth", len(MOUTH_SHAPES)), "jaw": trait_hash(fighter_id, "jaw", len(JAW_SHAPES)),
+        "chin": trait_hash(fighter_id, "chin", len(CHIN_SHAPES)), "cheek": trait_hash(fighter_id, "cheek", len(CHEEK_SHAPES)),
+        "face_length": trait_hash(fighter_id, "face_length", len(FACE_LENGTHS)), "ear": trait_hash(fighter_id, "ear", len(EAR_SHAPES)),
         "head_w": trait_hash(fighter_id, "head_w", 100), "bg": trait_hash(fighter_id, "bg", len(BACKGROUND)),
     }
 

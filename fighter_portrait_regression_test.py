@@ -11,7 +11,11 @@ from types import SimpleNamespace
 
 from fighter_portraits.identity import derived_portrait_identity, identity_keys_are_stable, portrait_identity, trait_hash
 from fighter_portraits.regions import REGION_APPEARANCE, appearance_region
-from fighter_portraits.styles import FACIAL_HAIR, HAIR_STYLES, IDENTITY_TRAITS
+from fighter_portraits.styles import (
+    BACKGROUND, BROW_STYLES, CHEEK_SHAPES, CHIN_SHAPES, EAR_SHAPES, EYE_SHAPES,
+    EYE_SIZES, EYE_SPACINGS, FACIAL_HAIR, FACE_LENGTHS, HAIR, HAIR_STYLES,
+    IDENTITY_TRAITS, JAW_SHAPES, MOUTH_SHAPES, NOSE_SHAPES, SKIN,
+)
 from fighter_portraits.overrides import PORTRAIT_OVERRIDES
 
 
@@ -36,6 +40,12 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
         beard = {derived_portrait_identity(fighter(f"FTR-beard-{i}"))["facial_hair"] for i in range(800)}
         self.assertEqual(set(range(32)), hair)
         self.assertEqual(set(range(16)), beard)
+
+    def test_every_appearance_category_has_ten_or_more_options(self):
+        categories = (SKIN, HAIR, HAIR_STYLES, FACIAL_HAIR, BROW_STYLES, EYE_SHAPES,
+                      EYE_SPACINGS, EYE_SIZES, NOSE_SHAPES, MOUTH_SHAPES, JAW_SHAPES,
+                      CHIN_SHAPES, CHEEK_SHAPES, FACE_LENGTHS, EAR_SHAPES, BACKGROUND)
+        self.assertTrue(all(len(category) >= 10 for category in categories))
 
     def test_region_order_and_wide_profiles(self):
         row = fighter(birth_country="Nigeria", nationality="Japanese", region="USA")
@@ -116,7 +126,7 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
         rows = json.loads(source.read_text(encoding="utf-8"))["sections"]["fighters"]["all_fighters"]
         manifest = [(row["fighter_id"], portrait_identity(SimpleNamespace(**row))) for row in rows]
         digest = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
-        self.assertEqual("028c9da5bba1c41519e2fb2ac85cffa665f162510d6bafa76d805445d48e3491", digest)
+        self.assertEqual("262ae866eabdaad8e969995afb9526646a1e3fab64efe731cd6f31eed364ea79", digest)
 
     def test_save_round_trip_preserves_identity(self):
         from models import Fighter
