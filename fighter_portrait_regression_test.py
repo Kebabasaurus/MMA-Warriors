@@ -16,7 +16,7 @@ from fighter_portraits.styles import (
     EYE_SIZES, EYE_SPACINGS, FACIAL_HAIR, FACE_LENGTHS, HAIR, HAIR_STYLES,
     IDENTITY_TRAITS, JAW_SHAPES, MOUTH_SHAPES, NOSE_SHAPES, SKIN,
 )
-from fighter_portraits.overrides import PORTRAIT_OVERRIDES
+from fighter_portraits.overrides import PORTRAIT_ICON_OVERRIDES, PORTRAIT_OVERRIDES, PORTRAIT_PARTIAL_OVERRIDES
 
 
 def fighter(fighter_id="FTR-portrait", **changes):
@@ -139,7 +139,9 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
     def test_authored_overrides_resolve_to_shipped_fighters(self):
         source = Path(__file__).with_name("Databases") / "Default Universe.universe.json"
         names = {row["name"] for row in json.loads(source.read_text(encoding="utf-8"))["sections"]["fighters"]["all_fighters"]}
-        self.assertGreaterEqual(len(PORTRAIT_OVERRIDES), 50)
+        self.assertGreaterEqual(len(PORTRAIT_ICON_OVERRIDES), 50)
+        self.assertGreaterEqual(len(PORTRAIT_PARTIAL_OVERRIDES), 200)
+        self.assertTrue(all(set(row) <= {"skin", "hair_style", "facial_hair"} for row in PORTRAIT_PARTIAL_OVERRIDES.values()))
         self.assertEqual(set(), set(PORTRAIT_OVERRIDES) - names)
         self.assertEqual(0, PORTRAIT_OVERRIDES["Jon Jones"]["hair_style"])
 
@@ -148,7 +150,7 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
         rows = json.loads(source.read_text(encoding="utf-8"))["sections"]["fighters"]["all_fighters"]
         manifest = [(row["fighter_id"], portrait_identity(SimpleNamespace(**row))) for row in rows]
         digest = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
-        self.assertEqual("b749d88ac32078cb992fecd3470387cb5a53a5d6c32ba99f2aa431f069ff0a5f", digest)
+        self.assertEqual("3cb1b32e9950b2559d92489d66d5d224f672b64fa4b0d2259815b663a549c6c8", digest)
 
     def test_save_round_trip_preserves_identity(self):
         from models import Fighter
