@@ -118,6 +118,38 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
         digest = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
         self.assertEqual("028c9da5bba1c41519e2fb2ac85cffa665f162510d6bafa76d805445d48e3491", digest)
 
+    def test_save_round_trip_preserves_identity(self):
+        from models import Fighter
+        from persistence import FIGHTER_SAVE_FIELDS, load_model_row, serialize_fighter_model
+        row = Fighter(name="Save Portrait", fighter_id="FTR-save-roundtrip", weight="Lightweight", age=27,
+                      record_w=8, record_l=2, striking=70, wrestling=70, grappling=70, cardio=70,
+                      chin=70, popularity=40, momentum=0, morale=60, purse=1_000,
+                      portrait_identity={"skin": 4, "hair_style": 23, "dye": "rainbow"}, portrait_version=1)
+        restored = load_model_row(serialize_fighter_model(row), Fighter, FIGHTER_SAVE_FIELDS, "portrait regression")
+        self.assertEqual(row.portrait_identity, restored.portrait_identity)
+        self.assertEqual(row.portrait_version, restored.portrait_version)
+
+    def test_every_shipped_style_rasterises(self):
+        from fighter_portraits.render import rasterize_portrait
+        for hair_style in range(len(HAIR_STYLES)):
+            row = fighter(f"FTR-style-{hair_style}", portrait_identity={"hair_style": hair_style})
+            self.assertEqual(90 * 90, len(rasterize_portrait(row, 90).pixels))
+        for facial_hair in range(len(FACIAL_HAIR)):
+            row = fighter(f"FTR-beard-{facial_hair}", portrait_identity={"facial_hair": facial_hair})
+            self.assertEqual(90 * 90, len(rasterize_portrait(row, 90).pixels))
+
+    def test_shared_status_seal_keeps_retired_contract(self):
+        from fighter_portraits.render import _draw_status_markers
+        calls = []
+        class Canvas:
+            def cget(self, field): return "104" if field == "width" else "104"
+            def create_oval(self, *args, **kwargs): calls.append(("oval", kwargs))
+            def create_text(self, *args, **kwargs): calls.append(("text", kwargs))
+            def create_rectangle(self, *args, **kwargs): calls.append(("rectangle", kwargs))
+        _draw_status_markers(Canvas(), fighter(retired=True), 104)
+        self.assertIn(("oval", {"fill": "#315a70", "outline": "#bfe6f2", "width": 1}), calls)
+        self.assertIn(("text", {"text": "RTD", "fill": "#ffffff", "font": ("Impact", 7)}), calls)
+
 
 if __name__ == "__main__":
     unittest.main()
