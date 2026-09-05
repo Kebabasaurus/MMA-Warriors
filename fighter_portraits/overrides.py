@@ -6,7 +6,7 @@
 PORTRAIT_OVERRIDES = {
     "Sean O'Malley": {"skin": 0, "hair_style": 23, "dye": "rainbow", "facial_hair": 10, "jaw": 1, "chin": 1, "cheek": 2, "nose": 0, "bg": 4},
     "Conor McGregor": {"skin": 1, "hair_style": 6, "facial_hair": 11, "jaw": 3, "bg": 2},
-    "Jon Jones": {"skin": 5, "hair_style": 1, "facial_hair": 9, "jaw": 3, "bg": 0},
+    "Jon Jones": {"skin": 5, "hair_style": 0, "facial_hair": 9, "jaw": 3, "bg": 0},
     "Israel Adesanya": {"skin": 5, "hair_style": 4, "facial_hair": 5, "jaw": 2, "bg": 9},
     "Khabib Nurmagomedov": {"skin": 2, "hair_style": 3, "facial_hair": 11, "jaw": 3, "bg": 5},
     "Amanda Nunes": {"skin": 3, "hair_style": 16, "facial_hair": 0, "jaw": 3, "bg": 7},

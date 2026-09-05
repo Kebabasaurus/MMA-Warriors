@@ -155,17 +155,19 @@ def rasterize_portrait(fighter, size=180):
     hair_base, hair_shadow = map(_rgb, HAIR[identity["hair_colour"]])
     if state["grey"]:
         hair_base, hair_shadow = _mix(hair_base, _rgb(HAIR[7][0]), state["grey"] * .72), _mix(hair_shadow, _rgb(HAIR[7][1]), state["grey"] * .72)
-    _, volume, side, line_offset, texture = HAIR_STYLES[identity["hair_style"]]
+    style_id = identity["hair_style"]
+    _, volume, side, line_offset, texture = HAIR_STYLES[style_id]
     hairline = top + (bottom - top) * (.255 + state["recede"] * .10 + line_offset)
     hair_mask = set()
-    for y in range(max(0, int(top - volume * size * 2.0)), min(size, int(hairline + size * .025))):
-        # A rounded expanded profile avoids the prototype's rectangular temples.
-        expansion = 1 + volume * 3.5
-        half = half_width(max(top, y + volume * size * 1.15)) * expansion
-        if y <= hairline + size * .018:
-            for x in range(max(0, int(cx - half)), min(size, int(cx + half) + 1)):
-                hair_mask.add((x, y))
-    if side:
+    if style_id != 0:  # "shaved" is bare scalp, not a zero-height hair cap.
+        for y in range(max(0, int(top - volume * size * 2.0)), min(size, int(hairline + size * .025))):
+            # A rounded expanded profile avoids the prototype's rectangular temples.
+            expansion = 1 + volume * 3.5
+            half = half_width(max(top, y + volume * size * 1.15)) * expansion
+            if y <= hairline + size * .018:
+                for x in range(max(0, int(cx - half)), min(size, int(cx + half) + 1)):
+                    hair_mask.add((x, y))
+    if style_id != 0 and side:
         reach = eye_y + size * .08 if side == 1 else bottom + size * .04
         for y in range(int(hairline), min(size, int(reach))):
             half = half_width(min(bottom, y))

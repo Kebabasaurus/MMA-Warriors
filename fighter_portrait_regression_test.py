@@ -120,13 +120,14 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
         names = {row["name"] for row in json.loads(source.read_text(encoding="utf-8"))["sections"]["fighters"]["all_fighters"]}
         self.assertGreaterEqual(len(PORTRAIT_OVERRIDES), 50)
         self.assertEqual(set(), set(PORTRAIT_OVERRIDES) - names)
+        self.assertEqual(0, PORTRAIT_OVERRIDES["Jon Jones"]["hair_style"])
 
     def test_shipped_identity_manifest_is_stable(self):
         source = Path(__file__).with_name("Databases") / "Default Universe.universe.json"
         rows = json.loads(source.read_text(encoding="utf-8"))["sections"]["fighters"]["all_fighters"]
         manifest = [(row["fighter_id"], portrait_identity(SimpleNamespace(**row))) for row in rows]
         digest = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
-        self.assertEqual("262ae866eabdaad8e969995afb9526646a1e3fab64efe731cd6f31eed364ea79", digest)
+        self.assertEqual("f8d14206a51a3f4b3b73cdf8e20e49a8f0a849f8441513e14c5c5e940c8eb325", digest)
 
     def test_save_round_trip_preserves_identity(self):
         from models import Fighter
