@@ -189,6 +189,18 @@ def rasterize_portrait(fighter, size=180):
             for x in range(int(cx - hw * .28), int(cx + hw * .28)):
                 if ((x - cx) / max(1, hw * .28)) ** 2 + ((y - (top - size * .035)) / max(1, size * .04)) ** 2 < 1:
                     hair_mask.add((x, y))
+    if texture == "tail":
+        # A tail sits behind the head, with a curved, tapered fall rather than
+        # an extra rectangle pasted beside the skull.
+        tail_side = -1 if trait_hash(str(getattr(fighter, "fighter_id", "")), "tail_side", 2) else 1
+        anchor_x = cx + tail_side * hw * .78
+        for y in range(int(top + size * .09), min(size, int(bottom + size * .14))):
+            progress = (y - (top + size * .09)) / max(1, bottom - top)
+            tail_x = anchor_x + tail_side * hw * (.16 + progress * .35)
+            radius = max(1, hw * (.15 - progress * .075))
+            for x in range(round(tail_x - radius), round(tail_x + radius) + 1):
+                if 0 <= x < size:
+                    hair_mask.add((x, y))
     if texture == "spike":
         hair_mask = {(x, y) for x, y in hair_mask if abs(x - cx) < hw * .42 or y < hairline - size * .01}
     if texture == "dread":
@@ -208,14 +220,38 @@ def rasterize_portrait(fighter, size=180):
         else:
             colour = hair_shadow if x > cx + hw * .45 else hair_base
         raster.put(x, y, colour)
+    hair_clip = lambda x, y: (x, y) in hair_mask
+    # Texture pass: each class has a different directional cue at thumbnail
+    # size, so styles do not collapse into the same dark cap.
+    if texture in ("curl", "coil"):
+        step_x = max(3, round(hw * (.23 if texture == "coil" else .31)))
+        step_y = max(3, round(size * .040))
+        for y in range(max(0, int(top - volume * size)), int(hairline + size * .015), step_y):
+            offset = (step_x // 2) if ((y // step_y) % 2) else 0
+            for x in range(round(cx - hw) + offset, round(cx + hw), step_x):
+                radius = max(1, round(size * (.012 if texture == "coil" else .017)))
+                raster.ellipse(x, y, radius, radius, hair_shadow, hair_clip)
+                if texture == "coil":
+                    raster.ellipse(x - radius * .22, y - radius * .18, max(1, radius * .34), max(1, radius * .34), hair_base, hair_clip)
+    elif texture == "twist":
+        for x in range(round(cx - hw * .84), round(cx + hw * .85), max(3, round(hw * .22))):
+            raster.line(x - size * .010, top, x + size * .010, hairline + size * .025,
+                        max(1, size // 125), hair_shadow, hair_clip)
+    elif texture == "flat" and style_id in (4, 5, 30):
+        # Fade/undercut sides need a visible taper boundary.
+        for direction in (-1, 1):
+            raster.line(cx + direction * hw * .76, top + size * .08,
+                        cx + direction * hw * .83, eye_y + size * .015,
+                        max(1, size // 145), _mix(hair_shadow, skin_shadow, .58), hair_clip)
     # Hair ink and braid band separations are drawn over fills, never tinted.
     for x, y in hair_mask:
         if (x - 1, y) not in hair_mask or (x + 1, y) not in hair_mask or (x, y - 1) not in hair_mask:
             raster.put(x, y, INK)
     if texture in ("braid", "dread", "twist"):
-        step = max(3, round(hw * .27))
+        step = max(3, round(hw * (.20 if texture == "braid" else .27)))
         for x in range(round(cx - hw), round(cx + hw) + 1, step):
-            raster.line(x, top - volume * size, x, bottom if side == 2 else eye_y + size * .06, max(1, size // 130), INK)
+            end_y = bottom + size * .05 if texture == "dread" else (bottom if side == 2 else eye_y + size * .06)
+            raster.line(x, top - volume * size, x, end_y, max(1, size // 150), INK, hair_clip)
     # Brows and eyes are positionally distinct enough to survive the small card.
     spacing = (.38, .46, .54, .32, .42, .47, .50, .60, .44, .49)[identity["eye_spacing"]]
     eye_scale = (.78, 1.0, 1.18, .64, .88, 1.08, 1.30, 1.12, 1.15, .72)[identity["eye_size"]]
