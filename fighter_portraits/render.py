@@ -5,6 +5,7 @@ It must remain importable in headless simulation tools: Tk is only touched by
 ``render_portrait`` after a canvas is supplied.
 """
 
+from collections import OrderedDict
 from math import sqrt
 
 from .identity import portrait_identity, trait_hash
@@ -13,7 +14,10 @@ from .styles import BACKGROUND, DYE, FACIAL_HAIR, HAIR, HAIR_STYLES, SKIN
 
 INK = (18, 15, 20)
 EYE_WHITE = (242, 238, 231)
-_PHOTO_CACHE = {}
+# Four portrait sizes are used in the game.  Keep enough warm entries for a
+# large event card without keeping every fighter image alive for a full save.
+PORTRAIT_CACHE_LIMIT = 192
+_PHOTO_CACHE = OrderedDict()
 
 
 def _rgb(value):
@@ -357,6 +361,26 @@ def clear_portrait_cache():
     _PHOTO_CACHE.clear()
 
 
+def portrait_cache_info():
+    """Expose cache bounds for lightweight UI/performance regression checks."""
+    return {"size": len(_PHOTO_CACHE), "limit": PORTRAIT_CACHE_LIMIT}
+
+
+def _cache_get(key):
+    photo = _PHOTO_CACHE.get(key)
+    if photo is not None:
+        _PHOTO_CACHE.move_to_end(key)
+    return photo
+
+
+def _cache_store(key, photo):
+    _PHOTO_CACHE[key] = photo
+    _PHOTO_CACHE.move_to_end(key)
+    while len(_PHOTO_CACHE) > PORTRAIT_CACHE_LIMIT:
+        _PHOTO_CACHE.popitem(last=False)
+    return photo
+
+
 def render_portrait(canvas, fighter, size=None, ratings_visible=True, **_options):
     """Render a cached image and the durable injury/retirement state seals."""
     import tkinter as tk
@@ -365,15 +389,19 @@ def render_portrait(canvas, fighter, size=None, ratings_visible=True, **_options
         size = min(int(canvas.cget("width")), int(canvas.cget("height")))
     size = max(48, int(size))
     key = portrait_cache_key(fighter, size)
-    photo = _PHOTO_CACHE.get(key)
+    photo = _cache_get(key)
     if photo is None:
         raster = rasterize_portrait(fighter, size)
         photo = tk.PhotoImage(master=canvas, width=size, height=size)
         photo.put(raster.tk_rows(), to=(0, 0, size, size))
-        _PHOTO_CACHE[key] = photo
+        _cache_store(key, photo)
     canvas.delete("all")
     canvas.configure(bg=_hex(_rgb(BACKGROUND[portrait_identity(fighter)["bg"]][0])))
     canvas.create_image(int(canvas.cget("width")) // 2, int(canvas.cget("height")) // 2, image=photo)
+    # Canvas items do not keep a Python PhotoImage reference.  The LRU may
+    # evict this key while it is still on screen, so retain its current image
+    # on the canvas itself until the next portrait replaces it.
+    canvas._portrait_photo = photo
     _draw_status_markers(canvas, fighter, size)
     return photo
 

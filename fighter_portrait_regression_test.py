@@ -170,6 +170,19 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
             row = fighter(f"FTR-beard-{facial_hair}", portrait_identity={"facial_hair": facial_hair})
             self.assertEqual(90 * 90, len(rasterize_portrait(row, 90).pixels))
 
+    def test_portrait_cache_is_lru_bounded(self):
+        from fighter_portraits.render import PORTRAIT_CACHE_LIMIT, _cache_get, _cache_store, clear_portrait_cache, portrait_cache_info
+        clear_portrait_cache()
+        for index in range(PORTRAIT_CACHE_LIMIT + 3):
+            _cache_store(("portrait", index), object())
+        self.assertEqual(PORTRAIT_CACHE_LIMIT, portrait_cache_info()["size"])
+        self.assertIsNone(_cache_get(("portrait", 0)))
+        retained = _cache_get(("portrait", 3))
+        self.assertIsNotNone(retained)
+        _cache_store(("portrait", "new"), object())
+        self.assertIs(retained, _cache_get(("portrait", 3)))
+        clear_portrait_cache()
+
     def test_shared_status_seal_keeps_retired_contract(self):
         from fighter_portraits.render import _draw_status_markers
         calls = []
