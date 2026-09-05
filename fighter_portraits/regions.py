@@ -34,6 +34,23 @@ HAIR_WEIGHTS = {
     "South Korea": (tuple(range(12)), (41, 19, 9, 4, 2, 2, 2, 5, 7, 4, 2, 3)),
 }
 
+# Silhouette is not a regional attribute.  These deliberately broad cosmetic
+# distributions make new generated portraits read more intentionally across
+# the game's recorded genders, while every shipped style remains possible for
+# every group.  Persisted vectors always win, so this only affects newly
+# generated identities.
+GENDER_HAIR_STYLE_WEIGHTS = {
+    "default": (1,) * 32,
+    "Male": (
+        13, 12, 11, 10, 10, 10, 9, 9, 8, 8, 8, 8, 7, 7, 7, 7,
+        5, 5, 5, 5, 6, 6, 6, 6, 6, 5, 5, 5, 5, 4, 4, 4,
+    ),
+    "Female": (
+        5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7,
+        11, 11, 12, 12, 12, 13, 13, 13, 12, 12, 11, 10, 9, 8, 7, 7,
+    ),
+}
+
 # Only resolution aliases; values retain the broad market distributions above.
 COUNTRY_ALIASES = {
     "United States of America": "United States", "USA": "United States",

@@ -10,7 +10,7 @@ import unittest
 from types import SimpleNamespace
 
 from fighter_portraits.identity import derived_portrait_identity, identity_keys_are_stable, portrait_identity, trait_hash
-from fighter_portraits.regions import REGION_APPEARANCE, appearance_region
+from fighter_portraits.regions import GENDER_HAIR_STYLE_WEIGHTS, REGION_APPEARANCE, appearance_region
 from fighter_portraits.styles import (
     BACKGROUND, BROW_STYLES, CHEEK_SHAPES, CHIN_SHAPES, EAR_SHAPES, EYE_SHAPES,
     EYE_SIZES, EYE_SPACINGS, FACIAL_HAIR, FACE_LENGTHS, HAIR, HAIR_STYLES,
@@ -57,6 +57,18 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
         for values, weights in REGION_APPEARANCE.values():
             self.assertGreaterEqual(len([weight for weight in weights if weight]), 3)
             self.assertEqual(len(values), len(weights))
+
+    def test_gender_aware_hair_distribution_is_broad_and_deterministic(self):
+        self.assertEqual(set(range(32)), set(range(len(GENDER_HAIR_STYLE_WEIGHTS["Male"]))))
+        self.assertTrue(all(weight > 0 for weights in GENDER_HAIR_STYLE_WEIGHTS.values() for weight in weights))
+        male = {derived_portrait_identity(fighter(f"FTR-gender-{index}", gender="Male"))["hair_style"] for index in range(1600)}
+        female = {derived_portrait_identity(fighter(f"FTR-gender-{index}", gender="Female"))["hair_style"] for index in range(1600)}
+        self.assertEqual(set(range(32)), male)
+        self.assertEqual(set(range(32)), female)
+        self.assertNotEqual(
+            derived_portrait_identity(fighter("FTR-gender-difference", gender="Male"))["hair_style"],
+            derived_portrait_identity(fighter("FTR-gender-difference", gender="Female"))["hair_style"],
+        )
 
     def test_identity_does_not_touch_game_values(self):
         row = fighter(striking=72, popularity=48, ability=63, simulation_value=99)
@@ -136,7 +148,7 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
         rows = json.loads(source.read_text(encoding="utf-8"))["sections"]["fighters"]["all_fighters"]
         manifest = [(row["fighter_id"], portrait_identity(SimpleNamespace(**row))) for row in rows]
         digest = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
-        self.assertEqual("f8d14206a51a3f4b3b73cdf8e20e49a8f0a849f8441513e14c5c5e940c8eb325", digest)
+        self.assertEqual("b749d88ac32078cb992fecd3470387cb5a53a5d6c32ba99f2aa431f069ff0a5f", digest)
 
     def test_save_round_trip_preserves_identity(self):
         from models import Fighter
