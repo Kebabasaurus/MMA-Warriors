@@ -67,6 +67,13 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
         self.assertEqual(expected, ensure_portrait_identity(legacy))
         self.assertEqual(CURRENT_PORTRAIT_VERSION, legacy.portrait_version)
 
+    def test_rasterisation_is_deterministic_and_stateful(self):
+        from fighter_portraits.render import rasterize_portrait
+        active = fighter("FTR-art", age=25, record_w=1, record_l=0)
+        veteran = fighter("FTR-art", age=48, record_w=24, record_l=18)
+        self.assertEqual(rasterize_portrait(active, 90).pixels, rasterize_portrait(active, 90).pixels)
+        self.assertNotEqual(rasterize_portrait(active, 90).pixels, rasterize_portrait(veteran, 90).pixels)
+
 
 if __name__ == "__main__":
     unittest.main()
