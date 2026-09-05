@@ -161,6 +161,25 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
         self.assertIn(("oval", {"fill": "#315a70", "outline": "#bfe6f2", "width": 1}), calls)
         self.assertIn(("text", {"text": "RTD", "fill": "#ffffff", "font": ("Impact", 7)}), calls)
 
+    def test_fixed_portrait_render_fingerprints_are_stable(self):
+        from fighter_portraits.render import rasterize_portrait
+        fixtures = (
+            fighter("FTR-render-one", portrait_identity={"hair_style": 0, "facial_hair": 0, "skin": 2}),
+            fighter("FTR-render-two", age=41, record_w=28, record_l=12,
+                    portrait_identity={"hair_style": 23, "facial_hair": 10, "skin": 6, "dye": "rainbow"}),
+            fighter("FTR-render-three", gender="Female", portrait_identity={"hair_style": 21, "facial_hair": 15, "skin": 1}),
+        )
+        signatures = []
+        for row in fixtures:
+            pixels = rasterize_portrait(row, 90).pixels
+            payload = bytes(max(0, min(255, round(channel))) for pixel in pixels for channel in pixel)
+            signatures.append(hashlib.sha256(payload).hexdigest())
+        self.assertEqual((
+            "00c4825f71bb4bffc1b162fd790568b55855ea69476737b38e4de4024a52e76b",
+            "c91b8939c456e64921d6c0f13be9aa8210a36bd3a019a211a65a18c88fe2d5f2",
+            "911c018e3cb3261d0889a8d9fc385be1413ac402f8714fd899e6991c6a48dc7c",
+        ), tuple(signatures))
+
 
 if __name__ == "__main__":
     unittest.main()
