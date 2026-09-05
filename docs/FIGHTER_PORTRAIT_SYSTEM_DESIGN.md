@@ -1,7 +1,7 @@
 # Fighter Portrait System — Design Working Document
 
-**Status: working draft.** Open questions are marked ❓ and are meant to be argued with, not
-assumed settled.
+**Status: working draft, Phase 0 spike complete.** Open questions are marked ❓. Resolved ones are
+marked ✅ with the measurement that settled them.
 
 Goal: replace the current abstract initials-badge with portraits that (a) look like *people*,
 (b) are unique per fighter, and (c) are byte-identical on every launch, with hand-authored
@@ -131,9 +131,14 @@ Then `trait = weighted_pick(distribution, hash(fighter_id, trait_name))`.
 6. **Migration/diaspora is normal.** `birth_region` drives appearance; `fighting_base` does not.
    A fighter born in Nigeria fighting out of the UK draws from Nigeria.
 
-❓ **Open:** do we condition on `birth_region` alone, or blend `birth_region` and `nationality`
-when they disagree? Proposal: nationality first when present (it is more specific), region as
-fallback.
+### ✅ Resolved by inspecting the shipped database
+
+`birth_region` is **absent from all 1,534 shipped fighters**. What they actually carry, on 100% of
+records, is `birth_country`, `nationality`, `region` and `hometown`.
+
+**Resolution order: `birth_country` → `nationality` → `region`.** This is both more specific than
+region and matches the order `country_flag_path_for_fighter` (`views.py:1637`) already uses, so
+the two systems agree. `birth_region` stays as a last-resort fallback for generated fighters.
 
 ---
 
@@ -193,14 +198,59 @@ Layers compose, so the asset count is the *sum* of options per layer, not the pr
 Roughly **110–160 PNGs** for full coverage. Colour variants are tints applied at composite time
 rather than separate files where possible.
 
-❓ **Open:** can we tint a greyscale layer at composite time in pure Tk? `put` is per-pixel and
-slow for a 360² image. If not, colour variants multiply the asset count and we should author
-skin/hair colours as baked files (8 × 12 hair = 96 files just for hair). **This needs a spike
-before committing to the asset budget.**
+### ✅ Phase 0 spike — resolved
+
+Measured on Tk 8.6.15:
+
+```
+overlay composite, one layer      0.25 ms   ->  10-layer portrait = 2.5 ms   viable
+bulk put, full 360x360          121.9 ms   ->  runtime tinting NOT viable
+per-pixel get, full 360x360       0.2 s    ->  runtime masking  NOT viable
+PNG export (PhotoImage.write)     6.6 ms   ->  works
+```
+
+**Runtime tinting and runtime masking are both dead.** Compositing pre-coloured layers is fast
+enough to be free (2.5 ms per portrait).
+
+**But PNG export works, which resolves the asset budget favourably:** colour variants are *baked
+at build time* from greyscale masters by a script, not hand-authored. numpy is already an optional
+dependency used by the audio path and pyinstaller is already build-only, so a build-time baking
+script may use numpy freely — the runtime renderer stays stdlib-only.
+
+Revised budget: **~30–40 hand-drawn greyscale masters**, expanded by the baking script to the
+~110–160 shipped PNGs. That is a tractable commission.
 
 ---
 
-## 7. Authored real fighters
+## 6b. Procedural prototype — built, measured, and it does not clear the bar
+
+A full working prototype is committed at `analysis/portraits/portrait_prototype.py`, with output at
+`analysis/portraits/procedural_prototype_contact_sheet.png` (48 real fighters from the shipped
+database, rendered at 200px).
+
+**What it proves works:**
+
+- the identity-vector pipeline end to end — hash `fighter_id`, condition by region, compose layers;
+- **skin tone and hair colour distributions read correctly** and vary convincingly across the roster;
+- state layers work — greying, hairline recession, cauliflower and scar tissue all respond to age
+  and career length;
+- determinism — same `fighter_id` renders identically every run;
+- collisions are gone at the vector level.
+
+**What it proves does not work:** procedural ellipse-stacking does not produce faces that read as
+people. After two iterations the hair still renders as a band or cap rather than hair, features sit
+in an uncanny middle ground, and the portraits read as *generic avatars* rather than *fighters*.
+That is not a tuning problem — it is the ceiling of composing primitives without an artist.
+
+### ✅ This resolves open question 3: skip the interim procedural art
+
+Do **not** ship a procedural-vector Phase 2 as an interim step. It cannot meet the stated bar
+("should look like people"), and the effort does not transfer to the layer pipeline. Keep the
+prototype as a harness for the identity model and go straight to authored layers.
+
+**What does transfer, and should be kept verbatim:** the identity vector, the region-conditioned
+distributions, the immutable/state split, the per-trait independent hashing, and the contact-sheet
+tooling — all of which are art-independent and already working.
 
 Follow the existing pattern — `real_sport_profiles.py:200` already does exactly this shape with
 `PRIME_AGE_OVERRIDES`, a name-keyed dict of hand-authored values.
@@ -311,21 +361,19 @@ assets still render something.
 
 ## 11. Phasing
 
-| Phase | Work | Ships |
-|---|---|---|
-| **0** | Spike: layer tinting in pure Tk (§6 open question) | go / no-go on asset budget |
-| **1** | Unify the four draw sites behind `render_portrait`, keep current art | no visual change, removes duplication, fixes missing seals |
-| **2** | Identity vector + region profiles + persistence + tests, rendered with **improved vector art** | uniqueness fixed (70.7% → ~0%), still abstract |
-| **3** | PNG layer pipeline + first asset set + size standardisation | portraits look like people |
-| **4** | State layers — ageing, scars, cauliflower, greying | fighters visibly age across a career |
-| **5** | `PORTRAIT_OVERRIDES` tier 1 and 2 + contact-sheet preview tool | real fighters recognisable |
+| Phase | Work | Ships | Status |
+|---|---|---|---|
+| **0** | Spike: Tk compositing, tinting, PNG export | asset budget settled | ✅ **done** |
+| **0b** | Procedural prototype + contact sheet | proved the identity model, ruled out procedural art | ✅ **done** |
+| **1** | Unify the four draw sites behind `render_portrait`, keep current art | no visual change, removes duplication, fixes missing seals | ready |
+| **2** | Identity vector + region profiles + persistence + tests — **no new art** | model landed and tested, still drawn with the current badge | ready |
+| **3** | Art commission: ~30–40 greyscale masters + build-time baking script | the asset set | **blocked on an artist** |
+| **4** | PNG layer renderer + size standardisation to 180/120/90 | **portraits look like people** | after 3 |
+| **5** | State layers wired to the renderer — ageing, scars, cauliflower | fighters visibly age across a career | after 4 |
+| **6** | `PORTRAIT_OVERRIDES` tier 1 and 2 + contact-sheet preview tool | real fighters recognisable | after 4 |
 
-Phase 1 is safe and immediately useful. Phase 2 delivers most of the measurable win. Phase 3 is
-where the art budget lands — do not start it before the Phase 0 spike.
-
-❓ **Open:** is Phase 2's interim vector art worth doing, or should we jump straight to 3? It
-depends on how long the asset production takes. If art is weeks away, Phase 2 stops 70.7% of
-fighters looking identical in the meantime.
+Phases 1 and 2 are pure engineering, carry no art dependency, and can start now. **Phase 3 is the
+critical path and it is a commission, not a code task.**
 
 ---
 
@@ -333,8 +381,10 @@ fighters looking identical in the meantime.
 
 - These will be **stylised avatars, not likenesses.** Real fighters will be identifiable by
   silhouette, colouring, build and authored details — not by looking like photographs.
-- **Art is the bottleneck, not code.** The engineering here is maybe a week; a coherent, good-looking
-  layer set is the long pole and needs someone who can draw.
+- **Art is the bottleneck, not code — now demonstrated rather than asserted.** The prototype in
+  `analysis/portraits/` implements the entire model in ~300 lines and still does not look like
+  people. The engineering is maybe a week; a coherent layer set is the long pole and needs someone
+  who can draw.
 - **Tk is not an image library.** No rotation, no free scaling, no blend modes beyond overlay. The
   art must be authored to composite cleanly at fixed sizes with no transforms.
 - We should not ship real fighters' likenesses even if we could — stylised, clearly-illustrated
@@ -342,11 +392,18 @@ fighters looking identical in the meantime.
 
 ---
 
-## 13. Decisions needed before Phase 1
+## 13. Decisions still needed
 
-1. Master authoring size — 360 or 720? (§6)
-2. Override key — name or `fighter_id`? (§7)
-3. Interim vector art in Phase 2, or jump to PNG? (§11)
-4. Does anything need portraits per table row? (§8)
-5. Who is producing the art, and at what cadence? That sets the Phase 3–5 timeline more than
-   anything in this document.
+Resolved by the Phase 0 spike and the prototype: the asset budget (§6), the region keying (§5), and
+whether to ship interim procedural art (§6b — no).
+
+Still open:
+
+1. **Who is producing the art, and at what cadence?** This sets the whole timeline. Nothing in
+   Phases 3–6 can start without it, and no amount of engineering substitutes for it.
+2. Master authoring size — 360 or 720? Cheap now, expensive later. (§6)
+3. Override key — name or `fighter_id`? (§7)
+4. Does anything need portraits per table row? Changes the caching strategy materially. (§8)
+5. Art direction: what *style*? Flat vector illustration, semi-realistic painted, or comic/cel?
+   This should be settled with the artist before masters are drawn, because the layer decomposition
+   depends on it.
