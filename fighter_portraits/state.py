@@ -11,5 +11,8 @@ def portrait_state(fighter):
     return {
         "grey": _clamp((age - 34) / 18), "recede": _clamp((age - 29) / 20),
         "cauli": _clamp(bouts / 26), "scar": _clamp(bouts / 32),
+        # This supplements, rather than replaces, the immutable nose shape.
+        # Long careers increasingly get the small broken-nose silhouette.
+        "nose_damage": _clamp(bouts / 45),
         "swell": 1.0 if (getattr(fighter, "injured", 0) or getattr(fighter, "serious_injury", "")) else 0.0,
     }

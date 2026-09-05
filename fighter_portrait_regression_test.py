@@ -74,6 +74,17 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
         self.assertEqual(rasterize_portrait(active, 90).pixels, rasterize_portrait(active, 90).pixels)
         self.assertNotEqual(rasterize_portrait(active, 90).pixels, rasterize_portrait(veteran, 90).pixels)
 
+    def test_career_state_saturates_and_injury_is_binary(self):
+        from fighter_portraits.state import portrait_state
+        veteran = fighter(age=80, record_w=120, record_l=80, injured=1)
+        state = portrait_state(veteran)
+        self.assertEqual(1.0, state["grey"])
+        self.assertEqual(1.0, state["recede"])
+        self.assertEqual(1.0, state["cauli"])
+        self.assertEqual(1.0, state["scar"])
+        self.assertEqual(1.0, state["nose_damage"])
+        self.assertEqual(1.0, state["swell"])
+
 
 if __name__ == "__main__":
     unittest.main()

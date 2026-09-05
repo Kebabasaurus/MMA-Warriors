@@ -221,6 +221,8 @@ def rasterize_portrait(fighter, size=180):
         raster.line(ex - eye_w, eye_y - eye_h, ex + eye_w, eye_y - eye_h, max(1, size // 120), INK, inside)
     # Nose uses shadow planes instead of a boxed outline.
     nose_y, nose_kind = top + (bottom - top) * .655, identity["nose"]
+    if nose_kind < 4 and state["nose_damage"] > .60:
+        nose_kind = 4 + trait_hash(str(getattr(fighter, "fighter_id", "")), "career_nose_side", 2)
     nose_width = hw * (.15 + nose_kind * .020)
     shift = (-size * .012 if nose_kind == 4 else size * .012 if nose_kind == 5 else 0)
     raster.line(cx + nose_width * .34 + shift, eye_y + size * .005, cx + nose_width * .46 + shift, nose_y, max(1, size // 55), skin_shadow, inside)
