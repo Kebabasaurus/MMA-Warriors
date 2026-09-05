@@ -146,6 +146,15 @@ def rasterize_portrait(fighter, size=180):
             if t > .90:
                 colour = skin_shadow
             raster.put(x, y, colour)
+    # Broad, low-contrast planes let the face read as a head instead of a flat
+    # mask: a temple shadow, one lit cheek plane and a restrained jaw plane.
+    cheek_y = top + (bottom - top) * .59
+    raster.polygon(((cx - hw * .82, cheek_y), (cx - hw * .22, cheek_y - size * .018),
+                    (cx - hw * .16, cheek_y + size * .070), (cx - hw * .66, cheek_y + size * .095)),
+                   _mix(skin, skin_shadow, .42))
+    raster.polygon(((cx + hw * .16, cheek_y + size * .006), (cx + hw * .80, cheek_y - size * .016),
+                    (cx + hw * .67, cheek_y + size * .096), (cx + hw * .18, cheek_y + size * .072)),
+                   _mix(skin_shadow, skin_deep, .34))
     # Ink the actual profile boundary, giving a reliable skull silhouette.
     for y in range(int(top), int(bottom) + 1):
         half = half_width(y)
@@ -211,6 +220,7 @@ def rasterize_portrait(fighter, size=180):
     spacing = (.38, .46, .54, .32, .42, .47, .50, .60, .44, .49)[identity["eye_spacing"]]
     eye_scale = (.78, 1.0, 1.18, .64, .88, 1.08, 1.30, 1.12, 1.15, .72)[identity["eye_size"]]
     brow_kind = identity["brow"]
+    asymmetry = trait_hash(str(getattr(fighter, "fighter_id", "")), "facial_asymmetry", 5) - 2
     for direction in (-1, 1):
         ex = cx + direction * hw * spacing
         brow_height = (0, .002, .004, .010, -.002, .003, .007, .006, .001, -.004)[brow_kind]
@@ -223,18 +233,29 @@ def rasterize_portrait(fighter, size=180):
         eye_kind = identity["eye_shape"]
         eye_h *= (1.0, 1.18, .65, .55, .82, .86, .68, 1.08, .62, .72)[eye_kind]
         eye_w *= (1.0, .92, 1.0, 1.12, .98, .98, .88, 1.15, 1.10, 1.05)[eye_kind]
-        eye_y_shift = (0, 0, .002, 0, .004, -.004, .002, -.002, .001, 0)[eye_kind] * size * direction
-        raster.ellipse(ex, eye_y + eye_y_shift, eye_w, eye_h, EYE_WHITE, inside)
-        raster.ellipse(ex, eye_y + eye_y_shift, max(1, eye_h * .72), max(1, eye_h * .72), hair_shadow, inside)
-        raster.ellipse(ex, eye_y + eye_y_shift, max(1, eye_h * .35), max(1, eye_h * .35), INK, inside)
-        raster.line(ex - eye_w, eye_y + eye_y_shift - eye_h, ex + eye_w, eye_y + eye_y_shift - eye_h, max(1, size // 120), INK, inside)
+        eye_y_shift = ((0, 0, .002, 0, .004, -.004, .002, -.002, .001, 0)[eye_kind] * direction
+                       + asymmetry * .0015 * direction) * size
+        # Socket first, then a narrow sclera, iris and lids.  Keeping the
+        # socket wider than the white removes the old sticker-eye effect.
+        raster.ellipse(ex, eye_y + eye_y_shift + size * .004, eye_w * 1.14, eye_h * 1.72,
+                       _mix(skin_shadow, skin_deep, .48), inside)
+        raster.ellipse(ex, eye_y + eye_y_shift, eye_w, eye_h, _mix(EYE_WHITE, skin, .18), inside)
+        iris = _mix(hair_shadow, (83, 62, 45), .36)
+        raster.ellipse(ex, eye_y + eye_y_shift, max(1, eye_h * .76), max(1, eye_h * .76), iris, inside)
+        raster.ellipse(ex, eye_y + eye_y_shift, max(1, eye_h * .38), max(1, eye_h * .38), INK, inside)
+        raster.line(ex - eye_w, eye_y + eye_y_shift - eye_h * .82,
+                    ex + eye_w, eye_y + eye_y_shift - eye_h * .82, max(1, size // 120), INK, inside)
+        raster.line(ex - eye_w * .75, eye_y + eye_y_shift + eye_h,
+                    ex + eye_w * .75, eye_y + eye_y_shift + eye_h, max(1, size // 180), skin_deep, inside)
     # Nose uses shadow planes instead of a boxed outline.
     nose_y, nose_kind = top + (bottom - top) * .655, identity["nose"]
     if nose_kind < 4 and state["nose_damage"] > .60:
         nose_kind = 4 + trait_hash(str(getattr(fighter, "fighter_id", "")), "career_nose_side", 2)
     nose_width = hw * (.15, .17, .19, .21, .23, .25, .18, .13, .16, .28)[nose_kind]
     shift = (-size * .012 if nose_kind == 4 else size * .012 if nose_kind == 5 else 0)
-    raster.line(cx + nose_width * .34 + shift, eye_y + size * .005, cx + nose_width * .46 + shift, nose_y, max(1, size // 55), skin_shadow, inside)
+    raster.polygon(((cx + shift, eye_y + size * .012), (cx + nose_width * .42 + shift, eye_y + size * .030),
+                    (cx + nose_width * .50 + shift, nose_y), (cx + shift, nose_y + size * .012)), skin_shadow)
+    raster.line(cx + nose_width * .34 + shift, eye_y + size * .005, cx + nose_width * .46 + shift, nose_y, max(1, size // 110), skin_deep, inside)
     raster.ellipse(cx + shift, nose_y, nose_width * .78, size * .019, skin_shadow, inside)
     for direction in (-1, 1):
         raster.ellipse(cx + shift + direction * nose_width * .55, nose_y + size * .005, max(1, nose_width * .18), max(1, size * .007), skin_deep, inside)
@@ -242,8 +263,13 @@ def rasterize_portrait(fighter, size=180):
     mouth_kind = identity["mouth"]
     mouth_width = hw * (.25, .278, .306, .334, .362, .29, .20, .39, .34, .24)[mouth_kind]
     mouth_slope = (-.004, 0, .004, .008, .012, -.006, -.002, .002, -.001, .006)[mouth_kind] * size
-    raster.line(cx - mouth_width, mouth_y + mouth_slope, cx + mouth_width, mouth_y - mouth_slope, max(1, size // 85), INK, inside)
-    raster.ellipse(cx, mouth_y + size * .018, mouth_width * .60, max(1, size * .007), skin_shadow, inside)
+    lip_shadow = _mix(skin_deep, (72, 38, 42), .42)
+    raster.line(cx - mouth_width, mouth_y + mouth_slope, cx, mouth_y - size * .004,
+                max(1, size // 105), lip_shadow, inside)
+    raster.line(cx, mouth_y - size * .004, cx + mouth_width, mouth_y - mouth_slope,
+                max(1, size // 105), lip_shadow, inside)
+    raster.ellipse(cx, mouth_y + size * .012, mouth_width * .60, max(1, size * .008),
+                   _mix(skin, (194, 93, 98), .22), inside)
     # Facial-hair masks never reach higher than the jaw band, apart from an
     # explicitly separate moustache.
     facial = identity["facial_hair"] if str(getattr(fighter, "gender", "Male")) != "Female" else 0
