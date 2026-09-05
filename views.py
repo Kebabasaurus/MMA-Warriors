@@ -11,6 +11,7 @@ from pathlib import Path
 from tkinter import messagebox, ttk
 
 from constants import *
+from fighter_portraits import render_portrait
 from models import Fighter, Gym, Promotion
 
 
@@ -1033,20 +1034,7 @@ class ViewMixin:
         return item
 
     def draw_profile_portrait(self, canvas, fighter, ratings_visible=True):
-        bg = fighter.portrait_bg or "#222222"
-        accent = fighter.portrait_accent or "#c3a45d"
-        canvas.delete("all")
-        canvas.configure(bg=bg)
-        # The canvas is 180px wide; draw around its actual centre so generated
-        # profile cards never sit in the top-left or overlap their badge.
-        canvas.create_rectangle(12, 10, 168, 170, fill=bg, outline=accent, width=3)
-        canvas.create_oval(62, 28, 118, 84, fill=accent, outline="")
-        canvas.create_polygon(35, 150, 55, 96, 125, 96, 145, 150, fill="#d7d7d7", outline="")
-        canvas.create_rectangle(28, 148, 152, 166, fill=accent, outline="")
-        initials = "".join(part[0] for part in fighter.name.replace("'", "").split()[:2]).upper()
-        canvas.create_text(90, 58, text=initials, fill=bg, font=("Impact", 24))
-        self.fit_canvas_text(canvas, 90, 157, self.portrait_badge_text(fighter, ratings_visible), bg, 116, base_size=8)
-        self.draw_portrait_status_markers(canvas, fighter, large=True)
+        render_portrait(canvas, fighter, size=180, ratings_visible=ratings_visible)
 
     def draw_portrait_status_markers(self, canvas, fighter, large=False):
         """Overlay durable visual status badges on generated portrait cards."""
@@ -2899,18 +2887,7 @@ class ViewMixin:
         if not hasattr(self, "portrait_canvas"):
             return
         canvas = self.portrait_canvas
-        canvas.delete("all")
-        bg = fighter.portrait_bg or "#222222"
-        accent = fighter.portrait_accent or "#c3a45d"
-        canvas.configure(bg=bg)
-        canvas.create_rectangle(0, 0, 104, 104, fill=bg, outline=accent, width=3)
-        canvas.create_oval(32, 14, 72, 54, fill=accent, outline="")
-        canvas.create_polygon(18, 96, 32, 62, 72, 62, 88, 96, fill="#d7d7d7", outline="")
-        canvas.create_rectangle(18, 86, 88, 104, fill=accent, outline="")
-        initials = "".join(part[0] for part in fighter.name.replace("'", "").split()[:2]).upper()
-        canvas.create_text(52, 35, text=initials, fill=bg, font=("Impact", 18))
-        self.fit_canvas_text(canvas, 52, 94, f"{self.weight_abbreviation(fighter.weight)} {fighter.overall}", bg, 70, base_size=8)
-        self.draw_portrait_status_markers(canvas, fighter, large=False)
+        render_portrait(canvas, fighter, size=104, ratings_visible=True)
 
     def matchmaking_title_path_label(self, fighter):
         """Compact title-path read for the matchmaking table (space-conscious)."""

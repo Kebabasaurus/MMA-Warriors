@@ -13,6 +13,7 @@ from pathlib import Path
 from tkinter import messagebox, ttk
 
 from constants import *
+from fighter_portraits import render_portrait
 from fight_moves import MOVE_REGISTRY
 from models import Fighter, Gym, Promotion
 
@@ -2243,18 +2244,8 @@ class EventMixin:
         right_name.bind("<Button-1>", lambda _event: open_header_profile("b"))
 
         def draw_intro_portrait(canvas, fighter, corner):
-            canvas.delete("all")
-            bg = getattr(fighter, "portrait_bg", "") or self.colors["panel_dark"]
-            accent = getattr(fighter, "portrait_accent", "") or (self.colors["red"] if corner == "red" else "#3b9edb")
-            canvas.configure(bg=bg)
             width, height = int(canvas.cget("width")), int(canvas.cget("height"))
-            canvas.create_rectangle(5, 5, width - 5, height - 7, fill=bg, outline=accent, width=2)
-            canvas.create_oval(width * 0.32, height * 0.16, width * 0.68, height * 0.52, fill=accent, outline="")
-            canvas.create_polygon(width * 0.18, height * 0.84, width * 0.32, height * 0.54, width * 0.68, height * 0.54, width * 0.82, height * 0.84, fill="#d7d7d7", outline="")
-            initials = "".join(part[0] for part in fighter.name.replace("'", "").split()[:2]).upper()
-            canvas.create_text(width / 2, height * 0.34, text=initials, fill=bg, font=("Impact", 18))
-            canvas.create_rectangle(8, height - 24, width - 8, height - 9, fill=accent, outline="")
-            canvas.create_text(width / 2, height - 16, text=f"OVR {fighter.overall}", fill=bg, font=("Tahoma", 8, "bold"))
+            render_portrait(canvas, fighter, size=min(width, height), ratings_visible=True)
 
         def form_text(fighter):
             history = list(getattr(fighter, "bout_rating_history", []) or [])[:5]
@@ -3120,19 +3111,7 @@ class EventMixin:
         profile.pack(fill="x", padx=8, pady=(8, 8))
         portrait = tk.Canvas(profile, width=98, height=98, highlightthickness=1, highlightbackground=self.colors["line"], bg="#222222")
         portrait.pack(side="left", padx=10, pady=10)
-        bg = fighter.portrait_bg or "#222222"
-        accent = fighter.portrait_accent or self.colors["gold"]
-        portrait.configure(bg=bg)
-        portrait.create_rectangle(8, 8, 90, 90, fill=bg, outline=accent, width=2)
-        portrait.create_oval(33, 16, 65, 48, fill=accent, outline="")
-        portrait.create_polygon(18, 84, 30, 54, 68, 54, 80, 84, fill="#d7d7d7", outline="")
-        portrait.create_rectangle(16, 82, 82, 91, fill=accent, outline="")
-        initials = "".join(part[0] for part in fighter.name.replace("'", "").split()[:2]).upper()
-        portrait.create_text(49, 33, text=initials, fill=bg, font=("Impact", 14))
-        if hasattr(self, "fit_canvas_text"):
-            self.fit_canvas_text(portrait, 49, 87, self.portrait_badge_text(fighter), bg, 58, base_size=6)
-        if hasattr(self, "draw_portrait_status_markers"):
-            self.draw_portrait_status_markers(portrait, fighter, large=False)
+        render_portrait(portrait, fighter, size=98, ratings_visible=True)
 
         summary = tk.Frame(profile, bg=self.colors["panel_dark"])
         summary.pack(side="left", fill="both", expand=True, padx=(0, 10), pady=10)
