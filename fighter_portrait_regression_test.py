@@ -115,6 +115,15 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
         self.assertEqual(1.0, state["nose_damage"])
         self.assertEqual(1.0, state["swell"])
 
+    def test_recent_recorded_damage_controls_transient_portrait_layers(self):
+        from fighter_portraits.state import portrait_state
+        row = fighter(last_fight_stats={"head_damage": 28, "cut_details": [{"severity": 5, "location": "left brow"}]})
+        state = portrait_state(row)
+        self.assertEqual(.7, state["recent_head_damage"])
+        self.assertEqual(5 / 6, state["recent_cut"])
+        self.assertEqual("left brow", state["recent_cut_location"])
+        self.assertGreater(state["swell"], 0)
+
     def test_authored_overrides_resolve_to_shipped_fighters(self):
         source = Path(__file__).with_name("Databases") / "Default Universe.universe.json"
         names = {row["name"] for row in json.loads(source.read_text(encoding="utf-8"))["sections"]["fighters"]["all_fighters"]}

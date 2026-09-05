@@ -327,8 +327,24 @@ def rasterize_portrait(fighter, size=180):
         direction = -1 if trait_hash(str(getattr(fighter, "fighter_id", "")), "scar_side", 2) else 1
         scar_x = cx + direction * hw * .57
         raster.line(scar_x, eye_y - size * .070, scar_x - direction * size * .010, eye_y - size * .022, max(1, size // 110), (235, 200, 190), inside)
+    if state["recent_cut"]:
+        direction = -1 if trait_hash(str(getattr(fighter, "fighter_id", "")), "cut_side", 2) else 1
+        location = state["recent_cut_location"].lower()
+        if "brow" in location or "eye" in location:
+            start_x, start_y = cx + direction * hw * .48, eye_y - size * .060
+            end_x, end_y = start_x - direction * size * .020, eye_y - size * .010
+        elif "nose" in location:
+            start_x, start_y = cx + direction * size * .006, nose_y - size * .022
+            end_x, end_y = cx - direction * size * .010, nose_y + size * .012
+        else:
+            start_x, start_y = cx + direction * hw * .40, cheek_y + size * .005
+            end_x, end_y = start_x - direction * size * .024, cheek_y + size * .047
+        raster.line(start_x, start_y, end_x, end_y, max(1, round(size * .006 * state["recent_cut"])),
+                    _mix((124, 34, 38), skin_deep, .30), inside)
     if state["swell"]:
-        raster.ellipse(cx - hw * .47, eye_y + size * .035, hw * .22, size * .045, _mix(skin_shadow, (150, 52, 56), .35), inside)
+        direction = -1 if trait_hash(str(getattr(fighter, "fighter_id", "")), "swell_side", 2) else 1
+        raster.ellipse(cx + direction * hw * .47, eye_y + size * .035, hw * .22, size * .045,
+                       _mix(skin_shadow, (150, 52, 56), .35 * state["swell"]), inside)
     return raster
 
 
