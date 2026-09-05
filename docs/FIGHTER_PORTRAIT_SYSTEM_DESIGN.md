@@ -281,6 +281,147 @@ silently dropping the override.
 
 ---
 
+## 6c. ✅ Art direction: comic
+
+**Decided: comic / graphic-novel style** — bold ink outlines, flat cel-shaded fills, hard-edged
+shadow shapes, high contrast. It suits the subject (fight promotion, poster art, bold graphic
+identity), it is far more forgiving of a layer pipeline than semi-realism, and it degrades
+gracefully at small sizes because the silhouette carries the read.
+
+This choice has three hard technical consequences. They are not stylistic preferences — each is
+forced by how comic art interacts with Tk.
+
+### 1. Ink and fill must be separate layers
+
+In comic art the outline *is* the drawing. If ink is baked into each feature layer, composited
+layers produce doubled lines at every seam and strokes that stop where one layer ends and the next
+begins.
+
+**Every drawn element ships as a pair:**
+
+```
+hair_bob_fill.png    greyscale, tinted at bake time
+hair_bob_ink.png     black + alpha, never tinted
+```
+
+**Composite order is: all fills bottom-to-top, then all inks on top.** One ink pass over the
+finished colour keeps every stroke unbroken and consistent in weight, and it is what makes the
+result read as a single drawing rather than a stack of stickers.
+
+Ink layers are colour-independent, so they are never multiplied by the palette — which keeps the
+file count far lower than it would otherwise be.
+
+### 2. Runtime scaling is impossible — bake every size
+
+Measured, on synthetic 1–2px curved ink strokes:
+
+```
+stroke fragments (lower = more continuous)
+  master 360px                2
+  /2 nearest  (180px)         2      |   /2 area-averaged      2
+  /3 nearest  (120px)        42      |   /3 area-averaged      2
+  /4 nearest  ( 90px)        99      |   /4 area-averaged      2
+```
+
+`PhotoImage.subsample` is nearest-neighbour decimation. At /3 and /4 it **shatters ink into
+dozens of fragments** — 2 strokes become 99. Area-averaged downscaling stays perfectly continuous
+at every factor.
+
+**Therefore: no runtime scaling of any kind.** Every shipped size is baked offline from the master
+with proper area-averaged filtering. The /2 case surviving above is a coincidence of that test
+geometry and must not be relied on.
+
+**Reduce to two UI sizes: 180px (profile card, fight-night) and 90px (compact).** Dropping the
+third size halves the bake and the bundle for no real loss — 120px was only ever an artifact of the
+current inconsistent canvases.
+
+### 3. Cel shading, not gradients
+
+Each skin and hair tone needs **two baked values, not a ramp**: a flat base and one hard-edged
+shadow shape. Follow the comic convention of hue-shifting shadows cooler rather than only darkening
+them — a purely darker skin tone reads as dirt, a cooler one reads as form.
+
+The prototype's 8-step subtle skin ramp is wrong for this style. Comic wants **6 more saturated,
+more separated tones**, each with a paired shadow value.
+
+### Line weight hierarchy
+
+Three weights, and the 90px bake should carry only the first two:
+
+| Weight | Use | Survives at 90px |
+|---|---|---|
+| Heavy | outer silhouette, jaw, hairline | yes |
+| Medium | brow, nose, mouth, ear | yes |
+| Light | wrinkles, stubble texture, interior detail | **no — author a simplified 90px ink** |
+
+That means the small size needs its own simplified ink master, not just a downscale. Roughly
++8–10 masters.
+
+### MMA-specific comic vocabulary
+
+The thing that makes these read as *fighters* rather than generic comic avatars:
+
+- **cauliflower ear** as a hard, lumpy silhouette shape rather than a shading effect;
+- **scar tissue** as clean pale slashes over the brow, high contrast against skin;
+- **heavy brow ridge and jaw** — the style tolerates and rewards exaggeration here;
+- **swelling** as an asymmetric hard shape, so a damaged fighter is readable at a glance;
+- **taped hands / gloves** in the shoulder crop for the larger size.
+
+### Revised asset budget
+
+Hand-drawn masters stay tractable; the *shipped* file count grows because colours and sizes are
+baked rather than computed.
+
+| | Masters (drawn) | Shipped (baked) |
+|---|---|---|
+| Skin-tinted shapes (head, jaw, ears, neck, shoulders) | 6 fill + 6 ink | 6 × 6 tones × 2 sizes = 72 fills, 12 inks |
+| Hair | 12 fill + 12 ink | 12 × 8 colours × 2 sizes = 192 fills, 24 inks |
+| Facial hair | 6 fill + 6 ink | 6 × 8 colours × 2 sizes = 96 fills, 12 inks |
+| Features (brow, eye, nose, mouth) | 17 ink-dominant | ~40 |
+| Damage (cauliflower, scars, swelling) | 8 | 16 |
+| Simplified 90px inks | ~10 | 10 |
+| **Total** | **~85 masters** | **~475 files** |
+
+At 180px with alpha, files are roughly 4–12 KB, so the bundle lands around **3–5 MB** — comparable
+to the 202 country flags already shipped. The build script bakes all of it from the masters, so an
+artist only ever touches the ~85.
+
+❓ **Open:** 6 skin tones or 8? Comic style argues for fewer, more separated tones; representation
+argues for more range. Proposal: 7, with the shadow value hue-shifted per tone.
+
+---
+
+## 7. Authored real fighters
+
+Follow the existing pattern — `real_sport_profiles.py:200` already does exactly this shape with
+`PRIME_AGE_OVERRIDES`, a name-keyed dict of hand-authored values.
+
+```python
+PORTRAIT_OVERRIDES = {
+    "Jon Jones":       {"skin": 4, "hair": "short_fade", "facial_hair": "none",
+                        "build": "tall_rangy", "ears": "cauliflower_light"},
+    "Conor McGregor":  {"skin": 1, "hair": "swept_back", "facial_hair": "full_beard",
+                        "tattoo": "chest"},
+}
+```
+
+Merged over the derived vector, so an author writes only what matters and the rest stays hashed.
+
+### Tiering — 1,534 real fighters cannot all be authored
+
+| Tier | Count | Treatment |
+|---|---|---|
+| 1 — Icons | ~50 | fully authored, every layer specified |
+| 2 — Well known | ~200 | partial: skin, hair, facial hair, build |
+| 3 — Everyone else | ~1,280 | fully derived |
+
+❓ **Open:** key overrides by `name` (matches `PRIME_AGE_OVERRIDES`, readable, breaks on rename) or
+by `fighter_id` (stable, unreadable)? Proposal: **name**, with a test asserting every override key
+resolves to a real fighter in the shipped database, so a rename fails CI loudly instead of
+silently dropping the override.
+
+---
+
 ## 8. Code structure
 
 One module, one renderer, replacing four hand-rolled copies.
