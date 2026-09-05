@@ -48,11 +48,17 @@ def select_records(records, gender="", region="", review_set="all", style=None, 
         selected = [row for row in selected if int(row.get("age", 0) or 0) >= 35]
     elif review_set == "women":
         selected = [row for row in selected if row.get("gender") == "Female"]
+    elif review_set == "top-rated":
+        # Keep ranking order for the most valuable likeness review; alphabetical
+        # sheets are useful for broad catalogues, not a top-fighter audit.
+        selected = sorted(selected, key=lambda row: (-int(row.get("rating", 0) or 0), str(row.get("name", ""))))
     if style is not None:
         selected = [row for row in selected if portrait_identity(SimpleNamespace(**row))["hair_style"] == style]
     if names:
         requested = set(names)
         selected = [row for row in selected if row.get("name") in requested]
+    if review_set == "top-rated":
+        return selected
     return sorted(selected, key=lambda row: (str(row.get("name", "")).casefold(), str(row.get("fighter_id", ""))))
 
 
@@ -65,7 +71,7 @@ def main():
     parser.add_argument("--columns", type=int, default=10)
     parser.add_argument("--gender", choices=("Male", "Female"))
     parser.add_argument("--region")
-    parser.add_argument("--review-set", choices=("all", "overrides", "veterans", "women"), default="all")
+    parser.add_argument("--review-set", choices=("all", "overrides", "veterans", "women", "top-rated"), default="all")
     parser.add_argument("--style", type=int, choices=range(32))
     parser.add_argument("--name", action="append", default=[])
     parser.add_argument("--manifest", type=Path, help="Optional JSON metadata beside a review image.")
@@ -90,8 +96,9 @@ def main():
     if args.manifest:
         args.manifest.parent.mkdir(parents=True, exist_ok=True)
         args.manifest.write_text(json.dumps([
-            {"name": row.get("name"), "fighter_id": row.get("fighter_id"), "gender": row.get("gender"),
-             "age": row.get("age"), "region": row.get("region"), "identity": portrait_identity(SimpleNamespace(**row))}
+            {"name": row.get("name"), "fighter_id": row.get("fighter_id"), "rating": row.get("rating"),
+             "gender": row.get("gender"), "age": row.get("age"), "region": row.get("region"),
+             "identity": portrait_identity(SimpleNamespace(**row))}
             for row in records
         ], indent=2), encoding="utf-8")
     print(f"Wrote {len(records)} portraits to {args.out}")

@@ -268,7 +268,63 @@ PORTRAIT_PARTIAL_OVERRIDES = {
     "Taila Santos": {"skin": 3, "hair_style": 21, "facial_hair": 0},
 }
 
+# Exact visual directions for the 50 highest-rated shipped fighters.  This is
+# a deliberately explicit audit set: historical/Legend entries are separate
+# records and must not silently fall back to a randomised portrait.
+PORTRAIT_TOP_RATED_OVERRIDES = {
+    "Islam Makhachev": {"skin": 2, "hair_style": 3, "facial_hair": 10},
+    "Alexander Volkanovski": {"skin": 1, "hair_style": 0, "facial_hair": 9},
+    "Demetrious Johnson": {"skin": 4, "hair_style": 4, "facial_hair": 9},
+    "Demetrious Johnson Legend": {"skin": 4, "hair_style": 4, "facial_hair": 9},
+    "Jon Jones": {"skin": 5, "hair_style": 0, "facial_hair": 9},
+    "Fedor Emelianenko": {"skin": 1, "hair_style": 31, "facial_hair": 0},
+    "Fedor Emelianenko Legend": {"skin": 1, "hair_style": 31, "facial_hair": 0},
+    "Georges St-Pierre": {"skin": 1, "hair_style": 0, "facial_hair": 0},
+    "Khabib Nurmagomedov": {"skin": 2, "hair_style": 14, "facial_hair": 11},
+    "Usman Nurmagomedov": {"skin": 2, "hair_style": 3, "facial_hair": 9},
+    "Amanda Nunes": {"skin": 3, "hair_style": 17, "facial_hair": 0},
+    "Ilia Topuria": {"skin": 2, "hair_style": 4, "facial_hair": 10},
+    "Tom Aspinall": {"skin": 1, "hair_style": 1, "facial_hair": 9},
+    "Daniel Cormier": {"skin": 5, "hair_style": 0, "facial_hair": 10},
+    "Daniel Cormier Legend": {"skin": 5, "hair_style": 0, "facial_hair": 10},
+    "Dricus Du Plessis": {"skin": 1, "hair_style": 1, "facial_hair": 1},
+    "Khamzat Chimaev": {"skin": 1, "hair_style": 3, "facial_hair": 10},
+    "Magomed Ankalaev": {"skin": 2, "hair_style": 1, "facial_hair": 9},
+    "Shavkat Rakhmonov": {"skin": 2, "hair_style": 2, "facial_hair": 9},
+    "Umar Nurmagomedov": {"skin": 2, "hair_style": 3, "facial_hair": 9},
+    "Anderson Silva": {"skin": 5, "hair_style": 0, "facial_hair": 1},
+    "Arman Tsarukyan": {"skin": 2, "hair_style": 3, "facial_hair": 1},
+    "Cain Velasquez": {"skin": 2, "hair_style": 0, "facial_hair": 9},
+    "Conor McGregor": {"skin": 1, "hair_style": 6, "facial_hair": 11},
+    "Demetrious Johnson ONE": {"skin": 4, "hair_style": 4, "facial_hair": 9},
+    "Frankie Edgar FA": {"skin": 1, "hair_style": 3, "facial_hair": 1},
+    "Frankie Edgar Legend": {"skin": 1, "hair_style": 3, "facial_hair": 1},
+    "Kayla Harrison": {"skin": 1, "hair_colour": 5, "hair_style": 21, "facial_hair": 0},
+    "Merab Dvalishvili": {"skin": 2, "hair_style": 1, "facial_hair": 1},
+    "Raquel Pennington": {"skin": 1, "hair_style": 18, "facial_hair": 0},
+    "Tatiana Suarez": {"skin": 2, "hair_style": 21, "facial_hair": 0},
+    "Vadim Nemkov": {"skin": 1, "hair_style": 2, "facial_hair": 1},
+    "Alex Pereira": {"skin": 3, "hair_style": 4, "facial_hair": 9},
+    "Gegard Mousasi": {"skin": 2, "hair_style": 0, "facial_hair": 9},
+    "Jose Aldo": {"skin": 3, "hair_style": 1, "facial_hair": 1},
+    "Jose Aldo Legend": {"skin": 3, "hair_style": 1, "facial_hair": 1},
+    "Julianna Pena": {"skin": 2, "hair_style": 21, "facial_hair": 0},
+    "Justin Gaethje": {"skin": 1, "hair_style": 3, "facial_hair": 1},
+    "Valentina Shevchenko": {"skin": 1, "hair_style": 25, "facial_hair": 0},
+    "Zhang Weili": {"skin": 2, "hair_style": 24, "facial_hair": 0},
+    "Alexandre Pantoja": {"skin": 3, "hair_style": 4, "facial_hair": 9},
+    "Anatoly Malykhin": {"skin": 1, "hair_style": 0, "facial_hair": 9},
+    "Kazushi Sakuraba": {"skin": 2, "hair_colour": 5, "hair_style": 14, "dye": "bleach", "facial_hair": 1},
+    "BJ Penn": {"skin": 2, "hair_style": 3, "facial_hair": 1},
+    "Charles Oliveira": {"skin": 2, "hair_style": 4, "facial_hair": 9},
+    "Demian Maia": {"skin": 2, "hair_style": 0, "facial_hair": 9},
+    "Jack Della Maddalena": {"skin": 1, "hair_style": 3, "facial_hair": 1},
+    "Joanna Jedrzejczyk": {"skin": 1, "hair_colour": 5, "hair_style": 21, "facial_hair": 0},
+    "Lyoto Machida": {"skin": 2, "hair_style": 3, "facial_hair": 1},
+    "Matt Hughes": {"skin": 1, "hair_style": 3, "facial_hair": 1},
+}
+
 # Public merged map kept name-keyed for the save/database validation contract.
 if set(PORTRAIT_ICON_OVERRIDES) & set(PORTRAIT_PARTIAL_OVERRIDES):
     raise ValueError("portrait icon and partial override keys must be disjoint")
-PORTRAIT_OVERRIDES = {**PORTRAIT_ICON_OVERRIDES, **PORTRAIT_PARTIAL_OVERRIDES}
+PORTRAIT_OVERRIDES = {**PORTRAIT_ICON_OVERRIDES, **PORTRAIT_PARTIAL_OVERRIDES, **PORTRAIT_TOP_RATED_OVERRIDES}
