@@ -58,7 +58,11 @@ def _overrides_for(fighter):
 def portrait_identity(fighter):
     """Return the stored identity (or a non-mutating derived preview) with overrides."""
     stored = getattr(fighter, "portrait_identity", None)
-    identity = dict(stored) if isinstance(stored, dict) and stored else derived_portrait_identity(fighter)
+    # New keys can be added in future without disturbing any persisted trait:
+    # derive only the missing independent draws, then let saved values win.
+    identity = derived_portrait_identity(fighter)
+    if isinstance(stored, dict) and stored:
+        identity.update(stored)
     identity.update(_overrides_for(fighter))
     return identity
 

@@ -23,6 +23,7 @@ from tkinter import messagebox, ttk
 from constants import *
 from models import Fighter, Gym, Promotion
 from fight_moves import normalize_move_mastery, normalize_signature_moves
+from fighter_portraits.identity import ensure_portrait_identity
 from universe_validation import validate_universe_section as shared_validate_universe_section
 
 
@@ -1859,6 +1860,9 @@ class PersistenceMixin:
             fighter.sponsor_appeal = max(1, min(99, round(fighter.star_quality * 0.35 + fighter.charisma * 0.25 + fighter.professionalism * 0.25 + fighter.popularity * 0.25)))
         if not getattr(fighter, "portrait_bg", "") or not getattr(fighter, "portrait_accent", ""):
             fighter.portrait_bg, fighter.portrait_accent = self.generate_portrait_palette(fighter.name)
+        # This only creates a vector when a save has none. Existing vectors are
+        # intentionally retained, even if a future portrait generator changes.
+        ensure_portrait_identity(fighter)
         fighter.nationality = getattr(fighter, "nationality", "") or self.infer_nationality(fighter.name, fighter.region)
         # Identity fields were added after the original regional system.  Old
         # saves retain their existing base as a sensible local origin instead

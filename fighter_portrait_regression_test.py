@@ -55,6 +55,18 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
         outputs = [subprocess.check_output([sys.executable, "-c", script], text=True).strip() for _ in range(2)]
         self.assertEqual(outputs[0], outputs[1])
 
+    def test_persisted_vector_is_not_restyled(self):
+        from fighter_portraits.identity import CURRENT_PORTRAIT_VERSION, ensure_portrait_identity
+        row = fighter("FTR-save", portrait_identity={"skin": 6, "hair_style": 2}, portrait_version=0)
+        preserved = ensure_portrait_identity(row)
+        self.assertEqual(6, preserved["skin"])
+        self.assertEqual(2, preserved["hair_style"])
+        self.assertEqual(0, row.portrait_version)
+        legacy = fighter("FTR-legacy", portrait_identity={}, portrait_version=0)
+        expected = derived_portrait_identity(legacy)
+        self.assertEqual(expected, ensure_portrait_identity(legacy))
+        self.assertEqual(CURRENT_PORTRAIT_VERSION, legacy.portrait_version)
+
 
 if __name__ == "__main__":
     unittest.main()

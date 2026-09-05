@@ -135,6 +135,11 @@ class Fighter:
     sponsor_appeal: int = 50
     portrait_bg: str = "#333333"
     portrait_accent: str = "#c3a45d"
+    # Cosmetic identity is deliberately separate from skills and remains stable
+    # through generator upgrades.  It is backfilled by persistence for saves
+    # made before portraits existed.
+    portrait_version: int = 0
+    portrait_identity: dict = field(default_factory=dict)
     fight_history: list = field(default_factory=list)
     # Academy results are a separate amateur ledger. They inform a fighter's
     # background, but never count toward the professional record or universe
