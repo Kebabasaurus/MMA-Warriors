@@ -1,6 +1,9 @@
 """Headless regression coverage for the portrait identity contract."""
 
 import copy
+import json
+import hashlib
+from pathlib import Path
 import subprocess
 import sys
 import unittest
@@ -9,6 +12,7 @@ from types import SimpleNamespace
 from fighter_portraits.identity import derived_portrait_identity, identity_keys_are_stable, portrait_identity, trait_hash
 from fighter_portraits.regions import REGION_APPEARANCE, appearance_region
 from fighter_portraits.styles import FACIAL_HAIR, HAIR_STYLES, IDENTITY_TRAITS
+from fighter_portraits.overrides import PORTRAIT_OVERRIDES
 
 
 def fighter(fighter_id="FTR-portrait", **changes):
@@ -50,6 +54,22 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
         portrait_identity(row)
         self.assertEqual(before, row.__dict__)
 
+    def test_identity_cannot_read_ratings_or_simulation_values(self):
+        class CosmeticOnlyFighter:
+            fighter_id = "FTR-cosmetic-only"
+            birth_country = "Nigeria"
+            nationality = "Nigerian"
+            region = "Africa"
+            birth_region = ""
+            name = "No Rating Access"
+            portrait_identity = {}
+            portrait_version = 0
+            def __getattribute__(self, name):
+                if name in {"striking", "wrestling", "grappling", "cardio", "chin", "popularity", "ability", "rating", "overall"}:
+                    raise AssertionError(f"portrait identity read cosmetic-forbidden field {name}")
+                return object.__getattribute__(self, name)
+        portrait_identity(CosmeticOnlyFighter())
+
     def test_cross_process_determinism(self):
         script = "from types import SimpleNamespace as S; from fighter_portraits.identity import derived_portrait_identity; import json; print(json.dumps(derived_portrait_identity(S(fighter_id='FTR-x',birth_country='Nigeria',nationality='',region='',birth_region='')),sort_keys=True))"
         outputs = [subprocess.check_output([sys.executable, "-c", script], text=True).strip() for _ in range(2)]
@@ -84,6 +104,19 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
         self.assertEqual(1.0, state["scar"])
         self.assertEqual(1.0, state["nose_damage"])
         self.assertEqual(1.0, state["swell"])
+
+    def test_authored_overrides_resolve_to_shipped_fighters(self):
+        source = Path(__file__).with_name("Databases") / "Default Universe.universe.json"
+        names = {row["name"] for row in json.loads(source.read_text(encoding="utf-8"))["sections"]["fighters"]["all_fighters"]}
+        self.assertGreaterEqual(len(PORTRAIT_OVERRIDES), 50)
+        self.assertEqual(set(), set(PORTRAIT_OVERRIDES) - names)
+
+    def test_shipped_identity_manifest_is_stable(self):
+        source = Path(__file__).with_name("Databases") / "Default Universe.universe.json"
+        rows = json.loads(source.read_text(encoding="utf-8"))["sections"]["fighters"]["all_fighters"]
+        manifest = [(row["fighter_id"], portrait_identity(SimpleNamespace(**row))) for row in rows]
+        digest = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+        self.assertEqual("028c9da5bba1c41519e2fb2ac85cffa665f162510d6bafa76d805445d48e3491", digest)
 
 
 if __name__ == "__main__":
