@@ -34,7 +34,7 @@ PORTRAIT_ICON_OVERRIDES = {
     "Joanna Jedrzejczyk": {"skin": 1, "hair_style": 21, "facial_hair": 0, "bg": 1},
     "Holly Holm": {"skin": 1, "hair_style": 21, "facial_hair": 0, "bg": 8},
     "Jiri Prochazka": {"skin": 1, "hair_style": 19, "facial_hair": 9, "bg": 2},
-    "Paddy Pimblett": {"skin": 1, "hair_style": 15, "facial_hair": 1, "bg": 3},
+    "Paddy Pimblett": {"skin": 1, "hair_colour": 5, "hair_style": 15, "facial_hair": 1, "bg": 3},
     "Ilia Topuria": {"skin": 2, "hair_style": 4, "facial_hair": 10, "jaw": 3, "bg": 7},
     "Merab Dvalishvili": {"skin": 2, "hair_style": 1, "facial_hair": 1, "bg": 0},
     "Aljamain Sterling": {"skin": 5, "hair_style": 27, "facial_hair": 9, "bg": 4},

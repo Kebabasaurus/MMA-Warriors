@@ -148,6 +148,11 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
         self.assertEqual(set(), set(PORTRAIT_OVERRIDES) - names)
         self.assertEqual(0, PORTRAIT_OVERRIDES["Jon Jones"]["hair_style"])
 
+    def test_paddy_pimblett_keeps_his_blond_bowl_cut_direction(self):
+        vector = PORTRAIT_OVERRIDES["Paddy Pimblett"]
+        self.assertEqual(15, vector["hair_style"])
+        self.assertEqual(5, vector["hair_colour"])
+
     def test_top_fifty_rated_fighters_have_explicit_visual_direction(self):
         source = Path(__file__).with_name("Databases") / "Default Universe.universe.json"
         rows = json.loads(source.read_text(encoding="utf-8"))["sections"]["fighters"]["all_fighters"]
@@ -161,7 +166,7 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
         rows = json.loads(source.read_text(encoding="utf-8"))["sections"]["fighters"]["all_fighters"]
         manifest = [(row["fighter_id"], portrait_identity(SimpleNamespace(**row))) for row in rows]
         digest = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
-        self.assertEqual("904882a0ae301a9c088682d7d91c6c0d717326ca7d4bbf4fe60460892a881245", digest)
+        self.assertEqual("baf9ca6e8a83d2b08435ef5fd0b6fb84264524f41264d2f928f6c8a7e58ce395", digest)
 
     def test_save_round_trip_preserves_identity(self):
         from models import Fighter

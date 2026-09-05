@@ -188,6 +188,28 @@ def rasterize_portrait(fighter, size=180):
                 for x in range(int(cx + direction * half * .72), int(cx + direction * half * (1.10 + side * .04)), 1 if direction > 0 else -1):
                     if 0 <= x < size:
                         hair_mask.add((x, y))
+    if style_id == 15:  # bowl_cut: rounded fringe, not a rectangular helmet.
+        hair_mask.clear()
+        fringe_base = hairline + size * .095
+        for x in range(max(0, round(cx - hw * .94)), min(size, round(cx + hw * .94) + 1)):
+            normalized = abs(x - cx) / max(1, hw * .94)
+            # A shallow centre dip and raised temples keep the fringe soft at
+            # thumbnail size while preserving the unmistakable bowl outline.
+            fringe_y = fringe_base - size * .020 * (1 - normalized * normalized)
+            for y in range(max(0, round(top - volume * size * 1.8)), min(size, round(fringe_y) + 1)):
+                half = half_width(max(top, y + volume * size)) * 1.07
+                if abs(x - cx) <= half:
+                    hair_mask.add((x, y))
+        # The cut has narrow temple curtains rather than full rectangular
+        # side slabs, exposing the cheek and jaw beneath each lock.
+        for direction in (-1, 1):
+            for y in range(round(hairline + size * .010), min(size, round(eye_y + size * .075))):
+                half = half_width(min(bottom, y))
+                inner = cx + direction * half * .72
+                outer = cx + direction * half * 1.03
+                for x in range(round(min(inner, outer)), round(max(inner, outer)) + 1):
+                    if 0 <= x < size:
+                        hair_mask.add((x, y))
     if texture == "knot":
         for y in range(max(0, int(top - size * .07)), int(top)):
             for x in range(int(cx - hw * .28), int(cx + hw * .28)):
@@ -247,6 +269,12 @@ def rasterize_portrait(fighter, size=180):
             raster.line(cx + direction * hw * .76, top + size * .08,
                         cx + direction * hw * .83, eye_y + size * .015,
                         max(1, size // 145), _mix(hair_shadow, skin_shadow, .58), hair_clip)
+    elif style_id == 15:
+        # Fine vertical grain breaks the wide blond fringe into hair rather
+        # than a single flat colour plate.
+        for x in range(round(cx - hw * .72), round(cx + hw * .73), max(2, round(size * .024))):
+            raster.line(x, top + size * .015, x - size * .006, fringe_base - size * .018,
+                        max(1, size // 180), _mix(hair_base, hair_shadow, .42), hair_clip)
     # Hair ink and braid band separations are drawn over fills, never tinted.
     for x, y in hair_mask:
         if (x - 1, y) not in hair_mask or (x + 1, y) not in hair_mask or (x, y - 1) not in hair_mask:
