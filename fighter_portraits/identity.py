@@ -7,6 +7,7 @@ from .styles import (
     BACKGROUND, BROW_STYLES, CHEEK_SHAPES, CHIN_SHAPES, EAR_SHAPES, EYE_SHAPES,
     EYE_SIZES, EYE_SPACINGS, FACIAL_HAIR, FACE_LENGTHS, HAIR, HAIR_STYLES,
     IDENTITY_TRAITS, JAW_SHAPES, MOUTH_SHAPES, NOSE_SHAPES, SKIN, portrait_gender,
+    FEMALE_HAIR_STYLES,
 )
 
 CURRENT_PORTRAIT_VERSION = 2
@@ -69,9 +70,17 @@ def portrait_identity(fighter):
     # New keys can be added in future without disturbing any persisted trait:
     # derive only the missing independent draws, then let saved values win.
     identity = derived_portrait_identity(fighter)
+    generated_hair = identity["hair_style"]
     if isinstance(stored, dict) and stored:
         identity.update(stored)
-    identity.update(_overrides_for(fighter))
+    overrides = _overrides_for(fighter)
+    identity.update(overrides)
+    if portrait_gender(fighter) == "Female":
+        # Apply after saved values AND overrides. No female beard/moustache can
+        # leak into the effective identity or a renderer using this API.
+        identity["facial_hair"] = 0
+        if identity["hair_style"] not in FEMALE_HAIR_STYLES and "hair_style" not in overrides:
+            identity["hair_style"] = generated_hair
     return identity
 
 

@@ -46,6 +46,14 @@ FACIAL_HAIR = (
     "heavy_beard", "long_beard", "mutton_chops", "beard_no_moustache", "braided_beard",
 )
 
+# Women's generation uses its own catalogue, not a nonzero chance of every
+# men's cut. Shared geometry keeps existing saved IDs stable. Explicit authored
+# hair overrides may represent a real fighter with an uncommon cut.
+FEMALE_HAIR_STYLES = (
+    13, 16, 17, 18, 20, 21, 22, 23, 24, 25, 26, 27,
+    32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 47,
+)
+
 # base, form shadow, deep shadow.  The ramps deliberately describe only colour.
 SKIN = (
     ("#f7d8c0", "#dbac9c", "#be8b82"), ("#ecc09e", "#c99583", "#a87469"),

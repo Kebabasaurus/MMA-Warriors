@@ -1,10 +1,11 @@
 # Changelog
 
 Unreleased portrait update: improved women's face/body presentation; expanded hair
-silhouettes to 48 styles; separated all 16 facial-hair shapes; added nine independent
-appearance controls and country-refined skin-tone weights. Existing saved colours
-and hairstyles remain intact. Rendering stays dependency-free and cosmetic; review
-sheets and regression coverage are documented in
+silhouettes to 48 styles; separated all 16 men's facial-hair shapes; added nine
+appearance controls and country-refined skin-tone weights. Women now use a dedicated
+27-style generated hair catalogue; old generated men's cuts are corrected for display.
+Female beards, stubble and moustaches are prohibited after saves and overrides merge.
+Stored vectors remain intact; rendering is dependency-free and cosmetic. See
 [the portrait diversity review](docs/FIGHTER_PORTRAIT_DIVERSITY_REVIEW.md).
 
 ## Unreleased

@@ -14,7 +14,7 @@ from fighter_portraits.regions import GENDER_HAIR_STYLE_WEIGHTS, REGION_APPEARAN
 from fighter_portraits.styles import (
     BACKGROUND, BROW_STYLES, CHEEK_SHAPES, CHIN_SHAPES, EAR_SHAPES, EYE_SHAPES,
     EYE_SIZES, EYE_SPACINGS, FACIAL_HAIR, FACE_LENGTHS, HAIR, HAIR_STYLES,
-    IDENTITY_TRAITS, JAW_SHAPES, MOUTH_SHAPES, NOSE_SHAPES, SKIN,
+    IDENTITY_TRAITS, JAW_SHAPES, MOUTH_SHAPES, NOSE_SHAPES, SKIN, FEMALE_HAIR_STYLES,
 )
 from fighter_portraits.overrides import (
     PORTRAIT_ICON_OVERRIDES, PORTRAIT_OVERRIDES, PORTRAIT_PARTIAL_OVERRIDES,
@@ -63,13 +63,35 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
 
     def test_gender_aware_hair_distribution_is_broad_and_deterministic(self):
         self.assertTrue(all(len(weights) == len(HAIR_STYLES) for weights in GENDER_HAIR_STYLE_WEIGHTS.values()))
-        self.assertTrue(all(weight > 0 for weights in GENDER_HAIR_STYLE_WEIGHTS.values() for weight in weights))
+        self.assertTrue(all(weight > 0 for weight in GENDER_HAIR_STYLE_WEIGHTS["Male"]))
+        self.assertEqual(set(FEMALE_HAIR_STYLES), {style for style, weight in
+                         enumerate(GENDER_HAIR_STYLE_WEIGHTS["Female"]) if weight > 0})
         male = [derived_portrait_identity(fighter(f"FTR-gender-{index}", gender="Male"))["hair_style"] for index in range(5000)]
         female = [derived_portrait_identity(fighter(f"FTR-gender-{index}", gender="Female"))["hair_style"] for index in range(5000)]
         self.assertEqual(set(range(len(HAIR_STYLES))), set(male))
-        self.assertEqual(set(range(len(HAIR_STYLES))), set(female))
+        self.assertEqual(set(FEMALE_HAIR_STYLES), set(female))
         self.assertGreater(sum(value in (21, 24, 33, 35, 37, 43, 44) for value in female),
                            sum(value in (21, 24, 33, 35, 37, 43, 44) for value in male))
+
+    def test_womens_catalogue_and_no_beards_apply_after_saves_and_overrides(self):
+        from unittest.mock import patch
+        for style in range(len(HAIR_STYLES)):
+            row = fighter(gender="Female", portrait_identity={"hair_style": style, "skin": 6,
+                          "facial_hair": 15, "jaw": 8})
+            saved = copy.deepcopy(row.__dict__)
+            vector = portrait_identity(row)
+            self.assertIn(vector["hair_style"], FEMALE_HAIR_STYLES)
+            if style in FEMALE_HAIR_STYLES:
+                self.assertEqual(style, vector["hair_style"])
+            self.assertEqual((0, 6, 8), (vector["facial_hair"], vector["skin"], vector["jaw"]))
+            self.assertEqual(saved, row.__dict__)
+        # Specific real-fighter hair exceptions remain possible, never beards.
+        row = fighter(gender="Female")
+        for beard in range(len(FACIAL_HAIR)):
+            with patch.dict(PORTRAIT_OVERRIDES, {row.name: {"hair_style": 0, "facial_hair": beard}}):
+                vector = portrait_identity(row)
+                self.assertEqual(0, vector["hair_style"])
+                self.assertEqual(0, vector["facial_hair"])
 
     def test_identity_does_not_touch_game_values(self):
         import random
@@ -328,7 +350,7 @@ assert len(rasterize_portrait(row,72).pixels) == 72*72
         rows = json.loads(source.read_text(encoding="utf-8"))["sections"]["fighters"]["all_fighters"]
         manifest = [(row["fighter_id"], portrait_identity(SimpleNamespace(**row))) for row in rows]
         digest = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
-        self.assertEqual("95a2d934b8726ea811b2e9db4fab43ca684495f1fd9990c11ba6bc1320a0d664", digest)
+        self.assertEqual("5c42a01972eaea75116ed9595f5f69f78b9d9d2ac3278b7538f63f3341165bb3", digest)
 
     def test_save_round_trip_preserves_identity(self):
         from models import Fighter

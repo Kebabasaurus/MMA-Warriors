@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 from fighter_portraits.identity import portrait_identity
 from fighter_portraits.render import rasterize_portrait
-from fighter_portraits.styles import HAIR_STYLES
+from fighter_portraits.styles import HAIR_STYLES, FEMALE_HAIR_STYLES
 from analysis.portraits.generate_portrait_contact_sheet import png_bytes
 
 
@@ -50,9 +50,13 @@ def main():
         sheet(rows,out/f"{gender.lower()}_countries.png")
         manifest[gender] = [dict(name=r.name, id=r.fighter_id, country=r.birth_country,
                                  traits=portrait_identity(r)) for r in rows]
-    styles = [fighter("review-style", "UK", "Female", hair_style=i, hair_colour=1, skin=1,
+    styles = [fighter("review-style", "UK", "Male", hair_style=i, hair_colour=1, skin=1,
                       facial_hair=0, bg=0) for i in range(len(HAIR_STYLES))]
     sheet(styles,out/"hair_styles.png")
+    women_styles = [fighter("review-style", "UK", "Female", hair_style=i, hair_colour=1,
+                            skin=1, facial_hair=0, bg=0) for i in FEMALE_HAIR_STYLES]
+    sheet(women_styles,out/"women_hair_styles.png")
+    manifest["women_hair_styles"] = [{"id": i, "name": HAIR_STYLES[i][0]} for i in FEMALE_HAIR_STYLES]
     # Same age/country/skin/hair colour/background: test visible shape diversity
     # without counting a background recolour as a different face.
     shapes = [fighter(f"review-shape-{i}","UK","Male",skin=2,hair_colour=1,bg=0) for i in range(48)]

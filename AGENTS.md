@@ -5,7 +5,11 @@
 Keep the 48 hairstyle IDs and existing palette/trait IDs append-only. Gender belongs
 in rendering and the cache key; older female vectors must not draw saved beards.
 Country tone weights are broad art-direction priors, not demographic measurements.
-Preserve saved vectors and authored overrides, merging partial corrections by field.
+Preserve raw saved vectors and merge authored corrections by field. Women's generated
+hair uses FEMALE_HAIR_STYLES (27 stable IDs): exclude men's cuts instead of merely
+giving them low weights. Project old non-catalogue cuts at display time; explicit
+authored hair exceptions remain valid. Force female facial_hair=0 AFTER merging
+saved values and overrides, and retain the renderer's independent no-beard guard.
 Run `fighter_portrait_regression_test.py` and regenerate/review the sheets with
 `analysis/portraits/review_portrait_diversity.py` after renderer changes. Do not count
 background recolours as distinct faces or claim pixel uniqueness proves likeness.

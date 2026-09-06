@@ -8,7 +8,8 @@ It changes presentation only; it does not rebalance fights or edit fighter ratin
 
 - Gender-normalised rendering: women's jaw/chin, neck/shoulder proportions, brows,
   softer face planes and athletic singlet. Female portraits suppress facial hair
-  even when an older saved vector contains it. All hairstyles remain available.
+  even when an older saved vector contains it. Women now generate from their own
+  explicit 27-style catalogue, rather than having a chance of every men's cut.
 - 48 stable hairstyle IDs (16 appended): bobs, pixie/fringes, centre/curtain parts,
   twin braids, double/low buns, curly puff/taper, tied locs, braided ponytail, shag,
   and mullet. Rounded crowns, tapered side locks, curl outlines and separate tails
@@ -27,7 +28,8 @@ It changes presentation only; it does not rebalance fights or edit fighter ratin
 Colour weights are **art-direction priors, not measured demographic percentages**
 or a claim about any individual's appearance. Every profile remains multi-valued;
 mixed-population profiles remain broad. Geography does not select cultural props,
-facial geometry, skills, popularity or ability. Authored individual overrides win.
+facial geometry, skills, popularity or ability. Authored individual overrides win,
+except that female facial hair is always zero, including authored overrides.
 
 ## Save compatibility
 
@@ -36,6 +38,12 @@ removed or reordered. Missing new traits derive independently from fighter ID.
 Stored skin/hair/other choices are preserved, so revised generation weights apply
 to newly initialised identities, not an automatic restyling of existing saves.
 Gender-aware drawing and geometry improvements apply to old identities immediately.
+The subsequent women's-catalogue correction also projects an old generated men's
+cut into the women's pool at display time. It does not rewrite the stored vector
+or change its skin/face choices. Existing women's-pool styles stay unchanged;
+explicit authored hair exceptions (such as a specific real fighter's shaved head)
+remain valid. Beards, moustaches and stubble are prohibited in the effective female
+identity after both saved values and overrides are merged, as well as in rendering.
 The shipped database contains 1,534 fighters (231 women) and no prefilled portrait
 vectors, so a new game uses the revised generator for all of them, subject to
 authored overrides. Existing saves are not rewritten.
@@ -50,7 +58,9 @@ runtime assets:
 
 - `female_countries.png` and `male_countries.png`: eight synthetic fighters per
   row; UK, Nigeria, Japan, Brazil, India, Mexico, in that order.
-- `hair_styles.png`: the same woman with IDs 0–47, eight per row.
+- `hair_styles.png`: the same man with all IDs 0–47, eight per row.
+- `women_hair_styles.png`: the same woman with the 27 allowed generated styles;
+  order and stable IDs are listed in `manifest.json` under `women_hair_styles`.
 - `same_colours.png`: 48 men with fixed skin, hair colour, age and background, to
   expose actual shape differences rather than count background recolouring.
 - `manifest.json`: country-cohort identities, renderer source hashes, cold raster
@@ -65,14 +75,15 @@ Fine texture and iris differences are less prominent at thumbnail size.
 
 ## Verification
 
-`fighter_portrait_regression_test.py` has 31 passing tests, including:
+`fighter_portrait_regression_test.py` has 32 passing tests, including:
 
 - independent fighter-ID determinism, preserved old vectors and save round trips;
 - observed country draws matching the configured weights (4,000 IDs per cohort);
 - all 48 hair styles, 16 beard styles and 10 complexion options rendering distinctly
   with a fixed test face; 5,000 unique generated vectors and 128 distinct neutral-
   colour face crops;
-- normalised female presentation and suppression of a saved beard;
+- normalised female presentation, dedicated hairstyle-pool reachability and
+  prohibition of all beard/moustache styles after saved values and overrides;
 - import/render with site packages disabled and NumPy/Pillow explicitly blocked;
 - no fighter-data or global-RNG mutation from drawing; full-bout and terminal-RNG
   equality after restyling in both legacy and native-release harnesses;
@@ -91,3 +102,8 @@ also passed with the same skip. The complete `py -3 run_regression_suite.py` run
 0 with `ALL REQUESTED ISOLATED REGRESSION SUITES PASSED`, including both 3,840-bout
 baselines and the final stability playtest. No package/rebuild is performed by this
 portrait revision.
+
+The women's 27-style-catalogue follow-up was verified with a fresh complete isolated
+suite (exit 0), all 32 portrait tests and all nine profile tests. Both calibration
+checks passed again; the smoke display-layout skip remains unchanged. The women's
+style and shipped-fighter sheets were regenerated and visually reviewed.

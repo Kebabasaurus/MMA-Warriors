@@ -1,9 +1,10 @@
 # MMA Warriors
 
-Portrait diversity update (source; not a rebuilt package): women's portraits now use
-gender-aware face/body rendering. The generator offers 48 hairstyles, 16 distinct
-facial-hair options, broader facial variation and country-weighted skin tones.
-Saved appearance choices are preserved; new games use the revised distributions.
+Portrait diversity update (source; not a rebuilt package): women have gender-aware
+face/body rendering and their own 27-style generated hair catalogue, with no beards,
+stubble or moustaches. The full registry retains 48 hairstyles and 16 men's facial-
+hair styles. Women's old generated men's cuts are corrected for display without
+rewriting saved skin/face choices. Country-weighted colours remain broad.
 See [portrait review and compatibility notes](docs/FIGHTER_PORTRAIT_DIVERSITY_REVIEW.md).
 
 ## Version 3.0.9

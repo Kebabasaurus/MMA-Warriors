@@ -6,6 +6,7 @@ which takes precedence over a simulation market region.
 """
 
 from constants import COUNTRY_NATIONALITIES, COUNTRY_TO_REGION
+from .styles import FEMALE_HAIR_STYLES
 
 
 # Hair is separately broad so no skin profile maps to a single hair colour.
@@ -19,9 +20,8 @@ HAIR_WEIGHTS = {
 
 # Silhouette is not a regional attribute.  These deliberately broad cosmetic
 # distributions make new generated portraits read more intentionally across
-# the game's recorded genders, while every shipped style remains possible for
-# every group.  Persisted vectors always win, so this only affects newly
-# generated identities.
+# the game's recorded genders. Women have an explicit catalogue; legacy men's
+# cuts are excluded from generation. The full ID registry stays save-compatible.
 GENDER_HAIR_STYLE_WEIGHTS = {
     "default": (1,) * 48,
     "Male": (
@@ -35,6 +35,10 @@ GENDER_HAIR_STYLE_WEIGHTS = {
         12, 18, 14, 22, 14, 26, 10, 16, 5, 5, 10, 22, 24, 10, 2, 7,
     ),
 }
+GENDER_HAIR_STYLE_WEIGHTS["Female"] = tuple(
+    weight if style in FEMALE_HAIR_STYLES else 0
+    for style, weight in enumerate(GENDER_HAIR_STYLE_WEIGHTS["Female"])
+)
 
 # Only resolution aliases; values retain the broad market distributions above.
 COUNTRY_ALIASES = {
