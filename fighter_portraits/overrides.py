@@ -327,4 +327,8 @@ PORTRAIT_TOP_RATED_OVERRIDES = {
 # Public merged map kept name-keyed for the save/database validation contract.
 if set(PORTRAIT_ICON_OVERRIDES) & set(PORTRAIT_PARTIAL_OVERRIDES):
     raise ValueError("portrait icon and partial override keys must be disjoint")
-PORTRAIT_OVERRIDES = {**PORTRAIT_ICON_OVERRIDES, **PORTRAIT_PARTIAL_OVERRIDES, **PORTRAIT_TOP_RATED_OVERRIDES}
+PORTRAIT_OVERRIDES = {name: dict(vector) for name, vector in
+                      {**PORTRAIT_ICON_OVERRIDES, **PORTRAIT_PARTIAL_OVERRIDES}.items()}
+for _name, _vector in PORTRAIT_TOP_RATED_OVERRIDES.items():
+    # A hair correction must not discard an icon's authored jaw/chin/cheeks.
+    PORTRAIT_OVERRIDES.setdefault(_name, {}).update(_vector)

@@ -22,6 +22,22 @@ HAIR_STYLES = (
     ("dreads", 0.040, 2, 0.00, "dread"), ("twists", 0.030, 1, 0.00, "twist"),
     ("mohawk", 0.055, 0, -0.02, "spike"), ("faux_hawk", 0.038, 0, -0.02, "spike"),
     ("undercut", 0.034, 0, -0.02, "flat"), ("receding_nat", 0.014, 0, 0.04, "flat"),
+    ("pixie_swept", .026, 0, .00, "sweep"),
+    ("chin_bob", .030, 2, .00, "bob"),
+    ("angled_bob", .030, 2, -.01, "angled_bob"),
+    ("long_centre_part", .034, 2, -.03, "centre"),
+    ("side_swept_fringe", .036, 1, .00, "sweep"),
+    ("twin_braids", .020, 2, -.02, "twin_braids"),
+    ("double_buns", .025, 0, -.02, "double_buns"),
+    ("high_curly_puff", .065, 0, -.03, "puff"),
+    ("short_coils", .024, 0, -.01, "coil"),
+    ("curly_taper", .038, 0, -.02, "curl"),
+    ("locs_tied_up", .050, 0, -.02, "loc_knot"),
+    ("low_bun", .022, 1, -.02, "low_bun"),
+    ("braided_ponytail", .020, 1, -.02, "braid_tail"),
+    ("shag_layers", .045, 2, .01, "shag"),
+    ("mullet", .025, 2, -.01, "mullet"),
+    ("curtain_crop", .036, 1, .01, "curtains"),
 )
 
 FACIAL_HAIR = (
@@ -88,5 +104,16 @@ EAR_SHAPES = ("small", "medium", "large", "very_large", "very_small", "soft_smal
 IDENTITY_TRAITS = (
     "skin", "hair_colour", "hair_style", "facial_hair", "dye", "brow", "eye_shape",
     "eye_spacing", "eye_size", "nose", "mouth", "jaw", "chin", "cheek", "face_length",
-    "ear", "head_w", "bg",
+    "ear", "head_w", "bg", "neck_width", "shoulder_width", "iris_colour",
+    "nose_length", "lip_fullness", "hair_volume", "hair_part", "complexion",
+    "feature_offset",
 )
+
+IRIS_COLOURS = ("#392820", "#65432d", "#8a6640", "#68764b", "#45667c",
+                "#69858b", "#394d45", "#806742", "#525a69", "#463629")
+
+
+def portrait_gender(fighter):
+    """Normalise imported labels without changing fighter or simulation data."""
+    value = str(getattr(fighter, "gender", "") or "").strip().casefold()
+    return "Female" if value in {"female", "f", "woman", "women"} else "Male" if value in {"male", "m", "man", "men"} else "default"

@@ -1,5 +1,11 @@
 # MMA Warriors
 
+Portrait diversity update (source; not a rebuilt package): women's portraits now use
+gender-aware face/body rendering. The generator offers 48 hairstyles, 16 distinct
+facial-hair options, broader facial variation and country-weighted skin tones.
+Saved appearance choices are preserved; new games use the revised distributions.
+See [portrait review and compatibility notes](docs/FIGHTER_PORTRAIT_DIVERSITY_REVIEW.md).
+
 ## Version 3.0.9
 
 Version 3.0.9 hardens long-running careers: child-promotion ownership is protected, duplicate fighter names are safe in live fights and player events, event completion and save loading are transactional, universe validation is shared and read-only, and release builds use an isolated regression runner plus a pinned offline toolchain. It also caps only the global result/event feeds—never fighter records or career totals—so long saves remain responsive. See [CHANGELOG.md](CHANGELOG.md) for the complete release notes.

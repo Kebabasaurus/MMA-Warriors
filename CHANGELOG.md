@@ -1,5 +1,12 @@
 # Changelog
 
+Unreleased portrait update: improved women's face/body presentation; expanded hair
+silhouettes to 48 styles; separated all 16 facial-hair shapes; added nine independent
+appearance controls and country-refined skin-tone weights. Existing saved colours
+and hairstyles remain intact. Rendering stays dependency-free and cosmetic; review
+sheets and regression coverage are documented in
+[the portrait diversity review](docs/FIGHTER_PORTRAIT_DIVERSITY_REVIEW.md).
+
 ## Unreleased
 
 - Hardened generated-fighter style assignment. Every new entrant now finishes generation with a

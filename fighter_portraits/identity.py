@@ -2,14 +2,14 @@
 
 import hashlib
 
-from .regions import GENDER_HAIR_STYLE_WEIGHTS, HAIR_WEIGHTS, REGION_APPEARANCE, appearance_region
+from .regions import GENDER_HAIR_STYLE_WEIGHTS, skin_distribution, hair_distribution
 from .styles import (
     BACKGROUND, BROW_STYLES, CHEEK_SHAPES, CHIN_SHAPES, EAR_SHAPES, EYE_SHAPES,
     EYE_SIZES, EYE_SPACINGS, FACIAL_HAIR, FACE_LENGTHS, HAIR, HAIR_STYLES,
-    IDENTITY_TRAITS, JAW_SHAPES, MOUTH_SHAPES, NOSE_SHAPES, SKIN,
+    IDENTITY_TRAITS, JAW_SHAPES, MOUTH_SHAPES, NOSE_SHAPES, SKIN, portrait_gender,
 )
 
-CURRENT_PORTRAIT_VERSION = 1
+CURRENT_PORTRAIT_VERSION = 2
 
 
 def trait_hash(fighter_id, trait, mod):
@@ -36,16 +36,15 @@ def derived_portrait_identity(fighter):
     fighter_id = str(getattr(fighter, "fighter_id", "") or "")
     if not fighter_id:
         raise ValueError("portrait identity requires a stable fighter_id")
-    region = appearance_region(fighter)
-    skin_choices, skin_weights = REGION_APPEARANCE.get(region, REGION_APPEARANCE["default"])
-    hair_choices, hair_weights = HAIR_WEIGHTS.get(region, HAIR_WEIGHTS["default"])
-    gender = str(getattr(fighter, "gender", "") or "")
+    skin_choices, skin_weights = skin_distribution(fighter)
+    hair_choices, hair_weights = hair_distribution(fighter)
+    gender = portrait_gender(fighter)
     hair_style_weights = GENDER_HAIR_STYLE_WEIGHTS.get(gender, GENDER_HAIR_STYLE_WEIGHTS["default"])
     return {
         "skin": _weighted_trait(fighter_id, "skin", skin_choices, skin_weights),
         "hair_colour": _weighted_trait(fighter_id, "hair_colour", hair_choices, hair_weights),
         "hair_style": _weighted_trait(fighter_id, "hair_style", tuple(range(len(HAIR_STYLES))), hair_style_weights),
-        "facial_hair": trait_hash(fighter_id, "facial_hair", len(FACIAL_HAIR)),
+        "facial_hair": 0 if gender == "Female" else _weighted_trait(fighter_id, "facial_hair", tuple(range(len(FACIAL_HAIR))), (24, 20, 12, 4, 2, 5, 2, 2, 3, 12, 8, 4, 2, 1, 4, 1)),
         "dye": "", "brow": trait_hash(fighter_id, "brow", len(BROW_STYLES)),
         "eye_shape": trait_hash(fighter_id, "eye_shape", len(EYE_SHAPES)), "eye_spacing": trait_hash(fighter_id, "eye_spacing", len(EYE_SPACINGS)),
         "eye_size": trait_hash(fighter_id, "eye_size", len(EYE_SIZES)), "nose": trait_hash(fighter_id, "nose", len(NOSE_SHAPES)),
@@ -53,6 +52,9 @@ def derived_portrait_identity(fighter):
         "chin": trait_hash(fighter_id, "chin", len(CHIN_SHAPES)), "cheek": trait_hash(fighter_id, "cheek", len(CHEEK_SHAPES)),
         "face_length": trait_hash(fighter_id, "face_length", len(FACE_LENGTHS)), "ear": trait_hash(fighter_id, "ear", len(EAR_SHAPES)),
         "head_w": trait_hash(fighter_id, "head_w", 100), "bg": trait_hash(fighter_id, "bg", len(BACKGROUND)),
+        **{key: trait_hash(fighter_id, key, 10) for key in (
+            "neck_width", "shoulder_width", "iris_colour", "nose_length", "lip_fullness",
+            "hair_volume", "hair_part", "complexion", "feature_offset")},
     }
 
 

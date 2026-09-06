@@ -10,7 +10,8 @@ from math import sqrt
 
 from .identity import portrait_identity, trait_hash
 from .state import portrait_state
-from .styles import BACKGROUND, DYE, FACIAL_HAIR, HAIR, HAIR_STYLES, SKIN
+from .styles import BACKGROUND, DYE, FACIAL_HAIR, HAIR, HAIR_STYLES, SKIN, IRIS_COLOURS, portrait_gender
+from .hair import hair_mask as build_hair_mask
 
 INK = (18, 15, 20)
 EYE_WHITE = (242, 238, 231)
@@ -88,18 +89,21 @@ class _Raster:
         return " ".join(rows)
 
 
-def _head_profile(size, identity):
+def _head_profile(size, identity, female=False):
     cx = size / 2
     face_scale = (.91, 1.0, 1.10, .84, .96, 1.04, 1.18, .88, 1.06, 1.14)[identity["face_length"]]
-    top, bottom = size * 0.17, size * (0.69 + (face_scale - 1) * 0.16)
-    head_width = size * 0.184 * (0.94 + identity["head_w"] / 100 * 0.16)
+    top, bottom = size * 0.17, size * (0.70 + (face_scale - 1) * 0.36)
+    head_width = size * 0.205 * (0.85 + identity["head_w"] / 100 * 0.30)
     # The first entries retain the pre-expansion proportions; appended IDs add
     # visibly different but still anatomical construction variants.
     cheek = (.94, .995, 1.05, 1.105, 1.13, .90, 1.16, .92, 1.14, .98)[identity["cheek"]]
     jaw = (.86, .935, 1.01, 1.085, 1.16, .80, .90, 1.12, 1.22, 1.02)[identity["jaw"]]
     chin = (.82, .96, 1.10, 1.24, .74, 1.17, .88, 1.12, .92, 1.30)[identity["chin"]]
     stops = (0.00, 0.08, 0.18, 0.32, 0.46, 0.60, 0.72, 0.84, 0.93, 1.00)
-    widths = (0.62, 0.86, 0.97, 1.00, .99 * cheek, .94 * cheek, .87 * jaw, .74 * jaw, .56 * chin, .34 * chin)
+    if female:
+        jaw *= .89
+        chin *= .87
+    widths = (0.06, 0.65, 0.91, 1.00, .99 * cheek, .94 * cheek, .87 * jaw, .74 * jaw, .50 * chin, .20 * chin)
 
     def half_width(y):
         t = max(0.0, min(1.0, (y - top) / max(1, bottom - top)))
@@ -116,21 +120,51 @@ def _head_profile(size, identity):
 
 
 def rasterize_portrait(fighter, size=180):
-    """Rasterise to an RGB buffer. This pure function is suitable for tests."""
+    """Render small UI sizes with area averaging so ink stays continuous."""
+    size = max(48, int(size))
+    if size > 180:
+        return _rasterize_portrait(fighter, size)
+    source = _rasterize_portrait(fighter, size * 2)
+    result = _Raster(size, INK)
+    stride = size * 2
+    for y in range(size):
+        for x in range(size):
+            start = y * 2 * stride + x * 2
+            samples = (source.pixels[start], source.pixels[start+1],
+                       source.pixels[start+stride], source.pixels[start+stride+1])
+            result.pixels[y*size+x] = tuple(round(sum(p[c] for p in samples) / 4) for c in range(3))
+    return result
+
+
+def _rasterize_portrait(fighter, size):
+    """Pure high-resolution geometry; no Tk objects or simulation access."""
     size = max(48, int(size))
     identity, state = portrait_identity(fighter), portrait_state(fighter)
+    female = portrait_gender(fighter) == "Female"
     skin, skin_shadow, skin_deep = map(_rgb, SKIN[identity["skin"]])
     bg, bg_shadow = map(_rgb, BACKGROUND[identity["bg"]])
     raster = _Raster(size, bg)
     raster.polygon(((0, 0), (size, 0), (size, size * .62), (0, size * .30)), bg_shadow)
-    cx, top, bottom, hw, half_width, inside = _head_profile(size, identity)
+    cx, top, bottom, hw, half_width, inside = _head_profile(size, identity, female)
     # Broad shoulders and neck make the silhouette read as a fighter at 90px.
-    raster.ellipse(cx, size * 1.06, size * .59, size * .31, skin_shadow)
-    raster.ellipse(cx + size * .18, size * 1.02, size * .55, size * .29, skin_deep)
-    raster.ellipse(cx, bottom + size * .055, hw * .60, size * .11, skin_shadow)
-    raster.ellipse(cx + hw * .20, bottom + size * .055, hw * .41, size * .11, skin_deep)
+    shoulder = size * ((.40 if female else .46) + identity["shoulder_width"] * .012)
+    neck = hw * ((.36 if female else .44) + identity["neck_width"] * .017)
+    raster.ellipse(cx, size * 1.05, shoulder, size * .28, skin)
+    raster.ellipse(cx + shoulder * .32, size * 1.05, shoulder * .70, size * .26, skin_shadow)
+    raster.polygon(((cx-neck, bottom-size*.06), (cx+neck,bottom-size*.06),
+                    (cx+neck*1.12,size*.84), (cx-neck*1.12,size*.84)), skin)
+    raster.polygon(((cx+neck*.35,bottom), (cx+neck,bottom-size*.04),
+                    (cx+neck*1.12,size*.84), (cx+neck*.30,size*.82)), skin_shadow)
+    if female:
+        # Athletic singlet gives an unambiguous women's portrait presentation
+        # without relying on long hair or exaggerated facial proportions.
+        kit = _mix(bg, (45, 60, 81), .50)
+        raster.polygon(((cx-shoulder*.88,size), (cx-shoulder*.64,size*.81),
+                        (cx-shoulder*.44,size*.80), (cx-shoulder*.32,size*.90),
+                        (cx+shoulder*.32,size*.90), (cx+shoulder*.44,size*.80),
+                        (cx+shoulder*.64,size*.81), (cx+shoulder*.88,size)), kit)
     # Ears are behind the profile and swell only up to the documented cap.
-    eye_y = top + (bottom - top) * .50
+    eye_y = top + (bottom - top) * (.48 + identity["feature_offset"] * .004)
     ear_radius = size * ((.026, .038, .050, .062, .020, .032, .056, .054, .046, .050)[identity["ear"]] + .013 * state["cauli"])
     for direction in (-1, 1):
         raster.ellipse(cx + direction * hw * .98, eye_y + size * .02, ear_radius * .76, ear_radius * 1.16, skin_shadow)
@@ -141,12 +175,12 @@ def rasterize_portrait(fighter, size=180):
         half = half_width(y)
         for x in range(max(0, int(cx - half)), min(size, int(cx + half) + 1)):
             normal = (x - cx) / max(half, 1)
-            colour = skin if normal < .50 else skin_shadow
+            colour = skin if normal < .64 else skin_shadow
             if normal > .84:
                 colour = skin_deep
             t = (y - top) / max(1, bottom - top)
-            if .545 < t < .635 and abs(normal) > .42:
-                colour = skin_shadow
+            if .545 < t < .635 and abs(normal) > .65:
+                colour = _mix(skin, skin_shadow, .45)
             if t > .90:
                 colour = skin_shadow
             raster.put(x, y, colour)
@@ -155,10 +189,10 @@ def rasterize_portrait(fighter, size=180):
     cheek_y = top + (bottom - top) * .59
     raster.polygon(((cx - hw * .82, cheek_y), (cx - hw * .22, cheek_y - size * .018),
                     (cx - hw * .16, cheek_y + size * .070), (cx - hw * .66, cheek_y + size * .095)),
-                   _mix(skin, skin_shadow, .42))
+                   _mix(skin, skin_shadow, .16 if female else .26))
     raster.polygon(((cx + hw * .16, cheek_y + size * .006), (cx + hw * .80, cheek_y - size * .016),
                     (cx + hw * .67, cheek_y + size * .096), (cx + hw * .18, cheek_y + size * .072)),
-                   _mix(skin_shadow, skin_deep, .34))
+                   _mix(skin, skin_shadow, .32 if female else .55))
     # Ink the actual profile boundary, giving a reliable skull silhouette.
     for y in range(int(top), int(bottom) + 1):
         half = half_width(y)
@@ -170,71 +204,9 @@ def rasterize_portrait(fighter, size=180):
         hair_base, hair_shadow = _mix(hair_base, _rgb(HAIR[7][0]), state["grey"] * .72), _mix(hair_shadow, _rgb(HAIR[7][1]), state["grey"] * .72)
     style_id = identity["hair_style"]
     _, volume, side, line_offset, texture = HAIR_STYLES[style_id]
-    hairline = top + (bottom - top) * (.255 + state["recede"] * .10 + line_offset)
-    hair_mask = set()
-    if style_id != 0:  # "shaved" is bare scalp, not a zero-height hair cap.
-        for y in range(max(0, int(top - volume * size * 2.0)), min(size, int(hairline + size * .025))):
-            # A rounded expanded profile avoids the prototype's rectangular temples.
-            expansion = 1 + volume * 3.5
-            half = half_width(max(top, y + volume * size * 1.15)) * expansion
-            if y <= hairline + size * .018:
-                for x in range(max(0, int(cx - half)), min(size, int(cx + half) + 1)):
-                    hair_mask.add((x, y))
-    if style_id != 0 and side:
-        reach = eye_y + size * .08 if side == 1 else bottom + size * .04
-        for y in range(int(hairline), min(size, int(reach))):
-            half = half_width(min(bottom, y))
-            for direction in (-1, 1):
-                for x in range(int(cx + direction * half * .72), int(cx + direction * half * (1.10 + side * .04)), 1 if direction > 0 else -1):
-                    if 0 <= x < size:
-                        hair_mask.add((x, y))
-    if style_id == 15:  # bowl_cut: rounded fringe, not a rectangular helmet.
-        hair_mask.clear()
-        fringe_base = hairline + size * .095
-        for x in range(max(0, round(cx - hw * .94)), min(size, round(cx + hw * .94) + 1)):
-            normalized = abs(x - cx) / max(1, hw * .94)
-            # A shallow centre dip and raised temples keep the fringe soft at
-            # thumbnail size while preserving the unmistakable bowl outline.
-            fringe_y = fringe_base - size * .020 * (1 - normalized * normalized)
-            for y in range(max(0, round(top - volume * size * 1.8)), min(size, round(fringe_y) + 1)):
-                half = half_width(max(top, y + volume * size)) * 1.07
-                if abs(x - cx) <= half:
-                    hair_mask.add((x, y))
-        # The cut has narrow temple curtains rather than full rectangular
-        # side slabs, exposing the cheek and jaw beneath each lock.
-        for direction in (-1, 1):
-            for y in range(round(hairline + size * .010), min(size, round(eye_y + size * .075))):
-                half = half_width(min(bottom, y))
-                inner = cx + direction * half * .72
-                outer = cx + direction * half * 1.03
-                for x in range(round(min(inner, outer)), round(max(inner, outer)) + 1):
-                    if 0 <= x < size:
-                        hair_mask.add((x, y))
-    if texture == "knot":
-        for y in range(max(0, int(top - size * .07)), int(top)):
-            for x in range(int(cx - hw * .28), int(cx + hw * .28)):
-                if ((x - cx) / max(1, hw * .28)) ** 2 + ((y - (top - size * .035)) / max(1, size * .04)) ** 2 < 1:
-                    hair_mask.add((x, y))
-    if texture == "tail":
-        # A tail sits behind the head, with a curved, tapered fall rather than
-        # an extra rectangle pasted beside the skull.
-        tail_side = -1 if trait_hash(str(getattr(fighter, "fighter_id", "")), "tail_side", 2) else 1
-        anchor_x = cx + tail_side * hw * .78
-        for y in range(int(top + size * .09), min(size, int(bottom + size * .14))):
-            progress = (y - (top + size * .09)) / max(1, bottom - top)
-            tail_x = anchor_x + tail_side * hw * (.16 + progress * .35)
-            radius = max(1, hw * (.15 - progress * .075))
-            for x in range(round(tail_x - radius), round(tail_x + radius) + 1):
-                if 0 <= x < size:
-                    hair_mask.add((x, y))
-    if texture == "spike":
-        hair_mask = {(x, y) for x, y in hair_mask if abs(x - cx) < hw * .42 or y < hairline - size * .01}
-    if texture == "dread":
-        for direction in (-3, -2, -1, 1, 2, 3):
-            x = cx + direction * hw * .27
-            for y in range(int(hairline), min(size, int(bottom + size * .08))):
-                for dx in range(-max(1, size // 90), max(2, size // 90 + 1)):
-                    hair_mask.add((round(x + dx), y))
+    hairline = top + (bottom - top) * (.255 + state["recede"] * (.025 if female else .10) + line_offset)
+    hair_mask = build_hair_mask(size, identity, cx, top, bottom, hw, eye_y, hairline)
+    fringe_base = hairline + size * .055
     dye = identity.get("dye", "")
     dye_colours = tuple(map(_rgb, DYE[dye])) if dye in DYE else ()
     for x, y in hair_mask:
@@ -245,11 +217,15 @@ def rasterize_portrait(fighter, size=180):
             colour = dye_colours[band]
         else:
             colour = hair_shadow if x > cx + hw * .45 else hair_base
+            if style_id == 1:
+                colour = _mix(skin, colour, .38)
+            elif style_id in (4,5,41) and abs(x-cx) > hw*.70:
+                colour = _mix(skin_shadow, colour, .52)
         raster.put(x, y, colour)
     hair_clip = lambda x, y: (x, y) in hair_mask
     # Texture pass: each class has a different directional cue at thumbnail
     # size, so styles do not collapse into the same dark cap.
-    if texture in ("curl", "coil"):
+    if texture in ("curl", "coil", "puff", "shag", "loc_knot"):
         step_x = max(3, round(hw * (.23 if texture == "coil" else .31)))
         step_y = max(3, round(size * .040))
         for y in range(max(0, int(top - volume * size)), int(hairline + size * .015), step_y):
@@ -269,7 +245,7 @@ def rasterize_portrait(fighter, size=180):
             raster.line(cx + direction * hw * .76, top + size * .08,
                         cx + direction * hw * .83, eye_y + size * .015,
                         max(1, size // 145), _mix(hair_shadow, skin_shadow, .58), hair_clip)
-    elif style_id == 15:
+    elif style_id in (15, 32, 33, 34, 35, 36, 43, 45, 46, 47):
         # Fine vertical grain breaks the wide blond fringe into hair rather
         # than a single flat colour plate.
         for x in range(round(cx - hw * .72), round(cx + hw * .73), max(2, round(size * .024))):
@@ -279,7 +255,7 @@ def rasterize_portrait(fighter, size=180):
     for x, y in hair_mask:
         if (x - 1, y) not in hair_mask or (x + 1, y) not in hair_mask or (x, y - 1) not in hair_mask:
             raster.put(x, y, INK)
-    if texture in ("braid", "dread", "twist"):
+    if texture in ("braid", "dread", "twist", "twin_braids", "braid_tail"):
         step = max(3, round(hw * (.20 if texture == "braid" else .27)))
         for x in range(round(cx - hw), round(cx + hw) + 1, step):
             end_y = bottom + size * .05 if texture == "dread" else (bottom if side == 2 else eye_y + size * .06)
@@ -296,6 +272,8 @@ def rasterize_portrait(fighter, size=180):
         slope = (0, .003, .006, .002, -.002, .004, .009, -.004, .006, -.006)[brow_kind] * size * direction
         brow_width = hw * (.24, .23, .24, .28, .20, .22, .21, .30, .23, .18)[brow_kind]
         brow_ink = max(1, round(size * (.014, .014, .016, .024, .009, .013, .012, .022, .015, .010)[brow_kind]))
+        if female:
+            brow_ink = max(1, round(brow_ink * .62))
         raster.line(ex - brow_width, brow_y - slope, ex + brow_width, brow_y + slope, brow_ink, hair_shadow, inside)
         eye_w, eye_h = hw * .23 * eye_scale, size * .018 * eye_scale
         eye_kind = identity["eye_shape"]
@@ -306,9 +284,9 @@ def rasterize_portrait(fighter, size=180):
         # Socket first, then a narrow sclera, iris and lids.  Keeping the
         # socket wider than the white removes the old sticker-eye effect.
         raster.ellipse(ex, eye_y + eye_y_shift + size * .004, eye_w * 1.14, eye_h * 1.72,
-                       _mix(skin_shadow, skin_deep, .48), inside)
+                       _mix(skin, skin_shadow, .52 if female else .78), inside)
         raster.ellipse(ex, eye_y + eye_y_shift, eye_w, eye_h, _mix(EYE_WHITE, skin, .18), inside)
-        iris = _mix(hair_shadow, (83, 62, 45), .36)
+        iris = _rgb(IRIS_COLOURS[identity["iris_colour"]])
         raster.ellipse(ex, eye_y + eye_y_shift, max(1, eye_h * .76), max(1, eye_h * .76), iris, inside)
         raster.ellipse(ex, eye_y + eye_y_shift, max(1, eye_h * .38), max(1, eye_h * .38), INK, inside)
         raster.line(ex - eye_w, eye_y + eye_y_shift - eye_h * .82,
@@ -316,10 +294,12 @@ def rasterize_portrait(fighter, size=180):
         raster.line(ex - eye_w * .75, eye_y + eye_y_shift + eye_h,
                     ex + eye_w * .75, eye_y + eye_y_shift + eye_h, max(1, size // 180), skin_deep, inside)
     # Nose uses shadow planes instead of a boxed outline.
-    nose_y, nose_kind = top + (bottom - top) * .655, identity["nose"]
-    if nose_kind < 4 and state["nose_damage"] > .60:
+    nose_y, nose_kind = top + (bottom - top) * (.62 + identity["nose_length"] * .008), identity["nose"]
+    if nose_kind < 4 and state["nose_damage"] > .60 and trait_hash(str(getattr(fighter, "fighter_id", "")), "nose_wear", 4) == 0:
         nose_kind = 4 + trait_hash(str(getattr(fighter, "fighter_id", "")), "career_nose_side", 2)
     nose_width = hw * (.15, .17, .19, .21, .23, .25, .18, .13, .16, .28)[nose_kind]
+    if female:
+        nose_width *= .88
     shift = (-size * .012 if nose_kind == 4 else size * .012 if nose_kind == 5 else 0)
     raster.polygon(((cx + shift, eye_y + size * .012), (cx + nose_width * .42 + shift, eye_y + size * .030),
                     (cx + nose_width * .50 + shift, nose_y), (cx + shift, nose_y + size * .012)), skin_shadow)
@@ -336,26 +316,75 @@ def rasterize_portrait(fighter, size=180):
                 max(1, size // 105), lip_shadow, inside)
     raster.line(cx, mouth_y - size * .004, cx + mouth_width, mouth_y - mouth_slope,
                 max(1, size // 105), lip_shadow, inside)
-    raster.ellipse(cx, mouth_y + size * .012, mouth_width * .60, max(1, size * .008),
-                   _mix(skin, (194, 93, 98), .22), inside)
+    fullness = size * (.005 + identity["lip_fullness"] * .0012)
+    raster.ellipse(cx, mouth_y + fullness, mouth_width * .68, max(1, fullness),
+                   _mix(skin, (156, 74, 72), .30 if female else .18), inside)
     # Facial-hair masks never reach higher than the jaw band, apart from an
     # explicitly separate moustache.
-    facial = identity["facial_hair"] if str(getattr(fighter, "gender", "Male")) != "Female" else 0
+    facial = identity["facial_hair"] if not female else 0
     beard_name = FACIAL_HAIR[facial]
     beard_base, beard_shadow = hair_base, hair_shadow
     if beard_name != "none":
         if beard_name in ("stubble_light", "stubble_heavy"):
             beard_base = _mix(skin_shadow, hair_base, .30 if beard_name == "stubble_light" else .58)
+            beard_shadow = _mix(skin_deep, hair_shadow, .30 if beard_name == "stubble_light" else .58)
         for y in range(int(top + (bottom - top) * .735), int(bottom) + 1):
             half = half_width(y)
             for x in range(max(0, int(cx - half)), min(size, int(cx + half) + 1)):
                 mouth_cut = ((x - cx) / max(1, mouth_width * 1.15)) ** 2 + ((y - mouth_y) / max(1, size * .022)) ** 2 < 1
-                if not mouth_cut and (beard_name not in ("goatee", "soul_patch") or abs(x - cx) < hw * .35):
+                distance = abs(x-cx) / max(1, half)
+                band = beard_name not in ("moustache", "horseshoe")
+                if beard_name in ("goatee", "van_dyke", "soul_patch"):
+                    band = distance < (.19 if beard_name == "soul_patch" else .38)
+                elif beard_name == "mutton_chops":
+                    band = distance > .68
+                elif beard_name == "chin_strap":
+                    band = distance > .80 or y > bottom-size*.025
+                elif beard_name == "short_beard":
+                    band = y > top+(bottom-top)*.78 or distance > .75
+                if not mouth_cut and band:
                     raster.put(x, y, beard_shadow if x > cx + half * .42 else beard_base)
-        if beard_name not in ("beard_no_moustache", "stubble_light", "stubble_heavy", "soul_patch"):
+        if beard_name not in ("beard_no_moustache", "stubble_light", "stubble_heavy", "soul_patch", "goatee"):
             raster.ellipse(cx, mouth_y - size * .024, mouth_width * .82, max(1, size * .010), beard_base, inside)
+        if beard_name == "horseshoe":
+            for direction in (-1, 1):
+                raster.line(cx+direction*mouth_width*.8, mouth_y-size*.024,
+                            cx+direction*mouth_width*.85, mouth_y+size*.045,
+                            max(1, size//65), beard_base, inside)
+        if beard_name == "heavy_beard":
+            raster.polygon(((cx-hw*.42,bottom-size*.04), (cx+hw*.42,bottom-size*.04),
+                            (cx+hw*.25,bottom+size*.025), (cx-hw*.25,bottom+size*.025)), beard_base)
+        if beard_name in ("long_beard", "braided_beard"):
+            raster.polygon(((cx-hw*.40,bottom-size*.05), (cx+hw*.40,bottom-size*.05),
+                            (cx+hw*.16,bottom+size*.07), (cx-hw*.16,bottom+size*.07)), beard_base)
+            if beard_name == "braided_beard":
+                for y in range(round(bottom),round(bottom+size*.07),max(2,size//60)):
+                    raster.line(cx-hw*.12,y,cx+hw*.12,y+size*.008,1,beard_shadow)
+    complexion = identity["complexion"]
+    if complexion:
+        # Ten real options: clear; light/dense freckles; left/right mole;
+        # low/high cheek freckles; paired moles; nose freckles; temple freckles.
+        count = (0, 12, 24, 1, 1, 8, 9, 2, 6, 7)[complexion]
+        for dot in range(count):
+            fid = str(getattr(fighter, "fighter_id", ""))
+            dx = (trait_hash(fid, f"freckle_x_{dot}", 101)-50)*hw*.014
+            dy = trait_hash(fid, f"freckle_y_{dot}", 20)*size*.0018
+            if complexion in (3, 4, 7):
+                dx = hw*.48*(-1 if complexion == 3 or (complexion == 7 and dot == 0) else 1)
+                dy = size*.035
+            elif complexion == 5:
+                dy += size*.035
+            elif complexion == 6:
+                dy -= size*.018
+            elif complexion == 8:
+                dx *= .24
+            elif complexion == 9:
+                dx = (hw*.72+abs(dx)*.15)*(-1 if dot % 2 else 1)
+                dy -= size*.025
+            x, y = cx+dx, cheek_y+dy
+            raster.ellipse(x,y,max(.55,size*.002),max(.55,size*.002),_mix(skin,skin_deep,.45),inside)
     # Sustained career state saturates and adds a small, readable brow scar.
-    if state["scar"] > .40:
+    if state["scar"] > .40 and trait_hash(str(getattr(fighter, "fighter_id", "")), "scar_visible", 3) == 0:
         direction = -1 if trait_hash(str(getattr(fighter, "fighter_id", "")), "scar_side", 2) else 1
         scar_x = cx + direction * hw * .57
         raster.line(scar_x, eye_y - size * .070, scar_x - direction * size * .010, eye_y - size * .022, max(1, size // 110), (235, 200, 190), inside)
@@ -382,7 +411,7 @@ def rasterize_portrait(fighter, size=180):
 
 def portrait_cache_key(fighter, size):
     state = portrait_state(fighter)
-    return (str(getattr(fighter, "fighter_id", "")), int(size), tuple(sorted(portrait_identity(fighter).items())), tuple(sorted(state.items())))
+    return (str(getattr(fighter, "fighter_id", "")), portrait_gender(fighter), int(size), tuple(sorted(portrait_identity(fighter).items())), tuple(sorted(state.items())))
 
 
 def clear_portrait_cache():
@@ -416,7 +445,7 @@ def render_portrait(canvas, fighter, size=None, ratings_visible=True, **_options
     if size is None:
         size = min(int(canvas.cget("width")), int(canvas.cget("height")))
     size = max(48, int(size))
-    key = portrait_cache_key(fighter, size)
+    key = (id(canvas.tk), portrait_cache_key(fighter, size))
     photo = _cache_get(key)
     if photo is None:
         raster = rasterize_portrait(fighter, size)

@@ -20,6 +20,7 @@ if str(ROOT) not in sys.path:
 from fighter_portraits.render import rasterize_portrait
 from fighter_portraits.identity import portrait_identity
 from fighter_portraits.overrides import PORTRAIT_OVERRIDES
+from fighter_portraits.styles import HAIR_STYLES
 
 DEFAULT_SOURCE = ROOT / "Databases" / "Default Universe.universe.json"
 DEFAULT_OUTPUT = ROOT / "analysis" / "portraits" / "portrait_contact_sheet.png"
@@ -72,7 +73,7 @@ def main():
     parser.add_argument("--gender", choices=("Male", "Female"))
     parser.add_argument("--region")
     parser.add_argument("--review-set", choices=("all", "overrides", "veterans", "women", "top-rated"), default="all")
-    parser.add_argument("--style", type=int, choices=range(32))
+    parser.add_argument("--style", type=int, choices=range(len(HAIR_STYLES)))
     parser.add_argument("--name", action="append", default=[])
     parser.add_argument("--manifest", type=Path, help="Optional JSON metadata beside a review image.")
     args = parser.parse_args()

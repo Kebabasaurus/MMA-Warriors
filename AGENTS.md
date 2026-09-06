@@ -1,5 +1,16 @@
 # MMA Warriors AI Developer Guide
 
+## Portrait diversity version 2
+
+Keep the 48 hairstyle IDs and existing palette/trait IDs append-only. Gender belongs
+in rendering and the cache key; older female vectors must not draw saved beards.
+Country tone weights are broad art-direction priors, not demographic measurements.
+Preserve saved vectors and authored overrides, merging partial corrections by field.
+Run `fighter_portrait_regression_test.py` and regenerate/review the sheets with
+`analysis/portraits/review_portrait_diversity.py` after renderer changes. Do not count
+background recolours as distinct faces or claim pixel uniqueness proves likeness.
+See `docs/FIGHTER_PORTRAIT_DIVERSITY_REVIEW.md` for the save and QA contract.
+
 This guide is the working contract for coding agents that inspect, change, test, or package
 MMA Warriors. Read it before editing. It documents how agents should collaborate, where game
 state lives, and which product invariants must survive every change.

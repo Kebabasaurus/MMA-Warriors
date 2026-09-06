@@ -5,25 +5,8 @@ skin and natural-hair ramps. Country aliases take precedence over nationality,
 which takes precedence over a simulation market region.
 """
 
-from constants import COUNTRY_TO_REGION
+from constants import COUNTRY_NATIONALITIES, COUNTRY_TO_REGION
 
-# (values, weights). Each profile has at least three possible values.
-REGION_APPEARANCE = {
-    "USA": (tuple(range(12)), (8, 9, 10, 10, 10, 9, 8, 8, 8, 8, 7, 7)),
-    "Canada": (tuple(range(12)), (11, 11, 10, 9, 8, 7, 6, 7, 8, 8, 7, 8)),
-    "Brazil": (tuple(range(12)), (5, 8, 12, 14, 13, 10, 6, 8, 10, 8, 4, 2)),
-    "Mexico": (tuple(range(12)), (5, 10, 15, 16, 13, 8, 4, 8, 10, 7, 3, 1)),
-    "UK": (tuple(range(12)), (12, 12, 11, 9, 8, 6, 5, 7, 8, 7, 6, 9)),
-    "Europe": (tuple(range(12)), (11, 12, 11, 10, 8, 6, 5, 7, 8, 7, 6, 9)),
-    "Russia": (tuple(range(12)), (14, 14, 12, 9, 6, 5, 3, 6, 6, 4, 3, 4)),
-    "Japan": (tuple(range(12)), (6, 11, 17, 16, 10, 5, 2, 9, 12, 7, 3, 2)),
-    "South Korea": (tuple(range(12)), (5, 10, 17, 17, 10, 5, 2, 9, 12, 7, 3, 3)),
-    "Australia": (tuple(range(12)), (11, 12, 11, 10, 8, 6, 5, 7, 8, 7, 6, 9)),
-    "Asia": (tuple(range(12)), (7, 10, 14, 15, 11, 6, 3, 9, 11, 8, 4, 2)),
-    "Middle East": (tuple(range(12)), (5, 9, 14, 16, 13, 8, 3, 8, 11, 8, 4, 1)),
-    "Africa": (tuple(range(12)), (2, 3, 5, 8, 12, 15, 16, 7, 9, 11, 7, 5)),
-    "default": (tuple(range(12)), (9, 10, 10, 10, 9, 8, 7, 8, 8, 8, 6, 7)),
-}
 
 # Hair is separately broad so no skin profile maps to a single hair colour.
 HAIR_WEIGHTS = {
@@ -40,14 +23,16 @@ HAIR_WEIGHTS = {
 # every group.  Persisted vectors always win, so this only affects newly
 # generated identities.
 GENDER_HAIR_STYLE_WEIGHTS = {
-    "default": (1,) * 32,
+    "default": (1,) * 48,
     "Male": (
         13, 12, 11, 10, 10, 10, 9, 9, 8, 8, 8, 8, 7, 7, 7, 7,
         5, 5, 5, 5, 6, 6, 6, 6, 6, 5, 5, 5, 5, 4, 4, 4,
+        3, 2, 2, 3, 8, 3, 1, 4, 12, 12, 5, 3, 4, 6, 8, 10,
     ),
     "Female": (
-        5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7,
-        11, 11, 12, 12, 12, 13, 13, 13, 12, 12, 11, 10, 9, 8, 7, 7,
+        1, 1, 1, 1, 2, 2, 3, 2, 3, 2, 2, 3, 2, 8, 8, 4,
+        12, 14, 14, 10, 12, 24, 14, 16, 22, 16, 10, 10, 2, 2, 3, 1,
+        12, 18, 14, 22, 14, 26, 10, 16, 5, 5, 10, 22, 24, 10, 2, 7,
     ),
 }
 
@@ -66,16 +51,95 @@ NATIONALITY_ALIASES = {
 }
 
 
+# Art-direction priors, not demographic estimates or classifications of an
+# individual. Palette IDs are NOT ordered by lightness (7 is light, 8 medium).
+# All profiles retain multiple tones; mixed-population profiles stay broad.
+TONE_PROFILES = {
+    "light": (30, 30, 10, 2, 1, 1, 1, 22, 2, 1, 1, 1),
+    "light_medium": (12, 27, 28, 8, 2, 1, 1, 14, 10, 4, 1, 1),
+    "medium": (2, 10, 27, 22, 7, 2, 1, 5, 18, 10, 2, 1),
+    "medium_deep": (1, 2, 9, 19, 22, 10, 5, 1, 10, 17, 9, 5),
+    "deep": (1, 1, 2, 4, 21, 21, 12, 1, 3, 10, 14, 10),
+    "mixed": (12, 20, 17, 10, 8, 7, 4, 9, 5, 4, 3, 3),
+}
+REGION_TONE_PROFILES = {
+    "USA": "mixed", "Canada": "mixed", "UK": "light", "Europe": "light_medium",
+    "Russia": "light_medium", "Japan": "light_medium", "South Korea": "light_medium",
+    "Australia": "mixed", "Brazil": "mixed", "Mexico": "medium",
+    "Asia": "medium", "Middle East": "medium", "Africa": "deep",
+}
+REGION_APPEARANCE = {
+    region: (tuple(range(12)), TONE_PROFILES[profile])
+    for region, profile in REGION_TONE_PROFILES.items()
+} | {"default": (tuple(range(12)), TONE_PROFILES["mixed"])}
+
+COUNTRY_TONE_PROFILES = {
+    **dict.fromkeys(("Nigeria", "Ghana", "Senegal", "Cameroon", "Kenya", "Uganda",
+                     "Democratic Republic of the Congo", "Angola"), "deep"),
+    **dict.fromkeys(("Morocco", "Algeria", "Tunisia", "Egypt", "Iran", "Iraq",
+                     "Thailand", "Philippines", "Indonesia", "Vietnam", "Mexico"), "medium"),
+    **dict.fromkeys(("India", "Pakistan", "Bangladesh", "Sri Lanka"), "medium_deep"),
+    **dict.fromkeys(("Japan", "South Korea", "China", "Taiwan", "Mongolia",
+                     "Russia", "Turkey", "Georgia", "Armenia", "Kazakhstan"), "light_medium"),
+    **dict.fromkeys(("Ireland", "UK", "Poland", "Sweden", "Norway", "Finland",
+                     "Denmark", "Germany", "Ukraine", "Iceland", "Netherlands"), "light"),
+    **dict.fromkeys(("United States", "Canada", "Brazil", "South Africa", "Australia",
+                     "New Zealand", "France"), "mixed"),
+}
+_COUNTRY_NAMES = {
+    "usa": "United States", "united states of america": "United States",
+    "united kingdom": "UK", "england": "UK", "scotland": "UK", "wales": "UK",
+    "northern ireland": "UK", "republic of ireland": "Ireland",
+    "people's republic of china": "China",
+}
+_KNOWN_COUNTRIES = {name.casefold(): name for name in
+                    (*COUNTRY_TO_REGION, *COUNTRY_TONE_PROFILES, *REGION_APPEARANCE)}
+_NATIONALITY_COUNTRIES = {adjective.casefold(): country
+                          for country, adjective in COUNTRY_NATIONALITIES.items()}
+
+
+def canonical_country(value):
+    value = str(value or "").strip()
+    value = _NATIONALITY_COUNTRIES.get(value.casefold(), value)
+    return _COUNTRY_NAMES.get(value.casefold(), _KNOWN_COUNTRIES.get(value.casefold(), value))
+
+
+def _resolve_region(value):
+    country = canonical_country(value)
+    region = COUNTRY_TO_REGION.get(country, country)
+    return region if region in REGION_APPEARANCE else None
+
+
 def appearance_region(fighter):
     """Resolve the documented origin order without using fighting-base data."""
     country = str(getattr(fighter, "birth_country", "") or "").strip()
-    if country:
-        return COUNTRY_ALIASES.get(country, COUNTRY_TO_REGION.get(country, country if country in REGION_APPEARANCE else "default"))
+    if _resolve_region(country):
+        return _resolve_region(country)
     nationality = str(getattr(fighter, "nationality", "") or "").strip()
     if nationality:
-        return NATIONALITY_ALIASES.get(nationality, "default")
+        resolved = _resolve_region(nationality) or NATIONALITY_ALIASES.get(nationality.title())
+        if resolved:
+            return resolved
     region = str(getattr(fighter, "region", "") or "").strip()
-    if region:
-        return region if region in REGION_APPEARANCE else "default"
+    if _resolve_region(region):
+        return _resolve_region(region)
     birth_region = str(getattr(fighter, "birth_region", "") or "").strip()
     return birth_region if birth_region in REGION_APPEARANCE else "default"
+
+
+def skin_distribution(fighter):
+    for field in ("birth_country", "nationality"):
+        country = canonical_country(getattr(fighter, field, ""))
+        if country in COUNTRY_TONE_PROFILES:
+            return tuple(range(12)), TONE_PROFILES[COUNTRY_TONE_PROFILES[country]]
+        region = _resolve_region(country) or NATIONALITY_ALIASES.get(country.title())
+        if region:
+            return REGION_APPEARANCE[region]
+    return REGION_APPEARANCE[appearance_region(fighter)]
+
+
+def hair_distribution(fighter):
+    region = appearance_region(fighter)
+    if region in {"Africa", "Asia", "Japan", "South Korea", "Middle East", "Mexico", "Brazil"}:
+        return tuple(range(12)), (48, 26, 9, 2, 1, 1, 1, 1, 18, 7, 1, 1)
+    return HAIR_WEIGHTS.get(region, HAIR_WEIGHTS["default"])
