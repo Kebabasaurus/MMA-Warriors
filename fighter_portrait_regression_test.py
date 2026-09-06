@@ -15,6 +15,7 @@ from fighter_portraits.styles import (
     BACKGROUND, BROW_STYLES, CHEEK_SHAPES, CHIN_SHAPES, EAR_SHAPES, EYE_SHAPES,
     EYE_SIZES, EYE_SPACINGS, FACIAL_HAIR, FACE_LENGTHS, HAIR, HAIR_STYLES,
     IDENTITY_TRAITS, JAW_SHAPES, MOUTH_SHAPES, NOSE_SHAPES, SKIN, FEMALE_HAIR_STYLES,
+    MALE_HAIR_STYLES, FEATURE_COUNTS, IRIS_COLOURS, DYE,
 )
 from fighter_portraits.overrides import (
     PORTRAIT_ICON_OVERRIDES, PORTRAIT_OVERRIDES, PORTRAIT_PARTIAL_OVERRIDES,
@@ -37,18 +38,80 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
 
     def test_vector_contract_and_style_reachability(self):
         self.assertEqual(tuple(IDENTITY_TRAITS), identity_keys_are_stable())
-        self.assertEqual(48, len(HAIR_STYLES))
-        self.assertEqual(16, len(FACIAL_HAIR))
+        self.assertEqual(148, len(HAIR_STYLES))
+        self.assertEqual(66, len(FACIAL_HAIR))
         hair = {derived_portrait_identity(fighter(f"FTR-hair-{i}"))["hair_style"] for i in range(5000)}
         beard = {derived_portrait_identity(fighter(f"FTR-beard-{i}"))["facial_hair"] for i in range(5000)}
-        self.assertEqual(set(range(len(HAIR_STYLES))), hair)
-        self.assertEqual(set(range(16)), beard)
+        self.assertEqual(set(MALE_HAIR_STYLES), hair)
+        self.assertEqual(set(range(66)), beard)
 
     def test_every_appearance_category_has_ten_or_more_options(self):
         categories = (SKIN, HAIR, HAIR_STYLES, FACIAL_HAIR, BROW_STYLES, EYE_SHAPES,
                       EYE_SPACINGS, EYE_SIZES, NOSE_SHAPES, MOUTH_SHAPES, JAW_SHAPES,
                       CHIN_SHAPES, CHEEK_SHAPES, FACE_LENGTHS, EAR_SHAPES, BACKGROUND)
         self.assertTrue(all(len(category) >= 10 for category in categories))
+
+    def test_fifty_additions_per_category_and_gender_pool(self):
+        self.assertEqual(98, len(MALE_HAIR_STYLES))
+        self.assertEqual(77, len(FEMALE_HAIR_STYLES))
+        self.assertEqual(tuple(range(48, 98)), MALE_HAIR_STYLES[48:])
+        self.assertEqual(tuple(range(98, 148)), FEMALE_HAIR_STYLES[27:])
+        for category in (SKIN, HAIR, BACKGROUND):
+            self.assertEqual(62, len(category))
+            self.assertEqual(len(category), len(set(category)))
+        self.assertEqual(60, len(DYE))
+        self.assertEqual(60, len(set(DYE.values())))
+        self.assertEqual(60, len(set(IRIS_COLOURS)))
+        for category in (BROW_STYLES, EYE_SHAPES, EYE_SPACINGS, EYE_SIZES,
+                         NOSE_SHAPES, MOUTH_SHAPES, JAW_SHAPES, CHIN_SHAPES,
+                         CHEEK_SHAPES, FACE_LENGTHS, EAR_SHAPES):
+            self.assertEqual(60, len(set(category)))
+        self.assertEqual(set(IDENTITY_TRAITS), set(FEATURE_COUNTS))
+
+    def test_new_shades_preserve_country_family_probabilities(self):
+        from fighter_portraits.expansion import PALETTE_PARENTS, expand_distribution
+        from fighter_portraits.regions import TONE_PROFILES
+        parents = tuple(range(12)) + PALETTE_PARENTS
+        for old in TONE_PROFILES.values():
+            choices, weights = expand_distribution(old)
+            for family in range(12):
+                mass = sum(w for i, w in zip(choices, weights) if parents[i] == family)
+                self.assertAlmostEqual(old[family]/sum(old), mass/sum(weights))
+
+    def test_all_v2_catalogue_ids_are_append_only(self):
+        from fighter_portraits import styles
+        lengths = {"HAIR_STYLES":48, "FACIAL_HAIR":16, "FEMALE_HAIR_STYLES":27,
+                   "SKIN":12, "HAIR":12, "BACKGROUND":12, "IRIS_COLOURS":10,
+                   "BROW_STYLES":10, "EYE_SHAPES":10, "EYE_SPACINGS":10, "EYE_SIZES":10,
+                   "NOSE_SHAPES":10, "MOUTH_SHAPES":10, "JAW_SHAPES":10, "CHIN_SHAPES":10,
+                   "CHEEK_SHAPES":10, "FACE_LENGTHS":10, "EAR_SHAPES":10, "IDENTITY_TRAITS":27}
+        payload = {key:getattr(styles,key)[:count] for key,count in lengths.items()}
+        payload["DYE"] = dict(tuple(styles.DYE.items())[:10])
+        digest = hashlib.sha256(json.dumps(payload,sort_keys=True,separators=(",",":")).encode()).hexdigest()
+        self.assertEqual("6af28d788867c394b9ef6dea6f2ba1dee38d8786091912b8848a1b8f1f81bef6",digest)
+
+    def test_expanded_anatomical_controls_stay_bounded(self):
+        from fighter_portraits.expansion import control_value, feature_value
+        self.assertEqual(list(range(10)), [control_value(i) for i in range(10)])
+        values = [control_value(i) for i in range(10, 60)]
+        self.assertEqual(50, len(set(values)))
+        self.assertTrue(all(0 < value < 9 for value in values))
+        self.assertTrue(all(0 < feature_value(tuple(range(100)), i) < 99 for i in range(100, 150)))
+
+    def test_expanded_features_render_for_both_genders_at_all_ui_sizes(self):
+        from fighter_portraits.render import rasterize_portrait
+        for gender in ("Male", "Female"):
+            for size in (72, 98, 104, 180):
+                for step in range(50):
+                    vector = {key: count-50+step for key, count in FEATURE_COUNTS.items() if key != "dye"}
+                    vector["hair_style"] = (48 if gender == "Male" else 98) + step
+                    vector["dye"] = tuple(DYE)[10+step]
+                    row = fighter(gender=gender, portrait_identity=vector)
+                    before = copy.deepcopy(row.__dict__)
+                    self.assertEqual(size*size, len(rasterize_portrait(row, size).pixels))
+                    self.assertEqual(before, row.__dict__)
+                    if gender == "Female":
+                        self.assertEqual(0, portrait_identity(row)["facial_hair"])
 
     def test_region_order_and_wide_profiles(self):
         row = fighter(birth_country="Nigeria", nationality="Japanese", region="USA")
@@ -63,12 +126,13 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
 
     def test_gender_aware_hair_distribution_is_broad_and_deterministic(self):
         self.assertTrue(all(len(weights) == len(HAIR_STYLES) for weights in GENDER_HAIR_STYLE_WEIGHTS.values()))
-        self.assertTrue(all(weight > 0 for weight in GENDER_HAIR_STYLE_WEIGHTS["Male"]))
+        self.assertEqual(set(MALE_HAIR_STYLES), {style for style, weight in
+                         enumerate(GENDER_HAIR_STYLE_WEIGHTS["Male"]) if weight > 0})
         self.assertEqual(set(FEMALE_HAIR_STYLES), {style for style, weight in
                          enumerate(GENDER_HAIR_STYLE_WEIGHTS["Female"]) if weight > 0})
         male = [derived_portrait_identity(fighter(f"FTR-gender-{index}", gender="Male"))["hair_style"] for index in range(5000)]
         female = [derived_portrait_identity(fighter(f"FTR-gender-{index}", gender="Female"))["hair_style"] for index in range(5000)]
-        self.assertEqual(set(range(len(HAIR_STYLES))), set(male))
+        self.assertEqual(set(MALE_HAIR_STYLES), set(male))
         self.assertEqual(set(FEMALE_HAIR_STYLES), set(female))
         self.assertGreater(sum(value in (21, 24, 33, 35, 37, 43, 44) for value in female),
                            sum(value in (21, 24, 33, 35, 37, 43, 44) for value in male))
@@ -156,9 +220,9 @@ assert len(rasterize_portrait(row,72).pixels) == 72*72
             before = run_audited_fight(control, a, b, seed, {"rounds": 3})
             for row in (a, b):
                 row.portrait_identity = derived_portrait_identity(row)
-                row.portrait_identity.update(skin=11, hair_style=47, facial_hair=14,
-                                             nose=9, jaw=9, neck_width=9, iris_colour=9)
-                row.portrait_version = 2
+                row.portrait_identity.update(skin=61, hair_style=97, facial_hair=65,
+                                             nose=59, jaw=59, neck_width=59, iris_colour=59)
+                row.portrait_version = 3
             after = run_audited_fight(restyled, a, b, seed, {"rounds": 3})
             self.assertEqual(before, after)
             self.assertEqual(control.terminal_rng, restyled.terminal_rng)
@@ -236,7 +300,7 @@ assert len(rasterize_portrait(row,72).pixels) == 72*72
 
     def test_all_complexions_and_hair_styles_are_visually_distinct(self):
         from fighter_portraits.render import rasterize_portrait
-        for trait, count in (("complexion", 10), ("hair_style", len(HAIR_STYLES))):
+        for trait, count in (("complexion", 60), ("hair_style", len(HAIR_STYLES))):
             images = set()
             for value in range(count):
                 row = fighter(portrait_identity={"hair_style":0, "facial_hair":0,
@@ -350,7 +414,7 @@ assert len(rasterize_portrait(row,72).pixels) == 72*72
         rows = json.loads(source.read_text(encoding="utf-8"))["sections"]["fighters"]["all_fighters"]
         manifest = [(row["fighter_id"], portrait_identity(SimpleNamespace(**row))) for row in rows]
         digest = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
-        self.assertEqual("5c42a01972eaea75116ed9595f5f69f78b9d9d2ac3278b7538f63f3341165bb3", digest)
+        self.assertEqual("25a9b92cd7341be258f507bf1f5037ca6600ccbcf2708c9139f929de8b124c7f", digest)
 
     def test_save_round_trip_preserves_identity(self):
         from models import Fighter
@@ -363,6 +427,14 @@ assert len(rasterize_portrait(row,72).pixels) == 72*72
         restored = load_model_row(serialize_fighter_model(row), Fighter, FIGHTER_SAVE_FIELDS, "portrait regression")
         self.assertEqual(row.portrait_identity, restored.portrait_identity)
         self.assertEqual(row.portrait_version, restored.portrait_version)
+        # New highest IDs must survive the real serializer too, not just the
+        # older, small integer vectors used by the historical save fixture.
+        row.portrait_identity = {key:count-1 for key,count in FEATURE_COUNTS.items()}
+        row.portrait_identity.update(hair_style=97, dye=tuple(DYE)[-1])
+        row.portrait_version = 3
+        restored = load_model_row(serialize_fighter_model(row), Fighter, FIGHTER_SAVE_FIELDS, "expanded portrait regression")
+        self.assertEqual(row.portrait_identity, restored.portrait_identity)
+        self.assertEqual(3, restored.portrait_version)
 
     def test_every_shipped_style_rasterises(self):
         from fighter_portraits.render import rasterize_portrait
@@ -406,8 +478,12 @@ assert len(rasterize_portrait(row,72).pixels) == 72*72
                     portrait_identity={"hair_style": 23, "facial_hair": 10, "skin": 6, "dye": "rainbow"}),
             fighter("FTR-render-three", gender="Female", portrait_identity={"hair_style": 21, "facial_hair": 15, "skin": 1}),
         )
+        # Freeze the complete v2 vectors, not partially generated fixtures:
+        # catalogue growth can affect missing draws, never saved visual meaning.
+        old_vectors = json.loads((Path(__file__).parent / "analysis/portraits/legacy_v2_vectors.json").read_text())
         signatures = []
-        for row in fixtures:
+        for row, vector in zip(fixtures, old_vectors):
+            row.portrait_identity = vector
             pixels = rasterize_portrait(row, 90).pixels
             payload = bytes(max(0, min(255, round(channel))) for pixel in pixels for channel in pixel)
             signatures.append(hashlib.sha256(payload).hexdigest())

@@ -7,6 +7,7 @@ which takes precedence over a simulation market region.
 
 from constants import COUNTRY_NATIONALITIES, COUNTRY_TO_REGION
 from .styles import FEMALE_HAIR_STYLES
+from .expansion import expand_distribution
 
 
 # Hair is separately broad so no skin profile maps to a single hair colour.
@@ -39,6 +40,9 @@ GENDER_HAIR_STYLE_WEIGHTS["Female"] = tuple(
     weight if style in FEMALE_HAIR_STYLES else 0
     for style, weight in enumerate(GENDER_HAIR_STYLE_WEIGHTS["Female"])
 )
+GENDER_HAIR_STYLE_WEIGHTS["Male"] += (6,) * 50 + (0,) * 50
+GENDER_HAIR_STYLE_WEIGHTS["Female"] += (0,) * 50 + (14,) * 50
+GENDER_HAIR_STYLE_WEIGHTS["default"] += (1,) * 100
 
 # Only resolution aliases; values retain the broad market distributions above.
 COUNTRY_ALIASES = {
@@ -76,6 +80,10 @@ REGION_APPEARANCE = {
     region: (tuple(range(12)), TONE_PROFILES[profile])
     for region, profile in REGION_TONE_PROFILES.items()
 } | {"default": (tuple(range(12)), TONE_PROFILES["mixed"])}
+REGION_APPEARANCE = {region: expand_distribution(weights)
+                     for region, (_, weights) in REGION_APPEARANCE.items()}
+HAIR_WEIGHTS = {region: expand_distribution(weights)
+                for region, (_, weights) in HAIR_WEIGHTS.items()}
 
 COUNTRY_TONE_PROFILES = {
     **dict.fromkeys(("Nigeria", "Ghana", "Senegal", "Cameroon", "Kenya", "Uganda",
@@ -135,7 +143,7 @@ def skin_distribution(fighter):
     for field in ("birth_country", "nationality"):
         country = canonical_country(getattr(fighter, field, ""))
         if country in COUNTRY_TONE_PROFILES:
-            return tuple(range(12)), TONE_PROFILES[COUNTRY_TONE_PROFILES[country]]
+            return expand_distribution(TONE_PROFILES[COUNTRY_TONE_PROFILES[country]])
         region = _resolve_region(country) or NATIONALITY_ALIASES.get(country.title())
         if region:
             return REGION_APPEARANCE[region]
@@ -145,5 +153,5 @@ def skin_distribution(fighter):
 def hair_distribution(fighter):
     region = appearance_region(fighter)
     if region in {"Africa", "Asia", "Japan", "South Korea", "Middle East", "Mexico", "Brazil"}:
-        return tuple(range(12)), (48, 26, 9, 2, 1, 1, 1, 1, 18, 7, 1, 1)
+        return expand_distribution((48, 26, 9, 2, 1, 1, 1, 1, 18, 7, 1, 1))
     return HAIR_WEIGHTS.get(region, HAIR_WEIGHTS["default"])

@@ -1,19 +1,21 @@
 # MMA Warriors AI Developer Guide
 
-## Portrait diversity version 2
+## Portrait catalogue version 3
 
-Keep the 48 hairstyle IDs and existing palette/trait IDs append-only. Gender belongs
-in rendering and the cache key; older female vectors must not draw saved beards.
-Country tone weights are broad art-direction priors, not demographic measurements.
-Preserve raw saved vectors and merge authored corrections by field. Women's generated
-hair uses FEMALE_HAIR_STYLES (27 stable IDs): exclude men's cuts instead of merely
-giving them low weights. Project old non-catalogue cuts at display time; explicit
-authored hair exceptions remain valid. Force female facial_hair=0 AFTER merging
-saved values and overrides, and retain the renderer's independent no-beard guard.
-Run `fighter_portrait_regression_test.py` and regenerate/review the sheets with
-`analysis/portraits/review_portrait_diversity.py` after renderer changes. Do not count
-background recolours as distinct faces or claim pixel uniqueness proves likeness.
-See `docs/FIGHTER_PORTRAIT_DIVERSITY_REVIEW.md` for the save and QA contract.
+Keep all 148 hairstyle IDs, 66 facial-hair IDs and palette/trait IDs append-only.
+Male generation uses IDs 0..97; FEMALE_HAIR_STYLES retains its original 27 plus
+98..147 (77 total). Gender belongs in rendering and the cache key. Force female
+facial_hair=0 AFTER merging saved vectors and overrides, with an independent renderer
+guard. Preserve the existing female non-catalogue display correction and authored
+hair exceptions. Never rewrite valid complete saved identities on a version bump.
+`expansion.py` supplies bounded intermediate controls: never use new raw IDs as
+linear widths/lengths. Preserve original colour-family probability mass when adding
+shades; country priors are broad art direction, not demographic measurements.
+Run `fighter_portrait_regression_test.py`; retain all original catalogue-prefix and
+v2 complete-vector pixel fingerprints. Generate/review v3 sheets with
+`analysis/portraits/review_portrait_expansion.py`. Small anatomical steps can look
+alike at 72px: never claim pixel uniqueness proves perceptual diversity or likeness.
+See `docs/FIGHTER_PORTRAIT_EXPANSION.md` for counts, compatibility and review scope.
 
 This guide is the working contract for coding agents that inspect, change, test, or package
 MMA Warriors. Read it before editing. It documents how agents should collaborate, where game

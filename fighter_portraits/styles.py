@@ -120,6 +120,44 @@ IDENTITY_TRAITS = (
 IRIS_COLOURS = ("#392820", "#65432d", "#8a6640", "#68764b", "#45667c",
                 "#69858b", "#394d45", "#806742", "#525a69", "#463629")
 
+# V3 is append-only. Old palette indices and complete saved vectors retain
+# their exact meaning. Shared anatomical presets are available to both genders.
+from .expansion import NEW_HAIR_STYLES, NEW_BEARDS, extend_ramps, feature_names, tint
+
+HAIR_STYLES += NEW_HAIR_STYLES
+MALE_HAIR_STYLES = tuple(range(98))
+FEMALE_HAIR_STYLES += tuple(range(98, 148))
+FACIAL_HAIR += tuple(record[0] for record in NEW_BEARDS)
+SKIN = extend_ramps(SKIN)
+HAIR = extend_ramps(HAIR)
+BACKGROUND = extend_ramps(BACKGROUND)
+IRIS_COLOURS += tuple(tint(IRIS_COLOURS[i % 10],
+                          ((i//10-2)*8+3, (i//10-2)*5-2, (2-i//10)*6+1))
+                      for i in range(50))
+# Five new undertone variants of each original dye palette; empty dye remains
+# the natural generated default. These are authored choices, not country rules.
+_DYE_BASE = tuple(DYE.items())
+for _name, _colours in _DYE_BASE:
+    for _suffix, _offset in (("warm", (18, 5, -12)), ("cool", (-12, 3, 18)),
+                             ("pastel", (28, 28, 28)), ("muted", (-22, -22, -22)),
+                             ("rose", (15, -18, 8))):
+        DYE[f"{_name}_{_suffix}"] = tuple(tint(c, _offset) for c in _colours)
+
+BROW_STYLES += feature_names("brow")
+EYE_SHAPES += feature_names("eye_shape")
+EYE_SPACINGS += feature_names("eye_spacing")
+EYE_SIZES += feature_names("eye_size")
+NOSE_SHAPES += feature_names("nose")
+MOUTH_SHAPES += feature_names("mouth")
+JAW_SHAPES += feature_names("jaw")
+CHIN_SHAPES += feature_names("chin")
+CHEEK_SHAPES += feature_names("cheek")
+FACE_LENGTHS += feature_names("face_length")
+EAR_SHAPES += feature_names("ear")
+FEATURE_COUNTS = dict(zip(IDENTITY_TRAITS, (
+    62, 62, 148, 66, 61, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60,
+    60, 150, 62, 60, 60, 60, 60, 60, 60, 60, 60, 60)))
+
 
 def portrait_gender(fighter):
     """Normalise imported labels without changing fighter or simulation data."""

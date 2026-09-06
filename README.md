@@ -1,11 +1,12 @@
 # MMA Warriors
 
-Portrait diversity update (source; not a rebuilt package): women have gender-aware
-face/body rendering and their own 27-style generated hair catalogue, with no beards,
-stubble or moustaches. The full registry retains 48 hairstyles and 16 men's facial-
-hair styles. Women's old generated men's cuts are corrected for display without
-rewriting saved skin/face choices. Country-weighted colours remain broad.
-See [portrait review and compatibility notes](docs/FIGHTER_PORTRAIT_DIVERSITY_REVIEW.md).
+Portrait catalogue v3 (source; not a rebuilt package) adds 50 hairstyles per gender:
+98 men's and 77 women's generated choices. Women have no beards, stubble or moustaches;
+men have 66 facial-hair options including none. Shared features gain 50 bounded
+presets each; skin and natural hair now have 62 shades each with country-family
+weights preserved. Existing complete saved portraits retain their appearance.
+Fine facial differences remain subtle at thumbnail size. See
+[portrait expansion counts, review and compatibility](docs/FIGHTER_PORTRAIT_EXPANSION.md).
 
 ## Version 3.0.9
 

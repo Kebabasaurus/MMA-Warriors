@@ -6,12 +6,13 @@ It must remain importable in headless simulation tools: Tk is only touched by
 """
 
 from collections import OrderedDict
-from math import sqrt
+from math import sqrt, sin, cos
 
 from .identity import portrait_identity, trait_hash
 from .state import portrait_state
 from .styles import BACKGROUND, DYE, FACIAL_HAIR, HAIR, HAIR_STYLES, SKIN, IRIS_COLOURS, portrait_gender
 from .hair import hair_mask as build_hair_mask
+from .expansion import feature_value, control_value, NEW_BEARDS, NEW_COMPLEXIONS
 
 INK = (18, 15, 20)
 EYE_WHITE = (242, 238, 231)
@@ -91,14 +92,14 @@ class _Raster:
 
 def _head_profile(size, identity, female=False):
     cx = size / 2
-    face_scale = (.91, 1.0, 1.10, .84, .96, 1.04, 1.18, .88, 1.06, 1.14)[identity["face_length"]]
+    face_scale = feature_value((.91, 1.0, 1.10, .84, .96, 1.04, 1.18, .88, 1.06, 1.14), identity["face_length"])
     top, bottom = size * 0.17, size * (0.70 + (face_scale - 1) * 0.36)
-    head_width = size * 0.205 * (0.85 + identity["head_w"] / 100 * 0.30)
+    head_width = size * 0.205 * (0.85 + feature_value(tuple(range(100)), identity["head_w"]) / 100 * 0.30)
     # The first entries retain the pre-expansion proportions; appended IDs add
     # visibly different but still anatomical construction variants.
-    cheek = (.94, .995, 1.05, 1.105, 1.13, .90, 1.16, .92, 1.14, .98)[identity["cheek"]]
-    jaw = (.86, .935, 1.01, 1.085, 1.16, .80, .90, 1.12, 1.22, 1.02)[identity["jaw"]]
-    chin = (.82, .96, 1.10, 1.24, .74, 1.17, .88, 1.12, .92, 1.30)[identity["chin"]]
+    cheek = feature_value((.94, .995, 1.05, 1.105, 1.13, .90, 1.16, .92, 1.14, .98), identity["cheek"])
+    jaw = feature_value((.86, .935, 1.01, 1.085, 1.16, .80, .90, 1.12, 1.22, 1.02), identity["jaw"])
+    chin = feature_value((.82, .96, 1.10, 1.24, .74, 1.17, .88, 1.12, .92, 1.30), identity["chin"])
     stops = (0.00, 0.08, 0.18, 0.32, 0.46, 0.60, 0.72, 0.84, 0.93, 1.00)
     if female:
         jaw *= .89
@@ -147,8 +148,8 @@ def _rasterize_portrait(fighter, size):
     raster.polygon(((0, 0), (size, 0), (size, size * .62), (0, size * .30)), bg_shadow)
     cx, top, bottom, hw, half_width, inside = _head_profile(size, identity, female)
     # Broad shoulders and neck make the silhouette read as a fighter at 90px.
-    shoulder = size * ((.40 if female else .46) + identity["shoulder_width"] * .012)
-    neck = hw * ((.36 if female else .44) + identity["neck_width"] * .017)
+    shoulder = size * ((.40 if female else .46) + control_value(identity["shoulder_width"]) * .012)
+    neck = hw * ((.36 if female else .44) + control_value(identity["neck_width"]) * .017)
     raster.ellipse(cx, size * 1.05, shoulder, size * .28, skin)
     raster.ellipse(cx + shoulder * .32, size * 1.05, shoulder * .70, size * .26, skin_shadow)
     raster.polygon(((cx-neck, bottom-size*.06), (cx+neck,bottom-size*.06),
@@ -164,8 +165,8 @@ def _rasterize_portrait(fighter, size):
                         (cx+shoulder*.32,size*.90), (cx+shoulder*.44,size*.80),
                         (cx+shoulder*.64,size*.81), (cx+shoulder*.88,size)), kit)
     # Ears are behind the profile and swell only up to the documented cap.
-    eye_y = top + (bottom - top) * (.48 + identity["feature_offset"] * .004)
-    ear_radius = size * ((.026, .038, .050, .062, .020, .032, .056, .054, .046, .050)[identity["ear"]] + .013 * state["cauli"])
+    eye_y = top + (bottom - top) * (.48 + control_value(identity["feature_offset"]) * .004)
+    ear_radius = size * (feature_value((.026, .038, .050, .062, .020, .032, .056, .054, .046, .050), identity["ear"]) + .013 * state["cauli"])
     for direction in (-1, 1):
         raster.ellipse(cx + direction * hw * .98, eye_y + size * .02, ear_radius * .76, ear_radius * 1.16, skin_shadow)
         if state["cauli"] > .25:
@@ -225,7 +226,10 @@ def _rasterize_portrait(fighter, size):
     hair_clip = lambda x, y: (x, y) in hair_mask
     # Texture pass: each class has a different directional cue at thumbnail
     # size, so styles do not collapse into the same dark cap.
-    if texture in ("curl", "coil", "puff", "shag", "loc_knot"):
+    if style_id >= 48:
+        _expanded_hair_texture(raster, size, cx, top, hw, hairline, volume, texture,
+                               style_id, hair_base, hair_shadow, hair_clip)
+    elif texture in ("curl", "coil", "puff", "shag", "loc_knot"):
         step_x = max(3, round(hw * (.23 if texture == "coil" else .31)))
         step_y = max(3, round(size * .040))
         for y in range(max(0, int(top - volume * size)), int(hairline + size * .015), step_y):
@@ -261,25 +265,25 @@ def _rasterize_portrait(fighter, size):
             end_y = bottom + size * .05 if texture == "dread" else (bottom if side == 2 else eye_y + size * .06)
             raster.line(x, top - volume * size, x, end_y, max(1, size // 150), INK, hair_clip)
     # Brows and eyes are positionally distinct enough to survive the small card.
-    spacing = (.38, .46, .54, .32, .42, .47, .50, .60, .44, .49)[identity["eye_spacing"]]
-    eye_scale = (.78, 1.0, 1.18, .64, .88, 1.08, 1.30, 1.12, 1.15, .72)[identity["eye_size"]]
+    spacing = feature_value((.38, .46, .54, .32, .42, .47, .50, .60, .44, .49), identity["eye_spacing"])
+    eye_scale = feature_value((.78, 1.0, 1.18, .64, .88, 1.08, 1.30, 1.12, 1.15, .72), identity["eye_size"])
     brow_kind = identity["brow"]
     asymmetry = trait_hash(str(getattr(fighter, "fighter_id", "")), "facial_asymmetry", 5) - 2
     for direction in (-1, 1):
         ex = cx + direction * hw * spacing
-        brow_height = (0, .002, .004, .010, -.002, .003, .007, .006, .001, -.004)[brow_kind]
+        brow_height = feature_value((0, .002, .004, .010, -.002, .003, .007, .006, .001, -.004), brow_kind)
         brow_y = eye_y - size * (.044 + brow_height)
-        slope = (0, .003, .006, .002, -.002, .004, .009, -.004, .006, -.006)[brow_kind] * size * direction
-        brow_width = hw * (.24, .23, .24, .28, .20, .22, .21, .30, .23, .18)[brow_kind]
-        brow_ink = max(1, round(size * (.014, .014, .016, .024, .009, .013, .012, .022, .015, .010)[brow_kind]))
+        slope = feature_value((0, .003, .006, .002, -.002, .004, .009, -.004, .006, -.006), brow_kind) * size * direction
+        brow_width = hw * feature_value((.24, .23, .24, .28, .20, .22, .21, .30, .23, .18), brow_kind)
+        brow_ink = max(1, round(size * feature_value((.014, .014, .016, .024, .009, .013, .012, .022, .015, .010), brow_kind)))
         if female:
             brow_ink = max(1, round(brow_ink * .62))
         raster.line(ex - brow_width, brow_y - slope, ex + brow_width, brow_y + slope, brow_ink, hair_shadow, inside)
         eye_w, eye_h = hw * .23 * eye_scale, size * .018 * eye_scale
         eye_kind = identity["eye_shape"]
-        eye_h *= (1.0, 1.18, .65, .55, .82, .86, .68, 1.08, .62, .72)[eye_kind]
-        eye_w *= (1.0, .92, 1.0, 1.12, .98, .98, .88, 1.15, 1.10, 1.05)[eye_kind]
-        eye_y_shift = ((0, 0, .002, 0, .004, -.004, .002, -.002, .001, 0)[eye_kind] * direction
+        eye_h *= feature_value((1.0, 1.18, .65, .55, .82, .86, .68, 1.08, .62, .72), eye_kind)
+        eye_w *= feature_value((1.0, .92, 1.0, 1.12, .98, .98, .88, 1.15, 1.10, 1.05), eye_kind)
+        eye_y_shift = (feature_value((0, 0, .002, 0, .004, -.004, .002, -.002, .001, 0), eye_kind) * direction
                        + asymmetry * .0015 * direction) * size
         # Socket first, then a narrow sclera, iris and lids.  Keeping the
         # socket wider than the white removes the old sticker-eye effect.
@@ -294,10 +298,11 @@ def _rasterize_portrait(fighter, size):
         raster.line(ex - eye_w * .75, eye_y + eye_y_shift + eye_h,
                     ex + eye_w * .75, eye_y + eye_y_shift + eye_h, max(1, size // 180), skin_deep, inside)
     # Nose uses shadow planes instead of a boxed outline.
-    nose_y, nose_kind = top + (bottom - top) * (.62 + identity["nose_length"] * .008), identity["nose"]
-    if nose_kind < 4 and state["nose_damage"] > .60 and trait_hash(str(getattr(fighter, "fighter_id", "")), "nose_wear", 4) == 0:
+    nose_y, nose_kind = top + (bottom - top) * (.62 + control_value(identity["nose_length"]) * .008), identity["nose"]
+    wear_eligible = nose_kind < 4 or (nose_kind >= 10 and (nose_kind-10) % 5 < 2)
+    if wear_eligible and state["nose_damage"] > .60 and trait_hash(str(getattr(fighter, "fighter_id", "")), "nose_wear", 4) == 0:
         nose_kind = 4 + trait_hash(str(getattr(fighter, "fighter_id", "")), "career_nose_side", 2)
-    nose_width = hw * (.15, .17, .19, .21, .23, .25, .18, .13, .16, .28)[nose_kind]
+    nose_width = hw * feature_value((.15, .17, .19, .21, .23, .25, .18, .13, .16, .28), nose_kind)
     if female:
         nose_width *= .88
     shift = (-size * .012 if nose_kind == 4 else size * .012 if nose_kind == 5 else 0)
@@ -309,14 +314,14 @@ def _rasterize_portrait(fighter, size):
         raster.ellipse(cx + shift + direction * nose_width * .55, nose_y + size * .005, max(1, nose_width * .18), max(1, size * .007), skin_deep, inside)
     mouth_y = top + (bottom - top) * .795
     mouth_kind = identity["mouth"]
-    mouth_width = hw * (.25, .278, .306, .334, .362, .29, .20, .39, .34, .24)[mouth_kind]
-    mouth_slope = (-.004, 0, .004, .008, .012, -.006, -.002, .002, -.001, .006)[mouth_kind] * size
+    mouth_width = hw * feature_value((.25, .278, .306, .334, .362, .29, .20, .39, .34, .24), mouth_kind)
+    mouth_slope = feature_value((-.004, 0, .004, .008, .012, -.006, -.002, .002, -.001, .006), mouth_kind) * size
     lip_shadow = _mix(skin_deep, (72, 38, 42), .42)
     raster.line(cx - mouth_width, mouth_y + mouth_slope, cx, mouth_y - size * .004,
                 max(1, size // 105), lip_shadow, inside)
     raster.line(cx, mouth_y - size * .004, cx + mouth_width, mouth_y - mouth_slope,
                 max(1, size // 105), lip_shadow, inside)
-    fullness = size * (.005 + identity["lip_fullness"] * .0012)
+    fullness = size * (.005 + control_value(identity["lip_fullness"]) * .0012)
     raster.ellipse(cx, mouth_y + fullness, mouth_width * .68, max(1, fullness),
                    _mix(skin, (156, 74, 72), .30 if female else .18), inside)
     # Facial-hair masks never reach higher than the jaw band, apart from an
@@ -324,7 +329,11 @@ def _rasterize_portrait(fighter, size):
     facial = identity["facial_hair"] if not female else 0
     beard_name = FACIAL_HAIR[facial]
     beard_base, beard_shadow = hair_base, hair_shadow
-    if beard_name != "none":
+    if facial >= 16:
+        _expanded_beard(raster, NEW_BEARDS[facial-16], size, cx, top, bottom, hw,
+                        half_width, inside, mouth_y, mouth_width, skin, skin_shadow,
+                        hair_base, hair_shadow)
+    elif beard_name != "none":
         if beard_name in ("stubble_light", "stubble_heavy"):
             beard_base = _mix(skin_shadow, hair_base, .30 if beard_name == "stubble_light" else .58)
             beard_shadow = _mix(skin_deep, hair_shadow, .30 if beard_name == "stubble_light" else .58)
@@ -361,7 +370,10 @@ def _rasterize_portrait(fighter, size):
                 for y in range(round(bottom),round(bottom+size*.07),max(2,size//60)):
                     raster.line(cx-hw*.12,y,cx+hw*.12,y+size*.008,1,beard_shadow)
     complexion = identity["complexion"]
-    if complexion:
+    if complexion >= 10:
+        _expanded_complexion(raster, NEW_COMPLEXIONS[complexion-10], fighter, size,
+                             cx, hw, cheek_y, skin, skin_deep, inside)
+    elif complexion:
         # Ten real options: clear; light/dense freckles; left/right mole;
         # low/high cheek freckles; paired moles; nose freckles; temple freckles.
         count = (0, 12, 24, 1, 1, 8, 9, 2, 6, 7)[complexion]
@@ -407,6 +419,71 @@ def _rasterize_portrait(fighter, size):
         raster.ellipse(cx + direction * hw * .47, eye_y + size * .035, hw * .22, size * .045,
                        _mix(skin_shadow, (150, 52, 56), .35 * state["swell"]), inside)
     return raster
+
+
+def _expanded_hair_texture(raster, size, cx, top, hw, hairline, volume, texture,
+                           style_id, base, shadow, clip):
+    variant = (style_id-48) % 5
+    if texture in ("curl", "coil", "shag"):
+        radius = size*(.010 if texture == "coil" else .016)
+        step = max(3, round(radius*2.8))
+        # Broken curved strands, not filled polka dots. Stagger rows and vary
+        # the arc phase deterministically without drawing simulation RNG.
+        for row, y in enumerate(range(max(0, round(top-volume*size)), round(hairline+size*.035), step)):
+            for col, x in enumerate(range(round(cx-hw)+(row%2)*step//2, round(cx+hw), step)):
+                phase = (col*1.3+row*.7+variant*.4)
+                points = [(x+radius*cos(phase+i*.45), y+radius*.8*sin(phase+i*.45)) for i in range(7)]
+                for a, b in zip(points, points[1:]):
+                    raster.line(*a,*b,max(1,size//240),_mix(base,shadow,.70),clip)
+    else:
+        # Grain follows swept/tied styles; braids receive a woven cross cue
+        # under the existing vertical ink separators and multi-colour bands.
+        for x in range(round(cx-hw*1.4),round(cx+hw*1.4),max(3,round(size*.024))):
+            lean = size*(.025 if variant%2 else -.018) if texture in ("sweep","tail","knot") else 0
+            raster.line(x,top-size*volume,x+lean,size*.89,max(1,size//220),_mix(base,shadow,.43),clip)
+            if texture in ("braid","dread"):
+                for y in range(round(top),round(size*.88),max(3,round(size*.028))):
+                    raster.line(x-size*.005,y,x+size*.006,y+size*.009,1,shadow,clip)
+
+
+def _expanded_beard(raster, record, size, cx, top, bottom, hw, half_width, inside,
+                    mouth_y, mouth_width, skin, skin_shadow, hair_base, hair_shadow):
+    name, start, width, edge, extension, moustache, droop, opacity, variant = record
+    base = _mix(skin, hair_base, opacity)
+    shadow = _mix(skin_shadow, hair_shadow, opacity)
+    for y in range(round(top+(bottom-top)*max(.735, start)), int(bottom)+1):
+        half = half_width(y)
+        for x in range(max(0, round(cx-half)), min(size, round(cx+half)+1)):
+            distance = abs(x-cx)/max(1, half)
+            mouth_cut = ((x-cx)/max(1, mouth_width*1.15))**2 + ((y-mouth_y)/max(1, size*.022))**2 < 1
+            if not mouth_cut and edge <= distance <= width:
+                raster.put(x, y, shadow if x > cx+half*.42 else base)
+    if extension:
+        upper = hw*min(.48, width*.58)
+        lower = upper*(.22+variant*.09 if "pointed" in name else .60+variant*.06)
+        raster.polygon(((cx-upper,bottom-size*.028), (cx+upper,bottom-size*.028),
+                        (cx+lower,bottom+size*extension), (cx-lower,bottom+size*extension)), base)
+        raster.line(cx+lower*.65,bottom,cx+lower*.4,bottom+size*extension, max(1,size//150), shadow)
+    if moustache:
+        rx = mouth_width*moustache
+        for direction in (-1, 1):
+            raster.line(cx+direction*size*.003, mouth_y-size*.025,
+                        cx+direction*rx, mouth_y-size*(.022-variant*.0015),
+                        max(1, round(size*(.007+variant*.003))), base, inside)
+            if droop:
+                raster.line(cx+direction*rx,mouth_y-size*.022,
+                            cx+direction*rx*.93,mouth_y+size*droop,
+                            max(1, round(size*(.008+variant*.002))), base, inside)
+
+
+def _expanded_complexion(raster, record, fighter, size, cx, hw, cheek_y, skin, deep, inside):
+    px, py, sx, sy, count, radius = record
+    fid = str(getattr(fighter, "fighter_id", ""))
+    for dot in range(count):
+        dx = (trait_hash(fid, f"freckle_x_{dot}", 101)-50)/50
+        dy = (trait_hash(fid, f"freckle_y_{dot}", 101)-50)/50
+        raster.ellipse(cx+hw*(px+dx*sx), cheek_y+size*(py+dy*sy),
+                       max(.55,size*radius), max(.55,size*radius), _mix(skin,deep,.45), inside)
 
 
 def portrait_cache_key(fighter, size):

@@ -3,15 +3,18 @@
 from math import sin, sqrt
 
 from .styles import HAIR_STYLES
+from .expansion import NEW_HAIR, control_value
 
 
 def hair_mask(size, identity, cx, top, bottom, hw, eye_y, hairline):
     style = identity["hair_style"]
+    if style >= 48:
+        return expanded_hair_mask(size, identity, cx, top, bottom, hw, hairline)
     name, volume, side, texture_offset, texture = HAIR_STYLES[style]
     if style == 0:
         return set()
-    volume *= .80 + identity["hair_volume"] * .045
-    part = (identity["hair_part"] - 4.5) / 4.5
+    volume *= .80 + control_value(identity["hair_volume"]) * .045
+    part = (control_value(identity["hair_part"]) - 4.5) / 4.5
     cap_top = top - size * volume
     radius = hw * (1.02 + volume * 1.7)
     mask = set()
@@ -111,4 +114,87 @@ def hair_mask(size, identity, cx, top, bottom, hw, eye_y, hairline):
             y = cap_top + cap_depth * (1 - sqrt(max(0, 1 - u * u)))
             ellipse(cx + u * radius * .93, y + size * .012,
                     size * (.014 if texture == "coil" else .022), size * .020)
+    return mask
+
+
+def expanded_hair_mask(size, identity, cx, top, bottom, hw, hairline):
+    """Authored crown/fringe/side/tie profiles for the 100 appended styles."""
+    name, texture, volume, reach, width, fringe, tail, variant = NEW_HAIR[identity["hair_style"]-48]
+    volume *= .80 + control_value(identity["hair_volume"])*.045
+    part = (control_value(identity["hair_part"])-4.5)/4.5
+    crown_top = top-size*volume
+    crown_depth = max(size*.09, hairline-crown_top)
+    radius = hw*width
+    mask = set()
+
+    def span(y, left, right):
+        if 0 <= y < size:
+            mask.update((x, y) for x in range(max(0, round(left)), min(size, round(right)+1)))
+
+    def ellipse(xc, yc, rx, ry):
+        for y in range(max(0, round(yc-ry)), min(size, round(yc+ry)+1)):
+            extent = rx*sqrt(max(0, 1-((y-yc)/max(1, ry))**2))
+            span(y, xc-extent, xc+extent)
+
+    for y in range(max(0, round(crown_top)), min(size, round(hairline+size*.085))):
+        q = (y-crown_top)/crown_depth
+        extent = radius*sqrt(max(0, 1-(min(1, q)-1)**2))
+        crown_shift = hw*(.16 if variant == 1 else -.12 if variant == 3 else 0)*(1-min(1,q))
+        for x in range(max(0, round(cx+crown_shift-extent)), min(size, round(cx+crown_shift+extent)+1)):
+            u = (x-cx)/max(1, radius)
+            edge = hairline + size*(fringe + .017*u*part)
+            if texture in ("sweep", "tail"):
+                edge += size*(.032*u*(1 if variant % 2 else -1) - .012*abs(u-part*.3))
+            elif texture in ("bob", "shag"):
+                edge += size*(.019*(1-abs(u))+.006*sin(u*(17+variant*3)))
+            elif texture in ("coil", "curl"):
+                edge += size*.014*sin(u*(15+variant*3))
+            elif texture == "flat":
+                edge -= size*(.015+variant*.005)*abs(u)**2
+            elif texture == "spike":
+                edge -= size*.025*abs(u)
+            if variant == 2 and texture not in ("coil", "curl", "spike"):
+                edge += size*(.048*abs(u-part*.18)-.028)
+            if variant == 4 and texture in ("bob", "shag", "sweep"):
+                edge += size*.024*u
+            if y <= edge:
+                mask.add((x, y))
+
+    # Loose sides taper independently of the crown, never cover the face.
+    if not tail:
+        for direction in (-1, 1):
+            end = bottom + size*reach + direction*size*.006*(variant-2)
+            for y in range(round(hairline), min(size, round(end))):
+                t = (y-hairline)/max(1, end-hairline)
+                wave = .065*sin(t*(10+variant)+direction) if texture in ("curl", "shag") else 0
+                inner = hw*(.91+.09*t)
+                outer = max(inner, radius*(1+.13*t+wave))
+                outer = inner+(outer-inner)*min(1, (1-t)*7)
+                span(y, cx+direction*inner if direction > 0 else cx-outer,
+                     cx+outer if direction > 0 else cx-inner)
+    if tail in ("single", "double", "locks"):
+        directions = (-1, 1) if tail != "single" else ((-1,) if variant % 2 else (1,))
+        for direction in directions:
+            for lock in range(3+variant//2 if tail == "locks" else 1):
+                end = min(size*.94, bottom+size*(.09+variant*.020-lock*.018))
+                for y in range(round(top+size*.12), round(end)):
+                    t = (y-top)/max(1, end-top)
+                    x = cx+direction*hw*(1.02+lock*.18+.24*t)+size*.008*sin(t*(32 if tail == "double" else 12)+lock)
+                    rx = hw*((.065 if tail == "locks" else .18+variant*.012)*(1-.55*t))
+                    span(y, x-rx, x+rx)
+    if tail == "bun":
+        placements = ((1.02, .20, .34), (-.80, .025, .40), (0., -.015, .48),
+                      (0., -.038, .39), (.72, -.005, .53))
+        bx, by, br = placements[variant]
+        ellipse(cx+hw*bx, crown_top+size*by, hw*br, size*(.040+variant*.005))
+    if tail == "puffs":
+        for direction in (-1, 1):
+            ellipse(cx+direction*hw*(.83+variant*.045), top+size*(.025+variant*.007),
+                    hw*(.31+variant*.035), size*(.055+variant*.004))
+    if texture in ("curl", "coil", "shag"):
+        count = 9+variant*2
+        for tuft in range(count):
+            u = 2*tuft/(count-1)-1
+            y = crown_top+crown_depth*(1-sqrt(max(0, 1-u*u)))
+            ellipse(cx+u*radius*.94, y+size*.012, size*(.012 if texture == "coil" else .019), size*.018)
     return mask
