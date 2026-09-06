@@ -8,6 +8,11 @@ weights preserved. Existing complete saved portraits retain their appearance.
 Fine facial differences remain subtle at thumbnail size. See
 [portrait expansion counts, review and compatibility](docs/FIGHTER_PORTRAIT_EXPANSION.md).
 
+Named portrait corrections give Markell Holmes dark skin, an afro and a chinstrap,
+make Brett Akey bald, and author Conor McGregor's UFC July 2021 photo look.
+These display overrides also apply to existing saves without rewriting their vectors.
+See [the named portrait review](docs/FIGHTER_PORTRAIT_NAMED_CORRECTIONS.md).
+
 ## Version 3.0.9
 
 Version 3.0.9 hardens long-running careers: child-promotion ownership is protected, duplicate fighter names are safe in live fights and player events, event completion and save loading are transactional, universe validation is shared and read-only, and release builds use an isolated regression runner plus a pinned offline toolchain. It also caps only the global result/event feeds—never fighter records or career totals—so long saves remain responsive. See [CHANGELOG.md](CHANGELOG.md) for the complete release notes.

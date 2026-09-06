@@ -328,15 +328,22 @@ def _rasterize_portrait(fighter, size):
     # explicitly separate moustache.
     facial = identity["facial_hair"] if not female else 0
     beard_name = FACIAL_HAIR[facial]
+    # Optional authored colour; absence preserves historical pixels exactly.
+    # This extra override key is save-compatible and must remain stable.
     beard_base, beard_shadow = hair_base, hair_shadow
+    if "beard_colour" in identity:
+        beard_base, beard_shadow = map(_rgb, HAIR[identity["beard_colour"]])
+        if state["grey"]:
+            beard_base = _mix(beard_base, _rgb(HAIR[7][0]), state["grey"] * .72)
+            beard_shadow = _mix(beard_shadow, _rgb(HAIR[7][1]), state["grey"] * .72)
     if facial >= 16:
         _expanded_beard(raster, NEW_BEARDS[facial-16], size, cx, top, bottom, hw,
                         half_width, inside, mouth_y, mouth_width, skin, skin_shadow,
-                        hair_base, hair_shadow)
+                        beard_base, beard_shadow)
     elif beard_name != "none":
         if beard_name in ("stubble_light", "stubble_heavy"):
-            beard_base = _mix(skin_shadow, hair_base, .30 if beard_name == "stubble_light" else .58)
-            beard_shadow = _mix(skin_deep, hair_shadow, .30 if beard_name == "stubble_light" else .58)
+            beard_base = _mix(skin_shadow, beard_base, .30 if beard_name == "stubble_light" else .58)
+            beard_shadow = _mix(skin_deep, beard_shadow, .30 if beard_name == "stubble_light" else .58)
         for y in range(int(top + (bottom - top) * .735), int(bottom) + 1):
             half = half_width(y)
             for x in range(max(0, int(cx - half)), min(size, int(cx + half) + 1)):

@@ -8,6 +8,12 @@ hair-free. Existing saved vectors, old IDs and country colour-family probabiliti
 are preserved. Added v3 contact sheets and expansion/compatibility regressions.
 See [the portrait expansion review](docs/FIGHTER_PORTRAIT_EXPANSION.md).
 
+Unreleased named portrait corrections: Markell Holmes now has dark skin, an afro
+and a chinstrap; Brett Akey is bald. Conor McGregor has an authored short brown
+fade, warm-brown full beard and facial controls based on UFC's July 2021 photo.
+Optional `beard_colour` supports separate beard/scalp colours without changing
+other portraits. Existing saves receive the named display corrections too.
+
 ## Unreleased
 
 - Hardened generated-fighter style assignment. Every new entrant now finishes generation with a

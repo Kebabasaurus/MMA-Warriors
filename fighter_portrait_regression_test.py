@@ -220,7 +220,7 @@ assert len(rasterize_portrait(row,72).pixels) == 72*72
             before = run_audited_fight(control, a, b, seed, {"rounds": 3})
             for row in (a, b):
                 row.portrait_identity = derived_portrait_identity(row)
-                row.portrait_identity.update(skin=61, hair_style=97, facial_hair=65,
+                row.portrait_identity.update(skin=61, hair_style=97, facial_hair=65, beard_colour=14,
                                              nose=59, jaw=59, neck_width=59, iris_colour=59)
                 row.portrait_version = 3
             after = run_audited_fight(restyled, a, b, seed, {"rounds": 3})
@@ -401,6 +401,53 @@ assert len(rasterize_portrait(row,72).pixels) == 72*72
         self.assertEqual(15, vector["hair_style"])
         self.assertEqual(5, vector["hair_colour"])
 
+    def test_requested_named_appearances_override_old_saved_choices(self):
+        from fighter_portraits.identity import ensure_portrait_identity
+        requested = {
+            "Markell Holmes": {"skin":5, "hair_colour":0, "hair_style":13, "facial_hair":8},
+            "Brett Akey": {"hair_style":0},
+            "Conor McGregor": {"skin":0, "hair_colour":1, "hair_style":4,
+                               "facial_hair":11, "beard_colour":14, "iris_colour":4},
+        }
+        for name, expected in requested.items():
+            row = fighter(name=name, portrait_identity={"skin":0,"hair_style":25,
+                          "hair_colour":7,"facial_hair":0,"bg":9}, portrait_version=1)
+            saved = copy.deepcopy(row.__dict__)
+            effective = ensure_portrait_identity(row)
+            self.assertEqual(expected, {key:effective[key] for key in expected})
+            self.assertEqual(saved, row.__dict__)
+
+    def test_authored_beard_colour_only_changes_beard_pixels(self):
+        from fighter_portraits.render import portrait_cache_key, rasterize_portrait
+        for style in (1, 8, 11, 22):
+            row = fighter(portrait_identity={"hair_style":4,"hair_colour":1,
+                          "facial_hair":style,"skin":1,"complexion":0})
+            before = rasterize_portrait(row,104).pixels
+            cached_key = portrait_cache_key(row,104)
+            row.portrait_identity["beard_colour"] = 14
+            self.assertNotEqual(cached_key,portrait_cache_key(row,104))
+            after = rasterize_portrait(row,104).pixels
+            self.assertNotEqual(before,after)
+            self.assertEqual(before[:48*104],after[:48*104])
+            row.gender = "Female"
+            female = rasterize_portrait(row,104).pixels
+            row.portrait_identity["beard_colour"] = 6
+            self.assertEqual(female,rasterize_portrait(row,104).pixels)
+        row.gender = "Male"
+        row.portrait_identity["facial_hair"] = 0
+        clean = rasterize_portrait(row,104).pixels
+        row.portrait_identity.pop("beard_colour")
+        self.assertEqual(clean,rasterize_portrait(row,104).pixels)
+        # A matching authored colour must follow exactly the same greying as
+        # the default scalp-linked beard, including at full career age.
+        row.portrait_identity.update(hair_colour=14, facial_hair=11, dye="")
+        for age in (27,52):
+            row.age = age
+            linked = rasterize_portrait(row,104).pixels
+            row.portrait_identity["beard_colour"] = 14
+            self.assertEqual(linked,rasterize_portrait(row,104).pixels)
+            row.portrait_identity.pop("beard_colour")
+
     def test_top_fifty_rated_fighters_have_explicit_visual_direction(self):
         source = Path(__file__).with_name("Databases") / "Default Universe.universe.json"
         rows = json.loads(source.read_text(encoding="utf-8"))["sections"]["fighters"]["all_fighters"]
@@ -414,7 +461,8 @@ assert len(rasterize_portrait(row,72).pixels) == 72*72
         rows = json.loads(source.read_text(encoding="utf-8"))["sections"]["fighters"]["all_fighters"]
         manifest = [(row["fighter_id"], portrait_identity(SimpleNamespace(**row))) for row in rows]
         digest = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
-        self.assertEqual("25a9b92cd7341be258f507bf1f5037ca6600ccbcf2708c9139f929de8b124c7f", digest)
+        # Only the three reviewed named corrections change this v3 manifest.
+        self.assertEqual("56420bbb24ee64e3ed3cf28de30e000179fe5dc9f2ba99d2ffe4004af850faf0", digest)
 
     def test_save_round_trip_preserves_identity(self):
         from models import Fighter
@@ -430,7 +478,7 @@ assert len(rasterize_portrait(row,72).pixels) == 72*72
         # New highest IDs must survive the real serializer too, not just the
         # older, small integer vectors used by the historical save fixture.
         row.portrait_identity = {key:count-1 for key,count in FEATURE_COUNTS.items()}
-        row.portrait_identity.update(hair_style=97, dye=tuple(DYE)[-1])
+        row.portrait_identity.update(hair_style=97, dye=tuple(DYE)[-1], beard_colour=14)
         row.portrait_version = 3
         restored = load_model_row(serialize_fighter_model(row), Fighter, FIGHTER_SAVE_FIELDS, "expanded portrait regression")
         self.assertEqual(row.portrait_identity, restored.portrait_identity)

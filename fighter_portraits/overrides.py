@@ -5,7 +5,17 @@
 # photorealistic likeness.
 PORTRAIT_ICON_OVERRIDES = {
     "Sean O'Malley": {"skin": 0, "hair_style": 23, "dye": "rainbow", "facial_hair": 10, "jaw": 1, "chin": 1, "cheek": 2, "nose": 0, "bg": 4},
-    "Conor McGregor": {"skin": 1, "hair_style": 6, "facial_hair": 11, "jaw": 3, "bg": 2},
+    # UFC July 2021 profile photograph: short fade, dark brown scalp hair,
+    # warmer full beard. Pin facial controls instead of retaining random ones.
+    "Conor McGregor": {
+        "skin": 0, "hair_colour": 1, "beard_colour": 14, "hair_style": 4,
+        "facial_hair": 11, "dye": "", "brow": 7, "eye_shape": 0,
+        "eye_spacing": 4, "eye_size": 4, "iris_colour": 4, "nose": 6,
+        "nose_length": 5, "mouth": 1, "lip_fullness": 3, "jaw": 3,
+        "chin": 1, "cheek": 5, "face_length": 8, "ear": 2, "head_w": 52,
+        "neck_width": 7, "shoulder_width": 8, "hair_volume": 2,
+        "hair_part": 4, "complexion": 0, "feature_offset": 4, "bg": 2,
+    },
     "Jon Jones": {"skin": 5, "hair_style": 0, "facial_hair": 9, "jaw": 3, "bg": 0},
     "Israel Adesanya": {"skin": 5, "hair_style": 4, "facial_hair": 5, "jaw": 2, "bg": 9},
     "Khabib Nurmagomedov": {"skin": 2, "hair_style": 3, "facial_hair": 11, "jaw": 3, "bg": 5},
@@ -295,7 +305,7 @@ PORTRAIT_TOP_RATED_OVERRIDES = {
     "Anderson Silva": {"skin": 5, "hair_style": 0, "facial_hair": 1},
     "Arman Tsarukyan": {"skin": 2, "hair_style": 3, "facial_hair": 1},
     "Cain Velasquez": {"skin": 2, "hair_style": 0, "facial_hair": 9},
-    "Conor McGregor": {"skin": 1, "hair_style": 6, "facial_hair": 11},
+    "Conor McGregor": {"skin": 0, "hair_style": 4, "facial_hair": 11},
     "Demetrious Johnson ONE": {"skin": 4, "hair_style": 4, "facial_hair": 9},
     "Frankie Edgar FA": {"skin": 1, "hair_style": 3, "facial_hair": 1},
     "Frankie Edgar Legend": {"skin": 1, "hair_style": 3, "facial_hair": 1},
@@ -331,4 +341,15 @@ PORTRAIT_OVERRIDES = {name: dict(vector) for name, vector in
                       {**PORTRAIT_ICON_OVERRIDES, **PORTRAIT_PARTIAL_OVERRIDES}.items()}
 for _name, _vector in PORTRAIT_TOP_RATED_OVERRIDES.items():
     # A hair correction must not discard an icon's authored jaw/chin/cheeks.
+    PORTRAIT_OVERRIDES.setdefault(_name, {}).update(_vector)
+
+# User-authored appearance direction, kept separate from researched real icons.
+# These deltas apply after stored vectors without modifying the saved record.
+PORTRAIT_USER_OVERRIDES = {
+    "Markell Holmes": {"skin": 5, "hair_colour": 0, "hair_style": 13,
+                       "facial_hair": 8, "beard_colour": 0, "dye": "",
+                       "hair_volume": 7},
+    "Brett Akey": {"hair_style": 0, "dye": ""},
+}
+for _name, _vector in PORTRAIT_USER_OVERRIDES.items():
     PORTRAIT_OVERRIDES.setdefault(_name, {}).update(_vector)

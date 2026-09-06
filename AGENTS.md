@@ -17,6 +17,12 @@ v2 complete-vector pixel fingerprints. Generate/review v3 sheets with
 alike at 72px: never claim pixel uniqueness proves perceptual diversity or likeness.
 See `docs/FIGHTER_PORTRAIT_EXPANSION.md` for counts, compatibility and review scope.
 
+Optional authored `beard_colour` is a stable HAIR palette ID, not a new generated
+draw. Its absence must preserve historical beard pixels and follow scalp colour;
+its presence still greys with age and cannot bypass the female facial-hair guard.
+Keep named display corrections non-mutating for stored identities. Reference and
+review scope live in `docs/FIGHTER_PORTRAIT_NAMED_CORRECTIONS.md`.
+
 This guide is the working contract for coding agents that inspect, change, test, or package
 MMA Warriors. Read it before editing. It documents how agents should collaborate, where game
 state lives, and which product invariants must survive every change.
