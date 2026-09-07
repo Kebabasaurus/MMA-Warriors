@@ -482,16 +482,16 @@ assert len(rasterize_portrait(row,72).pixels) == 72*72
                         and key not in PORTRAIT_RANK_51_100_OVERRIDES.get(name, {})):
                     self.assertEqual(value, PORTRAIT_OVERRIDES[name][key], (name, key))
 
-    def test_paddy_pimblett_keeps_his_blond_bowl_cut_direction(self):
+    def test_paddy_pimblett_keeps_his_blond_loose_sweep_direction(self):
         vector = PORTRAIT_OVERRIDES["Paddy Pimblett"]
-        self.assertEqual(15, vector["hair_style"])
+        self.assertEqual(150, vector["hair_style"])
         self.assertEqual(5, vector["hair_colour"])
 
     def test_requested_named_appearances_override_old_saved_choices(self):
         from fighter_portraits.identity import ensure_portrait_identity
         requested = {
-            "Matthew Green": {"skin":0, "hair_style":3, "hair_colour":4, "facial_hair":0,
-                              "iris_colour":4, "dye":""},
+            "Matthew Green": {"skin":0, "hair_style":2, "hair_colour":4, "facial_hair":0,
+                              "iris_colour":4, "hair_volume":1, "hair_part":5, "dye":""},
             "Markell Holmes": {"skin":5, "hair_colour":0, "hair_style":13, "facial_hair":8},
             "Brett Akey": {"hair_style":0},
             "Conor McGregor": {"skin":0, "hair_colour":1, "hair_style":4,
@@ -507,8 +507,8 @@ assert len(rasterize_portrait(row,72).pixels) == 72*72
 
     def test_matthew_green_changes_only_user_requested_features(self):
         from fighter_portraits.identity import ensure_portrait_identity
-        expected = {"skin":0, "hair_style":3, "hair_colour":4, "facial_hair":0,
-                    "iris_colour":4, "dye":""}
+        expected = {"skin":0, "hair_style":2, "hair_colour":4, "facial_hair":0,
+                    "iris_colour":4, "hair_volume":1, "hair_part":5, "dye":""}
         self.assertEqual(expected, PORTRAIT_USER_OVERRIDES["Matthew Green"])
         row = fighter(name="Matthew Green", portrait_version=3)
         row.portrait_identity = dict(derived_portrait_identity(row), skin=9,
