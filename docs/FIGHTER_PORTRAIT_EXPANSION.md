@@ -52,6 +52,9 @@ of fighters looks unrelated, or that a real fighter is recognisable.
   restrained texture). This is derived cosmetic state from age 30, not a
   persisted identity field: complete saved vectors and the original young
   v3 raster fingerprints remain unchanged.
+- Portrait version 4 adds an append-only 240-design tattoo catalogue. New or
+  backfilled vectors receive a rare, fighter-ID-stable tattoo draw; hand-authored
+  real-fighter tattoos are limited to marks visible in the portrait crop.
 - New shades split each original colour family's probability between its old and
   appended shades. Country-family probability mass is exactly preserved; there is
   no uniformly weighted tail that washes out the country priors. These remain

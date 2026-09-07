@@ -10,7 +10,7 @@ from .styles import (
     FEMALE_HAIR_STYLES, FEATURE_COUNTS,
 )
 
-CURRENT_PORTRAIT_VERSION = 3
+CURRENT_PORTRAIT_VERSION = 4
 
 
 def trait_hash(fighter_id, trait, mod):

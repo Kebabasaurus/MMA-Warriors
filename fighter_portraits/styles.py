@@ -83,6 +83,18 @@ SCALP_FINISHES = (
     "sun_freckles", "crown_freckles", "temple_freckles", "scalp_moles",
     "razor_texture", "cross_grain", "short_wave_stubble", "uneven_stubble",
 )
+
+# Cosmetic ink identifiers.  Twenty-four motif families with ten bounded
+# variants each give generated tattoos broad variety without turning a raw ID
+# into a geometry measurement.  These are append-only presentation IDs.
+TATTOO_MOTIFS = (
+    "crown", "script", "animal", "geometric", "floral", "dagger",
+    "serpent", "wings", "star", "compass", "skull", "sun", "moon",
+    "laurel", "wave", "knot", "arrow", "eye", "flame", "web",
+    "leaf", "prayer_hands", "runes", "abstract",
+)
+TATTOO_DESIGNS = tuple(f"{motif}_{variant:02d}"
+                       for motif in TATTOO_MOTIFS for variant in range(10))
 DYE = {
     "rainbow": ("#e83b50", "#f08a24", "#f2d036", "#4ac062", "#368ee0", "#8b4fd0"),
     "sunset": ("#f03c78", "#f57a2e", "#f7c93a"), "ecuador": ("#f7c92e", "#2e54c8", "#d82b2b"),

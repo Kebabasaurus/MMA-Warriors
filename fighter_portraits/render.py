@@ -11,7 +11,8 @@ from math import sqrt, sin, cos
 from .identity import portrait_identity, trait_hash
 from .state import portrait_state
 from .styles import BACKGROUND, DYE, FACIAL_HAIR, HAIR, HAIR_STYLES, SKIN, IRIS_COLOURS, portrait_gender
-from .styles import SCALP_FINISHES
+from .styles import SCALP_FINISHES, TATTOO_DESIGNS
+from .tattoos import named_tattoo
 from .hair import hair_mask as build_hair_mask
 from .expansion import feature_value, control_value, NEW_BEARDS, NEW_COMPLEXIONS
 
@@ -313,6 +314,15 @@ def _rasterize_portrait(fighter, size):
     if style_id in (0, 1) and state["scalp_finish"] is not None:
         _draw_scalp_finish(raster, fighter, size, identity, state["scalp_finish"], cx,
                            top, hw, hairline, skin, skin_shadow, skin_deep, hair_base, inside)
+    tattoo = named_tattoo(getattr(fighter, "name", ""))
+    if tattoo is None and state.get("tattoo_design") is not None:
+        tattoo = (state["tattoo_design"], state.get("tattoo_placement", "neck"))
+    if tattoo is not None:
+        design, placement = tattoo
+        if placement == "temple" and style_id not in (0, 1):
+            placement = "neck"
+        _draw_tattoo(raster, size, design, placement, cx, top, bottom, hw, shoulder,
+                     skin, skin_shadow, skin_deep, inside)
     if texture in ("braid", "dread", "twist", "twin_braids", "braid_tail"):
         step = max(3, round(hw * (.20 if texture == "braid" else .27)))
         for x in range(round(cx - hw), round(cx + hw) + 1, step):
@@ -572,6 +582,73 @@ def _draw_scalp_finish(raster, fighter, size, identity, finish, cx, top, hw, hai
             raster.line(cx - hw * (.52 - band * .025), y,
                         cx + hw * (.44 - band * .018), y + size * .010,
                         max(1, size // 250), _mix(shadow, hair, .22), clip)
+
+
+def _draw_tattoo(raster, size, design, placement, cx, top, bottom, hw, shoulder,
+                 skin, shadow, deep, inside):
+    """Draw one small ink mark from the stable 240-design cosmetic catalogue."""
+    family, variant = divmod(int(design) % len(TATTOO_DESIGNS), 10)
+    scale = size * (.010 + variant * .00055)
+    ink = _mix(deep, (20, 18, 24), .72)
+    if placement == "neck":
+        x, y = cx + (variant % 3 - 1) * size * .010, bottom + size * .062
+        clip = lambda px, py: abs(px - cx) <= hw * .49 and bottom - size * .008 <= py <= size * .84
+    elif placement == "shoulder":
+        direction = -1 if variant % 2 else 1
+        x, y = cx + direction * shoulder * .56, size * .835
+        clip = lambda px, py: size * .76 <= py < size and abs(px - cx) < shoulder * .96
+    else:
+        direction = -1 if variant % 2 else 1
+        x, y = cx + direction * hw * .58, top + (bottom - top) * .31
+        clip = inside
+    def line(dx0, dy0, dx1, dy1, width=1):
+        raster.line(x + dx0 * scale, y + dy0 * scale, x + dx1 * scale, y + dy1 * scale,
+                    max(width, size // 260), ink, clip)
+    def dot(dx, dy, radius=.65):
+        raster.ellipse(x + dx * scale, y + dy * scale,
+                       max(.55, scale * radius), max(.55, scale * radius), ink, clip)
+    if family == 21:  # prayer_hands
+        line(-2.1, 2.4, -.45, -2.4)
+        line(.45, -2.4, 2.1, 2.4)
+        line(-.45, -2.4, .45, -2.4)
+        for finger in range(3):
+            line(-1.45 + finger * .44, .8, -.70 + finger * .30, -1.25)
+            line(1.45 - finger * .44, .8, .70 - finger * .30, -1.25)
+        return
+    shape = family % 6
+    if shape == 0:  # crown / star / flame / abstract spikes
+        for point in range(3 + variant % 3):
+            offset = point - (2 + variant % 3) / 2
+            line(offset * 1.7, 1.4, offset * 1.5, -1.1 - (point % 2) * .6)
+            line(offset * 1.5, -1.1 - (point % 2) * .6, offset * 1.15 + .8, .8)
+        line(-3.0, 1.4, 3.0, 1.4)
+    elif shape == 1:  # script, wave, laurel and fine ornamental lines
+        for row in range(2 + variant % 3):
+            line(-2.8, row * 1.05 - 1.0, -1.2, row * 1.05 - 1.45)
+            line(-1.2, row * 1.05 - 1.45, .55, row * 1.05 - .65)
+            line(.55, row * 1.05 - .65, 2.8, row * 1.05 - 1.05)
+    elif shape == 2:  # animal / serpent / dagger / arrow contours
+        line(0, -3.0, -1.6, -.4)
+        line(-1.6, -.4, .2, 2.8)
+        line(.2, 2.8, 1.8, -.5)
+        line(1.8, -.5, 0, -3.0)
+        dot(0, -.4, .38 + (variant % 3) * .12)
+    elif shape == 3:  # geometric / compass / orbital / knot
+        for direction in (-1, 1):
+            line(0, -2.7, direction * 2.5, 0)
+            line(direction * 2.5, 0, 0, 2.7)
+            line(0, 2.7, -direction * 2.5, 0)
+        dot(0, 0, .44)
+    elif shape == 4:  # floral / sun / moon / eye
+        for petal in range(4 + variant % 4):
+            direction = -1 if petal % 2 else 1
+            line(0, 0, direction * (1.1 + petal * .34), -1.6 + (petal % 3) * 1.15)
+        raster.ellipse(x, y, max(.55, scale * .72), max(.55, scale * .40), ink, clip)
+    else:  # web / runes / leaf / compact linework
+        for row in range(3 + variant % 2):
+            line(-2.5 + row * .35, -2.0 + row * 1.6, 2.4 - row * .25, -1.35 + row * 1.6)
+        line(-2.3, -2.0, 2.1, 2.0)
+        line(2.3, -2.0, -2.1, 2.0)
 
 
 def _expanded_hair_texture(raster, size, cx, top, hw, hairline, volume, texture,
