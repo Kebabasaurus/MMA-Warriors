@@ -14,8 +14,8 @@ These display overrides also apply to existing saves without rewriting their vec
 See [the named portrait review](docs/FIGHTER_PORTRAIT_NAMED_CORRECTIONS.md).
 
 The next ranked portrait pass authors 49 entries at database positions 51–100
-from reviewed UFC/PFL/ONE photos; Matthew Green now has user-directed short dirty-
-blond hair, blue eyes and no facial hair, completing the 50-entry cohort. Three
+from reviewed UFC/PFL/ONE photos; Matthew Green now has user-directed pale skin,
+short dirty-blond hair, blue eyes and no facial hair, completing the 50-entry cohort. Three
 authored-only hair shapes improve mullets and loose waves without changing
 generated choices. See [sources and likeness limits](docs/FIGHTER_PORTRAIT_TOP_100_REVIEW.md).
 

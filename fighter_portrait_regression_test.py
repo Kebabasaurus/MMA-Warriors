@@ -490,7 +490,7 @@ assert len(rasterize_portrait(row,72).pixels) == 72*72
     def test_requested_named_appearances_override_old_saved_choices(self):
         from fighter_portraits.identity import ensure_portrait_identity
         requested = {
-            "Matthew Green": {"hair_style":3, "hair_colour":4, "facial_hair":0,
+            "Matthew Green": {"skin":0, "hair_style":3, "hair_colour":4, "facial_hair":0,
                               "iris_colour":4, "dye":""},
             "Markell Holmes": {"skin":5, "hair_colour":0, "hair_style":13, "facial_hair":8},
             "Brett Akey": {"hair_style":0},
@@ -507,7 +507,7 @@ assert len(rasterize_portrait(row,72).pixels) == 72*72
 
     def test_matthew_green_changes_only_user_requested_features(self):
         from fighter_portraits.identity import ensure_portrait_identity
-        expected = {"hair_style":3, "hair_colour":4, "facial_hair":0,
+        expected = {"skin":0, "hair_style":3, "hair_colour":4, "facial_hair":0,
                     "iris_colour":4, "dye":""}
         self.assertEqual(expected, PORTRAIT_USER_OVERRIDES["Matthew Green"])
         row = fighter(name="Matthew Green", portrait_version=3)
@@ -564,7 +564,7 @@ assert len(rasterize_portrait(row,72).pixels) == 72*72
         manifest = [(row["fighter_id"], portrait_identity(SimpleNamespace(**row))) for row in rows]
         digest = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
         # 49 photo-reviewed records plus Matthew Green's user-directed correction.
-        self.assertEqual("ed92870c48a8a6ff53673e1af8029e4571a8127cda7e36d57856886f5b689c3e", digest)
+        self.assertEqual("1164c9e745c325edc439d39d71bfe8d5ad29e3df020c7c2e175e1c5a7fb818a0", digest)
         other_fighters = [entry for row, entry in zip(rows, manifest) if row["name"] != "Matthew Green"]
         other_digest = hashlib.sha256(json.dumps(other_fighters, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
         # Captured at 485a33c: this follow-up must change only Matthew Green.

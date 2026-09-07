@@ -6,9 +6,9 @@ ascending, positions 51–100. It is not a current real-world ranking.
 
 49 database records receive photo-reviewed cosmetic controls: 45 distinct people
 and four additional Legend records. Matthew Green (position 51) subsequently
-received user-directed short dirty-blond hair, blue eyes and no facial hair.
-All 50 entries now have authored direction. His skin tone and other facial traits
-are unchanged; this is a user specification, not a verified photographic likeness.
+received user-directed pale skin, short dirty-blond hair, blue eyes and no facial
+hair. All 50 entries now have authored direction. His other facial traits are
+unchanged; this is a user specification, not a verified photographic likeness.
 
 ## Scope and compatibility
 
@@ -143,12 +143,12 @@ portable saves or packaged executables were edited for this batch.
 ## Matthew Green follow-up
 
 The user's direction is stored separately in `PORTRAIT_USER_OVERRIDES`:
-`hair_style=3` (short crop), `hair_colour=4` (dark/dirty blond),
-`facial_hair=0`, `iris_colour=4` (blue), `dye=""`. Clearing dye prevents a saved
-artificial colour from hiding the requested natural hair colour. Skin tone, face
-shape, other traits and the stored vector remain unchanged. The 50-entry sheets
+`skin=0` (pale/light), `hair_style=3` (short crop), `hair_colour=4` (dark/dirty
+blond), `facial_hair=0`, `iris_colour=4` (blue), `dye=""`. Clearing dye prevents
+a saved artificial colour from hiding the requested natural hair colour. Face shape,
+other traits and the stored vector remain unchanged. The 50-entry sheets
 and labelled gallery were refreshed; `matthew_green.png` is the individual preview.
 This follow-up uses focused portrait/profile verification, not a rerun of the
 full shipping suite recorded above. No executable was rebuilt.
-The follow-up passed all 46 portrait tests and all nine profile tests. A retained
-pre-change digest confirms that the other 1,533 shipped identities are unchanged.
+The initial follow-up passed all 46 portrait tests and all nine profile tests. The
+pale-skin correction refreshes the same visual artifacts and regression digests.
