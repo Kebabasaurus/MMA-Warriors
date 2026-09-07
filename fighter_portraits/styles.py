@@ -125,6 +125,12 @@ IRIS_COLOURS = ("#392820", "#65432d", "#8a6640", "#68764b", "#45667c",
 from .expansion import NEW_HAIR_STYLES, NEW_BEARDS, extend_ramps, feature_names, tint
 
 HAIR_STYLES += NEW_HAIR_STYLES
+AUTHORED_HAIR_STYLES = (
+    ("authored_wavy_side_part", .045, 1, 0, "sweep"),
+    ("authored_compact_mullet", .035, 1, 0, "sweep"),
+    ("authored_shoulder_sweep", .045, 2, 0, "sweep"),
+)
+HAIR_STYLES += AUTHORED_HAIR_STYLES
 MALE_HAIR_STYLES = tuple(range(98))
 FEMALE_HAIR_STYLES += tuple(range(98, 148))
 FACIAL_HAIR += tuple(record[0] for record in NEW_BEARDS)
@@ -142,6 +148,7 @@ for _name, _colours in _DYE_BASE:
                              ("pastel", (28, 28, 28)), ("muted", (-22, -22, -22)),
                              ("rose", (15, -18, 8))):
         DYE[f"{_name}_{_suffix}"] = tuple(tint(c, _offset) for c in _colours)
+DYE["burgundy"] = ("#60283b",)
 
 BROW_STYLES += feature_names("brow")
 EYE_SHAPES += feature_names("eye_shape")
@@ -155,11 +162,14 @@ CHEEK_SHAPES += feature_names("cheek")
 FACE_LENGTHS += feature_names("face_length")
 EAR_SHAPES += feature_names("ear")
 FEATURE_COUNTS = dict(zip(IDENTITY_TRAITS, (
-    62, 62, 148, 66, 61, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60,
+    62, 62, 151, 66, 62, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60,
     60, 150, 62, 60, 60, 60, 60, 60, 60, 60, 60, 60)))
 
 
 def portrait_gender(fighter):
     """Normalise imported labels without changing fighter or simulation data."""
     value = str(getattr(fighter, "gender", "") or "").strip().casefold()
+    from .ranked_51_100 import FEMALE_PRESENTATION_NAMES
+    if str(getattr(fighter, "name", "") or "") in FEMALE_PRESENTATION_NAMES:
+        return "Female"
     return "Female" if value in {"female", "f", "woman", "women"} else "Male" if value in {"male", "m", "man", "men"} else "default"

@@ -14,6 +14,13 @@ fade, warm-brown full beard and facial controls based on UFC's July 2021 photo.
 Optional `beard_colour` supports separate beard/scalp colours without changing
 other portraits. Existing saves receive the named display corrections too.
 
+Unreleased ranked portrait review: authored 49 entries at rating positions 51–100
+from 45 reviewed real-fighter references, including four Legend copies. Matthew
+Green remains unresolved. Added three authored-only hairstyles and burgundy dye;
+generated pools and saved vectors are unchanged. Cristiane Justino receives female
+portrait presentation without changing her mislabelled database gender or division.
+See [reference ledger and limitations](docs/FIGHTER_PORTRAIT_TOP_100_REVIEW.md).
+
 ## Unreleased
 
 - Hardened generated-fighter style assignment. Every new entrant now finishes generation with a

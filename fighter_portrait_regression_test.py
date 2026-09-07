@@ -21,6 +21,7 @@ from fighter_portraits.overrides import (
     PORTRAIT_ICON_OVERRIDES, PORTRAIT_OVERRIDES, PORTRAIT_PARTIAL_OVERRIDES,
     PORTRAIT_TOP_RATED_OVERRIDES,
 )
+from fighter_portraits.ranked_51_100 import PORTRAIT_RANK_51_100_OVERRIDES
 
 
 def fighter(fighter_id="FTR-portrait", **changes):
@@ -38,7 +39,7 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
 
     def test_vector_contract_and_style_reachability(self):
         self.assertEqual(tuple(IDENTITY_TRAITS), identity_keys_are_stable())
-        self.assertEqual(148, len(HAIR_STYLES))
+        self.assertEqual(151, len(HAIR_STYLES))
         self.assertEqual(66, len(FACIAL_HAIR))
         hair = {derived_portrait_identity(fighter(f"FTR-hair-{i}"))["hair_style"] for i in range(5000)}
         beard = {derived_portrait_identity(fighter(f"FTR-beard-{i}"))["facial_hair"] for i in range(5000)}
@@ -59,8 +60,8 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
         for category in (SKIN, HAIR, BACKGROUND):
             self.assertEqual(62, len(category))
             self.assertEqual(len(category), len(set(category)))
-        self.assertEqual(60, len(DYE))
-        self.assertEqual(60, len(set(DYE.values())))
+        self.assertEqual(61, len(DYE))
+        self.assertEqual(61, len(set(DYE.values())))
         self.assertEqual(60, len(set(IRIS_COLOURS)))
         for category in (BROW_STYLES, EYE_SHAPES, EYE_SPACINGS, EYE_SIZES,
                          NOSE_SHAPES, MOUTH_SHAPES, JAW_SHAPES, CHIN_SHAPES,
@@ -97,6 +98,89 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
         self.assertEqual(50, len(set(values)))
         self.assertTrue(all(0 < value < 9 for value in values))
         self.assertTrue(all(0 < feature_value(tuple(range(100)), i) < 99 for i in range(100, 150)))
+
+    def test_v3_catalogue_prefix_and_authored_only_extensions(self):
+        payload = {"HAIR_STYLES": HAIR_STYLES[:148], "FACIAL_HAIR": FACIAL_HAIR,
+                   "DYE": dict(tuple(DYE.items())[:60])}
+        digest = hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        self.assertEqual("bfdf864f4094a2b523f7ba299d311c002f72267373e2cf5234f7b1148eb2bd16", digest)
+        self.assertEqual(("authored_wavy_side_part", "authored_compact_mullet", "authored_shoulder_sweep"),
+                         tuple(row[0] for row in HAIR_STYLES[148:]))
+        for weights in GENDER_HAIR_STYLE_WEIGHTS.values():
+            self.assertEqual((0, 0, 0), weights[148:])
+        self.assertEqual("burgundy", tuple(DYE)[-1])
+
+    def test_all_original_v3_hair_pixels_are_unchanged(self):
+        from fighter_portraits.render import rasterize_portrait
+        row = fighter("FTR-historical-hair", name="Historical Hair", birth_country="UK")
+        base = derived_portrait_identity(row)
+        digest = hashlib.sha256()
+        for style in range(148):
+            row.portrait_identity = dict(base, hair_style=style, facial_hair=0, skin=1, hair_colour=2)
+            digest.update(bytes(c for pixel in rasterize_portrait(row, 72).pixels for c in pixel))
+        # Captured with c4e4045's render.py AND hair.py, not this new renderer.
+        self.assertEqual("f6fb139f71d080db1d86ee1f5152b4708b26e1f3e5ed2251f866ebdb0b5a90e6", digest.hexdigest())
+
+    def test_reviewed_ranked_contact_sheet_pixels_at_all_ui_sizes(self):
+        import struct
+        import zlib
+        from fighter_portraits.render import rasterize_portrait
+        root = Path(__file__).parent
+        rows = json.loads((root / "Databases" / "Default Universe.universe.json").read_text(encoding="utf-8"))["sections"]["fighters"]["all_fighters"]
+        cohort = sorted(rows, key=lambda row: (-int(row.get("rating", 0) or 0), row["name"]))[50:100]
+        for size in (72, 98, 104, 180):
+            png = (root / "analysis" / "portraits" / "top_51_100_2026_09" / f"portraits_{size}.png").read_bytes()
+            self.assertEqual(b"\x89PNG\r\n\x1a\n", png[:8])
+            self.assertEqual((size*10, size*5), struct.unpack(">II", png[16:24]))
+            offset, compressed = 8, bytearray()
+            while offset < len(png):
+                length = struct.unpack(">I", png[offset:offset+4])[0]
+                if png[offset+4:offset+8] == b"IDAT":
+                    compressed.extend(png[offset+8:offset+8+length])
+                offset += length + 12
+            raw = zlib.decompress(compressed)
+            stride = size*10*3 + 1
+            self.assertEqual(stride*size*5, len(raw))
+            self.assertTrue(all(raw[y*stride] == 0 for y in range(size*5)))
+            for index, record in enumerate(cohort):
+                row = SimpleNamespace(**record)
+                before = copy.deepcopy(row.__dict__)
+                pixels = rasterize_portrait(row, size).pixels
+                ox, oy = (index % 10)*size, (index // 10)*size
+                expected = b"".join(raw[(oy+y)*stride+1+ox*3:(oy+y)*stride+1+(ox+size)*3] for y in range(size))
+                self.assertEqual(expected, bytes(c for pixel in pixels for c in pixel), (record["name"], size))
+                self.assertEqual(before, row.__dict__)
+
+    def test_labelled_review_and_offset_match_the_ranked_cohort(self):
+        import base64
+        from html.parser import HTMLParser
+        from analysis.portraits.generate_portrait_contact_sheet import png_bytes
+        from fighter_portraits.render import rasterize_portrait
+
+        class ReviewParser(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.images = []
+
+            def handle_starttag(self, tag, attrs):
+                if tag == "img":
+                    self.images.append(dict(attrs))
+
+        root = Path(__file__).parent
+        directory = root / "analysis" / "portraits" / "top_51_100_2026_09"
+        manifest = json.loads((directory / "identities.json").read_text(encoding="utf-8"))
+        parser = ReviewParser()
+        parser.feed((directory / "review.html").read_text(encoding="utf-8"))
+        self.assertEqual([row["name"] for row in manifest], [image["alt"] for image in parser.images])
+        self.assertEqual(50, len(parser.images))
+        self.assertEqual("Matthew Green", parser.images[0]["alt"])
+        self.assertEqual("Arnold Allen", parser.images[-1]["alt"])
+        rows = json.loads((root / "Databases" / "Default Universe.universe.json").read_text(encoding="utf-8"))["sections"]["fighters"]["all_fighters"]
+        by_name = {row["name"]: row for row in rows}
+        for item in parser.images:
+            self.assertTrue(item["src"].startswith("data:image/png;base64,"))
+            expected = png_bytes(180, 180, rasterize_portrait(SimpleNamespace(**by_name[item["alt"]]), 180).pixels)
+            self.assertEqual(expected, base64.b64decode(item["src"].split(",", 1)[1]))
 
     def test_expanded_features_render_for_both_genders_at_all_ui_sizes(self):
         from fighter_portraits.render import rasterize_portrait
@@ -393,7 +477,8 @@ assert len(rasterize_portrait(row,72).pixels) == 72*72
         self.assertEqual(0, PORTRAIT_OVERRIDES["Jon Jones"]["hair_style"])
         for name, vector in PORTRAIT_ICON_OVERRIDES.items():
             for key, value in vector.items():
-                if key not in PORTRAIT_TOP_RATED_OVERRIDES.get(name, {}):
+                if (key not in PORTRAIT_TOP_RATED_OVERRIDES.get(name, {})
+                        and key not in PORTRAIT_RANK_51_100_OVERRIDES.get(name, {})):
                     self.assertEqual(value, PORTRAIT_OVERRIDES[name][key], (name, key))
 
     def test_paddy_pimblett_keeps_his_blond_bowl_cut_direction(self):
@@ -461,8 +546,55 @@ assert len(rasterize_portrait(row,72).pixels) == 72*72
         rows = json.loads(source.read_text(encoding="utf-8"))["sections"]["fighters"]["all_fighters"]
         manifest = [(row["fighter_id"], portrait_identity(SimpleNamespace(**row))) for row in rows]
         digest = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
-        # Only the three reviewed named corrections change this v3 manifest.
-        self.assertEqual("56420bbb24ee64e3ed3cf28de30e000179fe5dc9f2ba99d2ffe4004af850faf0", digest)
+        # The next 49 photo-reviewed records intentionally change this manifest.
+        self.assertEqual("5bb93f7be0a4c7bbcb10eb29f4c2a8c61350204593d4bc2fb6ef0c37e6d2997a", digest)
+        outside = [entry for row, entry in zip(rows, manifest)
+                   if row["name"] not in PORTRAIT_RANK_51_100_OVERRIDES]
+        outside_digest = hashlib.sha256(json.dumps(outside, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        # Captured using the pre-batch c4e4045 override table: no other identity changes.
+        self.assertEqual("c8baea306e96831773be7d1f530c07a59bb6053382813670cdcd4a2240544a65", outside_digest)
+
+    def test_next_fifty_ranked_coverage_and_nonmutating_saved_corrections(self):
+        from fighter_portraits.identity import ensure_portrait_identity
+        source = Path(__file__).with_name("Databases") / "Default Universe.universe.json"
+        rows = json.loads(source.read_text(encoding="utf-8"))["sections"]["fighters"]["all_fighters"]
+        cohort = sorted(rows, key=lambda row: (-int(row.get("rating", 0) or 0), row["name"]))[50:100]
+        self.assertEqual({row["name"] for row in cohort} - {"Matthew Green"}, set(PORTRAIT_RANK_51_100_OVERRIDES))
+        self.assertEqual(49, len(PORTRAIT_RANK_51_100_OVERRIDES))
+        for name, authored in PORTRAIT_RANK_51_100_OVERRIDES.items():
+            self.assertEqual(set(IDENTITY_TRAITS) - {"bg"} | {"beard_colour"}, set(authored))
+            for key, value in authored.items():
+                if key == "dye":
+                    self.assertTrue(value == "" or value in DYE)
+                else:
+                    self.assertTrue(0 <= value < (len(HAIR) if key == "beard_colour" else FEATURE_COUNTS[key]), (name, key))
+            row = fighter(name=name, portrait_version=2)
+            row.portrait_identity = dict(derived_portrait_identity(row), hair_style=25, facial_hair=65, bg=9)
+            before = copy.deepcopy(row.__dict__)
+            effective = ensure_portrait_identity(row)
+            self.assertEqual(authored, {key: effective[key] for key in authored})
+            self.assertEqual(PORTRAIT_OVERRIDES[name].get("bg", 9), effective["bg"])
+            self.assertEqual(before, row.__dict__)
+
+    def test_cyborg_display_gender_never_changes_database_or_bypasses_beard_guard(self):
+        from unittest.mock import patch
+        from fighter_portraits.render import rasterize_portrait, portrait_cache_key
+        from fighter_portraits.styles import portrait_gender
+        row = fighter(name="Cristiane Justino", gender="Male", popularity=51, striking=82,
+                      portrait_identity={"facial_hair":65, "hair_style":1})
+        before = copy.deepcopy(row.__dict__)
+        self.assertEqual("Female", portrait_gender(row))
+        self.assertEqual(0, portrait_identity(row)["facial_hair"])
+        for size in (72, 98, 104, 180):
+            pixels, key = rasterize_portrait(row, size).pixels, portrait_cache_key(row, size)
+            row.gender = "Female"
+            self.assertEqual(pixels, rasterize_portrait(row, size).pixels)
+            self.assertEqual(key, portrait_cache_key(row, size))
+            row.gender = "Male"
+            identity = dict(portrait_identity(row), facial_hair=65)
+            with patch("fighter_portraits.render.portrait_identity", return_value=identity):
+                self.assertEqual(pixels, rasterize_portrait(row, size).pixels)
+        self.assertEqual(before, row.__dict__)
 
     def test_save_round_trip_preserves_identity(self):
         from models import Fighter

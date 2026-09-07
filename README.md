@@ -13,6 +13,11 @@ make Brett Akey bald, and author Conor McGregor's UFC July 2021 photo look.
 These display overrides also apply to existing saves without rewriting their vectors.
 See [the named portrait review](docs/FIGHTER_PORTRAIT_NAMED_CORRECTIONS.md).
 
+The next ranked portrait pass authors 49 entries at database positions 51–100
+from reviewed UFC/PFL/ONE photos; Matthew Green still needs a reference. Three
+authored-only hair shapes improve mullets and loose waves without changing
+generated choices. See [sources and likeness limits](docs/FIGHTER_PORTRAIT_TOP_100_REVIEW.md).
+
 ## Version 3.0.9
 
 Version 3.0.9 hardens long-running careers: child-promotion ownership is protected, duplicate fighter names are safe in live fights and player events, event completion and save loading are transactional, universe validation is shared and read-only, and release builds use an isolated regression runner plus a pinned offline toolchain. It also caps only the global result/event feeds—never fighter records or career totals—so long saves remain responsive. See [CHANGELOG.md](CHANGELOG.md) for the complete release notes.

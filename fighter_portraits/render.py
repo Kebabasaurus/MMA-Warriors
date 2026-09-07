@@ -226,7 +226,17 @@ def _rasterize_portrait(fighter, size):
     hair_clip = lambda x, y: (x, y) in hair_mask
     # Texture pass: each class has a different directional cue at thumbnail
     # size, so styles do not collapse into the same dark cap.
-    if style_id >= 48:
+    if style_id >= 148:
+        # Loose directional strands, not coil dots or straight curtain grain.
+        grain = _mix(dye_colours[0], INK, .30) if dye_colours else _mix(hair_base, hair_shadow, .65)
+        part = (control_value(identity["hair_part"])-4.5)/4.5
+        for strand in range(9):
+            x0 = cx-hw*1.13+strand*hw*.28
+            points = [(x0 + size*.018*sin(t*8+strand*.45) + part*size*.08*(1-t),
+                       top-size*volume+t*size*.72) for t in (i/30 for i in range(31))]
+            for a, b in zip(points, points[1:]):
+                raster.line(*a, *b, max(1, size//220), grain, hair_clip)
+    elif style_id >= 48:
         _expanded_hair_texture(raster, size, cx, top, hw, hairline, volume, texture,
                                style_id, hair_base, hair_shadow, hair_clip)
     elif texture in ("curl", "coil", "puff", "shag", "loc_knot"):

@@ -8,6 +8,8 @@ from .expansion import NEW_HAIR, control_value
 
 def hair_mask(size, identity, cx, top, bottom, hw, eye_y, hairline):
     style = identity["hair_style"]
+    if style >= 148:
+        return authored_hair_mask(size, identity, cx, top, bottom, hw, hairline)
     if style >= 48:
         return expanded_hair_mask(size, identity, cx, top, bottom, hw, hairline)
     name, volume, side, texture_offset, texture = HAIR_STYLES[style]
@@ -114,6 +116,46 @@ def hair_mask(size, identity, cx, top, bottom, hw, eye_y, hairline):
             y = cap_top + cap_depth * (1 - sqrt(max(0, 1 - u * u)))
             ellipse(cx + u * radius * .93, y + size * .012,
                     size * (.014 if texture == "coil" else .022), size * .020)
+    return mask
+
+
+def authored_hair_mask(size, identity, cx, top, bottom, hw, hairline):
+    """Loose waves and a close-sided mullet, without changing shipped shapes.
+
+    The mullet's narrow nape locks start below the temples; they never form
+    full-height curtains beside the eyes. All controls remain bounded.
+    """
+    style = identity["hair_style"]
+    volume = control_value(identity["hair_volume"])
+    part = (control_value(identity["hair_part"]) - 4.5) / 4.5
+    mullet = style == 149
+    shoulder = style == 150
+    radius = hw * (1.03 if mullet else 1.10)
+    crown_top = top - size * (.018 + volume * .004)
+    depth = max(size * .08, hairline - crown_top)
+    mask = set()
+    for y in range(max(0, round(crown_top)), min(size, round(hairline + size * .07))):
+        t = (y - crown_top) / depth
+        width = radius * sqrt(max(0, 1 - (min(1, t) - 1) ** 2))
+        for x in range(max(0, round(cx - width)), min(size, round(cx + width) + 1)):
+            u = (x - cx) / max(1, radius)
+            edge = hairline + size * (.017 + .033 * u * part + .006 * sin(u * 9))
+            if y <= edge:
+                mask.add((x, y))
+    start = hairline + size * .125 if mullet else hairline - size * .025
+    end = bottom + size * (.14 if shoulder else .055 if mullet else .01)
+    for direction in (-1, 1):
+        for y in range(max(0, round(start)), min(size, round(end))):
+            t = (y - start) / max(1, end - start)
+            wave = .035 * sin(t * 11 + direction)
+            outer = hw * ((1.025 + .025 * t) if mullet else (1.11 + .14 * t + wave))
+            inner = hw * ((.97 - .05 * t) if mullet else (.90 + .10 * t))
+            if t > .8:
+                inner += (outer - inner) * (t - .8) / .2
+            for d in range(round(inner), round(outer) + 1):
+                x = round(cx + direction * d)
+                if 0 <= x < size:
+                    mask.add((x, y))
     return mask
 
 

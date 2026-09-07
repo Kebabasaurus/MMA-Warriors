@@ -43,6 +43,9 @@ GENDER_HAIR_STYLE_WEIGHTS["Female"] = tuple(
 GENDER_HAIR_STYLE_WEIGHTS["Male"] += (6,) * 50 + (0,) * 50
 GENDER_HAIR_STYLE_WEIGHTS["Female"] += (0,) * 50 + (14,) * 50
 GENDER_HAIR_STYLE_WEIGHTS["default"] += (1,) * 100
+# IDs 148--150 are authored-only: zero mass preserves every generated draw.
+for _gender in GENDER_HAIR_STYLE_WEIGHTS:
+    GENDER_HAIR_STYLE_WEIGHTS[_gender] += (0,) * 3
 
 # Only resolution aliases; values retain the broad market distributions above.
 COUNTRY_ALIASES = {
