@@ -348,6 +348,11 @@ from .ranked_51_100 import PORTRAIT_RANK_51_100_OVERRIDES
 for _name, _vector in PORTRAIT_RANK_51_100_OVERRIDES.items():
     PORTRAIT_OVERRIDES.setdefault(_name, {}).update(_vector)
 
+from .ranked_101_200 import PORTRAIT_RANK_101_200_OVERRIDES
+
+for _name, _vector in PORTRAIT_RANK_101_200_OVERRIDES.items():
+    PORTRAIT_OVERRIDES.setdefault(_name, {}).update(_vector)
+
 # User-authored appearance direction, kept separate from researched real icons.
 # These deltas apply after stored vectors without modifying the saved record.
 PORTRAIT_USER_OVERRIDES = {
