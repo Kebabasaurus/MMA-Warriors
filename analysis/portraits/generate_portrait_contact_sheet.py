@@ -51,6 +51,11 @@ def select_records(records, gender="", region="", review_set="all", style=None, 
         selected = [row for row in selected if int(row.get("age", 0) or 0) >= 35]
     elif review_set == "women":
         selected = [row for row in selected if row.get("gender") == "Female"]
+    elif review_set == "shaved":
+        # Scalp finishes are career-led, so review the age-gated group that
+        # actually receives them rather than a flat mix of young bald heads.
+        selected = [row for row in selected if int(row.get("age", 0) or 0) >= 30
+                    and portrait_identity(SimpleNamespace(**row))["hair_style"] in (0, 1)]
     elif review_set == "top-rated":
         # Keep ranking order for the most valuable likeness review; alphabetical
         # sheets are useful for broad catalogues, not a top-fighter audit.
@@ -75,7 +80,7 @@ def main():
     parser.add_argument("--columns", type=int, default=10)
     parser.add_argument("--gender", choices=("Male", "Female"))
     parser.add_argument("--region")
-    parser.add_argument("--review-set", choices=("all", "overrides", "veterans", "women", "top-rated"), default="all")
+    parser.add_argument("--review-set", choices=("all", "overrides", "veterans", "women", "shaved", "top-rated"), default="all")
     parser.add_argument("--style", type=int, choices=range(len(HAIR_STYLES)))
     parser.add_argument("--name", action="append", default=[])
     parser.add_argument("--manifest", type=Path, help="Optional JSON metadata beside a review image.")

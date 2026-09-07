@@ -11,6 +11,7 @@ from math import sqrt, sin, cos
 from .identity import portrait_identity, trait_hash
 from .state import portrait_state
 from .styles import BACKGROUND, DYE, FACIAL_HAIR, HAIR, HAIR_STYLES, SKIN, IRIS_COLOURS, portrait_gender
+from .styles import SCALP_FINISHES
 from .hair import hair_mask as build_hair_mask
 from .expansion import feature_value, control_value, NEW_BEARDS, NEW_COMPLEXIONS
 
@@ -309,6 +310,9 @@ def _rasterize_portrait(fighter, size):
                 raster.put(x, y, _mix(skin_shadow, hair_shadow, .62))
             else:
                 raster.put(x, y, INK)
+    if style_id in (0, 1) and state["scalp_finish"] is not None:
+        _draw_scalp_finish(raster, fighter, size, identity, state["scalp_finish"], cx,
+                           top, hw, hairline, skin, skin_shadow, skin_deep, hair_base, inside)
     if texture in ("braid", "dread", "twist", "twin_braids", "braid_tail"):
         step = max(3, round(hw * (.20 if texture == "braid" else .27)))
         for x in range(round(cx - hw), round(cx + hw) + 1, step):
@@ -519,6 +523,55 @@ def _rasterize_portrait(fighter, size):
         raster.ellipse(cx + direction * hw * .47, eye_y + size * .035, hw * .22, size * .045,
                        _mix(skin_shadow, (150, 52, 56), .35 * state["swell"]), inside)
     return raster
+
+
+def _draw_scalp_finish(raster, fighter, size, identity, finish, cx, top, hw, hairline,
+                       skin, shadow, deep, hair, inside):
+    """Add restrained, deterministic texture to mature shaved/buzzed scalps."""
+    family, variant = divmod(int(finish), 4)
+    fid = str(getattr(fighter, "fighter_id", "") or "")
+    clip = lambda x, y: inside(x, y) and top - size * .015 <= y <= hairline + size * .020
+    stubble = _mix(shadow, hair, .30 + variant * .075)
+    light = _mix(skin, (255, 245, 230), .15 + variant * .035)
+    # Clean finishes still have distinct light falloff, avoiding a single
+    # plastic-looking bald cap.
+    if family == 0:
+        raster.ellipse(cx + (variant - 1.5) * hw * .12, top + size * (.032 + variant * .006),
+                       hw * (.26 + variant * .025), size * .025, light, clip)
+    elif family in (1, 5):
+        spacing = max(3, round(size * (.043 - variant * .004)))
+        for row, y in enumerate(range(round(top), round(hairline + size * .008), spacing)):
+            for col, x in enumerate(range(round(cx - hw * .75), round(cx + hw * .76), spacing)):
+                if (row + col + variant) % (3 if family == 1 else 2):
+                    jitter_x = (trait_hash(fid, f"scalp_x_{row}_{col}", 7) - 3) * size * .003
+                    jitter_y = (trait_hash(fid, f"scalp_y_{row}_{col}", 5) - 2) * size * .002
+                    raster.ellipse(x + jitter_x, y + jitter_y, max(.5, size * .003), max(.5, size * .002), stubble, clip)
+    elif family == 2:
+        for direction in (-1, 1):
+            for step in range(5 + variant):
+                y = top + size * (.025 + step * .008)
+                x = cx + direction * hw * (.32 + step * .012)
+                raster.ellipse(x, y, max(.6, size * .003), max(.6, size * .006),
+                               _mix(shadow, hair, .38), clip)
+    elif family == 3:
+        # A very light horseshoe/temple rim—suggestive, never a new hairstyle.
+        for direction in (-1, 1):
+            for step in range(7):
+                y = top + size * (.055 + step * .026)
+                x = cx + direction * hw * (.71 + .035 * variant)
+                raster.line(x, y, x + direction * size * .008, y + size * .020,
+                            max(1, size // 240), _mix(shadow, hair, .34), clip)
+    elif family == 4:
+        for dot in range(3 + variant * 2):
+            x = cx + (trait_hash(fid, f"scalp_speck_x_{dot}", 101) - 50) * hw * .011
+            y = top + size * (.035 + trait_hash(fid, f"scalp_speck_y_{dot}", 61) * .0015)
+            raster.ellipse(x, y, max(.5, size * .0022), max(.5, size * .0022), _mix(skin, deep, .30), clip)
+    else:
+        for band in range(4 + variant):
+            y = top + size * (.018 + band * .028)
+            raster.line(cx - hw * (.52 - band * .025), y,
+                        cx + hw * (.44 - band * .018), y + size * .010,
+                        max(1, size // 250), _mix(shadow, hair, .22), clip)
 
 
 def _expanded_hair_texture(raster, size, cx, top, hw, hairline, volume, texture,

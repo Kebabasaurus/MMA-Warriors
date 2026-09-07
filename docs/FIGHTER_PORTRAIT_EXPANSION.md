@@ -47,6 +47,11 @@ of fighters looks unrelated, or that a real fighter is recognisable.
   partial identities are still independently derived. No bulk save migration.
 - The prior authorised female non-catalogue hair display correction remains;
   explicit authored hair exceptions are preserved, but never female facial hair.
+- Mature shaved and buzzed fighters now receive one of 24 fighter-ID-stable
+  scalp finishes (matte/sheen, stubble, thinning, temple/horseshoe shadow and
+  restrained texture). This is derived cosmetic state from age 30, not a
+  persisted identity field: complete saved vectors and the original young
+  v3 raster fingerprints remain unchanged.
 - New shades split each original colour family's probability between its old and
   appended shades. Country-family probability mass is exactly preserved; there is
   no uniformly weighted tail that washes out the country priors. These remain

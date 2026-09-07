@@ -71,6 +71,18 @@ HAIR = (
     ("#17151a", "#09080d"), ("#452d22", "#291a18"), ("#96683c", "#664327"),
     ("#e5d5ad", "#b2a37f"),
 )
+
+# Stable, cosmetic-only finish identifiers for shaved and buzzed scalps.  They
+# are derived from fighter_id at render time rather than stored in the identity
+# vector, so adding them cannot rewrite a valid saved appearance.
+SCALP_FINISHES = (
+    "matte_clean", "soft_sheen", "crown_sheen", "temple_sheen",
+    "forehead_sheen", "fine_stubble", "sandpaper_stubble", "peppered_stubble",
+    "silver_stubble", "warm_stubble", "temple_shadow", "horseshoe_shadow",
+    "crown_thinning", "widows_peak_stubble", "receded_fringe", "edge_up_stubble",
+    "sun_freckles", "crown_freckles", "temple_freckles", "scalp_moles",
+    "razor_texture", "cross_grain", "short_wave_stubble", "uneven_stubble",
+)
 DYE = {
     "rainbow": ("#e83b50", "#f08a24", "#f2d036", "#4ac062", "#368ee0", "#8b4fd0"),
     "sunset": ("#f03c78", "#f57a2e", "#f7c93a"), "ecuador": ("#f7c92e", "#2e54c8", "#d82b2b"),

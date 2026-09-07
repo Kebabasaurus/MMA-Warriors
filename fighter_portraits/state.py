@@ -1,5 +1,8 @@
 """Derived cosmetic state. These values are recomputed and never persisted."""
 
+from .identity import trait_hash
+from .styles import SCALP_FINISHES
+
 
 def _clamp(value):
     return max(0.0, min(1.0, float(value)))
@@ -15,6 +18,11 @@ def portrait_state(fighter):
     head_damage = max(0, int(recent.get("head_damage", 0) or 0))
     cut_severity = max((max(0, int(row.get("severity", 0) or 0)) for row in cut_details), default=0)
     cut_location = str(max(cut_details, key=lambda row: int(row.get("severity", 0) or 0)).get("location", "") or "") if cut_details else ""
+    fighter_id = str(getattr(fighter, "fighter_id", "") or "")
+    # The finish is not a persisted identity trait: it is a cosmetic, age-led
+    # scalp detail.  A young reference portrait remains untouched, while a
+    # mature shaved/buzzed fighter receives one stable treatment per id.
+    scalp_finish = trait_hash(fighter_id, "scalp_finish", len(SCALP_FINISHES)) if age >= 30 else None
     return {
         "grey": _clamp((age - 34) / 18), "recede": _clamp((age - 29) / 20),
         "cauli": _clamp(bouts / 26), "scar": _clamp(bouts / 32),
@@ -28,4 +36,5 @@ def portrait_state(fighter):
         "recent_cut": _clamp(cut_severity / 6),
         "recent_cut_location": cut_location,
         "swell": max(_clamp(head_damage / 34), 1.0 if (getattr(fighter, "injured", 0) or getattr(fighter, "serious_injury", "")) else 0.0),
+        "scalp_finish": scalp_finish,
     }
