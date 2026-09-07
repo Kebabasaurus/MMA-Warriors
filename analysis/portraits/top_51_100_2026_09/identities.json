@@ -9,7 +9,7 @@
     "identity": {
       "skin": 0,
       "hair_colour": 4,
-      "hair_style": 3,
+      "hair_style": 4,
       "facial_hair": 0,
       "dye": "",
       "brow": 11,
@@ -30,8 +30,8 @@
       "iris_colour": 4,
       "nose_length": 45,
       "lip_fullness": 51,
-      "hair_volume": 24,
-      "hair_part": 14,
+      "hair_volume": 1,
+      "hair_part": 5,
       "complexion": 39,
       "feature_offset": 7
     }

@@ -10,8 +10,8 @@ def _look(skin, hair_style, hair_colour, facial_hair, *, jaw=2, chin=0,
           cheek=1, face_length=1, head_w=50, brow=0, eye_shape=0,
           eye_size=1, eye_spacing=1, nose=0, nose_length=4, mouth=0,
           lip_fullness=4, ear=1, iris_colour=0, neck_width=4,
-          shoulder_width=4, hair_volume=4, hair_part=4, beard_colour=None,
-          dye=""):
+          shoulder_width=4, hair_volume=4, hair_part=4, complexion=0,
+          feature_offset=4, beard_colour=None, dye=""):
     """Author every facial control; retain the fighter's existing background."""
     return dict(skin=skin, hair_style=hair_style, hair_colour=hair_colour,
                 facial_hair=facial_hair, jaw=jaw, chin=chin, cheek=cheek,
@@ -20,8 +20,8 @@ def _look(skin, hair_style, hair_colour, facial_hair, *, jaw=2, chin=0,
                 nose=nose, nose_length=nose_length, mouth=mouth,
                 lip_fullness=lip_fullness, ear=ear, iris_colour=iris_colour,
                 neck_width=neck_width, shoulder_width=shoulder_width,
-                hair_volume=hair_volume, hair_part=hair_part, complexion=0,
-                feature_offset=4, dye=dye,
+                hair_volume=hair_volume, hair_part=hair_part, complexion=complexion,
+                feature_offset=feature_offset, dye=dye,
                 beard_colour=hair_colour if beard_colour is None else beard_colour)
 
 

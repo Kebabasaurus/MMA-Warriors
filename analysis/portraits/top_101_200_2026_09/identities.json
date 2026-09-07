@@ -2555,7 +2555,7 @@
     "identity": {
       "skin": 1,
       "hair_colour": 5,
-      "hair_style": 46,
+      "hair_style": 149,
       "facial_hair": 10,
       "dye": "",
       "brow": 3,
@@ -2576,8 +2576,8 @@
       "iris_colour": 0,
       "nose_length": 4,
       "lip_fullness": 4,
-      "hair_volume": 6,
-      "hair_part": 4,
+      "hair_volume": 7,
+      "hair_part": 7,
       "complexion": 0,
       "feature_offset": 4,
       "beard_colour": 5
@@ -3125,7 +3125,7 @@
     "identity": {
       "skin": 0,
       "hair_colour": 5,
-      "hair_style": 15,
+      "hair_style": 150,
       "facial_hair": 0,
       "dye": "",
       "brow": 0,
@@ -3146,8 +3146,8 @@
       "iris_colour": 0,
       "nose_length": 4,
       "lip_fullness": 4,
-      "hair_volume": 6,
-      "hair_part": 4,
+      "hair_volume": 7,
+      "hair_part": 6,
       "complexion": 0,
       "feature_offset": 4,
       "beard_colour": 5
@@ -3163,7 +3163,7 @@
     "identity": {
       "skin": 0,
       "hair_colour": 5,
-      "hair_style": 15,
+      "hair_style": 150,
       "facial_hair": 0,
       "dye": "",
       "brow": 0,
@@ -3184,8 +3184,8 @@
       "iris_colour": 0,
       "nose_length": 4,
       "lip_fullness": 4,
-      "hair_volume": 6,
-      "hair_part": 4,
+      "hair_volume": 7,
+      "hair_part": 6,
       "complexion": 0,
       "feature_offset": 4,
       "beard_colour": 5
@@ -3376,8 +3376,8 @@
       "lip_fullness": 4,
       "hair_volume": 4,
       "hair_part": 4,
-      "complexion": 0,
-      "feature_offset": 4,
+      "complexion": 8,
+      "feature_offset": 6,
       "beard_colour": 0
     }
   },
