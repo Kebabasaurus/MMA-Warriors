@@ -20,6 +20,7 @@ from fighter_portraits.styles import (
 from fighter_portraits.overrides import (
     PORTRAIT_ICON_OVERRIDES, PORTRAIT_OVERRIDES, PORTRAIT_PARTIAL_OVERRIDES,
     PORTRAIT_TOP_RATED_OVERRIDES,
+    PORTRAIT_USER_OVERRIDES,
 )
 from fighter_portraits.ranked_51_100 import PORTRAIT_RANK_51_100_OVERRIDES
 
@@ -489,6 +490,8 @@ assert len(rasterize_portrait(row,72).pixels) == 72*72
     def test_requested_named_appearances_override_old_saved_choices(self):
         from fighter_portraits.identity import ensure_portrait_identity
         requested = {
+            "Matthew Green": {"hair_style":3, "hair_colour":4, "facial_hair":0,
+                              "iris_colour":4, "dye":""},
             "Markell Holmes": {"skin":5, "hair_colour":0, "hair_style":13, "facial_hair":8},
             "Brett Akey": {"hair_style":0},
             "Conor McGregor": {"skin":0, "hair_colour":1, "hair_style":4,
@@ -501,6 +504,20 @@ assert len(rasterize_portrait(row,72).pixels) == 72*72
             effective = ensure_portrait_identity(row)
             self.assertEqual(expected, {key:effective[key] for key in expected})
             self.assertEqual(saved, row.__dict__)
+
+    def test_matthew_green_changes_only_user_requested_features(self):
+        from fighter_portraits.identity import ensure_portrait_identity
+        expected = {"hair_style":3, "hair_colour":4, "facial_hair":0,
+                    "iris_colour":4, "dye":""}
+        self.assertEqual(expected, PORTRAIT_USER_OVERRIDES["Matthew Green"])
+        row = fighter(name="Matthew Green", portrait_version=3)
+        row.portrait_identity = dict(derived_portrait_identity(row), skin=9,
+                                    facial_hair=65, hair_style=97, iris_colour=0,
+                                    dye="rainbow", beard_colour=6)
+        before = copy.deepcopy(row.__dict__)
+        effective = ensure_portrait_identity(row)
+        self.assertEqual(dict(row.portrait_identity, **expected), effective)
+        self.assertEqual(before, row.__dict__)
 
     def test_authored_beard_colour_only_changes_beard_pixels(self):
         from fighter_portraits.render import portrait_cache_key, rasterize_portrait
@@ -546,13 +563,17 @@ assert len(rasterize_portrait(row,72).pixels) == 72*72
         rows = json.loads(source.read_text(encoding="utf-8"))["sections"]["fighters"]["all_fighters"]
         manifest = [(row["fighter_id"], portrait_identity(SimpleNamespace(**row))) for row in rows]
         digest = hashlib.sha256(json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
-        # The next 49 photo-reviewed records intentionally change this manifest.
-        self.assertEqual("5bb93f7be0a4c7bbcb10eb29f4c2a8c61350204593d4bc2fb6ef0c37e6d2997a", digest)
+        # 49 photo-reviewed records plus Matthew Green's user-directed correction.
+        self.assertEqual("ed92870c48a8a6ff53673e1af8029e4571a8127cda7e36d57856886f5b689c3e", digest)
+        other_fighters = [entry for row, entry in zip(rows, manifest) if row["name"] != "Matthew Green"]
+        other_digest = hashlib.sha256(json.dumps(other_fighters, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        # Captured at 485a33c: this follow-up must change only Matthew Green.
+        self.assertEqual("6e76dd9911e0f1aac25bd6ccef9f0100e62ab433220d9ec7606f87c1aea0723c", other_digest)
         outside = [entry for row, entry in zip(rows, manifest)
-                   if row["name"] not in PORTRAIT_RANK_51_100_OVERRIDES]
+                   if row["name"] not in PORTRAIT_RANK_51_100_OVERRIDES and row["name"] != "Matthew Green"]
         outside_digest = hashlib.sha256(json.dumps(outside, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
-        # Captured using the pre-batch c4e4045 override table: no other identity changes.
-        self.assertEqual("c8baea306e96831773be7d1f530c07a59bb6053382813670cdcd4a2240544a65", outside_digest)
+        # The 1,484 shipped identities outside the complete ranked cohort remain unchanged.
+        self.assertEqual("12d12da0530ff2ac34ee0e5ed01bb791592099f33de3b68e9de1ace3d96bb524", outside_digest)
 
     def test_next_fifty_ranked_coverage_and_nonmutating_saved_corrections(self):
         from fighter_portraits.identity import ensure_portrait_identity
@@ -561,6 +582,9 @@ assert len(rasterize_portrait(row,72).pixels) == 72*72
         cohort = sorted(rows, key=lambda row: (-int(row.get("rating", 0) or 0), row["name"]))[50:100]
         self.assertEqual({row["name"] for row in cohort} - {"Matthew Green"}, set(PORTRAIT_RANK_51_100_OVERRIDES))
         self.assertEqual(49, len(PORTRAIT_RANK_51_100_OVERRIDES))
+        self.assertIn("Matthew Green", PORTRAIT_USER_OVERRIDES)
+        self.assertEqual({row["name"] for row in cohort},
+                         set(PORTRAIT_RANK_51_100_OVERRIDES) | {"Matthew Green"})
         for name, authored in PORTRAIT_RANK_51_100_OVERRIDES.items():
             self.assertEqual(set(IDENTITY_TRAITS) - {"bg"} | {"beard_colour"}, set(authored))
             for key, value in authored.items():

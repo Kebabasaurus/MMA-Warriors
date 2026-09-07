@@ -27,8 +27,10 @@ The ranked 51–100 pass appends authored-only hair IDs 148..150 (151 total) and
 burgundy dye after the original 60 dyes. Keep their generation weights zero:
 98 male / 77 female generated choices and all historical draws remain unchanged.
 Cristiane Justino's female presentation is portrait-only; never apply that named
-correction to stored gender, division or simulation. Keep the 49-entry cohort,
-Matthew Green's unresolved status, old v3 prefix and non-cohort identity hashes.
+correction to stored gender, division or simulation. Keep the 49 photo-reviewed
+entries and Matthew Green's separate user override: short dirty-blond hair, blue
+eyes, no facial hair or dye; preserve his other traits. Retain old v3 prefixes
+and non-cohort identity hashes.
 See `docs/FIGHTER_PORTRAIT_TOP_100_REVIEW.md` for the 45 inspected references and
 four Legend copies; these are approximate comic likenesses, not exact portraits.
 

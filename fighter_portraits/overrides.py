@@ -351,6 +351,8 @@ for _name, _vector in PORTRAIT_RANK_51_100_OVERRIDES.items():
 # User-authored appearance direction, kept separate from researched real icons.
 # These deltas apply after stored vectors without modifying the saved record.
 PORTRAIT_USER_OVERRIDES = {
+    "Matthew Green": {"hair_style": 3, "hair_colour": 4, "facial_hair": 0,
+                      "iris_colour": 4, "dye": ""},
     "Markell Holmes": {"skin": 5, "hair_colour": 0, "hair_style": 13,
                        "facial_hair": 8, "beard_colour": 0, "dye": "",
                        "hair_volume": 7},

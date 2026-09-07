@@ -4,10 +4,11 @@ Reviewed 7 September 2026. This extends the existing top-50 pass; selection is t
 shipped `Default Universe.universe.json`, sorted by rating descending then name
 ascending, positions 51–100. It is not a current real-world ranking.
 
-49 database records receive authored cosmetic controls: 45 distinct people and
-four additional Legend records. Matthew Green (position 51) is unresolved: no
-reliable matching public reference was found, so his existing generated portrait
-is unchanged. A user reference is needed; do not invent a real-person likeness.
+49 database records receive photo-reviewed cosmetic controls: 45 distinct people
+and four additional Legend records. Matthew Green (position 51) subsequently
+received user-directed short dirty-blond hair, blue eyes and no facial hair.
+All 50 entries now have authored direction. His skin tone and other facial traits
+are unchanged; this is a user specification, not a verified photographic likeness.
 
 ## Scope and compatibility
 
@@ -96,7 +97,7 @@ vector copies, not four independently verified era-specific looks.
 The review sheets and ordered identity manifest live under
 `analysis/portraits/top_51_100_2026_09/`. `review.html` is a self-contained labelled
 gallery of the 180px renders. Cells run left to right, top to bottom,
-starting at rank 51 (Matthew Green, unchanged). The manifest supplies every name.
+starting at rank 51 (Matthew Green, user-directed). The manifest supplies every name.
 First review rejected overly curly Rousey/Faber hair and long side curtains on
 the mullets. New masks use loose strands and narrow nape locks; Volkov's incorrect
 ridgehawk selection and Jandiroba's overlong curly silhouette were also corrected.
@@ -118,7 +119,7 @@ unchanged non-cohort manifest, all authored trait ranges, saved-vector immutabil
 female presentation/no-beard guards, all UI sizes and complete fight/RNG parity.
 This source change does not rebuild the packaged executable.
 
-## Verification results — 7 September 2026
+## Initial 49-entry batch verification — 7 September 2026
 
 - `py -3 fighter_portrait_regression_test.py`: 45 tests passed, including all
   reviewed sheet pixels at 72/98/104/180px and labelled gallery image/name checks.
@@ -138,3 +139,16 @@ This source change does not rebuild the packaged executable.
 
 No ratings, database gender/divisions, combat mechanics, calibration references,
 portable saves or packaged executables were edited for this batch.
+
+## Matthew Green follow-up
+
+The user's direction is stored separately in `PORTRAIT_USER_OVERRIDES`:
+`hair_style=3` (short crop), `hair_colour=4` (dark/dirty blond),
+`facial_hair=0`, `iris_colour=4` (blue), `dye=""`. Clearing dye prevents a saved
+artificial colour from hiding the requested natural hair colour. Skin tone, face
+shape, other traits and the stored vector remain unchanged. The 50-entry sheets
+and labelled gallery were refreshed; `matthew_green.png` is the individual preview.
+This follow-up uses focused portrait/profile verification, not a rerun of the
+full shipping suite recorded above. No executable was rebuilt.
+The follow-up passed all 46 portrait tests and all nine profile tests. A retained
+pre-change digest confirms that the other 1,533 shipped identities are unchanged.

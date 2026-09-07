@@ -2,7 +2,7 @@
 
 Sources and limits: docs/FIGHTER_PORTRAIT_TOP_100_REVIEW.md. The catalogue IDs
 remain append-only. No database, rating, RNG or simulation data is changed here.
-Matthew Green remains unresolved rather than being given an invented likeness.
+Matthew Green's separate user-directed partial override lives in overrides.py.
 """
 
 

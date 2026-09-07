@@ -16,7 +16,8 @@ other portraits. Existing saves receive the named display corrections too.
 
 Unreleased ranked portrait review: authored 49 entries at rating positions 51–100
 from 45 reviewed real-fighter references, including four Legend copies. Matthew
-Green remains unresolved. Added three authored-only hairstyles and burgundy dye;
+Green subsequently received user-directed short dirty-blond hair, blue eyes and
+no facial hair; all other features are retained. Added three authored-only hairstyles and burgundy dye;
 generated pools and saved vectors are unchanged. Cristiane Justino receives female
 portrait presentation without changing her mislabelled database gender or division.
 See [reference ledger and limitations](docs/FIGHTER_PORTRAIT_TOP_100_REVIEW.md).
