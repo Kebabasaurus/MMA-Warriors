@@ -40,7 +40,7 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
 
     def test_vector_contract_and_style_reachability(self):
         self.assertEqual(tuple(IDENTITY_TRAITS), identity_keys_are_stable())
-        self.assertEqual(151, len(HAIR_STYLES))
+        self.assertEqual(157, len(HAIR_STYLES))
         self.assertEqual(66, len(FACIAL_HAIR))
         hair = {derived_portrait_identity(fighter(f"FTR-hair-{i}"))["hair_style"] for i in range(5000)}
         beard = {derived_portrait_identity(fighter(f"FTR-beard-{i}"))["facial_hair"] for i in range(5000)}
@@ -105,10 +105,13 @@ class PortraitIdentityRegressionTests(unittest.TestCase):
                    "DYE": dict(tuple(DYE.items())[:60])}
         digest = hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
         self.assertEqual("bfdf864f4094a2b523f7ba299d311c002f72267373e2cf5234f7b1148eb2bd16", digest)
-        self.assertEqual(("authored_wavy_side_part", "authored_compact_mullet", "authored_shoulder_sweep"),
+        self.assertEqual(("authored_wavy_side_part", "authored_compact_mullet", "authored_shoulder_sweep",
+                          "authored_spiked_icehawk", "authored_rainbow_lockfall",
+                          "authored_topknot_undercut", "authored_fighter_braided_ponytail",
+                          "authored_short_braid_crown", "authored_swept_fade"),
                          tuple(row[0] for row in HAIR_STYLES[148:]))
         for weights in GENDER_HAIR_STYLE_WEIGHTS.values():
-            self.assertEqual((0, 0, 0), weights[148:])
+            self.assertEqual((0,) * 9, weights[148:])
         self.assertEqual("burgundy", tuple(DYE)[-1])
 
     def test_all_original_v3_hair_pixels_are_unchanged(self):

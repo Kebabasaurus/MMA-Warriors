@@ -9,7 +9,7 @@
     "identity": {
       "skin": 0,
       "hair_colour": 4,
-      "hair_style": 4,
+      "hair_style": 2,
       "facial_hair": 0,
       "dye": "",
       "brow": 11,
@@ -882,7 +882,7 @@
     "identity": {
       "skin": 1,
       "hair_colour": 2,
-      "hair_style": 1,
+      "hair_style": 153,
       "facial_hair": 10,
       "dye": "",
       "brow": 0,
@@ -1376,7 +1376,7 @@
     "identity": {
       "skin": 0,
       "hair_colour": 4,
-      "hair_style": 150,
+      "hair_style": 154,
       "facial_hair": 0,
       "dye": "",
       "brow": 7,
@@ -1414,7 +1414,7 @@
     "identity": {
       "skin": 0,
       "hair_colour": 4,
-      "hair_style": 150,
+      "hair_style": 154,
       "facial_hair": 0,
       "dye": "",
       "brow": 7,

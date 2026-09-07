@@ -8,11 +8,11 @@ PORTRAIT_ICON_OVERRIDES = {
     # UFC July 2021 profile photograph: short fade, dark brown scalp hair,
     # warmer full beard. Pin facial controls instead of retaining random ones.
     "Conor McGregor": {
-        "skin": 0, "hair_colour": 1, "beard_colour": 14, "hair_style": 4,
-        "facial_hair": 11, "dye": "", "brow": 7, "eye_shape": 0,
+        "skin": 0, "hair_colour": 1, "beard_colour": 6, "hair_style": 156,
+        "facial_hair": 10, "dye": "", "brow": 7, "eye_shape": 4,
         "eye_spacing": 4, "eye_size": 4, "iris_colour": 4, "nose": 6,
-        "nose_length": 5, "mouth": 1, "lip_fullness": 3, "jaw": 3,
-        "chin": 1, "cheek": 5, "face_length": 8, "ear": 2, "head_w": 52,
+        "nose_length": 5, "mouth": 4, "lip_fullness": 3, "jaw": 7,
+        "chin": 1, "cheek": 5, "face_length": 2, "ear": 2, "head_w": 56,
         "neck_width": 7, "shoulder_width": 8, "hair_volume": 2,
         "hair_part": 4, "complexion": 0, "feature_offset": 4, "bg": 2,
     },
@@ -20,7 +20,7 @@ PORTRAIT_ICON_OVERRIDES = {
     "Israel Adesanya": {"skin": 5, "hair_style": 4, "facial_hair": 5, "jaw": 2, "bg": 9},
     "Khabib Nurmagomedov": {"skin": 2, "hair_style": 3, "facial_hair": 11, "jaw": 3, "bg": 5},
     "Amanda Nunes": {"skin": 3, "hair_style": 16, "facial_hair": 0, "jaw": 3, "bg": 7},
-    "Valentina Shevchenko": {"skin": 1, "hair_style": 25, "facial_hair": 0, "bg": 1},
+    "Valentina Shevchenko": {"skin": 1, "hair_style": 154, "facial_hair": 0, "bg": 1},
     "Alex Pereira": {"skin": 3, "hair_style": 1, "facial_hair": 9, "jaw": 4, "bg": 3},
     "Max Holloway": {"skin": 3, "hair_style": 4, "facial_hair": 9, "bg": 8},
     "Dustin Poirier": {"skin": 1, "hair_style": 1, "facial_hair": 10, "jaw": 3, "bg": 2},
@@ -305,7 +305,7 @@ PORTRAIT_TOP_RATED_OVERRIDES = {
     "Anderson Silva": {"skin": 5, "hair_style": 0, "facial_hair": 1},
     "Arman Tsarukyan": {"skin": 2, "hair_style": 3, "facial_hair": 1},
     "Cain Velasquez": {"skin": 2, "hair_style": 0, "facial_hair": 9},
-    "Conor McGregor": {"skin": 0, "hair_style": 4, "facial_hair": 11},
+    "Conor McGregor": {"skin": 0, "hair_style": 156, "facial_hair": 10},
     "Demetrious Johnson ONE": {"skin": 4, "hair_style": 4, "facial_hair": 9},
     "Frankie Edgar FA": {"skin": 1, "hair_style": 3, "facial_hair": 1},
     "Frankie Edgar Legend": {"skin": 1, "hair_style": 3, "facial_hair": 1},
@@ -320,7 +320,7 @@ PORTRAIT_TOP_RATED_OVERRIDES = {
     "Jose Aldo Legend": {"skin": 3, "hair_style": 1, "facial_hair": 1},
     "Julianna Pena": {"skin": 2, "hair_style": 21, "facial_hair": 0},
     "Justin Gaethje": {"skin": 1, "hair_style": 3, "facial_hair": 1},
-    "Valentina Shevchenko": {"skin": 1, "hair_style": 25, "facial_hair": 0},
+    "Valentina Shevchenko": {"skin": 1, "hair_style": 154, "facial_hair": 0},
     "Zhang Weili": {"skin": 2, "hair_style": 24, "facial_hair": 0},
     "Alexandre Pantoja": {"skin": 3, "hair_style": 4, "facial_hair": 9},
     "Anatoly Malykhin": {"skin": 1, "hair_style": 0, "facial_hair": 9},
@@ -332,6 +332,13 @@ PORTRAIT_TOP_RATED_OVERRIDES = {
     "Joanna Jedrzejczyk": {"skin": 1, "hair_colour": 5, "hair_style": 21, "facial_hair": 0},
     "Lyoto Machida": {"skin": 2, "hair_style": 3, "facial_hair": 1},
     "Matt Hughes": {"skin": 1, "hair_style": 3, "facial_hair": 1},
+}
+
+# Singular, photo-directed marks for recognisable fighters. They are a
+# renderer-only authored layer: no simulation field, random generation or
+# persisted identity vector is changed by adding one.
+PORTRAIT_SIGNATURE_FEATURES = {
+    "Sean O'Malley": "under_eye_tattoo",
 }
 
 # Public merged map kept name-keyed for the save/database validation contract.

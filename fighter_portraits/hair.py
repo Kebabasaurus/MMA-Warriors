@@ -129,33 +129,70 @@ def authored_hair_mask(size, identity, cx, top, bottom, hw, hairline):
     volume = control_value(identity["hair_volume"])
     part = (control_value(identity["hair_part"]) - 4.5) / 4.5
     mullet = style == 149
-    shoulder = style == 150
-    radius = hw * (1.03 if mullet else 1.10)
-    crown_top = top - size * (.018 + volume * .004)
+    shoulder = style in (150, 152, 154)
+    icehawk = style == 151
+    topknot = style == 153
+    swept_fade = style == 156
+    radius = hw * (.40 if icehawk else .90 if swept_fade else 1.03 if mullet else 1.10)
+    crown_top = top - size * (.105 if icehawk else .040 if swept_fade else .018 + volume * .004)
     depth = max(size * .08, hairline - crown_top)
     mask = set()
+
+    def ellipse(xc, yc, rx, ry):
+        for y in range(max(0, round(yc - ry)), min(size, round(yc + ry) + 1)):
+            extent = rx * sqrt(max(0, 1 - ((y - yc) / max(1, ry)) ** 2))
+            for x in range(max(0, round(xc - extent)), min(size, round(xc + extent) + 1)):
+                mask.add((x, y))
+
     for y in range(max(0, round(crown_top)), min(size, round(hairline + size * .07))):
         t = (y - crown_top) / depth
         width = radius * sqrt(max(0, 1 - (min(1, t) - 1) ** 2))
         for x in range(max(0, round(cx - width)), min(size, round(cx + width) + 1)):
             u = (x - cx) / max(1, radius)
             edge = hairline + size * (.017 + .033 * u * part + .006 * sin(u * 9))
+            if swept_fade:
+                # A compact asymmetric top with shaved sides, rather than the
+                # generic horizontal cap used by regular short fades.
+                edge = hairline + size * (-.045 + .040 * ((u + 1) / 2) + .004 * sin(u * 11))
             if y <= edge:
                 mask.add((x, y))
-    start = hairline + size * .125 if mullet else hairline - size * .025
-    end = bottom + size * (.14 if shoulder else .055 if mullet else .01)
-    for direction in (-1, 1):
-        for y in range(max(0, round(start)), min(size, round(end))):
-            t = (y - start) / max(1, end - start)
-            wave = .035 * sin(t * 11 + direction)
-            outer = hw * ((1.025 + .025 * t) if mullet else (1.11 + .14 * t + wave))
-            inner = hw * ((.97 - .05 * t) if mullet else (.90 + .10 * t))
-            if t > .8:
-                inner += (outer - inner) * (t - .8) / .2
-            for d in range(round(inner), round(outer) + 1):
-                x = round(cx + direction * d)
-                if 0 <= x < size:
-                    mask.add((x, y))
+    if icehawk:
+        # A true crest has an elevated, broken top edge rather than a narrow
+        # triangular fringe. Small uneven points keep it readable at 72px.
+        for spike in range(5):
+            u = (spike - 2) / 2
+            tip = top - size * (.105 - .026 * abs(u))
+            base_x = cx + u * hw * .24
+            for y in range(max(0, round(tip)), round(hairline + size * .012)):
+                taper = (y - tip) / max(1, hairline - tip)
+                half = size * (.008 + .020 * min(1, taper))
+                for x in range(round(base_x - half), round(base_x + half) + 1):
+                    if 0 <= x < size:
+                        mask.add((x, y))
+    if style in (148, 149, 150, 152, 154):
+        start = hairline + size * .125 if mullet else hairline - size * .025
+        end = bottom + size * (.14 if shoulder else .055 if mullet else .01)
+        for direction in (-1, 1):
+            for y in range(max(0, round(start)), min(size, round(end))):
+                t = (y - start) / max(1, end - start)
+                wave = .035 * sin(t * 11 + direction)
+                outer = hw * ((1.025 + .025 * t) if mullet else (1.11 + .14 * t + wave))
+                inner = hw * ((.97 - .05 * t) if mullet else (.90 + .10 * t))
+                if t > .8:
+                    inner += (outer - inner) * (t - .8) / .2
+                for d in range(round(inner), round(outer) + 1):
+                    x = round(cx + direction * d)
+                    if 0 <= x < size:
+                        mask.add((x, y))
+    if topknot:
+        ellipse(cx + part * hw * .16, crown_top - size * .020, hw * .34, size * .060)
+    if style == 154:
+        # Two tapered plaits leave the cheeks visible and read at roster size.
+        for direction in (-1, 1):
+            for y in range(round(hairline), min(size, round(bottom + size * .13))):
+                t = (y - hairline) / max(1, bottom - hairline)
+                x = cx + direction * hw * (1.03 + .20 * t + .025 * sin(t * 25))
+                ellipse(x, y, max(1, hw * (.075 - .035 * min(1, t))), 1)
     return mask
 
 

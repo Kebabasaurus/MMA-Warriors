@@ -25,8 +25,9 @@ NOT repaired by this change. That separate data issue remains outstanding.
 
 Three append-only, authored-only hairstyles are added: 148 wavy side part, 149
 compact mullet, 150 shoulder sweep. A burgundy dye follows the existing 60 dyes.
-There are now 151 hair IDs and 61 dyes plus natural/no-dye. Generated pools remain
-98 male / 77 female choices with zero weight on the three additions. No generator
+There are now 157 hair IDs and 61 dyes plus natural/no-dye. The six newest IDs
+are roster-only silhouette directions for recognisable fighters; generated pools remain
+98 male / 77 female choices with zero weight on the nine additions. No generator
 version bump or new trait draw is needed. The original 148 hair records, 66 beard
 records, 60 dyes, old v2 pixel fingerprints and non-cohort identities are retained.
 

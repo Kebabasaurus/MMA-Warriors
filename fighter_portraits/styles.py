@@ -129,6 +129,14 @@ AUTHORED_HAIR_STYLES = (
     ("authored_wavy_side_part", .045, 1, 0, "sweep"),
     ("authored_compact_mullet", .035, 1, 0, "sweep"),
     ("authored_shoulder_sweep", .045, 2, 0, "sweep"),
+    # Named-icon silhouettes.  These IDs are deliberately authored-only:
+    # procedural weights remain zero, preserving regional generation draws.
+    ("authored_spiked_icehawk", .060, 0, -.02, "spike"),
+    ("authored_rainbow_lockfall", .045, 2, 0, "dread"),
+    ("authored_topknot_undercut", .040, 0, -.02, "knot"),
+    ("authored_fighter_braided_ponytail", .026, 2, -.02, "braid_tail"),
+    ("authored_short_braid_crown", .034, 0, -.02, "braid"),
+    ("authored_swept_fade", .034, 0, -.02, "sweep"),
 )
 HAIR_STYLES += AUTHORED_HAIR_STYLES
 MALE_HAIR_STYLES = tuple(range(98))
@@ -162,7 +170,7 @@ CHEEK_SHAPES += feature_names("cheek")
 FACE_LENGTHS += feature_names("face_length")
 EAR_SHAPES += feature_names("ear")
 FEATURE_COUNTS = dict(zip(IDENTITY_TRAITS, (
-    62, 62, 151, 66, 62, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60,
+    62, 62, 157, 66, 62, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60,
     60, 150, 62, 60, 60, 60, 60, 60, 60, 60, 60, 60)))
 
 

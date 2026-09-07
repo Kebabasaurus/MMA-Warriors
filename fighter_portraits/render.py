@@ -142,12 +142,12 @@ def _rasterize_portrait(fighter, size):
     size = max(48, int(size))
     identity, state = portrait_identity(fighter), portrait_state(fighter)
     female = portrait_gender(fighter) == "Female"
-    # A hand-authored override is a safe render-era marker: use the richer
-    # planes below for curated fighters without changing legacy/v3 catalogue
-    # fingerprints. Most early Tier-1 entries predate ``beard_colour`` and
-    # are deliberately partial, so check the merged authored catalogue too.
+    # A named hand-authored override is a safe render-era marker: use the
+    # richer planes for curated fighters without changing legacy/v3 catalogue
+    # fingerprints. ``beard_colour`` alone deliberately is *not* a marker:
+    # it must alter only the beard, including on a saved identity.
     from .overrides import PORTRAIT_OVERRIDES
-    authored = "beard_colour" in identity or str(getattr(fighter, "name", "") or "") in PORTRAIT_OVERRIDES
+    authored = str(getattr(fighter, "name", "") or "") in PORTRAIT_OVERRIDES
     skin, skin_shadow, skin_deep = map(_rgb, SKIN[identity["skin"]])
     bg, bg_shadow = map(_rgb, BACKGROUND[identity["bg"]])
     raster = _Raster(size, bg)
@@ -237,11 +237,27 @@ def _rasterize_portrait(fighter, size):
                 colour = _mix(skin, colour, .38)
             elif style_id in (4,5,41) and abs(x-cx) > hw*.70:
                 colour = _mix(skin_shadow, colour, .52)
+            elif style_id == 156 and abs(x-cx) > hw*.60:
+                # A high skin fade does not terminate as a dark semicircle:
+                # let the colour dissolve into the temple on each side.
+                colour = _mix(skin_shadow, colour, .54)
         raster.put(x, y, colour)
     hair_clip = lambda x, y: (x, y) in hair_mask
     # Texture pass: each class has a different directional cue at thumbnail
     # size, so styles do not collapse into the same dark cap.
-    if style_id >= 148:
+    if style_id == 156:
+        # Compact, diagonal grain gives the close side-swept top a direction
+        # at roster size.  Vertical generic strands make this cut look like a
+        # helmet, particularly with brown hair.
+        grain = _mix(hair_base, hair_shadow, .58)
+        for strand in range(11):
+            x0 = cx - hw * .68 + strand * hw * .135
+            points = [(x0 + t * size * .090,
+                       top - size * .025 + t * size * .285)
+                      for t in (i / 24 for i in range(25))]
+            for a, b in zip(points, points[1:]):
+                raster.line(*a, *b, max(1, size // 190), grain, hair_clip)
+    elif style_id >= 148:
         # Loose directional strands, not coil dots or straight curtain grain.
         grain = _mix(dye_colours[0], INK, .30) if dye_colours else _mix(hair_base, hair_shadow, .65)
         part = (control_value(identity["hair_part"])-4.5)/4.5
@@ -287,7 +303,12 @@ def _rasterize_portrait(fighter, size):
     # Hair ink and braid band separations are drawn over fills, never tinted.
     for x, y in hair_mask:
         if (x - 1, y) not in hair_mask or (x + 1, y) not in hair_mask or (x, y - 1) not in hair_mask:
-            raster.put(x, y, INK)
+            if style_id == 156 and (abs(x - cx) > hw * .45 or y > hairline - size * .010):
+                # Keep the shaved transition soft; a black, closed outline
+                # turns a tight fade into a helmet at this scale.
+                raster.put(x, y, _mix(skin_shadow, hair_shadow, .62))
+            else:
+                raster.put(x, y, INK)
     if texture in ("braid", "dread", "twist", "twin_braids", "braid_tail"):
         step = max(3, round(hw * (.20 if texture == "braid" else .27)))
         for x in range(round(cx - hw), round(cx + hw) + 1, step):
@@ -375,6 +396,17 @@ def _rasterize_portrait(fighter, size):
         raster.ellipse(cx + size * .003, mouth_y + fullness * 1.45,
                        mouth_width * .34, max(1, fullness * .40),
                        _mix(skin, EYE_WHITE, .12), inside)
+    from .overrides import PORTRAIT_SIGNATURE_FEATURES
+    signature_feature = PORTRAIT_SIGNATURE_FEATURES.get(str(getattr(fighter, "name", "") or ""))
+    if signature_feature == "under_eye_tattoo":
+        # A deliberately tiny under-eye mark: recognisable at 180px while it
+        # remains a restrained ink detail at the roster's 72px size.
+        mark_x = cx - hw * .37
+        mark_y = eye_y + size * .052
+        raster.ellipse(mark_x, mark_y, max(1, size * .009), max(1, size * .012), INK, inside)
+        raster.line(mark_x + size * .012, mark_y + size * .008,
+                    mark_x + size * .026, mark_y + size * .022,
+                    max(1, size // 230), INK, inside)
     # Facial-hair masks never reach higher than the jaw band, apart from an
     # explicitly separate moustache.
     facial = identity["facial_hair"] if not female else 0
