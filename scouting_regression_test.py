@@ -214,6 +214,48 @@ class ScoutingRegressionTests(unittest.TestCase):
         self.assertEqual({}, app.scouting_knowledge)
         self.assertEqual({}, app.scouting_alert_state)
 
+    def test_named_watchlist_actions_preserve_ids_and_archive_without_deleting_members(self):
+        target = fighter()
+        app = ScoutingHarness()
+        app.free_agents = [target]
+
+        ok, created = app.create_scouting_watchlist("Replacement Targets")
+        self.assertTrue(ok)
+        self.assertEqual("Replacement Targets", created["name"])
+        created["fighter_ids"] = [target.fighter_id]
+        ok, _ = app.set_active_scouting_watchlist(created["watchlist_id"])
+        self.assertTrue(ok)
+        self.assertEqual(created["watchlist_id"], app.rules["scouting_active_watchlist_id"])
+        self.assertEqual([target.fighter_id], app.active_scouting_watchlist_ids())
+
+        ok, renamed = app.rename_scouting_watchlist(created["watchlist_id"], "Headliner Replacements")
+        self.assertTrue(ok)
+        self.assertEqual("Headliner Replacements", renamed["name"])
+        ok, archived = app.archive_scouting_watchlist(created["watchlist_id"])
+        self.assertTrue(ok)
+        self.assertTrue(archived["archived"])
+        self.assertEqual("WATCH-main", app.rules["scouting_active_watchlist_id"])
+        self.assertEqual([target.fighter_id], archived["fighter_ids"])
+        main = next(row for row in app.scouting_watchlists if row["watchlist_id"] == "WATCH-main")
+        self.assertEqual([], main["fighter_ids"])
+
+    def test_watchlist_reader_is_defensive_and_does_not_rewrite_malformed_rows(self):
+        app = ScoutingHarness()
+        app.scouting_watchlists = [
+            "legacy scalar",
+            {"watchlist_id": "watch-a", "name": "Targets", "fighter_ids": ["F1", "F1"], "archived": False},
+            {"watchlist_id": "watch-a", "name": "Duplicate", "fighter_ids": ["F2"]},
+        ]
+        before = repr(app.scouting_watchlists)
+
+        rows = app.scouting_watchlist_read_model()
+
+        self.assertEqual(before, repr(app.scouting_watchlists))
+        self.assertEqual(1, len(rows))
+        self.assertEqual("watch-a", rows[0]["watchlist_id"])
+        self.assertEqual(1, rows[0]["fighter_count"])
+        self.assertEqual(["F1"], rows[0]["fighter_ids"])
+
     def test_prior_report_remains_usable_during_upgrade_and_after_cancel(self):
         target = fighter()
         app = ScoutingHarness()
@@ -358,9 +400,26 @@ class ScoutingRegressionTests(unittest.TestCase):
 
         ViewMixin.refresh_scouting_center(app)
 
-        row = app.scouting_assignment_rows["search:0"]
+        row = app.scouting_assignment_rows[ViewMixin.scouting_search_row_id(app.scouting_searches[0], index=0)]
         self.assertIs(headline, row["fighter"])
         self.assertEqual([headline, secondary], row["fighters"])
+
+    def test_legacy_search_identity_is_content_bound_not_visible_index(self):
+        # Very old/imported rows can lack both an assignment ID and authored
+        # request fields. Their reader key must remain stable if filtering or
+        # sorting changes the visible order.
+        empty = {}
+        first = ViewMixin.scouting_search_row_id(empty, index=0)
+        moved = ViewMixin.scouting_search_row_id(empty, index=17)
+        self.assertEqual(first, moved)
+        self.assertNotIn("row-", first)
+
+        malformed = "legacy search row"
+        self.assertEqual(
+            ViewMixin.scouting_search_row_id(malformed, index=1),
+            ViewMixin.scouting_search_row_id(malformed, index=99),
+        )
+        self.assertNotIn("row-", ViewMixin.scouting_search_row_id(malformed, index=1))
 
     def test_duplicate_name_scouts_keep_independent_capacity_and_workload(self):
         first = {
@@ -548,6 +607,25 @@ class ScoutingRegressionTests(unittest.TestCase):
         self.assertEqual(13, app.scouting_searches[0]["weeks_remaining"])
         self.assertEqual(1, app.scout_workload(app.staff[0]))
 
+    def test_legacy_watchlist_identity_is_content_bound_and_duplicates_remain_visible(self):
+        app = ScoutingHarness()
+        app.scouting_watchlists = [
+            {"name": "Recruitment", "fighter_ids": ["FTR-one"], "created_week": 4},
+            {"name": "Recruitment", "fighter_ids": ["FTR-one"], "created_week": 4},
+            {},
+        ]
+        before = repr(app.scouting_watchlists)
+
+        rows = app.scouting_watchlist_read_model()
+
+        self.assertEqual(before, repr(app.scouting_watchlists))
+        self.assertEqual(3, len(rows))
+        ids = [row["watchlist_id"] for row in rows]
+        self.assertEqual(len(ids), len(set(ids)))
+        self.assertTrue(ids[0].startswith("legacy-watchlist:"))
+        self.assertEqual(ids[0] + "#2", ids[1])
+        self.assertNotIn("legacy-watchlist:1", ids)
+
     def test_watchlist_alert_is_emitted_once_per_material_state_change(self):
         target = fighter()
         app = ScoutingHarness()
@@ -581,6 +659,31 @@ class ScoutingRegressionTests(unittest.TestCase):
         self.assertFalse(app.academy["network_active"])
         self.assertEqual([], app.academy["talent_pool"])
         self.assertFalse(any(row["subject"].startswith("Staff Deal Extended") for row in app.inbox))
+
+    def test_malformed_staff_rows_do_not_break_scouting_capacity_or_cost_readers(self):
+        app = ScoutingHarness()
+        malformed = {"staff_id": "STAFF-bad", "role": "Scout", "skill": "unknown", "efficiency": "bad"}
+        app.staff = [malformed, "legacy staff row"]
+        before = repr(app.staff)
+        self.assertEqual(app.scout_capacity(malformed), 1)
+        self.assertEqual(app.talent_search_cost("USA", malformed), 6_695)
+        self.assertEqual(app.talent_search_duration(malformed, "USA"), 5)
+        self.assertEqual(app.scout_for_assignment({"scout_id": "missing"}), {})
+        self.assertEqual(repr(app.staff), before)
+
+    def test_malformed_report_dates_fail_closed_without_rewriting_evidence(self):
+        app = ScoutingHarness()
+        target = fighter()
+        report = {
+            "status": "Complete", "kind": "full", "confidence": "unknown",
+            "completed_week": "not-a-week", "estimates": {"overall": {"low": 60, "mid": 65, "high": 70}},
+        }
+        before = repr(report)
+        self.assertEqual(0, app.scouting_effective_confidence(report))
+        self.assertFalse(app.scouting_report_is_current_full(report))
+        self.assertFalse(app.scouting_report_blocks_discovery(report))
+        self.assertEqual({}, app.scouting_estimate(target, "overall", {}, report=report))
+        self.assertEqual(before, repr(report))
 
 
 if __name__ == "__main__":

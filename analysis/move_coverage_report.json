@@ -1,0 +1,3397 @@
+{
+  "action_selection_counts": {
+    "advance_position": 791,
+    "bottom_submission": 216,
+    "break_clinch": 467,
+    "cage_control": 408,
+    "clinch": 876,
+    "cling": 470,
+    "dirty_boxing": 637,
+    "ground_control": 658,
+    "ground_strikes": 486,
+    "jab": 1123,
+    "kick": 533,
+    "power_punch": 600,
+    "recover_guard": 222,
+    "shoot": 530,
+    "stand_up": 249,
+    "submission": 932,
+    "survive": 3457,
+    "sweep": 191,
+    "takedown": 466
+  },
+  "aggregate_maximum_identical_defense_clause": 3,
+  "attempted_chain_occurrences_round2_fights": 5217,
+  "bottom_leg_entry_counts": {},
+  "chained_selection_pct": 17.51,
+  "completed_chain_occurrences_round2_fights": 1450,
+  "contexts": [
+    [
+      "advance_position",
+      "back control",
+      ""
+    ],
+    [
+      "advance_position",
+      "guard",
+      ""
+    ],
+    [
+      "advance_position",
+      "half guard",
+      ""
+    ],
+    [
+      "advance_position",
+      "mount",
+      ""
+    ],
+    [
+      "advance_position",
+      "side control",
+      ""
+    ],
+    [
+      "bottom_submission",
+      "back control",
+      ""
+    ],
+    [
+      "bottom_submission",
+      "guard",
+      ""
+    ],
+    [
+      "bottom_submission",
+      "half guard",
+      ""
+    ],
+    [
+      "bottom_submission",
+      "mount",
+      ""
+    ],
+    [
+      "bottom_submission",
+      "side control",
+      ""
+    ],
+    [
+      "break_clinch",
+      "cage",
+      ""
+    ],
+    [
+      "break_clinch",
+      "clinch",
+      ""
+    ],
+    [
+      "cage_control",
+      "cage",
+      ""
+    ],
+    [
+      "cage_control",
+      "clinch",
+      ""
+    ],
+    [
+      "clinch",
+      "range",
+      ""
+    ],
+    [
+      "cling",
+      "back control",
+      ""
+    ],
+    [
+      "cling",
+      "guard",
+      ""
+    ],
+    [
+      "cling",
+      "half guard",
+      ""
+    ],
+    [
+      "cling",
+      "mount",
+      ""
+    ],
+    [
+      "cling",
+      "side control",
+      ""
+    ],
+    [
+      "dirty_boxing",
+      "cage",
+      "body"
+    ],
+    [
+      "dirty_boxing",
+      "cage",
+      "head"
+    ],
+    [
+      "dirty_boxing",
+      "clinch",
+      "body"
+    ],
+    [
+      "dirty_boxing",
+      "clinch",
+      "head"
+    ],
+    [
+      "ground_control",
+      "back control",
+      ""
+    ],
+    [
+      "ground_control",
+      "guard",
+      ""
+    ],
+    [
+      "ground_control",
+      "half guard",
+      ""
+    ],
+    [
+      "ground_control",
+      "mount",
+      ""
+    ],
+    [
+      "ground_control",
+      "side control",
+      ""
+    ],
+    [
+      "ground_strikes",
+      "back control",
+      "head"
+    ],
+    [
+      "ground_strikes",
+      "guard",
+      "head"
+    ],
+    [
+      "ground_strikes",
+      "half guard",
+      "head"
+    ],
+    [
+      "ground_strikes",
+      "mount",
+      "head"
+    ],
+    [
+      "ground_strikes",
+      "side control",
+      "head"
+    ],
+    [
+      "jab",
+      "range",
+      "body"
+    ],
+    [
+      "jab",
+      "range",
+      "head"
+    ],
+    [
+      "kick",
+      "range",
+      "body"
+    ],
+    [
+      "kick",
+      "range",
+      "head"
+    ],
+    [
+      "kick",
+      "range",
+      "leg"
+    ],
+    [
+      "power_punch",
+      "range",
+      "body"
+    ],
+    [
+      "power_punch",
+      "range",
+      "head"
+    ],
+    [
+      "recover_guard",
+      "back control",
+      ""
+    ],
+    [
+      "recover_guard",
+      "guard",
+      ""
+    ],
+    [
+      "recover_guard",
+      "half guard",
+      ""
+    ],
+    [
+      "recover_guard",
+      "mount",
+      ""
+    ],
+    [
+      "recover_guard",
+      "side control",
+      ""
+    ],
+    [
+      "shoot",
+      "range",
+      ""
+    ],
+    [
+      "stand_up",
+      "back control",
+      ""
+    ],
+    [
+      "stand_up",
+      "guard",
+      ""
+    ],
+    [
+      "stand_up",
+      "half guard",
+      ""
+    ],
+    [
+      "stand_up",
+      "mount",
+      ""
+    ],
+    [
+      "stand_up",
+      "side control",
+      ""
+    ],
+    [
+      "submission",
+      "back control",
+      ""
+    ],
+    [
+      "submission",
+      "guard",
+      ""
+    ],
+    [
+      "submission",
+      "half guard",
+      ""
+    ],
+    [
+      "submission",
+      "mount",
+      ""
+    ],
+    [
+      "submission",
+      "side control",
+      ""
+    ],
+    [
+      "survive",
+      "back control",
+      ""
+    ],
+    [
+      "survive",
+      "cage",
+      ""
+    ],
+    [
+      "survive",
+      "clinch",
+      ""
+    ],
+    [
+      "survive",
+      "guard",
+      ""
+    ],
+    [
+      "survive",
+      "half guard",
+      ""
+    ],
+    [
+      "survive",
+      "mount",
+      ""
+    ],
+    [
+      "survive",
+      "range",
+      ""
+    ],
+    [
+      "survive",
+      "side control",
+      ""
+    ],
+    [
+      "sweep",
+      "back control",
+      ""
+    ],
+    [
+      "sweep",
+      "guard",
+      ""
+    ],
+    [
+      "sweep",
+      "half guard",
+      ""
+    ],
+    [
+      "sweep",
+      "mount",
+      ""
+    ],
+    [
+      "sweep",
+      "side control",
+      ""
+    ],
+    [
+      "takedown",
+      "cage",
+      ""
+    ],
+    [
+      "takedown",
+      "clinch",
+      ""
+    ]
+  ],
+  "control_award_counts": {},
+  "coverage": {
+    "pools": [
+      {
+        "action": "advance_position",
+        "below_floor": true,
+        "depth": 0,
+        "minimum": 4,
+        "position": "back control"
+      },
+      {
+        "action": "advance_position",
+        "below_floor": false,
+        "depth": 9,
+        "minimum": 4,
+        "position": "guard"
+      },
+      {
+        "action": "advance_position",
+        "below_floor": false,
+        "depth": 11,
+        "minimum": 4,
+        "position": "half guard"
+      },
+      {
+        "action": "advance_position",
+        "below_floor": false,
+        "depth": 5,
+        "minimum": 4,
+        "position": "mount"
+      },
+      {
+        "action": "advance_position",
+        "below_floor": false,
+        "depth": 7,
+        "minimum": 4,
+        "position": "side control"
+      },
+      {
+        "action": "bottom_submission",
+        "below_floor": true,
+        "depth": 0,
+        "minimum": 4,
+        "position": "back control"
+      },
+      {
+        "action": "bottom_submission",
+        "below_floor": false,
+        "depth": 15,
+        "minimum": 4,
+        "position": "guard"
+      },
+      {
+        "action": "bottom_submission",
+        "below_floor": false,
+        "depth": 6,
+        "minimum": 4,
+        "position": "half guard"
+      },
+      {
+        "action": "bottom_submission",
+        "below_floor": true,
+        "depth": 0,
+        "minimum": 4,
+        "position": "mount"
+      },
+      {
+        "action": "bottom_submission",
+        "below_floor": true,
+        "depth": 0,
+        "minimum": 4,
+        "position": "side control"
+      },
+      {
+        "action": "break_clinch",
+        "below_floor": false,
+        "depth": 10,
+        "minimum": 4,
+        "position": "cage"
+      },
+      {
+        "action": "break_clinch",
+        "below_floor": false,
+        "depth": 10,
+        "minimum": 4,
+        "position": "clinch"
+      },
+      {
+        "action": "cage_control",
+        "below_floor": false,
+        "depth": 10,
+        "minimum": 4,
+        "position": "cage"
+      },
+      {
+        "action": "cage_control",
+        "below_floor": false,
+        "depth": 6,
+        "minimum": 4,
+        "position": "clinch"
+      },
+      {
+        "action": "clinch",
+        "below_floor": false,
+        "depth": 16,
+        "minimum": 4,
+        "position": "range"
+      },
+      {
+        "action": "cling",
+        "below_floor": false,
+        "depth": 7,
+        "minimum": 4,
+        "position": "back control"
+      },
+      {
+        "action": "cling",
+        "below_floor": false,
+        "depth": 10,
+        "minimum": 4,
+        "position": "guard"
+      },
+      {
+        "action": "cling",
+        "below_floor": false,
+        "depth": 9,
+        "minimum": 4,
+        "position": "half guard"
+      },
+      {
+        "action": "cling",
+        "below_floor": false,
+        "depth": 7,
+        "minimum": 4,
+        "position": "mount"
+      },
+      {
+        "action": "cling",
+        "below_floor": false,
+        "depth": 7,
+        "minimum": 4,
+        "position": "side control"
+      },
+      {
+        "action": "dirty_boxing",
+        "below_floor": false,
+        "depth": 14,
+        "minimum": 4,
+        "position": "cage"
+      },
+      {
+        "action": "dirty_boxing",
+        "below_floor": false,
+        "depth": 14,
+        "minimum": 4,
+        "position": "clinch"
+      },
+      {
+        "action": "ground_control",
+        "below_floor": false,
+        "depth": 5,
+        "minimum": 4,
+        "position": "back control"
+      },
+      {
+        "action": "ground_control",
+        "below_floor": false,
+        "depth": 5,
+        "minimum": 4,
+        "position": "guard"
+      },
+      {
+        "action": "ground_control",
+        "below_floor": false,
+        "depth": 6,
+        "minimum": 4,
+        "position": "half guard"
+      },
+      {
+        "action": "ground_control",
+        "below_floor": false,
+        "depth": 5,
+        "minimum": 4,
+        "position": "mount"
+      },
+      {
+        "action": "ground_control",
+        "below_floor": false,
+        "depth": 6,
+        "minimum": 4,
+        "position": "side control"
+      },
+      {
+        "action": "ground_strikes",
+        "below_floor": false,
+        "depth": 6,
+        "minimum": 4,
+        "position": "back control"
+      },
+      {
+        "action": "ground_strikes",
+        "below_floor": false,
+        "depth": 6,
+        "minimum": 4,
+        "position": "guard"
+      },
+      {
+        "action": "ground_strikes",
+        "below_floor": false,
+        "depth": 9,
+        "minimum": 4,
+        "position": "half guard"
+      },
+      {
+        "action": "ground_strikes",
+        "below_floor": false,
+        "depth": 5,
+        "minimum": 4,
+        "position": "mount"
+      },
+      {
+        "action": "ground_strikes",
+        "below_floor": false,
+        "depth": 8,
+        "minimum": 4,
+        "position": "side control"
+      },
+      {
+        "action": "jab",
+        "below_floor": false,
+        "depth": 12,
+        "minimum": 4,
+        "position": "range"
+      },
+      {
+        "action": "kick",
+        "below_floor": false,
+        "depth": 38,
+        "minimum": 4,
+        "position": "range"
+      },
+      {
+        "action": "power_punch",
+        "below_floor": false,
+        "depth": 43,
+        "minimum": 4,
+        "position": "range"
+      },
+      {
+        "action": "recover_guard",
+        "below_floor": false,
+        "depth": 7,
+        "minimum": 4,
+        "position": "back control"
+      },
+      {
+        "action": "recover_guard",
+        "below_floor": false,
+        "depth": 8,
+        "minimum": 4,
+        "position": "guard"
+      },
+      {
+        "action": "recover_guard",
+        "below_floor": false,
+        "depth": 11,
+        "minimum": 4,
+        "position": "half guard"
+      },
+      {
+        "action": "recover_guard",
+        "below_floor": false,
+        "depth": 7,
+        "minimum": 4,
+        "position": "mount"
+      },
+      {
+        "action": "recover_guard",
+        "below_floor": false,
+        "depth": 10,
+        "minimum": 4,
+        "position": "side control"
+      },
+      {
+        "action": "shoot",
+        "below_floor": false,
+        "depth": 16,
+        "minimum": 4,
+        "position": "range"
+      },
+      {
+        "action": "stand_up",
+        "below_floor": true,
+        "depth": 0,
+        "minimum": 4,
+        "position": "back control"
+      },
+      {
+        "action": "stand_up",
+        "below_floor": false,
+        "depth": 9,
+        "minimum": 4,
+        "position": "guard"
+      },
+      {
+        "action": "stand_up",
+        "below_floor": false,
+        "depth": 8,
+        "minimum": 4,
+        "position": "half guard"
+      },
+      {
+        "action": "stand_up",
+        "below_floor": true,
+        "depth": 0,
+        "minimum": 4,
+        "position": "mount"
+      },
+      {
+        "action": "stand_up",
+        "below_floor": true,
+        "depth": 0,
+        "minimum": 4,
+        "position": "side control"
+      },
+      {
+        "action": "submission",
+        "below_floor": true,
+        "depth": 3,
+        "minimum": 4,
+        "position": "back control"
+      },
+      {
+        "action": "submission",
+        "below_floor": false,
+        "depth": 8,
+        "minimum": 4,
+        "position": "guard"
+      },
+      {
+        "action": "submission",
+        "below_floor": false,
+        "depth": 9,
+        "minimum": 4,
+        "position": "half guard"
+      },
+      {
+        "action": "submission",
+        "below_floor": false,
+        "depth": 6,
+        "minimum": 4,
+        "position": "mount"
+      },
+      {
+        "action": "submission",
+        "below_floor": false,
+        "depth": 9,
+        "minimum": 4,
+        "position": "side control"
+      },
+      {
+        "action": "survive",
+        "below_floor": false,
+        "depth": 4,
+        "minimum": 4,
+        "position": "back control"
+      },
+      {
+        "action": "survive",
+        "below_floor": false,
+        "depth": 4,
+        "minimum": 4,
+        "position": "cage"
+      },
+      {
+        "action": "survive",
+        "below_floor": false,
+        "depth": 4,
+        "minimum": 4,
+        "position": "clinch"
+      },
+      {
+        "action": "survive",
+        "below_floor": false,
+        "depth": 4,
+        "minimum": 4,
+        "position": "guard"
+      },
+      {
+        "action": "survive",
+        "below_floor": false,
+        "depth": 4,
+        "minimum": 4,
+        "position": "half guard"
+      },
+      {
+        "action": "survive",
+        "below_floor": false,
+        "depth": 4,
+        "minimum": 4,
+        "position": "mount"
+      },
+      {
+        "action": "survive",
+        "below_floor": false,
+        "depth": 5,
+        "minimum": 4,
+        "position": "range"
+      },
+      {
+        "action": "survive",
+        "below_floor": false,
+        "depth": 4,
+        "minimum": 4,
+        "position": "side control"
+      },
+      {
+        "action": "sweep",
+        "below_floor": true,
+        "depth": 0,
+        "minimum": 4,
+        "position": "back control"
+      },
+      {
+        "action": "sweep",
+        "below_floor": false,
+        "depth": 10,
+        "minimum": 4,
+        "position": "guard"
+      },
+      {
+        "action": "sweep",
+        "below_floor": false,
+        "depth": 9,
+        "minimum": 4,
+        "position": "half guard"
+      },
+      {
+        "action": "sweep",
+        "below_floor": true,
+        "depth": 0,
+        "minimum": 4,
+        "position": "mount"
+      },
+      {
+        "action": "sweep",
+        "below_floor": true,
+        "depth": 0,
+        "minimum": 4,
+        "position": "side control"
+      },
+      {
+        "action": "takedown",
+        "below_floor": false,
+        "depth": 13,
+        "minimum": 4,
+        "position": "cage"
+      },
+      {
+        "action": "takedown",
+        "below_floor": false,
+        "depth": 16,
+        "minimum": 4,
+        "position": "clinch"
+      }
+    ],
+    "style_counts": {
+      "BJJ": 85,
+      "Boxer": 43,
+      "Catch Wrestler": 45,
+      "Dutch Kickboxer": 28,
+      "Freestyle Wrestler": 44,
+      "Grappler": 43,
+      "Judo": 41,
+      "Karate": 27,
+      "Kickboxer": 28,
+      "Luta Livre": 36,
+      "MMA Generalist": 32,
+      "Muay Thai": 40,
+      "Sambo": 59,
+      "Sanda": 29,
+      "Submission Grappler": 32,
+      "Taekwondo": 22,
+      "Well-Rounded": 53,
+      "Wrestler": 78
+    },
+    "thin_styles": {}
+  },
+  "cradle_setup_counts": {},
+  "defense_repetition_window_fights": 300,
+  "eligibility_warnings": {
+    "anaconda_choke": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "chained_reshot": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "darce_choke": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "fence_drive": [
+      "no-parent-action"
+    ],
+    "front_headlock_go_behind": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "front_headlock_posture_out": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "guillotine_choke": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "heel_hook": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "kneebar": [
+      "no-parent-action"
+    ],
+    "lift_mat_return": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "limp_leg_escape": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "rear_waist_ride": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "sit_out_reversal": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "snapdown_front_headlock": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "straight_ankle_lock": [
+      "no-parent-action"
+    ],
+    "toe_hold": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "turtle_breakdown": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "turtle_wrist_ride_strikes": [
+      "position-never-entered"
+    ],
+    "whizzer_recovery": [
+      "no-parent-action",
+      "position-never-entered"
+    ]
+  },
+  "exchange_position_counts": {
+    "back control": 220,
+    "cage": 1224,
+    "clinch": 1862,
+    "guard": 1729,
+    "half guard": 1907,
+    "mount": 423,
+    "range": 4950,
+    "side control": 997
+  },
+  "failures": [],
+  "fight_count": 300,
+  "generic_submission_identity_count": 50,
+  "guillotine_defense_counts": {},
+  "hold_transition_counts": {},
+  "incompatible_submission_defense_count": 114,
+  "incompatible_submission_identity_count": 1019,
+  "maximum_identical_defense_clause": 3,
+  "mean_distinct_bottom_moves_per_fighter": 1.6883,
+  "mean_distinct_moves_per_fighter": 16.5683,
+  "mechanical_signatures": [
+    "462768bfcfb57ee9a58a64b8787015e328d2833d873059741661f394bad46eda",
+    "e53de29b4a0d42abc03375bcadb353d6caddddf36453ecd4dcce778bcc10a167",
+    "3fb49ed1f35d330fb2ebf4d5461d11d22c0ae977ade4497c00565bfe2c9a516f",
+    "d2e2e4ebf1f2739ccca6b0243a1adf5abe49865529b416c5e603f82667a3522a",
+    "213fd572766b54d80adbf8568694491ad7dc3ef2406fb3448e4f9729b900ea10",
+    "e5dd7dae3e176e7ea8da2a67e70bf316868f33c4fb0cd6fae6084113003de857",
+    "ad1ec8459a8d4d0cbbf878d98fc03211f63ce45d0cdb0080063e7e02f115a970",
+    "e389acfdbc8b0a3c4cbe08bc0c5b17a650c0c85c16e4ba11fec009ac0f7bdb65",
+    "1a1c8e5cc050e55abd15c8f2c320e22c83aaf45b534fa258f754e2ccc9810403",
+    "7ca609795c016dfa640f0556404ffab03975fee6d3e482195257227528352528",
+    "41a6098041b6810427e98a2913a6f7b8a21dc4e928c3b3defbc1c40d7dfef82c",
+    "161a7c8ce614779948d65bb0c9aed680a3efd7e32b91784264e94c5d10ee36dc",
+    "cfb5ffaee6d31c93a4b2470e7de999fc0ab1d39d54944e8a2971fef0e086d1ac",
+    "707406e235231b6083a67e4b5394a052c6d8baaafdc291a500bd4d86bc2847d0",
+    "a44f1a167060629c89116fdc09e938e3f17f8455668d9a5d30e8d352c09a63e6",
+    "eb7406a33ddbbabd5c02c65d61310d613979ad641c8d2d459d29c4963c34144a",
+    "ac71f40c5c87375fc22db611ded3e94b38b1e3effa9b556872f8acf60190b0b8",
+    "57da5f6612961c64f4811cdeabbbb1f407364f5a509a91e4bb5fb58da1da1836",
+    "608b61913990f182123db3222006b0683a3438594f9f69c78c43da78ee6d9f08",
+    "286a80c821048078817dedd0da8c36463ba138f575944c490411683b1ebfbf34",
+    "11ef77f95e13c05f4a6ae12d20d91bf76fd0f9cbc2c0b6f3cb84f25fd6e6b3df",
+    "5030311ca0ee707a073b576426b27f2c528376b763bfd290bada4f292b759360",
+    "93332ba4b5722b76ce2968bc418f6f88b3d47f46b9ad84f12c6267fdf1a2f484",
+    "c19c4a4b0e95b2ecd39760810b11ce111eca4fd2d44757c2f5c96cb6f124c7a9",
+    "ba6ccaff9f9cbd6014f3a7f4d91a724573b553a1aa0286b11220e37f001dab44",
+    "56dccfea9241ff2e7cc3ed77787346ff390b0051b0c501425f63d5d4317455f1",
+    "f0a82cad3531c27c5b1e2d3927af990620a61d8247a1948e77ea2b4e25b70070",
+    "01eaa7f7e4081f6df61f07e4045181ef722a0fcc0bce3b194df3d010ed326a31",
+    "11c02bfa488af803811b99c779823c0e6ce3944add2eb76d2fd651c0426532e7",
+    "7f3f7616606bfa7cd51baade25dfe1fda4701a533601b5b557978995f277bc07",
+    "aa4ce727abc3caa8dc51685d49676140cc85810aad7bd2305482809bcc039de4",
+    "daf63d35ff516b4fe5930f959c969b640a488f94773ea7a045d3c92041a02df6",
+    "f2edb5b242612c3af5c0a345979427863b1aded9b0618abe4add902f242d5ea9",
+    "0ede5c3823520222819917479469c1aad64fdaafb04847a1849c143e31c94d80",
+    "5ffce970671ec9af5604de45dec46726e81700fe4d4fb1792c579430d47b8752",
+    "31daece30493680138525573985b6cf583903397551cbe9528816983eb4cbda9",
+    "e1455a3e80801fff21c7d57bba48c1dcbffc1bccae91cf0d41f2c5a37533983e",
+    "dec94decaf5654760c372452df7a54b01225d36a54f59ffa51afe18c948b4125",
+    "15af0ef23a783884f5d1713c0218499a4a3b19dfc71d72df991a6d131705d6ed",
+    "c43fad68cb0b6616144ad97c86a4910bbc59d166757364c6eef8f06626ab1633",
+    "0311a6ea453bea040ecb0ea66ce180d533880c2605e9477a1fb043e8454c953e",
+    "96617105bf3c5df43604cd075f640499792076b8c1dc37e20e524a471a8d815f",
+    "51b3a21860cef7aa9b4daf4efda48f5dfef253745caa87b32b97b45c80f1dab8",
+    "7d236ea2f48f3fd5670eb33f6e2ee110e61ac76caa2cac794f60d19c9bc6b29e",
+    "7e0343bf864aeb85958c09f5a611b5366490e16ef7b0b2ddf7cd427aaa354f1c",
+    "6c3d88d9ea404bc3a0c51814238573681cc9b3abdcce65008ce8a91a744dbb99",
+    "a1660275c0e03b8435d1ea1dd15f69cdc5556b7038ef70beeae46e26cf16509b",
+    "790513b890a9b7bf96ea96a3b632c5a3a0377f215af1e8b7656d70a3749dad39",
+    "ffeebe1328d010fce94f8bfedb48d2973781dd18bfb9ad9bb19e44cedac63378",
+    "33165f4fed7ee26e5754310fd463851942d411ccf4dd77d4219774472d961ecc",
+    "6f0d0740ca0019c87c6be9c374ecd569787a3713dba2adff305e340e3823affe",
+    "74c98e2303571dd191a6a2e5ee7c82548318d9d63cf789f7385ac1553465919f",
+    "831327c00fba4ee96bbfb021bf4dd5984bc61958deac864e786af5cb9ebbcfed",
+    "0a2ff852d32855525b62b96aa3864dbcf9f752ea0bc14e2e0893ac90bc977263",
+    "243178ff5b5dabc51f457228e20a87bb85058f31e60e0523307e162ef78c47a7",
+    "89ae36f12581c94eca239964042e725327796eeaa1eb6aeb359e06c860713a1c",
+    "eb9c019116b136d8cfcd8b97249ef6173f171c580f8c65359b540ae62dc85acd",
+    "ce734b88049b81154795b0b9699b6002ac585ccd04d9af05f13f7947d2b4d658",
+    "cfa327bd5a1253020ae2ea05fa6a8f3620d856451380ae41e9f3e34985b91e02",
+    "d9693a2e78110acf0d063eb761b99afb3904dfe35c79aa4e54a228f209ef4ddd",
+    "ebcb79e27c4a64264b9a01808e06782e52b3057d660e35f29642ec95d28e4d99",
+    "a3c441587d55ab3c9ec9f5bd1ab49a31bc07553ba2f7fb189ebff8211f1a7979",
+    "18ea9936124c46220b7d8b134686258215fc7df14cd80753e05d16cc0e8d1194",
+    "4824b46c6da70b631ef07530c65a00968ef9c1be82df81fe1593e411809c06b0",
+    "2d02b174b51a89896458357f81fed8dad1e7f23d20606afb49ef22fa91ff7146",
+    "86a020ab9033edd74fe41944e3c6ed9fa05e12d1b1bc0c0eff83aaafac732ad0",
+    "3e1e74dc5ff6c81babeaada5009f9d5917dbea7d70d24380e9bb739b7fbcaed1",
+    "7eb0bb7fb590ed1681d36715e05ab0a09539d5e936cf0c3efd17fd157679ad12",
+    "ea7954e8a0e425ae476b1dac3b711f6db2d0592f0eac59272a20f774454b0673",
+    "4035b258d749e2318dac819e909dfe9d438931351b259917006257d1846a0cff",
+    "30bb4a05685311994b03ed5de4b94511f52ec305e0e059bb45647d62a77cf10a",
+    "006fff73b06c604c4bf822fc991f54a6a66d9800fa4dd1938c59f97dfd182f04",
+    "39f54ffc9e9bb8fe126c26d63fec0301d161e8e07bdc54ebadd23afe37c5eca3",
+    "f8529c57cd609106fa1b9ac39ef91e57c5354eba060d5641e54d61bd032154e5",
+    "5a62c065a8db2672aa6b013689cce1f5caca57a0fafdd022ae8bf64f99d0bf76",
+    "43fbaa46e9255441030405ae1c692721ad4a446a9afceac3b16f05bd8e717a3b",
+    "998b8100a75da95904d32b96a73587b006d5b35483acb82cba223ddc0fcd13fb",
+    "cd25157422dc97ebecfc864bc236ad5fb98c7390e16f9029755f8e4a75e7ca86",
+    "4d119c5d69a6967d7d5aa777311c7a090bd5042b0c75277815789ac0223372f1",
+    "6edf657b27b211dbc4d48305cb3d08e8a922b25cebe764d7007cc3721789da39",
+    "802c883a5cdb98966340f8e5bfff320d0acdeee3fa532a0a4209e12ad45d3630",
+    "b83f4f4afae4a2114a8731a66a41d36fcb9ad16bbf66e802fe34a7cb30ac4932",
+    "9b9b57f0f6f684a7eb837cfa2e62cab200cfc7827359e6f1fe75f6dc1f2d2581",
+    "13ca349ece2780e0d10bbaedfce8a23599bbff900dba7798d883b884aa0742f9",
+    "53143a8df1665979443b764e1627bd4467efe9a570c7e2cba21560bde9f1986c",
+    "e0dcc16ba8a5686b2c8e1a875bc152d1e63ac6b4eafb2c879c90271b99fabb7c",
+    "312bbeeb1f9bf1dcbab63a77ebb7576c5c06bee04bbc3b676761f124edf34a0a",
+    "95188977a012e57dc0093f3f2ae4c7f5bd9da90ed92cd39fc99c61ed673371ed",
+    "2ce91f3d9b7c0312ef720e6b241bd5f04c0e49b9c54650412a3fd4785fb31d5f",
+    "1b8b15b7333866106ba7b7c41783796c541c59175612f0aa2dc6134b0de7ca47",
+    "3b2422ccb9c9e04336bc7d0587ffbceae1029cd59c915eafca9a25231c770c62",
+    "f2ead0125820fbb72daeb7221ad495321cac59a5bd219100764e73db42fb3966",
+    "4cd3e2803c01f8f33cf1a2ce8b9bc1ceef3d1229031d81153e5ace16b9fc9402",
+    "44013f55494be566c79ac56d90dcbc14851d07e908c895698e23fb96b87febfe",
+    "40ce640d0a408410196eb997ec1869f14f45c48b0117f061527586838300c800",
+    "6006a105f58e7e661b3780ee52a3ceae447894d12be56c5f60197e0b75141ec2",
+    "a703b229a7a65588b7e9bcdadb7adaae1f5bde212d53fd9dc57c5d1ca25eedd8",
+    "67d8fbc03667d96c8645b8881d961600826759123c9bd6572063a2302a1c7a26",
+    "75bb71d33f8a5e2bcfdca8a49d273e7933aacaaebd55e2390f611a69e6b27e79",
+    "451a0d35fd8e483ee5f66f633a8b1b0ded8ef72d2c7a7920e603bf3fe274e610",
+    "f7f76da4f691b38bef3008d316f77e2e191490b6718f87441b4e8cfafcc1e1ba",
+    "bb854ac633a2df7497dbd905eacd4ed2975cc2241e64666cb3fc112bc59e33fc",
+    "76b6ff11f13a80e175fc32e991775d018493d1d61d90a5f795e8bc2441399900",
+    "3f1041c0e2f6e2485c571a0212062f137924167babdeca9768765076bb427c7d",
+    "695d688f9756b675d59dabbf800b9af2cc4625a707a927e6940cba40e03fdb58",
+    "3ffa191b4a70a9b7824a7377dd734bfb7aad4829490c5705ca388e440d37bb0e",
+    "3836b12268461fd8b2d4ab56af883446f654c1f704a72ef2d64a4f4ecb499a1f",
+    "000aa2d6113920be7192c4dd1383822d27bb27c062e963801966c28a9a52c0dc",
+    "1681d309da24b83e66b976020430dc8f1833364d354401358b815b252d700e9a",
+    "c89a8b433276218e2c292d34857bb7140cd6f4a4870dbbcdcab47661ba1435a5",
+    "850a51efcf3b328464370b57c264074d4b62100f071a7e6bc5e4c450bfc167b6",
+    "6cd3d1a68d2da888b55f32dc1f984f52665ac443726c87fef9e82bf913d9ef5f",
+    "0845579e455bb92f33ea154d584035bcab9982041c8718fc096c945b25dd4e90",
+    "7545a1b2ecbb3453fa88d125793cfb051a9d8152ca2c20003d854a85b80e0049",
+    "26793c9fd4b84f823faf2caccec5768b669a687604665ca3a3cdf5ddb6b7f68e",
+    "6ff979bc5d524056ff62f2ca3864748882d49164668a6a610c4bdc57a4add4bc",
+    "62f813fd2ec2841e64b9aedef7a62f626859d70b99302a3330098db332516907",
+    "60c28004385a2d23eec9a05ee44187cc2cce0debfe6611b8d068d8cf8dfebe1a",
+    "014e961a7b4ba58adec8a83016d088f9502b7e78f84581512c49791ab3f20b0c",
+    "1fa4c533c4c796ff4c4067942c47a54767fe4c7d509892c9c72533b85f289205",
+    "31caf8973f326ccb8ce64469ad0806cfcaba2048ac71c1dd3fb2bce7d5efcb13",
+    "7343853ae01f2137d8404701abd6b0e25afc1966522e3679246557d89edc6a95",
+    "d54ecb161445d6bc9aa62c15452d04c40194560020d92c695cb0ccd3875234f2",
+    "1f0c90e52ea973ebd35797f5830a58aeeed280bd61ae3d55e34d7b3c3589d163",
+    "700c7064dfed84ae4c5da9b4ce39a7cab5f25b2d863ef8105fae1ed8b3d3f915",
+    "56cbebb78f9dd5dba1dc69cff9f4f967502dc1a2e4925c2ff906a85bbe104344",
+    "d2d7f07b8b596a11f92ec602c549eca80f87e8bfc4d3c4450d27d3e0c4e9b36f",
+    "d7d099f8a86148421b661028149893454112a9575c82072a3af053ab653d8bfa",
+    "49c724452fbbd07b682df16ea7d19e1f5df4e645341cee5d0f1646fcc0bc8fef",
+    "5883695d329b5785c81e3aa49207fb830f890822b1c2946c6944f79fafbb4282",
+    "17b28da7c577c96a48e3ef18a1e53fba024c75edc7822fcf4749034169731b92",
+    "154df4a1c63e7ce1189eceac1127c54ab2cf6b8a9d538d2e2319a061bca4e84a",
+    "83c1f6b8538fa665be811cfc7ab9cc35ef58056a42c1bca3b0cd8ea1a6f7df8d",
+    "b7117c31e48735fdbceba5888e6920eb079e7e8cc13b16bd4328407293d7cc97",
+    "51d9c522ba1a52e8238071973d6f6efce550820b660a3de7de1226c99f9ef89a",
+    "582acd0163e19b05e980d8a61d300f44da6ac6d3db1cc579ff66c1a9511e729a",
+    "2d9e5663c8c01fc05819e28fa4f7b29e95c2db717106e0e90977f98a4d98ef99",
+    "f9f4fc56b594f89dc3bc3459046d3a944bf78b019d6e19c37e59f0fbce670353",
+    "4e52ed90f557600b2ab7e1b3fc9ff056f2333609051f59934235ccd107472074",
+    "7b41b99594cce5dbeb37c423124173342db1d1ea5b91de197b7159a96f392d02",
+    "de6eca1bf70f8e407e76c585a8fb849262075bbfece6a1cb060f808d6b6362ff",
+    "a86943a082525b7184c599ca999692825e25a551b95a33ed744835415974dc70",
+    "e24b438ebbbebf4ea83411d89afed0d1d860bcbaffd93ae2f5b2428b3ec9c506",
+    "940de1f4744a6c3228fc57b48d22539dd5faea39237269d8a7479cbbbeb8d910",
+    "7d1630e090770c3cbb403582d669fc6e7fc08814aefb8957a8d01b468748c46c",
+    "da2451a3f2dfa287dbdacff06b3222f9f3565cb3ec739ebb042b42c687fe3c11",
+    "52d3274dc00ce5d1c4bb6b72576469400ee04e4049cbd2e5621369749356a5b1",
+    "36786f186f8e0096fea64da07f956520edef14365618b192b2b7a00d932f276d",
+    "97b45ca9981fd25c503ff382d0b9e66192196a120e86debe0de55f1252b01dbc",
+    "1ff3983a71fa8ec1480c848be07a50725fc55dd47bec35513422349e127d05e6",
+    "ccdc3aacb63719bf68f90702f735a7dfe4183af79fb6245deb4f6573b527d8bc",
+    "69eaec8fe7a323fa4c3ab4a3713b48854120a2a70b117ac880ab010f3b52ad5c",
+    "bd06c658dd45877a6a9c4bdef78f470f2c48b0f1131dbd426b27065cbec5c284",
+    "c04fc4cdf64a4349fdaea8a09df1d7c89e66d2db3fb300930e8b63197da806f9",
+    "e0ef036ee5b4aff745fa7cd66281adc32552158ac0baea1399f032cd4ecd6007",
+    "06e76f7838da1cbe956a3c100205ccf7c68e3b4d7ad7dd469f5ec89da4504225",
+    "66941656d50cc6072c3ac0a4367a23620973b3b7f1e0c4cc10e37a22a82b87b4",
+    "694f455053502caa0efd79d1874019cfe14f76718be11cbc74f17188c1eec442",
+    "1d8355148708c0deb901fb34f6008b8ffe983d0744d812fbd21cb9c31e75509e",
+    "6b0fd5c48e077b18e22c4b0cbb7ef00dac0c72884be2b840bec9b3ea614f97a7",
+    "1e6fe1411dce0bbb71dcabeaeed32ea9c82749eabf73bb99145e6e140cb06097",
+    "de383658da86a5b325cde1b8369b5cee0e95de0c24268a90adc514898baf171e",
+    "d7b3aa89e4ce99a46f14fb99d2bdc03a284d867829b59df3195636d5a69e6eba",
+    "961127bf18c5627d1923eb793f80ff7d878dff49798a47d4c8d0848988257ee9",
+    "36226d26f2017e56e0b0d14420a17391e804a4893bc3caa8f520fe9c8f936847",
+    "7a9aa5a74d669ffedd17d4ca0b5d1200580ab65271b34739c32463033129c321",
+    "2e8718b28244189326a90fc8c2e47385993561e56b0ebb11cd37c663788d9565",
+    "001a88c6e8608cc9627a44b7376a9bc36b86a20a6fc77f59ee2d2840cc37f278",
+    "e482d6ac1c36ed3d520d98fbdabc7aa69939ee3c381ca6492008f62013d7a78a",
+    "c13e08de253cdd5f7df1999d14e6a5957c56637873341e7af1fdbaf0f09394ca",
+    "80c146aa850136e473c2cf45e72d20005d9f76a62b22c94943fa22141befb743",
+    "82caec085a126674b0322f4caeb546199145402183f93123541bc44b620260b9",
+    "040fd14d073db63d5de5ab67d64d8a72a1b0c51da2d7ac3a85f47c415ce3e159",
+    "ae8e8bee4afa9395c4a0ede7e16d13c7b6658883b6f428be076596a362f05373",
+    "bfe2e75862840e9548f57586ae6fe07147c5babe6bcc7e02771cc875e4c8b0bd",
+    "3c388e48dd867a23960cb995970773bb18770531a43939a1120b3af92284eede",
+    "59ff768e16df7b1c1a5dff0be42c400b61d2130b263a314e006fb0af9851197e",
+    "41aad1ab90917b20ad36ae6a3b637e6c5e7d854311d065f15d2646d0c1334286",
+    "06317f929db3043be86f74f0442294f738a3beb8b8cbbd942949c80ff512a4dc",
+    "0a13ea89d8df0e7a234f48d765fcb8dd37f019d540b9a5bceb5f62a6096283c9",
+    "a187d92669890c56931507ee94181e2f58fca7a44351eaf272c36c52012baad3",
+    "d7dd6b1728bcc7a5970a6fa664ff4817d1bfcca4d80a8987eafa4f4f6e0ee3d7",
+    "401ee1f0b6fc48db8cdc6fadbf004931a7c2ce58ac3cd9f67c57451eace5ee48",
+    "d37b1e3669219a524d3863e2167cbeb723eaa895e3d1f85ab8a8ea5d67cc36d1",
+    "25dd5328c49468acb53c8f713450ef05867e77f783a3bd3a4f3b50e264d530bb",
+    "e5dcf2b7f9e6ad73a7fbabf066f87b1230507040522f7ca63218b4355d90fe16",
+    "1fc25697e085afaeaf690a7cf056b7efdcd497aeb8ebd1671706adeb65200c8c",
+    "054d9a87bc83dbbb5faa6bfdad1f3cdc8dad4ac21cc67b5935c3907b29ba5e1c",
+    "5a107f4a4dea0151394612aebbd20985ef1638e44279159bd1150e45dd38b52c",
+    "e277bb4b46a55280301bac47249bcff2c80626aaa92e61d26760a48774342c86",
+    "1007f0c945395df0fcd4d0a0988766993a64cf711c0c97d494da0a05f0ae0b1a",
+    "9a72a07c5f858b97de2b66279cb91e295a0ad41fc9fb9d9b05297b504be31fce",
+    "c45863096e331a1ed945869b333f03a960feff0c6b277dcdcb795bdc2ae08781",
+    "666a8d5a419553c83bbc7d7d31b47e51cc90ed5f1f53f7ff50c2ccd78034e6e8",
+    "11ca7eaf06354e6bed5be3d47f6abf2c6f059dc8a4fc80e0f57a4580ff28c69c",
+    "91fe808e19e6ed64353d988e8f51e78e3ef695b5c693920a2fa42d051d0f68d6",
+    "ff6cb934fb6e917205ce75abc0cb7e57e2f160a745d9d3b3d653d2026acf15a1",
+    "b1004d024e599efca11d91fcefab004a1ddb010b3e2db9b428f0b3e3d59e751e",
+    "c36327fe397b4dd7244b83c11087bacb38a6d4ca90410025dd8a318429628556",
+    "b8317dd34eba014c62a5481b281a816c8435e652fe7714dc69f5d34cb4912215",
+    "495710df3543028b530d59f9addf524ae6eaa20755f6e581fdff6cc13b471374",
+    "4c9ba9deb44ccb83252cc88b2f5097265dc8a51ece5a76827eedb14217c41860",
+    "e48aa729b6effb13d79d8a9e9d06e243bfdf097bdcb5222b80885a09db75f5c3",
+    "e71a833e8bb5ef2adf730cd74f379c28c3ef1c5e7aae41270bd04be737a566d3",
+    "32b0a70512a91fd2d71584ae0957e941dd1f2695462ecc67ce69caca2bf05664",
+    "a06624c597987f77f72267cd254781464b210c80f7c0ceb5c8b5de1c10028c6c",
+    "2d12319ba7ef762fbc720a2ef0c786e2c4188eeef1bac0ac0d2df26b37e3b147",
+    "16765cd0c413abf483d5c875fbbad07140a8136d7049e030abc0c856c9eb4707",
+    "22680cda95c56d660ef4ed91d16348a2fe8ef668c380d8257e258890d902b0eb",
+    "2874863d054b9961c5f9967f5325c4ccdce170dc39e0692238724bc06d16ba5e",
+    "18f8eaff778044024f77bd3670513438c25d7e43a8fabb45dcef7b95ce04b70f",
+    "c9491eeed9272620c4810edc55ed97cec09c8a6b4420b1fe32ad50b42496d982",
+    "2c5744d21034072127324286bfa0c0968370aa43766dc9508ab74af09b8db05e",
+    "80403af302408b8d5b56775982c9ca8814131f3b140baa454b16a6b023fbfa77",
+    "5f80e45f5b38e0c3d844b37ee7b3034296779eb18858c6803f0b6965f22239f7",
+    "bab5573e575c7434abb6a6ef7d2336b08a56b821cc1acf34f85cabddd064cf75",
+    "4b9ac4152c3dafb8c3591dd02766fbf24d7332df67c602a6ef6a760d18ff895a",
+    "db9f0f653db0d1175cd506a7dfc0a1ec4a2063eba178e0d7cf344fb19ac93600",
+    "e065d7aedcde1990047d499a2f78256178668ad76e86e9a92c68d75a53df6e98",
+    "3421919c1c0d292fc5863e0e9677f39e5d1a09f48c36460b3c883e11a5b4aaec",
+    "bf7fbfc6748828dee416f5292c0ecde05b366efc2cba6ed594d4f26818e8cd1c",
+    "fd86e3620544fcd27d99ff4d22114dcb63b37f1267d2a0f6c532d7ac54ea50d6",
+    "7b4c996b3c3065f2b96db89463a1aa5420653cbfdd80cab55dcbe462770c5f9c",
+    "d2e672aee5bb12868d9b0e8b56914455bdb627aea2d6a479515b4b8d7a6a2af2",
+    "f486d8a85efb3d0e6886e87405aad4bb4856ab03a4e44f1d8581c2164fd7d193",
+    "b93bb6d711672e231cd5cc9760d55d036ba2fc2b063d25f600e7c91822a57703",
+    "a63e1f9ab44161768dad10df8b67a8fdd42a66a096da00a9d0b4668d93f60787",
+    "3e668fc423b00c2fe1c982c5c92723f8b5858051277f9adfa8f30e2772b5b3ae",
+    "e05276ddf93778a492b8f9a6c15b8c5a9ccb5e6e0e96d04c252e030e8f92f9d6",
+    "2edc6c49fbf8501734153e08bca1d1205b20ce5882445c5245cf857dd2f1748d",
+    "68004a068697cff10e4777354a00fa83fdb200731950b2ebd0dfe1214eddadd6",
+    "fde66d6047b9332a6ca6de865726e15de6ee7d784f0ac5db3507705788d5ea1f",
+    "0739b7e08568f7e45599f955caf1fa1e96ac03fe18b811b481cb68ee93ff929f",
+    "97b529b67b2d43489ae826db360b1810bc2509df29f3c3d6e13c74e6063957de",
+    "8e6c1da491444e18c9a6d734ba0de4d8f2dd1b931c9df9abf43a9fdbc49f52a7",
+    "9dc397f950f169a7d1937c930e04b9b6c7cd0a9141963172b1d2655602dd5e94",
+    "507d3032576c195a07b814a4df92d703cf7a46ab61d941a65c09769acb7a3994",
+    "39048f4a56c8a93fb971be95684d8bc7d104684138223b9304c5e702c4aedd14",
+    "102caacb0d91521152168cd4f3e25f75fc9ed02f6cac51b59f219d8f17db74e6",
+    "c99b13178c472f7a15a39cb57e1d00921555d8d56547c9c4a9571295b81ec084",
+    "02f090c54afb04c81f04c502d5a2dcba518f8a70700a7fa3ea0c1d53f844a8fe",
+    "602d9d7f300fa267e95f3d19b1123e5030f86ba9c832f2ba4f7fd35a75018e18",
+    "9682ef4d8daa22ca7475145161fd1c2c77b6458e55c52bb9791d25a4abff02f4",
+    "e3eae065aa8fc45fc7b53ac25ab128ff770fd907d331d782a31248ad642c6bdd",
+    "069f4443a75ff63a1e5ba959e0499b0f53371f9a0aef144d904fcb81767de70f",
+    "7f58d28205588e861a9c6bb252217fd5f1319e07ed00956c2e031cb4db0e3696",
+    "7f3590ceb12741495529409835c6666502e45525a7c4c8260239ff933d316f28",
+    "4121a3a46336247ed6ed3c260fa83b90a38db8e58d5a9970766766d92d11ae7b",
+    "53c74ce4c6c61bc1ee61816287d4e50410d3ba13162ecbf8e988e233ba63b417",
+    "01b489995e6d1a0105cbf2ec16fc046da9d18da0b6255ac86a8653eb343dc093",
+    "44c7c62fc48e0939da9b1b0799e215b4abc4caace522ada57a7ad75a09fbca17",
+    "e7f760fb206e4195f945a0b3fcc9b7f36253a84bb2b91348f47068c293b911a6",
+    "50d994ec48f115876b4ad30bd7bfc9e5f4b5ee031047cf2eb5cbe739e89bf0aa",
+    "771b294d0d47812181626fdae9cf664798afab38ce2e294a3cf4243352737a64",
+    "78234d1c3e3bc842f1a78259dc2c0445e3fc0597fea595c4b86c1355c26c98b9",
+    "1f4ccb4ce4aa3ed88b7327ecdec34b393df913c545eb35a1cbdf4ce4bf5b4ce5",
+    "80a8c0d1b4f6952010094496eab3b32cdced2bd44d26c393250ca3ea49eeda37",
+    "aaa1b2be9b3cb8388fa1ba72f91cbff9c114ab6b58ab3d3a41ca3f443a520d59",
+    "628d9d8781136c758186d32c6c62d98048f8df12a02274299205e518d176d7e3",
+    "f07711b7ce19c4d85ed701ee720a863457247f165423d2b25ed2944793fbbb85",
+    "1acc6abd5b83559f78e870bf05a29990667965fb91e730dfc02a42cbc2890183",
+    "bab2903e1d00bf7919100f1de1d2cd08063c6b4e20bb2d44d7905d362dce0d35",
+    "5a4f002d7ee87c26e4af34308568e182ced2fc70e95ff9d84a8825085e52df5b",
+    "5573b43632c66c95c78f4f44c35d380746d2c8e6595395fa462f01efff1de0b5",
+    "61cc21ff427d86e2dcc7c49e513c46469427b2de0dd126a3ec02abeb3da2c86b",
+    "1a9ad8ce55aa98650539d234bcc1cadd2a9404112be1a1d98c0bd5bfca746ce7",
+    "be1d091e800a90d5af5f484d4a7ab365c432366e33d06f3bf41189f496488f15",
+    "e722684b2e0a1ec12453c9a0f7187867fe7881c9b1a4e50245198646f6d8f015",
+    "a9b62d9650fc7c8e63432f00ebe60e765f793de35f2ed9ba51a64b4148420032",
+    "c155feb0db6e0167403c53a54f4521ceaa048f6f19d916206dfbb3a442fb43e8",
+    "bc6ade85a79825118d771e2db82790ad130f15a2a49863e0af3ea2714e07b487",
+    "d0192b8f67cfa7aec18aafead53fd5d677f11a0297a2583caeecdf31f123fa88",
+    "bc6d5de728ec91be88411e806757136209c7f6501ee4465559f7017b40bd387c",
+    "5f0a327c37b3091fc2ab02ba44a190b0c5e179a2023d73ee9262dfb4a3e131b9",
+    "cab51c69616cac8e30b8247990320fd2d6130ad8a8a6b878705cf90703ac32f8",
+    "44c166e80b5a0c48aec89a238830f49dfc44e42894123d1f503e4c897fc4c3e2",
+    "a4457f725d40dfdf56177cdf1d2dc586b5158159f4a100b8aca3b24218e85983",
+    "1ad14ba52ce10a33f1e745dd39c233196412ced2a031190f30073e7f0dede796",
+    "6e5e4ac2cd551d26e6c1eddb675b113bcbe6f5b48ab9534600c02c1241e0cdef",
+    "092a86af86c0893dd065b967afaa56abeefc0091e57fec139f2641c551260ab1",
+    "6872b9d19f1a8007ea7eaae69daf9d31ed8378787098080189fc8b7c919b46dd",
+    "32a54e0189088173309c633de77bf80673833a7b56003defc888f1fa6f059cfe",
+    "abde5709eabd60daaa53ee4362969dde6207459e5764aaafaf04064e3064139a",
+    "b3e9e2c861c079ee9e64ba0fc496bed93263f78e476d35bcd5ea7d464a51a54f",
+    "346ca6640366754ad40839ed8791737ea461aa2c89c5fc9d6a820fc0d762d999",
+    "ebd68e1664b58d02b585a1f1f51a56eb92e9b8949d621e8a57bb1969c7f5ed5e",
+    "10161f4decbfc2d6ef668c41bafbbe912a4c855304dfb7d9ee691f426907fd1c",
+    "8b751d5c36e55af2303e67d62ad8d1183846c661ed4c0eec026d8a911a1960dd",
+    "061cce7c08f691cff370800ffd41984c4aa0ee9fb2deac86ba49aa1576949bd6",
+    "8605e88fd05009d1c2537cf3603548dcb1f50815271af17cd7f318e6f17f7f60",
+    "4ff77eda074ca3b14bb03a797c4f05866374f15e811824bbbfa087531c205165",
+    "e62e9959b7d761fbd56c8bdd4ee1c0f8cde436962ad775bd422fc86efd60748f",
+    "15fa93e6a2453b3b0129fd0dd006d4e53dd0b1b659bb58978dbd6ffc0781612c",
+    "2b32c62f6fda2a7e8fd3388609427de6a809ac01939e95e733dd24d927a68ac5",
+    "374147386f3057c6083726bd440a020cfa385434264b5b05e9693fbfefe03e6b",
+    "53fd229c20bace840dc4ec69290d614c2f5648430ecf2bdf58d70b7eabe0603e",
+    "3a2df2942392b04a89277ef1410f5f2bb3a03d8553f48fbcad422460c8c0502c",
+    "7139cc0f8b3c7b38f04c815f76d22207365711d59c9a1db24a3d4b9a1a05d567",
+    "5542972982f4eb4432546de7c0650dd32c2b436089ee97bb7c39f883d9df15f8",
+    "9b2b6c61fb1b55e58481c9e92892cadcc554d7dc83bc42922b2ced7cd9a089b6"
+  ],
+  "median_attempted_chain_length_round2_fights": 1,
+  "median_completed_chain_length_round2_fights": 2.0,
+  "missing_control_award_count": 0,
+  "missing_submission_technique_count": 0,
+  "most_repeated_defense_clauses": [
+    [
+      "move audit style-coverage-3 b employs the technical scramble",
+      3
+    ],
+    [
+      "move audit style-coverage-1 b uses the technical scramble in response",
+      3
+    ],
+    [
+      "move audit mid-competitive-6 a works the technical scramble against the attack",
+      3
+    ],
+    [
+      "move audit mismatch-7 a puts the technical scramble to use",
+      3
+    ],
+    [
+      "move audit style-coverage-6 b turns to the technical scramble",
+      3
+    ]
+  ],
+  "move_selection_counts": {
+    "americana": 48,
+    "ankle_block_takedown": 18,
+    "ankle_cross_cling": 22,
+    "ankle_pick_entry": 12,
+    "arm_drag_leg_entry": 52,
+    "arm_triangle": 94,
+    "axe_kick": 8,
+    "back_control_cross_wrist_punches": 2,
+    "back_control_handfight_recovery": 1,
+    "back_control_short_punches": 6,
+    "back_take_transition": 90,
+    "biceps_pin_top_control": 11,
+    "biceps_tie_cling": 66,
+    "bjj_arm_drag_back_take_chain": 28,
+    "bjj_triangle_armbar_finisher": 1,
+    "body_head_change": 12,
+    "body_head_ground_chain": 94,
+    "body_jab": 39,
+    "body_lock_entry": 94,
+    "body_lock_pass": 41,
+    "body_lock_trip": 46,
+    "body_round_kick": 12,
+    "body_triangle_back_control": 19,
+    "bottom_frame_survival": 235,
+    "boxer_double_jab_pivot_cross_hook": 11,
+    "boxer_shift_step_cross_finisher": 8,
+    "boxing_pressure_flurry": 1,
+    "bridge_shrimp_recovery": 28,
+    "butterfly_hook_recovery": 15,
+    "butterfly_sweep": 22,
+    "calf_kick": 17,
+    "catch_cradle_neck_crank_finisher": 4,
+    "catch_snapdown_go_behind_chain": 7,
+    "chair_sit_back_take": 24,
+    "check_hook": 11,
+    "chest_jab": 18,
+    "chest_to_chest_pin": 182,
+    "circling_breather": 364,
+    "clinch_knee": 181,
+    "clinch_lean_recovery": 319,
+    "clinch_shovel_hook": 14,
+    "clinch_wrist_tie_breather": 291,
+    "closed_guard_hold": 31,
+    "closed_guard_retention": 17,
+    "collar_tie_elbow": 22,
+    "collar_tie_entry": 169,
+    "collar_tie_short_hook": 27,
+    "collar_tie_strip_exit": 93,
+    "composed_survival": 681,
+    "corner_turn_double": 20,
+    "cross_body_hook_lead_hook": 5,
+    "cross_body_kick": 13,
+    "cross_hook_body_kick": 13,
+    "cross_hook_cross": 10,
+    "crucifix_elbows": 26,
+    "defensive_cling": 30,
+    "diagonal_clinch_elbow": 17,
+    "double_hook_seatbelt_control": 3,
+    "double_jab": 145,
+    "double_jab_body_cross": 20,
+    "double_jab_cross": 15,
+    "double_jab_low_kick": 8,
+    "double_leg_entry": 41,
+    "double_leg_finish": 48,
+    "double_underhooks": 38,
+    "duck_under_single_entry": 23,
+    "dutch_high_guard_cross_hook_finisher": 4,
+    "elbow_control_entry": 32,
+    "elbow_frame_recovery": 15,
+    "elbow_knee_guard_recovery": 10,
+    "elbow_post_standup": 20,
+    "elbow_pry_exit": 20,
+    "electric_chair_sweep": 6,
+    "elevator_sweep": 24,
+    "far_wrist_fence_control": 9,
+    "far_wrist_half_guard_control": 16,
+    "fence_pressure": 41,
+    "flicker_jab": 102,
+    "flower_sweep": 8,
+    "flying_knee": 3,
+    "forearm_frame_entry": 101,
+    "forearm_shell_survival": 269,
+    "frame_and_pivot_exit": 74,
+    "frame_exit": 59,
+    "freestyle_feint_reshot_chain": 6,
+    "freestyle_mat_return_ground_pound_finisher": 1,
+    "generic_advance_position": 39,
+    "generic_bottom_submission": 50,
+    "generic_stand_up": 66,
+    "generic_sweep": 57,
+    "gift_wrap_transition": 48,
+    "granby_guard_recovery": 12,
+    "grappler_arm_triangle_finisher": 2,
+    "grappler_jab_body_lock_mat_return": 6,
+    "guard_alternating_straights": 30,
+    "guard_arm_in_guillotine": 21,
+    "guard_armbar": 11,
+    "guard_can_opener": 13,
+    "guard_gogoplata": 7,
+    "guard_hammerfist_chain": 13,
+    "guard_high_elbow_guillotine": 3,
+    "guard_inverted_triangle": 8,
+    "guard_overhook_shoulder_lock": 5,
+    "guard_posture_elbows": 16,
+    "guard_recovery": 29,
+    "guard_reverse_armbar": 3,
+    "guard_submission_chain": 27,
+    "guard_top_ankle_lock": 37,
+    "guard_top_ezekiel": 26,
+    "guard_top_guillotine": 25,
+    "guard_top_head_arm": 95,
+    "guard_top_punch_choke": 19,
+    "guard_top_wrist_lock": 14,
+    "guard_wrist_lock": 5,
+    "half_guard_americana": 31,
+    "half_guard_arm_triangle": 32,
+    "half_guard_brabo": 32,
+    "half_guard_crossface_control": 52,
+    "half_guard_crossface_strikes": 27,
+    "half_guard_darce": 55,
+    "half_guard_diagonal_elbows": 19,
+    "half_guard_free_hand_hammerfists": 10,
+    "half_guard_kimura": 53,
+    "half_guard_pass": 21,
+    "half_guard_shoulder_choke": 16,
+    "half_guard_straight_arm_lock": 15,
+    "half_guard_underhook_recovery": 10,
+    "half_guard_von_flue": 24,
+    "head_pinch_stall": 36,
+    "head_position_pin": 47,
+    "head_round_kick": 48,
+    "headquarters_pass": 48,
+    "heavy_top_breather": 332,
+    "high_crotch_entry": 11,
+    "high_crotch_finish": 19,
+    "high_mount_arm_pinch": 9,
+    "hip_bump_sweep": 6,
+    "hip_frame_ground_breather": 229,
+    "hip_heist_recovery": 19,
+    "hip_pin_fence_control": 28,
+    "hip_pin_guard_pass": 11,
+    "hip_pressure_ride": 116,
+    "hip_scoot_standup": 23,
+    "hip_switch_mount_entry": 15,
+    "hip_toss": 10,
+    "hook_elbow_knee": 9,
+    "hook_low_kick": 10,
+    "horizontal_clinch_elbow": 51,
+    "inner_thigh_throw": 10,
+    "inside_biceps_control": 51,
+    "inside_biceps_entry": 85,
+    "inside_body_hook": 16,
+    "inside_calf_kick": 9,
+    "inside_knee_reinsertion": 26,
+    "inside_low_kick": 6,
+    "inside_step_double_entry": 59,
+    "inside_trip": 51,
+    "inside_uppercut": 42,
+    "intercepting_cut_kick": 6,
+    "intercepting_knee": 10,
+    "jab_cross_lead_hook": 9,
+    "jab_cross_rear_knee": 17,
+    "jab_low_kick": 9,
+    "jab_to_shot": 123,
+    "jab_uppercut_lead_hook": 3,
+    "john_wayne_sweep": 6,
+    "judo_grip_foot_sweep_throw_chain": 7,
+    "jumping_front_kick": 3,
+    "karate_blitz_cross_hook_exit": 16,
+    "karate_blitz_reverse_cross_finisher": 21,
+    "kick_away_standup": 12,
+    "kickboxer_cross_high_kick_finisher": 16,
+    "kickboxer_cross_hook_switch_kick": 18,
+    "kimura_guard": 45,
+    "knee_block_fence_control": 7,
+    "knee_on_belly_climb": 14,
+    "knee_on_belly_pressure": 82,
+    "knee_shield_recovery": 15,
+    "knee_slice_pass": 105,
+    "knee_tap": 133,
+    "knee_wedge_guard_pass": 11,
+    "lateral_drop": 2,
+    "lead_body_round_kick": 17,
+    "lead_body_uppercut": 22,
+    "lead_front_snap_kick": 31,
+    "lead_hook_cross": 36,
+    "lead_hook_kick": 12,
+    "lead_shovel_body": 11,
+    "lead_straight": 20,
+    "lead_teep": 31,
+    "lead_uppercut": 20,
+    "leg_weave_half_guard_pass": 10,
+    "lockdown_sweep": 6,
+    "long_guard_breather": 242,
+    "looping_lead_hook": 17,
+    "low_kick_counter": 6,
+    "low_single_entry": 19,
+    "luta_outside_heel_hook_finisher": 2,
+    "mma_generalist_cross_kick_clinch_chain": 51,
+    "mma_generalist_elbow_knee_finisher": 34,
+    "mount_grapevine_control": 11,
+    "mount_transition": 54,
+    "mounted_hammerfist_flurry": 16,
+    "mounted_straight_punch_chain": 6,
+    "muay_thai_frame_elbow_finisher": 7,
+    "muay_thai_teep_cross_elbow_knee": 20,
+    "near_side_cradle_control": 11,
+    "north_south_choke": 17,
+    "oblique_thigh_kick": 25,
+    "old_school_sweep": 11,
+    "one_two": 110,
+    "open_guard_tripod_sweep": 7,
+    "outside_crescent_kick": 20,
+    "outside_low_kick": 8,
+    "outside_step_jab": 55,
+    "outside_trip": 26,
+    "over_under_entry": 54,
+    "overhand": 28,
+    "overhand_to_double": 39,
+    "overhook_clamp_cling": 44,
+    "overhook_fence_clamp": 13,
+    "overhook_short_cross": 20,
+    "pawing_jab": 118,
+    "pendulum_sweep": 10,
+    "pivot_exit": 59,
+    "plan_b_sweep": 10,
+    "position_pass": 138,
+    "post_and_build_getup": 14,
+    "post_and_push_exit": 30,
+    "posture_punches": 79,
+    "power_jab": 88,
+    "pull_counter": 4,
+    "pummel_to_underhook": 112,
+    "punch_head_kick": 14,
+    "question_mark_kick": 28,
+    "reactive_shot": 55,
+    "rear_body_uppercut": 2,
+    "rear_check_hook": 5,
+    "rear_naked_choke": 43,
+    "rear_shovel_body": 3,
+    "rear_side_kick": 10,
+    "rear_straight_body": 13,
+    "rear_teep": 12,
+    "rear_uppercut": 6,
+    "retreating_jab": 66,
+    "reverse_half_guard_pass": 6,
+    "reverse_scarf_hold_control": 20,
+    "ride_control": 83,
+    "ride_wrist_punches": 15,
+    "run_pipe_single": 11,
+    "russian_tie_entry": 42,
+    "sambo_overhand_body_lock_trip": 53,
+    "sambo_rolling_kneebar_finisher": 7,
+    "sanda_jumping_side_kick_finisher": 2,
+    "sanda_side_kick_overhand_shot": 8,
+    "scarf_hold_straight_armbar": 34,
+    "scissor_sweep": 3,
+    "shell_and_reset": 495,
+    "shin_post_standup": 15,
+    "shin_to_shin_retention": 19,
+    "short_clinch_boxing": 132,
+    "short_ground_elbows": 81,
+    "short_rib_knee": 22,
+    "shoulder_grind": 65,
+    "shoulder_pinch_cling": 79,
+    "shoulder_pressure": 57,
+    "shoulder_to_chest_entry": 29,
+    "shoulder_turn_exit": 23,
+    "shoulder_walk_recovery": 6,
+    "sickle_sweep": 3,
+    "side_control_frame_elbows": 22,
+    "side_control_short_hooks": 14,
+    "side_kick": 27,
+    "single_jab": 268,
+    "single_leg_entry": 41,
+    "single_leg_finish": 29,
+    "single_underhook_entry": 42,
+    "situp_underhook_standup": 16,
+    "slip_cross": 3,
+    "spearing_body_jab": 27,
+    "spinning_back_kick": 4,
+    "spinning_elbow": 8,
+    "staggered_base_guard_control": 43,
+    "stance_shift_cross_hook": 22,
+    "standing_guard_opening_pass": 12,
+    "step_around_body_hook": 6,
+    "step_in_elbow": 12,
+    "step_in_jab": 36,
+    "step_out_low_kick": 13,
+    "submission_grappler_pass_back_take_chain": 12,
+    "submission_grappler_rear_triangle_finisher": 1,
+    "sweep_single_entry": 19,
+    "sweeping_hip_throw": 13,
+    "swim_to_space": 57,
+    "switch_body_kick": 12,
+    "switch_flying_knee": 6,
+    "taekwondo_side_back_round_chain": 2,
+    "taekwondo_spinning_hook_kick_finisher": 1,
+    "technical_standup": 57,
+    "thai_plum_entry": 60,
+    "timed_foot_sweep": 18,
+    "top_armbar": 34,
+    "top_submission_chain": 183,
+    "treetop_single_finish": 12,
+    "triangle_choke": 6,
+    "tripod_half_guard_pass": 20,
+    "tripod_standup": 9,
+    "two_on_one_clinch_control": 43,
+    "underhook_half_guard_pass": 44,
+    "underhook_lift_exit": 33,
+    "underhook_stall": 47,
+    "underhook_uppercut": 18,
+    "up_jab": 161,
+    "waiter_sweep": 12,
+    "wall_walk_standup": 17,
+    "well_rounded_cross_head_kick_finisher": 1,
+    "well_rounded_jab_low_kick_level_change": 5,
+    "wheel_kick": 10,
+    "wrestler_jab_overhand_double": 17,
+    "wrestler_wrist_ride_hammerfist_finisher": 9,
+    "wrist_elbow_cling": 75,
+    "wrist_peel_exit": 19,
+    "wrist_pin_short_punch": 10,
+    "wrist_ride_neutralize": 40,
+    "wrist_to_collar_entry": 57
+  },
+  "observed_defenses": {
+    "angled_shin_check": 15,
+    "backstep_knee_clear": 40,
+    "cross_guard_catch": 65,
+    "crossface_sprawl": 235,
+    "elbow_in_body_block": 60,
+    "fence_hip_frame": 73,
+    "fence_post": 61,
+    "hand_fight_escape": 32,
+    "high_guard": 599,
+    "hip_sprawl": 235,
+    "hop_and_peel_leg": 23,
+    "kick_catch": 37,
+    "knee_jam": 8,
+    "knee_line_escape": 39,
+    "leg_lock_rotation": 153,
+    "level_change_duck": 15,
+    "limp_leg": 27,
+    "long_guard_frame": 574,
+    "outside_parry": 478,
+    "pivot_off_line": 573,
+    "posture_and_frame": 264,
+    "roll_under_hook": 593,
+    "seatbelt_hand_fight": 40,
+    "shin_check": 11,
+    "shoulder_roll": 286,
+    "slip_exit": 669,
+    "stack_escape": 228,
+    "submission_grip_strip": 251,
+    "submission_hand_fight": 173,
+    "switch_step_evasion": 49,
+    "technical_scramble": 6766,
+    "underhook_recovery": 167,
+    "underhook_turn": 154,
+    "wall_underhook_escape": 23,
+    "whizzer_balance": 213,
+    "wide_base_recovery": 45,
+    "wrist_grip_strip": 38
+  },
+  "observed_move_ids": [
+    "americana",
+    "ankle_block_takedown",
+    "ankle_cross_cling",
+    "ankle_pick_entry",
+    "arm_drag_leg_entry",
+    "arm_triangle",
+    "axe_kick",
+    "back_control_cross_wrist_punches",
+    "back_control_handfight_recovery",
+    "back_control_short_punches",
+    "back_take_transition",
+    "biceps_pin_top_control",
+    "biceps_tie_cling",
+    "bjj_arm_drag_back_take_chain",
+    "bjj_triangle_armbar_finisher",
+    "body_head_change",
+    "body_head_ground_chain",
+    "body_jab",
+    "body_lock_entry",
+    "body_lock_pass",
+    "body_lock_trip",
+    "body_round_kick",
+    "body_triangle_back_control",
+    "bottom_frame_survival",
+    "boxer_double_jab_pivot_cross_hook",
+    "boxer_shift_step_cross_finisher",
+    "boxing_pressure_flurry",
+    "bridge_shrimp_recovery",
+    "butterfly_hook_recovery",
+    "butterfly_sweep",
+    "calf_kick",
+    "catch_cradle_neck_crank_finisher",
+    "catch_snapdown_go_behind_chain",
+    "chair_sit_back_take",
+    "check_hook",
+    "chest_jab",
+    "chest_to_chest_pin",
+    "circling_breather",
+    "clinch_knee",
+    "clinch_lean_recovery",
+    "clinch_shovel_hook",
+    "clinch_wrist_tie_breather",
+    "closed_guard_hold",
+    "closed_guard_retention",
+    "collar_tie_elbow",
+    "collar_tie_entry",
+    "collar_tie_short_hook",
+    "collar_tie_strip_exit",
+    "composed_survival",
+    "corner_turn_double",
+    "cross_body_hook_lead_hook",
+    "cross_body_kick",
+    "cross_hook_body_kick",
+    "cross_hook_cross",
+    "crucifix_elbows",
+    "defensive_cling",
+    "diagonal_clinch_elbow",
+    "double_hook_seatbelt_control",
+    "double_jab",
+    "double_jab_body_cross",
+    "double_jab_cross",
+    "double_jab_low_kick",
+    "double_leg_entry",
+    "double_leg_finish",
+    "double_underhooks",
+    "duck_under_single_entry",
+    "dutch_high_guard_cross_hook_finisher",
+    "elbow_control_entry",
+    "elbow_frame_recovery",
+    "elbow_knee_guard_recovery",
+    "elbow_post_standup",
+    "elbow_pry_exit",
+    "electric_chair_sweep",
+    "elevator_sweep",
+    "far_wrist_fence_control",
+    "far_wrist_half_guard_control",
+    "fence_pressure",
+    "flicker_jab",
+    "flower_sweep",
+    "flying_knee",
+    "forearm_frame_entry",
+    "forearm_shell_survival",
+    "frame_and_pivot_exit",
+    "frame_exit",
+    "freestyle_feint_reshot_chain",
+    "freestyle_mat_return_ground_pound_finisher",
+    "generic_advance_position",
+    "generic_bottom_submission",
+    "generic_stand_up",
+    "generic_sweep",
+    "gift_wrap_transition",
+    "granby_guard_recovery",
+    "grappler_arm_triangle_finisher",
+    "grappler_jab_body_lock_mat_return",
+    "guard_alternating_straights",
+    "guard_arm_in_guillotine",
+    "guard_armbar",
+    "guard_can_opener",
+    "guard_gogoplata",
+    "guard_hammerfist_chain",
+    "guard_high_elbow_guillotine",
+    "guard_inverted_triangle",
+    "guard_overhook_shoulder_lock",
+    "guard_posture_elbows",
+    "guard_recovery",
+    "guard_reverse_armbar",
+    "guard_submission_chain",
+    "guard_top_ankle_lock",
+    "guard_top_ezekiel",
+    "guard_top_guillotine",
+    "guard_top_head_arm",
+    "guard_top_punch_choke",
+    "guard_top_wrist_lock",
+    "guard_wrist_lock",
+    "half_guard_americana",
+    "half_guard_arm_triangle",
+    "half_guard_brabo",
+    "half_guard_crossface_control",
+    "half_guard_crossface_strikes",
+    "half_guard_darce",
+    "half_guard_diagonal_elbows",
+    "half_guard_free_hand_hammerfists",
+    "half_guard_kimura",
+    "half_guard_pass",
+    "half_guard_shoulder_choke",
+    "half_guard_straight_arm_lock",
+    "half_guard_underhook_recovery",
+    "half_guard_von_flue",
+    "head_pinch_stall",
+    "head_position_pin",
+    "head_round_kick",
+    "headquarters_pass",
+    "heavy_top_breather",
+    "high_crotch_entry",
+    "high_crotch_finish",
+    "high_mount_arm_pinch",
+    "hip_bump_sweep",
+    "hip_frame_ground_breather",
+    "hip_heist_recovery",
+    "hip_pin_fence_control",
+    "hip_pin_guard_pass",
+    "hip_pressure_ride",
+    "hip_scoot_standup",
+    "hip_switch_mount_entry",
+    "hip_toss",
+    "hook_elbow_knee",
+    "hook_low_kick",
+    "horizontal_clinch_elbow",
+    "inner_thigh_throw",
+    "inside_biceps_control",
+    "inside_biceps_entry",
+    "inside_body_hook",
+    "inside_calf_kick",
+    "inside_knee_reinsertion",
+    "inside_low_kick",
+    "inside_step_double_entry",
+    "inside_trip",
+    "inside_uppercut",
+    "intercepting_cut_kick",
+    "intercepting_knee",
+    "jab_cross_lead_hook",
+    "jab_cross_rear_knee",
+    "jab_low_kick",
+    "jab_to_shot",
+    "jab_uppercut_lead_hook",
+    "john_wayne_sweep",
+    "judo_grip_foot_sweep_throw_chain",
+    "jumping_front_kick",
+    "karate_blitz_cross_hook_exit",
+    "karate_blitz_reverse_cross_finisher",
+    "kick_away_standup",
+    "kickboxer_cross_high_kick_finisher",
+    "kickboxer_cross_hook_switch_kick",
+    "kimura_guard",
+    "knee_block_fence_control",
+    "knee_on_belly_climb",
+    "knee_on_belly_pressure",
+    "knee_shield_recovery",
+    "knee_slice_pass",
+    "knee_tap",
+    "knee_wedge_guard_pass",
+    "lateral_drop",
+    "lead_body_round_kick",
+    "lead_body_uppercut",
+    "lead_front_snap_kick",
+    "lead_hook_cross",
+    "lead_hook_kick",
+    "lead_shovel_body",
+    "lead_straight",
+    "lead_teep",
+    "lead_uppercut",
+    "leg_weave_half_guard_pass",
+    "lockdown_sweep",
+    "long_guard_breather",
+    "looping_lead_hook",
+    "low_kick_counter",
+    "low_single_entry",
+    "luta_outside_heel_hook_finisher",
+    "mma_generalist_cross_kick_clinch_chain",
+    "mma_generalist_elbow_knee_finisher",
+    "mount_grapevine_control",
+    "mount_transition",
+    "mounted_hammerfist_flurry",
+    "mounted_straight_punch_chain",
+    "muay_thai_frame_elbow_finisher",
+    "muay_thai_teep_cross_elbow_knee",
+    "near_side_cradle_control",
+    "north_south_choke",
+    "oblique_thigh_kick",
+    "old_school_sweep",
+    "one_two",
+    "open_guard_tripod_sweep",
+    "outside_crescent_kick",
+    "outside_low_kick",
+    "outside_step_jab",
+    "outside_trip",
+    "over_under_entry",
+    "overhand",
+    "overhand_to_double",
+    "overhook_clamp_cling",
+    "overhook_fence_clamp",
+    "overhook_short_cross",
+    "pawing_jab",
+    "pendulum_sweep",
+    "pivot_exit",
+    "plan_b_sweep",
+    "position_pass",
+    "post_and_build_getup",
+    "post_and_push_exit",
+    "posture_punches",
+    "power_jab",
+    "pull_counter",
+    "pummel_to_underhook",
+    "punch_head_kick",
+    "question_mark_kick",
+    "reactive_shot",
+    "rear_body_uppercut",
+    "rear_check_hook",
+    "rear_naked_choke",
+    "rear_shovel_body",
+    "rear_side_kick",
+    "rear_straight_body",
+    "rear_teep",
+    "rear_uppercut",
+    "retreating_jab",
+    "reverse_half_guard_pass",
+    "reverse_scarf_hold_control",
+    "ride_control",
+    "ride_wrist_punches",
+    "run_pipe_single",
+    "russian_tie_entry",
+    "sambo_overhand_body_lock_trip",
+    "sambo_rolling_kneebar_finisher",
+    "sanda_jumping_side_kick_finisher",
+    "sanda_side_kick_overhand_shot",
+    "scarf_hold_straight_armbar",
+    "scissor_sweep",
+    "shell_and_reset",
+    "shin_post_standup",
+    "shin_to_shin_retention",
+    "short_clinch_boxing",
+    "short_ground_elbows",
+    "short_rib_knee",
+    "shoulder_grind",
+    "shoulder_pinch_cling",
+    "shoulder_pressure",
+    "shoulder_to_chest_entry",
+    "shoulder_turn_exit",
+    "shoulder_walk_recovery",
+    "sickle_sweep",
+    "side_control_frame_elbows",
+    "side_control_short_hooks",
+    "side_kick",
+    "single_jab",
+    "single_leg_entry",
+    "single_leg_finish",
+    "single_underhook_entry",
+    "situp_underhook_standup",
+    "slip_cross",
+    "spearing_body_jab",
+    "spinning_back_kick",
+    "spinning_elbow",
+    "staggered_base_guard_control",
+    "stance_shift_cross_hook",
+    "standing_guard_opening_pass",
+    "step_around_body_hook",
+    "step_in_elbow",
+    "step_in_jab",
+    "step_out_low_kick",
+    "submission_grappler_pass_back_take_chain",
+    "submission_grappler_rear_triangle_finisher",
+    "sweep_single_entry",
+    "sweeping_hip_throw",
+    "swim_to_space",
+    "switch_body_kick",
+    "switch_flying_knee",
+    "taekwondo_side_back_round_chain",
+    "taekwondo_spinning_hook_kick_finisher",
+    "technical_standup",
+    "thai_plum_entry",
+    "timed_foot_sweep",
+    "top_armbar",
+    "top_submission_chain",
+    "treetop_single_finish",
+    "triangle_choke",
+    "tripod_half_guard_pass",
+    "tripod_standup",
+    "two_on_one_clinch_control",
+    "underhook_half_guard_pass",
+    "underhook_lift_exit",
+    "underhook_stall",
+    "underhook_uppercut",
+    "up_jab",
+    "waiter_sweep",
+    "wall_walk_standup",
+    "well_rounded_cross_head_kick_finisher",
+    "well_rounded_jab_low_kick_level_change",
+    "wheel_kick",
+    "wrestler_jab_overhand_double",
+    "wrestler_wrist_ride_hammerfist_finisher",
+    "wrist_elbow_cling",
+    "wrist_peel_exit",
+    "wrist_pin_short_punch",
+    "wrist_ride_neutralize",
+    "wrist_to_collar_entry"
+  ],
+  "phase_31_acceptance_failures": [],
+  "phase_31_advisories": [
+    "Attempted-chain median below two (accepted for now by user)"
+  ],
+  "pocket_entry_count": 0,
+  "pocket_exchange_share_pct": 0.0,
+  "pocket_exit_counts": {},
+  "pocket_mean_residence_beats": 0.0,
+  "pocket_observed_episodes": 0,
+  "pocket_residence_histogram": {},
+  "prepared_submission_diagnostics": {
+    "by_setup": {},
+    "observations": [],
+    "scope": "Conditional on observed live setup opportunities; not an unconditional forecast or acceptance gate"
+  },
+  "scarf_hold_followthrough_counts": {},
+  "scarf_hold_setup_counts": {},
+  "scope": "observed selection opportunities, not proof of absolute unreachability",
+  "standing_exchange_count": 4950,
+  "submission_attempt_identity_count": 1148,
+  "submission_identity_contexts": [
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "back control",
+      "status": "generic",
+      "technique": "anaconda choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "back control",
+      "status": "generic",
+      "technique": "guillotine choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "back control",
+      "status": "generic",
+      "technique": "knee slicer"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "back control",
+      "status": "generic",
+      "technique": "padlock choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "back control",
+      "status": "generic",
+      "technique": "rear-naked choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 5,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "Brabo choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 3,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "D'Arce choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 4,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "Ezekiel choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 4,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "Japanese necktie"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 3,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "Peruvian necktie"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "Texas cloverleaf"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 4,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "anaconda choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 4,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "armbar"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 2,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "belly-down armbar"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 3,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "buggy choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 4,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "calf slicer"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 4,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "guillotine choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 3,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "heel hook"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 2,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "high-elbow guillotine"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 6,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "inside heel hook"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 4,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "kimura"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "guard",
+      "status": "named",
+      "technique": "kimura"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 2,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "knee slicer"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 2,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "kneebar"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 2,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "omoplata"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "padlock choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 5,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "reverse triangle"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 4,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "straight ankle lock"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 2,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "toe hold"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 5,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "triangle choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 2,
+      "position": "guard",
+      "status": "named",
+      "technique": "triangle choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 4,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "Brabo choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 4,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "D'Arce choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "Ezekiel choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "Japanese necktie"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 3,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "Peruvian necktie"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 2,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "Texas cloverleaf"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 2,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "anaconda choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 2,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "arm-in guillotine"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "half guard",
+      "status": "named",
+      "technique": "arm-in guillotine"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "armbar"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "half guard",
+      "status": "named",
+      "technique": "armbar"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 4,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "belly-down armbar"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 4,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "buggy choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "calf slicer"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 10,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "guillotine choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 2,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "heel hook"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 7,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "high-elbow guillotine"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 3,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "inside heel hook"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 4,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "kimura"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "half guard",
+      "status": "named",
+      "technique": "kimura"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 2,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "knee slicer"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 2,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "kneebar"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 3,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "ninja choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 5,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "omoplata"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "padlock choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 2,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "reverse triangle"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "straight ankle lock"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 3,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "toe hold"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 7,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "triangle choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 2,
+      "position": "mount",
+      "status": "generic",
+      "technique": "Americana"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 2,
+      "position": "mount",
+      "status": "generic",
+      "technique": "D'Arce choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "mount",
+      "status": "generic",
+      "technique": "Ezekiel choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "mount",
+      "status": "generic",
+      "technique": "guillotine choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "mount",
+      "status": "generic",
+      "technique": "kneebar"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "mount",
+      "status": "generic",
+      "technique": "ninja choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "mount",
+      "status": "generic",
+      "technique": "omoplata"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "mount",
+      "status": "generic",
+      "technique": "paper-cutter choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "mount",
+      "status": "generic",
+      "technique": "triangle choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "side control",
+      "status": "generic",
+      "technique": "Americana"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "side control",
+      "status": "generic",
+      "technique": "Brabo choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "side control",
+      "status": "generic",
+      "technique": "Peruvian necktie"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "side control",
+      "status": "generic",
+      "technique": "anaconda choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "side control",
+      "status": "generic",
+      "technique": "arm-triangle choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "side control",
+      "status": "generic",
+      "technique": "armbar"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 2,
+      "position": "side control",
+      "status": "generic",
+      "technique": "belly-down armbar"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "side control",
+      "status": "generic",
+      "technique": "buggy choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "side control",
+      "status": "generic",
+      "technique": "guillotine choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "side control",
+      "status": "generic",
+      "technique": "inside heel hook"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "side control",
+      "status": "generic",
+      "technique": "keylock"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "side control",
+      "status": "generic",
+      "technique": "kimura"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 2,
+      "position": "side control",
+      "status": "generic",
+      "technique": "knee slicer"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "side control",
+      "status": "generic",
+      "technique": "kneebar"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 2,
+      "position": "side control",
+      "status": "generic",
+      "technique": "mounted triangle"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 4,
+      "position": "side control",
+      "status": "generic",
+      "technique": "ninja choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 2,
+      "position": "side control",
+      "status": "generic",
+      "technique": "north-south choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "side control",
+      "status": "generic",
+      "technique": "paper-cutter choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "side control",
+      "status": "generic",
+      "technique": "scarf-hold choke"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 4,
+      "position": "side control",
+      "status": "generic",
+      "technique": "straight armbar"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 1,
+      "position": "side control",
+      "status": "generic",
+      "technique": "toe hold"
+    },
+    {
+      "action": "bottom_submission",
+      "count": 3,
+      "position": "side control",
+      "status": "generic",
+      "technique": "triangle choke"
+    },
+    {
+      "action": "submission",
+      "count": 9,
+      "position": "back control",
+      "status": "incompatible",
+      "technique": "back-control armbar"
+    },
+    {
+      "action": "submission",
+      "count": 2,
+      "position": "back control",
+      "status": "incompatible",
+      "technique": "body-triangle rear-naked choke"
+    },
+    {
+      "action": "submission",
+      "count": 5,
+      "position": "back control",
+      "status": "named",
+      "technique": "body-triangle rear-naked choke"
+    },
+    {
+      "action": "submission",
+      "count": 4,
+      "position": "back control",
+      "status": "incompatible",
+      "technique": "bow-and-arrow choke"
+    },
+    {
+      "action": "submission",
+      "count": 1,
+      "position": "back control",
+      "status": "incompatible",
+      "technique": "face-crank rear-naked choke"
+    },
+    {
+      "action": "submission",
+      "count": 10,
+      "position": "back control",
+      "status": "named",
+      "technique": "face-crank rear-naked choke"
+    },
+    {
+      "action": "submission",
+      "count": 1,
+      "position": "back control",
+      "status": "incompatible",
+      "technique": "neck crank"
+    },
+    {
+      "action": "submission",
+      "count": 7,
+      "position": "back control",
+      "status": "incompatible",
+      "technique": "rear-naked choke"
+    },
+    {
+      "action": "submission",
+      "count": 14,
+      "position": "back control",
+      "status": "named",
+      "technique": "rear-naked choke"
+    },
+    {
+      "action": "submission",
+      "count": 4,
+      "position": "back control",
+      "status": "incompatible",
+      "technique": "short choke"
+    },
+    {
+      "action": "submission",
+      "count": 3,
+      "position": "back control",
+      "status": "incompatible",
+      "technique": "twister"
+    },
+    {
+      "action": "submission",
+      "count": 9,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "Brabo choke"
+    },
+    {
+      "action": "submission",
+      "count": 16,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "D'Arce choke"
+    },
+    {
+      "action": "submission",
+      "count": 15,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "Ezekiel choke"
+    },
+    {
+      "action": "submission",
+      "count": 6,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "Japanese necktie"
+    },
+    {
+      "action": "submission",
+      "count": 4,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "Peruvian necktie"
+    },
+    {
+      "action": "submission",
+      "count": 7,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "Texas cloverleaf"
+    },
+    {
+      "action": "submission",
+      "count": 4,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "anaconda choke"
+    },
+    {
+      "action": "submission",
+      "count": 5,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "arm-in guillotine"
+    },
+    {
+      "action": "submission",
+      "count": 21,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "armbar"
+    },
+    {
+      "action": "submission",
+      "count": 8,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "belly-down armbar"
+    },
+    {
+      "action": "submission",
+      "count": 7,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "buggy choke"
+    },
+    {
+      "action": "submission",
+      "count": 20,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "guillotine choke"
+    },
+    {
+      "action": "submission",
+      "count": 2,
+      "position": "guard",
+      "status": "named",
+      "technique": "guillotine choke"
+    },
+    {
+      "action": "submission",
+      "count": 13,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "heel hook"
+    },
+    {
+      "action": "submission",
+      "count": 7,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "high-elbow guillotine"
+    },
+    {
+      "action": "submission",
+      "count": 7,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "inside heel hook"
+    },
+    {
+      "action": "submission",
+      "count": 12,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "kimura"
+    },
+    {
+      "action": "submission",
+      "count": 7,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "knee slicer"
+    },
+    {
+      "action": "submission",
+      "count": 8,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "kneebar"
+    },
+    {
+      "action": "submission",
+      "count": 10,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "ninja choke"
+    },
+    {
+      "action": "submission",
+      "count": 8,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "omoplata"
+    },
+    {
+      "action": "submission",
+      "count": 10,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "outside heel hook"
+    },
+    {
+      "action": "submission",
+      "count": 5,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "padlock choke"
+    },
+    {
+      "action": "submission",
+      "count": 9,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "reverse triangle"
+    },
+    {
+      "action": "submission",
+      "count": 4,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "straight ankle lock"
+    },
+    {
+      "action": "submission",
+      "count": 2,
+      "position": "guard",
+      "status": "named",
+      "technique": "straight ankle lock"
+    },
+    {
+      "action": "submission",
+      "count": 10,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "toe hold"
+    },
+    {
+      "action": "submission",
+      "count": 16,
+      "position": "guard",
+      "status": "incompatible",
+      "technique": "triangle choke"
+    },
+    {
+      "action": "submission",
+      "count": 10,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "Brabo choke"
+    },
+    {
+      "action": "submission",
+      "count": 15,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "D'Arce choke"
+    },
+    {
+      "action": "submission",
+      "count": 4,
+      "position": "half guard",
+      "status": "named",
+      "technique": "D'Arce choke"
+    },
+    {
+      "action": "submission",
+      "count": 3,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "Ezekiel choke"
+    },
+    {
+      "action": "submission",
+      "count": 8,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "Japanese necktie"
+    },
+    {
+      "action": "submission",
+      "count": 6,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "Peruvian necktie"
+    },
+    {
+      "action": "submission",
+      "count": 4,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "Texas cloverleaf"
+    },
+    {
+      "action": "submission",
+      "count": 16,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "anaconda choke"
+    },
+    {
+      "action": "submission",
+      "count": 15,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "arm-in guillotine"
+    },
+    {
+      "action": "submission",
+      "count": 19,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "armbar"
+    },
+    {
+      "action": "submission",
+      "count": 8,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "belly-down armbar"
+    },
+    {
+      "action": "submission",
+      "count": 9,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "buggy choke"
+    },
+    {
+      "action": "submission",
+      "count": 3,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "calf slicer"
+    },
+    {
+      "action": "submission",
+      "count": 31,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "guillotine choke"
+    },
+    {
+      "action": "submission",
+      "count": 11,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "heel hook"
+    },
+    {
+      "action": "submission",
+      "count": 14,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "high-elbow guillotine"
+    },
+    {
+      "action": "submission",
+      "count": 13,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "inside heel hook"
+    },
+    {
+      "action": "submission",
+      "count": 13,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "kimura"
+    },
+    {
+      "action": "submission",
+      "count": 4,
+      "position": "half guard",
+      "status": "named",
+      "technique": "kimura"
+    },
+    {
+      "action": "submission",
+      "count": 3,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "knee slicer"
+    },
+    {
+      "action": "submission",
+      "count": 8,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "kneebar"
+    },
+    {
+      "action": "submission",
+      "count": 11,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "ninja choke"
+    },
+    {
+      "action": "submission",
+      "count": 15,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "omoplata"
+    },
+    {
+      "action": "submission",
+      "count": 12,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "outside heel hook"
+    },
+    {
+      "action": "submission",
+      "count": 8,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "padlock choke"
+    },
+    {
+      "action": "submission",
+      "count": 20,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "reverse triangle"
+    },
+    {
+      "action": "submission",
+      "count": 6,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "straight ankle lock"
+    },
+    {
+      "action": "submission",
+      "count": 14,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "toe hold"
+    },
+    {
+      "action": "submission",
+      "count": 20,
+      "position": "half guard",
+      "status": "incompatible",
+      "technique": "triangle choke"
+    },
+    {
+      "action": "submission",
+      "count": 14,
+      "position": "mount",
+      "status": "incompatible",
+      "technique": "Americana"
+    },
+    {
+      "action": "submission",
+      "count": 3,
+      "position": "mount",
+      "status": "named",
+      "technique": "Americana"
+    },
+    {
+      "action": "submission",
+      "count": 1,
+      "position": "mount",
+      "status": "incompatible",
+      "technique": "Von Flue choke"
+    },
+    {
+      "action": "submission",
+      "count": 9,
+      "position": "mount",
+      "status": "incompatible",
+      "technique": "arm-triangle choke"
+    },
+    {
+      "action": "submission",
+      "count": 5,
+      "position": "mount",
+      "status": "named",
+      "technique": "arm-triangle choke"
+    },
+    {
+      "action": "submission",
+      "count": 5,
+      "position": "mount",
+      "status": "incompatible",
+      "technique": "keylock"
+    },
+    {
+      "action": "submission",
+      "count": 2,
+      "position": "mount",
+      "status": "named",
+      "technique": "keylock"
+    },
+    {
+      "action": "submission",
+      "count": 6,
+      "position": "mount",
+      "status": "incompatible",
+      "technique": "kimura"
+    },
+    {
+      "action": "submission",
+      "count": 10,
+      "position": "mount",
+      "status": "incompatible",
+      "technique": "mounted arm-triangle"
+    },
+    {
+      "action": "submission",
+      "count": 3,
+      "position": "mount",
+      "status": "named",
+      "technique": "mounted arm-triangle"
+    },
+    {
+      "action": "submission",
+      "count": 8,
+      "position": "mount",
+      "status": "incompatible",
+      "technique": "mounted triangle"
+    },
+    {
+      "action": "submission",
+      "count": 5,
+      "position": "mount",
+      "status": "incompatible",
+      "technique": "north-south choke"
+    },
+    {
+      "action": "submission",
+      "count": 4,
+      "position": "mount",
+      "status": "incompatible",
+      "technique": "paper-cutter choke"
+    },
+    {
+      "action": "submission",
+      "count": 4,
+      "position": "mount",
+      "status": "incompatible",
+      "technique": "scarf-hold choke"
+    },
+    {
+      "action": "submission",
+      "count": 7,
+      "position": "mount",
+      "status": "incompatible",
+      "technique": "shoulder lock"
+    },
+    {
+      "action": "submission",
+      "count": 8,
+      "position": "mount",
+      "status": "incompatible",
+      "technique": "straight armbar"
+    },
+    {
+      "action": "submission",
+      "count": 3,
+      "position": "mount",
+      "status": "named",
+      "technique": "straight armbar"
+    },
+    {
+      "action": "submission",
+      "count": 18,
+      "position": "side control",
+      "status": "incompatible",
+      "technique": "Americana"
+    },
+    {
+      "action": "submission",
+      "count": 2,
+      "position": "side control",
+      "status": "named",
+      "technique": "Americana"
+    },
+    {
+      "action": "submission",
+      "count": 8,
+      "position": "side control",
+      "status": "incompatible",
+      "technique": "Von Flue choke"
+    },
+    {
+      "action": "submission",
+      "count": 25,
+      "position": "side control",
+      "status": "incompatible",
+      "technique": "arm-triangle choke"
+    },
+    {
+      "action": "submission",
+      "count": 8,
+      "position": "side control",
+      "status": "named",
+      "technique": "arm-triangle choke"
+    },
+    {
+      "action": "submission",
+      "count": 13,
+      "position": "side control",
+      "status": "incompatible",
+      "technique": "keylock"
+    },
+    {
+      "action": "submission",
+      "count": 1,
+      "position": "side control",
+      "status": "named",
+      "technique": "keylock"
+    },
+    {
+      "action": "submission",
+      "count": 19,
+      "position": "side control",
+      "status": "incompatible",
+      "technique": "kimura"
+    },
+    {
+      "action": "submission",
+      "count": 24,
+      "position": "side control",
+      "status": "incompatible",
+      "technique": "mounted arm-triangle"
+    },
+    {
+      "action": "submission",
+      "count": 5,
+      "position": "side control",
+      "status": "named",
+      "technique": "mounted arm-triangle"
+    },
+    {
+      "action": "submission",
+      "count": 19,
+      "position": "side control",
+      "status": "incompatible",
+      "technique": "mounted triangle"
+    },
+    {
+      "action": "submission",
+      "count": 15,
+      "position": "side control",
+      "status": "incompatible",
+      "technique": "north-south choke"
+    },
+    {
+      "action": "submission",
+      "count": 13,
+      "position": "side control",
+      "status": "incompatible",
+      "technique": "paper-cutter choke"
+    },
+    {
+      "action": "submission",
+      "count": 10,
+      "position": "side control",
+      "status": "incompatible",
+      "technique": "scarf-hold choke"
+    },
+    {
+      "action": "submission",
+      "count": 7,
+      "position": "side control",
+      "status": "incompatible",
+      "technique": "shoulder lock"
+    },
+    {
+      "action": "submission",
+      "count": 13,
+      "position": "side control",
+      "status": "incompatible",
+      "technique": "straight armbar"
+    }
+  ],
+  "survival_expansion_counts": {},
+  "top_leg_entry_counts": {},
+  "top_submission_largest_share_pct": 19.64,
+  "top_submission_selections": {
+    "americana": 48,
+    "arm_triangle": 94,
+    "catch_cradle_neck_crank_finisher": 4,
+    "grappler_arm_triangle_finisher": 2,
+    "guard_can_opener": 13,
+    "guard_top_ankle_lock": 37,
+    "guard_top_ezekiel": 26,
+    "guard_top_guillotine": 25,
+    "guard_top_head_arm": 95,
+    "guard_top_punch_choke": 19,
+    "guard_top_wrist_lock": 14,
+    "half_guard_americana": 31,
+    "half_guard_arm_triangle": 32,
+    "half_guard_brabo": 32,
+    "half_guard_darce": 55,
+    "half_guard_kimura": 53,
+    "half_guard_shoulder_choke": 16,
+    "half_guard_von_flue": 24,
+    "north_south_choke": 17,
+    "rear_naked_choke": 43,
+    "scarf_hold_straight_armbar": 34,
+    "submission_grappler_rear_triangle_finisher": 1,
+    "top_armbar": 34,
+    "top_submission_chain": 183
+  },
+  "top_ten_move_share_pct": 26.26,
+  "total_move_selections": 13312,
+  "von_flue_angle_counts": {},
+  "von_flue_followthrough_counts": {},
+  "von_flue_setup_counts": {
+    "invalid": 9
+  }
+}

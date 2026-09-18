@@ -119,8 +119,12 @@ def test_build_specs_are_portable_and_bundle_runtime_graphics():
 
     assert "(str(PROJECT_ROOT / 'assets'), 'assets')" in game_spec
     assert "(str(PROJECT_ROOT / 'country_flags'), 'country_flags')" in game_spec
-    assert '--add-data "%APP_DIR%assets;assets"' in portable_build
-    assert '--add-data "%APP_DIR%country_flags;country_flags"' in portable_build
+    assert "[str(PROJECT_ROOT / 'main.py')]" in game_spec
+    assert "excludes=[]" in game_spec
+    assert '"%APP_DIR%MMA Warriors.spec"' in portable_build
+    assert '--add-data' not in portable_build
+    assert '--specpath' not in portable_build
+    assert '"%APP_DIR%main.py"' not in portable_build
     assert 'BUNDLE_DIR / "country_flags"' in (ROOT / "views.py").read_text(encoding="utf-8")
     assert any((ROOT / "country_flags").glob("*.png"))
 

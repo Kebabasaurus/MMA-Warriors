@@ -1,0 +1,56 @@
+"""Eight unregistered rear-standing identities for the Phase 34 candidate.
+
+Returns retain rear control on the mat or settle at the fence when defended.
+Hand-fighting belongs to the trapped fighter, not the rear-lock controller.
+"""
+from ..schema import move
+
+
+STANDING_BACK_DEVELOPMENT = (
+    move("rear_knee_block_return", "rear knee-block mat return", "mat_return", {"standing back control"},
+         attack_skills=("cage_wrestling", "throws", "ride_control"),
+         defense_skills=("get_ups", "clinch_defence"),
+         preferred_styles=("Wrestler", "Sambo", "Grappler"), minimum_skill=50,
+         follow_ups=("rear_naked_choke", "fence_pressure"),
+         tags=("wrestling", "takedown", "mat-return"), entry_family="rear body lock",
+         finish_positions=("back control",), defense_families=("hand fight", "hip turn")),
+    move("rear_outside_foot_block_return", "rear outside-foot-block return", "mat_return", {"standing back control"},
+         attack_skills=("throws", "cage_wrestling", "footwork"),
+         defense_skills=("get_ups", "strength"),
+         preferred_styles=("Judo", "Sambo", "Well-Rounded"), minimum_skill=50,
+         follow_ups=("back_control_short_punches", "head_position_pin"),
+         tags=("wrestling", "takedown", "mat-return", "trip"), entry_family="rear body lock",
+         finish_positions=("back control",), defense_families=("hand fight", "hip turn")),
+    move("waistlock_hip_shelf_return", "waistlock hip-shelf return", "mat_return", {"standing back control"},
+         attack_skills=("throws", "strength", "back_control"),
+         defense_skills=("get_ups", "scrambles"),
+         preferred_styles=("Freestyle Wrestler", "Wrestler", "Sambo"), minimum_skill=52,
+         follow_ups=("rear_naked_choke", "short_clinch_boxing"),
+         tags=("wrestling", "takedown", "mat-return"), entry_family="rear body lock",
+         finish_positions=("back control",), defense_families=("hand fight", "hip turn")),
+    move("rear_wrist_waistlock_control", "rear wrist-and-waistlock control", "standing_back_ride", {"standing back control"},
+         attack_skills=("ride_control", "clinch_control", "cage_wrestling"),
+         defense_skills=("clinch_defence", "scrambles"),
+         preferred_styles=("Wrestler", "Catch Wrestler", "Grappler"), minimum_skill=45,
+         follow_ups=("lift_mat_return",), tags=("wrestling", "control", "ride", "wrist-control")),
+    move("rear_hip_clamp_control", "rear hip-clamp control", "standing_back_ride", {"standing back control"},
+         attack_skills=("back_control", "strength", "ride_control"),
+         defense_skills=("scrambles", "get_ups"),
+         preferred_styles=("Sambo", "Wrestler", "Well-Rounded"), minimum_skill=45,
+         follow_ups=("lift_mat_return",), tags=("wrestling", "control", "ride", "pressure")),
+    move("two_on_one_rear_lock_peel", "two-on-one rear-lock hand peel", "standing_escape", {"standing back control"},
+         attack_skills=("clinch_defence", "scrambles", "strength"),
+         defense_skills=("ride_control", "clinch_control"),
+         preferred_styles=("Wrestler", "BJJ", "Well-Rounded"), minimum_skill=45,
+         follow_ups=("single_jab",), tags=("wrestling", "escape", "wrist-control")),
+    move("hip_turn_rear_lock_escape", "hip-turn rear-lock escape", "standing_escape", {"standing back control"},
+         attack_skills=("clinch_defence", "mobility", "scrambles"),
+         defense_skills=("ride_control", "strength"),
+         preferred_styles=("Judo", "Sambo", "MMA Generalist"), minimum_skill=45,
+         follow_ups=("double_jab",), tags=("wrestling", "escape", "scramble")),
+    move("rear_lock_post_and_step_clear", "rear-lock post-and-step clearance", "recover_shot", {"standing back control"},
+         attack_skills=("get_ups", "scrambles", "clinch_defence"),
+         defense_skills=("cage_wrestling", "clinch_control"),
+         preferred_styles=("Freestyle Wrestler", "Grappler", "Well-Rounded"), minimum_skill=45,
+         follow_ups=("single_jab", "frame_exit"), tags=("wrestling", "escape", "recovery", "frame")),
+)

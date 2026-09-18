@@ -13,3 +13,8 @@
 *.gz binary
 *.exe binary
 *.zip binary
+
+# Preserve the exact pre-restructure document bytes used by the migration hashes.
+# These snapshots intentionally retain their original mixed line endings.
+docs/archive/2026-09-18/AGENTS.before-context-routing.md -text
+docs/archive/2026-09-18/README.before-context-routing.md -text

@@ -10,7 +10,7 @@ from admin import AdminMixin
 from constants import COUNTRY_TO_REGION, REGION_COUNTRIES, REGIONS
 from database_editor import fighter_row_from_record, sync_fighter_groups
 from seeding import MMA_FIGHTER_DATABASE_SCHEMA, SeedMixin
-from universe_validation import validate_universe_pack, validate_universe_pack_issues
+from universe_validation import preflight_universe_pack, validate_universe_pack, validate_universe_pack_issues
 
 
 ROOT = Path(__file__).resolve().parent
@@ -152,6 +152,31 @@ class UniverseValidationRegressionTest(unittest.TestCase):
             )
             self.assertEqual(path.read_bytes(), before_bytes)
             self.assertEqual(path.stat().st_mtime_ns, before_mtime)
+
+    def test_preflight_is_structured_and_does_not_mutate_the_pack(self):
+        pack = self.load_default()
+        pack["sections"]["companies"]["promotions"][0]["parent_company"] = "Missing Parent"
+        pack["titles"] = {"Male Lightweight": "No Such Fighter"}
+        before = json.loads(json.dumps(pack))
+        findings = preflight_universe_pack(pack)
+        self.assertEqual(pack, before)
+        self.assertTrue(findings)
+        self.assertTrue(all({"severity", "category", "entity", "field", "evidence", "remedy"} <= set(row) for row in findings))
+        self.assertTrue(any(row["field"] == "parent_company" and row["severity"] == "error" for row in findings))
+        self.assertTrue(any(row["field"] == "Male Lightweight" and row["severity"] == "error" for row in findings))
+        self.assertTrue(any(row["severity"] == "warning" and row["category"] == "population" for row in findings))
+
+    def test_preflight_reports_explicit_payroll_over_cash_without_inventing_salary_fields(self):
+        pack = self.load_default()
+        fighter = next(row for row in pack["sections"]["fighters"]["all_fighters"] if row.get("placement") == "promotion")
+        owner = fighter["owner"]
+        company = next(
+            row for row in pack["sections"]["companies"]["promotions"]
+            if row.get("name") == owner or row.get("roster_key") == owner
+        )
+        fighter["salary"] = company["cash"] + 1
+        findings = preflight_universe_pack(pack)
+        self.assertTrue(any(row["category"] == "payroll" and row["entity"] == f"company:{company['name']}" for row in findings))
 
 
 if __name__ == "__main__":

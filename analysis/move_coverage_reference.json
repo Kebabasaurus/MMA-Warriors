@@ -1,0 +1,1118 @@
+{
+  "contexts": [
+    [
+      "advance_position",
+      "back control",
+      ""
+    ],
+    [
+      "advance_position",
+      "guard",
+      ""
+    ],
+    [
+      "advance_position",
+      "half guard",
+      ""
+    ],
+    [
+      "advance_position",
+      "mount",
+      ""
+    ],
+    [
+      "advance_position",
+      "side control",
+      ""
+    ],
+    [
+      "bottom_submission",
+      "back control",
+      ""
+    ],
+    [
+      "bottom_submission",
+      "guard",
+      ""
+    ],
+    [
+      "bottom_submission",
+      "half guard",
+      ""
+    ],
+    [
+      "bottom_submission",
+      "mount",
+      ""
+    ],
+    [
+      "bottom_submission",
+      "side control",
+      ""
+    ],
+    [
+      "break_clinch",
+      "cage",
+      ""
+    ],
+    [
+      "break_clinch",
+      "clinch",
+      ""
+    ],
+    [
+      "cage_control",
+      "cage",
+      ""
+    ],
+    [
+      "cage_control",
+      "clinch",
+      ""
+    ],
+    [
+      "clinch",
+      "range",
+      ""
+    ],
+    [
+      "cling",
+      "back control",
+      ""
+    ],
+    [
+      "cling",
+      "guard",
+      ""
+    ],
+    [
+      "cling",
+      "half guard",
+      ""
+    ],
+    [
+      "cling",
+      "mount",
+      ""
+    ],
+    [
+      "cling",
+      "side control",
+      ""
+    ],
+    [
+      "dirty_boxing",
+      "cage",
+      "body"
+    ],
+    [
+      "dirty_boxing",
+      "cage",
+      "head"
+    ],
+    [
+      "dirty_boxing",
+      "clinch",
+      "body"
+    ],
+    [
+      "dirty_boxing",
+      "clinch",
+      "head"
+    ],
+    [
+      "ground_control",
+      "back control",
+      ""
+    ],
+    [
+      "ground_control",
+      "guard",
+      ""
+    ],
+    [
+      "ground_control",
+      "half guard",
+      ""
+    ],
+    [
+      "ground_control",
+      "mount",
+      ""
+    ],
+    [
+      "ground_control",
+      "side control",
+      ""
+    ],
+    [
+      "ground_strikes",
+      "back control",
+      "head"
+    ],
+    [
+      "ground_strikes",
+      "guard",
+      "head"
+    ],
+    [
+      "ground_strikes",
+      "half guard",
+      "head"
+    ],
+    [
+      "ground_strikes",
+      "mount",
+      "head"
+    ],
+    [
+      "ground_strikes",
+      "side control",
+      "head"
+    ],
+    [
+      "jab",
+      "range",
+      "body"
+    ],
+    [
+      "jab",
+      "range",
+      "head"
+    ],
+    [
+      "kick",
+      "range",
+      "body"
+    ],
+    [
+      "kick",
+      "range",
+      "head"
+    ],
+    [
+      "kick",
+      "range",
+      "leg"
+    ],
+    [
+      "power_punch",
+      "range",
+      "body"
+    ],
+    [
+      "power_punch",
+      "range",
+      "head"
+    ],
+    [
+      "recover_guard",
+      "back control",
+      ""
+    ],
+    [
+      "recover_guard",
+      "guard",
+      ""
+    ],
+    [
+      "recover_guard",
+      "half guard",
+      ""
+    ],
+    [
+      "recover_guard",
+      "mount",
+      ""
+    ],
+    [
+      "recover_guard",
+      "side control",
+      ""
+    ],
+    [
+      "shoot",
+      "range",
+      ""
+    ],
+    [
+      "stand_up",
+      "back control",
+      ""
+    ],
+    [
+      "stand_up",
+      "guard",
+      ""
+    ],
+    [
+      "stand_up",
+      "half guard",
+      ""
+    ],
+    [
+      "stand_up",
+      "mount",
+      ""
+    ],
+    [
+      "stand_up",
+      "side control",
+      ""
+    ],
+    [
+      "submission",
+      "back control",
+      ""
+    ],
+    [
+      "submission",
+      "guard",
+      ""
+    ],
+    [
+      "submission",
+      "half guard",
+      ""
+    ],
+    [
+      "submission",
+      "mount",
+      ""
+    ],
+    [
+      "submission",
+      "side control",
+      ""
+    ],
+    [
+      "survive",
+      "back control",
+      ""
+    ],
+    [
+      "survive",
+      "cage",
+      ""
+    ],
+    [
+      "survive",
+      "clinch",
+      ""
+    ],
+    [
+      "survive",
+      "guard",
+      ""
+    ],
+    [
+      "survive",
+      "half guard",
+      ""
+    ],
+    [
+      "survive",
+      "mount",
+      ""
+    ],
+    [
+      "survive",
+      "range",
+      ""
+    ],
+    [
+      "survive",
+      "side control",
+      ""
+    ],
+    [
+      "sweep",
+      "back control",
+      ""
+    ],
+    [
+      "sweep",
+      "guard",
+      ""
+    ],
+    [
+      "sweep",
+      "half guard",
+      ""
+    ],
+    [
+      "sweep",
+      "mount",
+      ""
+    ],
+    [
+      "sweep",
+      "side control",
+      ""
+    ],
+    [
+      "takedown",
+      "cage",
+      ""
+    ],
+    [
+      "takedown",
+      "clinch",
+      ""
+    ]
+  ],
+  "coverage": {
+    "pools": [
+      {
+        "action": "advance_position",
+        "below_floor": true,
+        "depth": 0,
+        "minimum": 4,
+        "position": "back control"
+      },
+      {
+        "action": "advance_position",
+        "below_floor": false,
+        "depth": 6,
+        "minimum": 4,
+        "position": "guard"
+      },
+      {
+        "action": "advance_position",
+        "below_floor": false,
+        "depth": 8,
+        "minimum": 4,
+        "position": "half guard"
+      },
+      {
+        "action": "advance_position",
+        "below_floor": false,
+        "depth": 4,
+        "minimum": 4,
+        "position": "mount"
+      },
+      {
+        "action": "advance_position",
+        "below_floor": false,
+        "depth": 6,
+        "minimum": 4,
+        "position": "side control"
+      },
+      {
+        "action": "bottom_submission",
+        "below_floor": true,
+        "depth": 0,
+        "minimum": 4,
+        "position": "back control"
+      },
+      {
+        "action": "bottom_submission",
+        "below_floor": false,
+        "depth": 8,
+        "minimum": 4,
+        "position": "guard"
+      },
+      {
+        "action": "bottom_submission",
+        "below_floor": false,
+        "depth": 4,
+        "minimum": 4,
+        "position": "half guard"
+      },
+      {
+        "action": "bottom_submission",
+        "below_floor": true,
+        "depth": 0,
+        "minimum": 4,
+        "position": "mount"
+      },
+      {
+        "action": "bottom_submission",
+        "below_floor": true,
+        "depth": 0,
+        "minimum": 4,
+        "position": "side control"
+      },
+      {
+        "action": "break_clinch",
+        "below_floor": false,
+        "depth": 5,
+        "minimum": 4,
+        "position": "cage"
+      },
+      {
+        "action": "break_clinch",
+        "below_floor": false,
+        "depth": 5,
+        "minimum": 4,
+        "position": "clinch"
+      },
+      {
+        "action": "cage_control",
+        "below_floor": true,
+        "depth": 3,
+        "minimum": 4,
+        "position": "cage"
+      },
+      {
+        "action": "cage_control",
+        "below_floor": true,
+        "depth": 3,
+        "minimum": 4,
+        "position": "clinch"
+      },
+      {
+        "action": "clinch",
+        "below_floor": false,
+        "depth": 9,
+        "minimum": 4,
+        "position": "range"
+      },
+      {
+        "action": "cling",
+        "below_floor": false,
+        "depth": 4,
+        "minimum": 4,
+        "position": "back control"
+      },
+      {
+        "action": "cling",
+        "below_floor": false,
+        "depth": 5,
+        "minimum": 4,
+        "position": "guard"
+      },
+      {
+        "action": "cling",
+        "below_floor": false,
+        "depth": 5,
+        "minimum": 4,
+        "position": "half guard"
+      },
+      {
+        "action": "cling",
+        "below_floor": false,
+        "depth": 4,
+        "minimum": 4,
+        "position": "mount"
+      },
+      {
+        "action": "cling",
+        "below_floor": false,
+        "depth": 4,
+        "minimum": 4,
+        "position": "side control"
+      },
+      {
+        "action": "dirty_boxing",
+        "below_floor": false,
+        "depth": 6,
+        "minimum": 4,
+        "position": "cage"
+      },
+      {
+        "action": "dirty_boxing",
+        "below_floor": false,
+        "depth": 6,
+        "minimum": 4,
+        "position": "clinch"
+      },
+      {
+        "action": "ground_control",
+        "below_floor": false,
+        "depth": 4,
+        "minimum": 4,
+        "position": "back control"
+      },
+      {
+        "action": "ground_control",
+        "below_floor": true,
+        "depth": 3,
+        "minimum": 4,
+        "position": "guard"
+      },
+      {
+        "action": "ground_control",
+        "below_floor": false,
+        "depth": 5,
+        "minimum": 4,
+        "position": "half guard"
+      },
+      {
+        "action": "ground_control",
+        "below_floor": false,
+        "depth": 4,
+        "minimum": 4,
+        "position": "mount"
+      },
+      {
+        "action": "ground_control",
+        "below_floor": false,
+        "depth": 4,
+        "minimum": 4,
+        "position": "side control"
+      },
+      {
+        "action": "ground_strikes",
+        "below_floor": false,
+        "depth": 5,
+        "minimum": 4,
+        "position": "back control"
+      },
+      {
+        "action": "ground_strikes",
+        "below_floor": false,
+        "depth": 4,
+        "minimum": 4,
+        "position": "guard"
+      },
+      {
+        "action": "ground_strikes",
+        "below_floor": false,
+        "depth": 7,
+        "minimum": 4,
+        "position": "half guard"
+      },
+      {
+        "action": "ground_strikes",
+        "below_floor": false,
+        "depth": 4,
+        "minimum": 4,
+        "position": "mount"
+      },
+      {
+        "action": "ground_strikes",
+        "below_floor": false,
+        "depth": 6,
+        "minimum": 4,
+        "position": "side control"
+      },
+      {
+        "action": "jab",
+        "below_floor": false,
+        "depth": 6,
+        "minimum": 4,
+        "position": "range"
+      },
+      {
+        "action": "kick",
+        "below_floor": false,
+        "depth": 28,
+        "minimum": 4,
+        "position": "range"
+      },
+      {
+        "action": "power_punch",
+        "below_floor": false,
+        "depth": 33,
+        "minimum": 4,
+        "position": "range"
+      },
+      {
+        "action": "recover_guard",
+        "below_floor": true,
+        "depth": 2,
+        "minimum": 4,
+        "position": "back control"
+      },
+      {
+        "action": "recover_guard",
+        "below_floor": true,
+        "depth": 1,
+        "minimum": 4,
+        "position": "guard"
+      },
+      {
+        "action": "recover_guard",
+        "below_floor": true,
+        "depth": 2,
+        "minimum": 4,
+        "position": "half guard"
+      },
+      {
+        "action": "recover_guard",
+        "below_floor": true,
+        "depth": 2,
+        "minimum": 4,
+        "position": "mount"
+      },
+      {
+        "action": "recover_guard",
+        "below_floor": true,
+        "depth": 2,
+        "minimum": 4,
+        "position": "side control"
+      },
+      {
+        "action": "shoot",
+        "below_floor": false,
+        "depth": 10,
+        "minimum": 4,
+        "position": "range"
+      },
+      {
+        "action": "stand_up",
+        "below_floor": true,
+        "depth": 0,
+        "minimum": 4,
+        "position": "back control"
+      },
+      {
+        "action": "stand_up",
+        "below_floor": true,
+        "depth": 3,
+        "minimum": 4,
+        "position": "guard"
+      },
+      {
+        "action": "stand_up",
+        "below_floor": true,
+        "depth": 3,
+        "minimum": 4,
+        "position": "half guard"
+      },
+      {
+        "action": "stand_up",
+        "below_floor": true,
+        "depth": 0,
+        "minimum": 4,
+        "position": "mount"
+      },
+      {
+        "action": "stand_up",
+        "below_floor": true,
+        "depth": 0,
+        "minimum": 4,
+        "position": "side control"
+      },
+      {
+        "action": "submission",
+        "below_floor": true,
+        "depth": 3,
+        "minimum": 4,
+        "position": "back control"
+      },
+      {
+        "action": "submission",
+        "below_floor": true,
+        "depth": 1,
+        "minimum": 4,
+        "position": "guard"
+      },
+      {
+        "action": "submission",
+        "below_floor": true,
+        "depth": 1,
+        "minimum": 4,
+        "position": "half guard"
+      },
+      {
+        "action": "submission",
+        "below_floor": false,
+        "depth": 6,
+        "minimum": 4,
+        "position": "mount"
+      },
+      {
+        "action": "submission",
+        "below_floor": false,
+        "depth": 7,
+        "minimum": 4,
+        "position": "side control"
+      },
+      {
+        "action": "survive",
+        "below_floor": true,
+        "depth": 3,
+        "minimum": 4,
+        "position": "back control"
+      },
+      {
+        "action": "survive",
+        "below_floor": true,
+        "depth": 3,
+        "minimum": 4,
+        "position": "cage"
+      },
+      {
+        "action": "survive",
+        "below_floor": true,
+        "depth": 3,
+        "minimum": 4,
+        "position": "clinch"
+      },
+      {
+        "action": "survive",
+        "below_floor": true,
+        "depth": 3,
+        "minimum": 4,
+        "position": "guard"
+      },
+      {
+        "action": "survive",
+        "below_floor": true,
+        "depth": 3,
+        "minimum": 4,
+        "position": "half guard"
+      },
+      {
+        "action": "survive",
+        "below_floor": true,
+        "depth": 3,
+        "minimum": 4,
+        "position": "mount"
+      },
+      {
+        "action": "survive",
+        "below_floor": true,
+        "depth": 3,
+        "minimum": 4,
+        "position": "range"
+      },
+      {
+        "action": "survive",
+        "below_floor": true,
+        "depth": 3,
+        "minimum": 4,
+        "position": "side control"
+      },
+      {
+        "action": "sweep",
+        "below_floor": true,
+        "depth": 0,
+        "minimum": 4,
+        "position": "back control"
+      },
+      {
+        "action": "sweep",
+        "below_floor": false,
+        "depth": 6,
+        "minimum": 4,
+        "position": "guard"
+      },
+      {
+        "action": "sweep",
+        "below_floor": false,
+        "depth": 4,
+        "minimum": 4,
+        "position": "half guard"
+      },
+      {
+        "action": "sweep",
+        "below_floor": true,
+        "depth": 0,
+        "minimum": 4,
+        "position": "mount"
+      },
+      {
+        "action": "sweep",
+        "below_floor": true,
+        "depth": 0,
+        "minimum": 4,
+        "position": "side control"
+      },
+      {
+        "action": "takedown",
+        "below_floor": false,
+        "depth": 9,
+        "minimum": 4,
+        "position": "cage"
+      },
+      {
+        "action": "takedown",
+        "below_floor": false,
+        "depth": 9,
+        "minimum": 4,
+        "position": "clinch"
+      }
+    ],
+    "style_counts": {
+      "BJJ": 52,
+      "Boxer": 32,
+      "Catch Wrestler": 25,
+      "Dutch Kickboxer": 17,
+      "Freestyle Wrestler": 17,
+      "Grappler": 2,
+      "Judo": 18,
+      "Karate": 18,
+      "Kickboxer": 24,
+      "Luta Livre": 22,
+      "MMA Generalist": 19,
+      "Muay Thai": 30,
+      "Sambo": 34,
+      "Sanda": 21,
+      "Submission Grappler": 21,
+      "Taekwondo": 12,
+      "Well-Rounded": 3,
+      "Wrestler": 60
+    },
+    "thin_styles": {
+      "Dutch Kickboxer": 17,
+      "Freestyle Wrestler": 17,
+      "Grappler": 2,
+      "Taekwondo": 12,
+      "Well-Rounded": 3
+    }
+  },
+  "eligibility_warnings": {
+    "anaconda_choke": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "chained_reshot": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "darce_choke": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "fence_drive": [
+      "no-parent-action"
+    ],
+    "front_headlock_go_behind": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "front_headlock_posture_out": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "guillotine_choke": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "heel_hook": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "kneebar": [
+      "no-parent-action"
+    ],
+    "lift_mat_return": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "limp_leg_escape": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "rear_waist_ride": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "sit_out_reversal": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "snapdown_front_headlock": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "straight_ankle_lock": [
+      "no-parent-action"
+    ],
+    "toe_hold": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "turtle_breakdown": [
+      "no-parent-action",
+      "position-never-entered"
+    ],
+    "turtle_wrist_ride_strikes": [
+      "position-never-entered"
+    ],
+    "whizzer_recovery": [
+      "no-parent-action",
+      "position-never-entered"
+    ]
+  },
+  "failures": [],
+  "fight_count": 300,
+  "observed_move_ids": [
+    "americana",
+    "ankle_pick_entry",
+    "arm_triangle",
+    "axe_kick",
+    "back_control_handfight_recovery",
+    "back_control_short_punches",
+    "back_take_transition",
+    "bjj_arm_drag_back_take_chain",
+    "bjj_triangle_armbar_finisher",
+    "body_head_change",
+    "body_head_ground_chain",
+    "body_jab",
+    "body_lock_entry",
+    "body_lock_pass",
+    "body_lock_trip",
+    "body_round_kick",
+    "body_triangle_back_control",
+    "bottom_frame_survival",
+    "boxer_double_jab_pivot_cross_hook",
+    "boxer_shift_step_cross_finisher",
+    "boxing_pressure_flurry",
+    "butterfly_sweep",
+    "calf_kick",
+    "catch_cradle_neck_crank_finisher",
+    "catch_snapdown_go_behind_chain",
+    "check_hook",
+    "chest_to_chest_pin",
+    "circling_breather",
+    "clinch_knee",
+    "clinch_lean_recovery",
+    "closed_guard_hold",
+    "closed_guard_retention",
+    "collar_tie_elbow",
+    "collar_tie_entry",
+    "composed_survival",
+    "corkscrew_cross",
+    "cross_body_hook_lead_hook",
+    "cross_body_kick",
+    "cross_hook_body_kick",
+    "cross_hook_cross",
+    "crucifix_elbows",
+    "defensive_cling",
+    "double_jab",
+    "double_jab_body_cross",
+    "double_jab_cross",
+    "double_jab_low_kick",
+    "double_leg_entry",
+    "double_leg_finish",
+    "double_underhooks",
+    "dutch_high_guard_cross_hook_finisher",
+    "elbow_knee_guard_recovery",
+    "fence_pressure",
+    "flicker_jab",
+    "flower_sweep",
+    "flying_knee",
+    "frame_and_pivot_exit",
+    "frame_exit",
+    "freestyle_feint_reshot_chain",
+    "freestyle_mat_return_ground_pound_finisher",
+    "generic_advance_position",
+    "generic_bottom_submission",
+    "generic_stand_up",
+    "generic_sweep",
+    "gift_wrap_transition",
+    "grappler_arm_triangle_finisher",
+    "grappler_jab_body_lock_mat_return",
+    "guard_armbar",
+    "guard_posture_elbows",
+    "guard_recovery",
+    "guard_submission_chain",
+    "half_guard_crossface_control",
+    "half_guard_crossface_strikes",
+    "half_guard_pass",
+    "head_pinch_stall",
+    "head_round_kick",
+    "headquarters_pass",
+    "heavy_top_breather",
+    "high_crotch_finish",
+    "hip_bump_sweep",
+    "hip_pressure_ride",
+    "hip_toss",
+    "hook_elbow_knee",
+    "hook_low_kick",
+    "inside_body_hook",
+    "inside_low_kick",
+    "inside_trip",
+    "inside_uppercut",
+    "intercepting_knee",
+    "jab_cross_lead_hook",
+    "jab_cross_rear_knee",
+    "jab_low_kick",
+    "jab_to_shot",
+    "jab_uppercut_lead_hook",
+    "judo_grip_foot_sweep_throw_chain",
+    "jumping_front_kick",
+    "karate_blitz_cross_hook_exit",
+    "karate_blitz_reverse_cross_finisher",
+    "kickboxer_cross_high_kick_finisher",
+    "kickboxer_cross_hook_switch_kick",
+    "kimura_guard",
+    "knee_on_belly_climb",
+    "knee_on_belly_pressure",
+    "knee_slice_pass",
+    "knee_tap",
+    "lateral_drop",
+    "lead_hook_cross",
+    "lead_teep",
+    "lockdown_sweep",
+    "low_kick_counter",
+    "luta_outside_heel_hook_finisher",
+    "mma_generalist_cross_kick_clinch_chain",
+    "mma_generalist_elbow_knee_finisher",
+    "mount_grapevine_control",
+    "mount_transition",
+    "mounted_hammerfist_flurry",
+    "muay_thai_frame_elbow_finisher",
+    "muay_thai_teep_cross_elbow_knee",
+    "omoplata",
+    "one_two",
+    "outside_low_kick",
+    "outside_trip",
+    "over_under_entry",
+    "overhand",
+    "overhand_to_double",
+    "pivot_exit",
+    "position_pass",
+    "post_and_build_getup",
+    "post_and_push_exit",
+    "posture_punches",
+    "power_jab",
+    "pull_counter",
+    "pummel_to_underhook",
+    "punch_head_kick",
+    "question_mark_kick",
+    "reactive_shot",
+    "rear_naked_choke",
+    "rear_uppercut",
+    "ride_control",
+    "ride_wrist_punches",
+    "sambo_overhand_body_lock_trip",
+    "sambo_rolling_kneebar_finisher",
+    "sanda_jumping_side_kick_finisher",
+    "sanda_side_kick_overhand_shot",
+    "scissor_sweep",
+    "shell_and_reset",
+    "short_clinch_boxing",
+    "short_ground_elbows",
+    "shoulder_grind",
+    "shoulder_pressure",
+    "side_kick",
+    "single_jab",
+    "single_leg_entry",
+    "single_leg_finish",
+    "slip_cross",
+    "spinning_back_kick",
+    "spinning_backfist",
+    "spinning_elbow",
+    "stance_shift_cross_hook",
+    "step_in_elbow",
+    "submission_grappler_pass_back_take_chain",
+    "submission_grappler_rear_triangle_finisher",
+    "swim_to_space",
+    "switch_body_kick",
+    "switch_flying_knee",
+    "taekwondo_side_back_round_chain",
+    "taekwondo_spinning_hook_kick_finisher",
+    "technical_standup",
+    "thai_plum_entry",
+    "top_armbar",
+    "top_submission_chain",
+    "triangle_choke",
+    "tripod_standup",
+    "underhook_half_guard_pass",
+    "underhook_stall",
+    "up_jab",
+    "waiter_sweep",
+    "well_rounded_cross_head_kick_finisher",
+    "well_rounded_jab_low_kick_level_change",
+    "wheel_kick",
+    "wrestler_jab_overhand_double",
+    "wrestler_wrist_ride_hammerfist_finisher",
+    "wrist_ride_neutralize"
+  ],
+  "scope": "observed selection opportunities, not proof of absolute unreachability"
+}

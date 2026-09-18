@@ -1,0 +1,2437 @@
+{
+  "experimental_only": true,
+  "fights": 3840,
+  "overall": {
+    "total": 3840,
+    "finishes": 2292,
+    "methods": {
+      "Decision": 1535,
+      "TKO": 736,
+      "Submission": 877,
+      "KO": 603,
+      "Corner Stoppage": 24,
+      "Technical Submission": 42,
+      "Draw": 13,
+      "Injury Stoppage": 4,
+      "Doctor Stoppage": 6
+    },
+    "rounds": {
+      "5": 600,
+      "4": 76,
+      "1": 1119,
+      "2": 676,
+      "3": 1369
+    },
+    "families": {
+      "Decision": 1535,
+      "KO/TKO": 1369,
+      "Submission": 919,
+      "Draw": 13,
+      "Other finish": 4
+    },
+    "finish_timing": {
+      "Early": 1119,
+      "Middle": 780,
+      "Late": 393
+    },
+    "finish_pct": 59.69,
+    "finish_ci95": [
+      58.13,
+      61.23
+    ],
+    "method_pct": {
+      "Corner Stoppage": 0.62,
+      "Decision": 39.97,
+      "Doctor Stoppage": 0.16,
+      "Draw": 0.34,
+      "Injury Stoppage": 0.1,
+      "KO": 15.7,
+      "Submission": 22.84,
+      "TKO": 19.17,
+      "Technical Submission": 1.09
+    },
+    "family_pct": {
+      "Decision": 39.97,
+      "Draw": 0.34,
+      "KO/TKO": 35.65,
+      "Other finish": 0.1,
+      "Submission": 23.93
+    },
+    "finish_timing_pct": {
+      "Early": 29.14,
+      "Middle": 20.31,
+      "Late": 10.23
+    },
+    "finish_timing_share_pct": {
+      "Early": 48.82,
+      "Middle": 34.03,
+      "Late": 17.15
+    }
+  },
+  "failures": [],
+  "groups": {
+    "Overall": {
+      "total": 3840,
+      "finishes": 2292,
+      "methods": {
+        "Decision": 1535,
+        "TKO": 736,
+        "Submission": 877,
+        "KO": 603,
+        "Corner Stoppage": 24,
+        "Technical Submission": 42,
+        "Draw": 13,
+        "Injury Stoppage": 4,
+        "Doctor Stoppage": 6
+      },
+      "rounds": {
+        "5": 600,
+        "4": 76,
+        "1": 1119,
+        "2": 676,
+        "3": 1369
+      },
+      "families": {
+        "Decision": 1535,
+        "KO/TKO": 1369,
+        "Submission": 919,
+        "Draw": 13,
+        "Other finish": 4
+      },
+      "finish_timing": {
+        "Early": 1119,
+        "Middle": 780,
+        "Late": 393
+      },
+      "finish_pct": 59.69,
+      "finish_ci95": [
+        58.13,
+        61.23
+      ],
+      "method_pct": {
+        "Corner Stoppage": 0.62,
+        "Decision": 39.97,
+        "Doctor Stoppage": 0.16,
+        "Draw": 0.34,
+        "Injury Stoppage": 0.1,
+        "KO": 15.7,
+        "Submission": 22.84,
+        "TKO": 19.17,
+        "Technical Submission": 1.09
+      },
+      "family_pct": {
+        "Decision": 39.97,
+        "Draw": 0.34,
+        "KO/TKO": 35.65,
+        "Other finish": 0.1,
+        "Submission": 23.93
+      },
+      "finish_timing_pct": {
+        "Early": 29.14,
+        "Middle": 20.31,
+        "Late": 10.23
+      },
+      "finish_timing_share_pct": {
+        "Early": 48.82,
+        "Middle": 34.03,
+        "Late": 17.15
+      }
+    },
+    "Five Round": {
+      "total": 1320,
+      "finishes": 818,
+      "methods": {
+        "Decision": 498,
+        "TKO": 282,
+        "Submission": 307,
+        "KO": 186,
+        "Corner Stoppage": 17,
+        "Technical Submission": 18,
+        "Draw": 4,
+        "Injury Stoppage": 2,
+        "Doctor Stoppage": 6
+      },
+      "rounds": {
+        "5": 600,
+        "4": 76,
+        "1": 358,
+        "2": 182,
+        "3": 104
+      },
+      "families": {
+        "Decision": 498,
+        "KO/TKO": 491,
+        "Submission": 325,
+        "Draw": 4,
+        "Other finish": 2
+      },
+      "finish_timing": {
+        "Early": 358,
+        "Middle": 286,
+        "Late": 174
+      },
+      "finish_pct": 61.97,
+      "finish_ci95": [
+        59.32,
+        64.55
+      ],
+      "method_pct": {
+        "Corner Stoppage": 1.29,
+        "Decision": 37.73,
+        "Doctor Stoppage": 0.45,
+        "Draw": 0.3,
+        "Injury Stoppage": 0.15,
+        "KO": 14.09,
+        "Submission": 23.26,
+        "TKO": 21.36,
+        "Technical Submission": 1.36
+      },
+      "family_pct": {
+        "Decision": 37.73,
+        "Draw": 0.3,
+        "KO/TKO": 37.2,
+        "Other finish": 0.15,
+        "Submission": 24.62
+      },
+      "finish_timing_pct": {
+        "Early": 27.12,
+        "Middle": 21.67,
+        "Late": 13.18
+      },
+      "finish_timing_share_pct": {
+        "Early": 43.77,
+        "Middle": 34.96,
+        "Late": 21.27
+      }
+    },
+    "Competitive": {
+      "total": 2880,
+      "finishes": 1387,
+      "methods": {
+        "Decision": 1480,
+        "TKO": 606,
+        "Submission": 452,
+        "KO": 276,
+        "Corner Stoppage": 21,
+        "Technical Submission": 22,
+        "Draw": 13,
+        "Injury Stoppage": 4,
+        "Doctor Stoppage": 6
+      },
+      "rounds": {
+        "5": 588,
+        "4": 73,
+        "1": 531,
+        "2": 428,
+        "3": 1260
+      },
+      "families": {
+        "Decision": 1480,
+        "KO/TKO": 909,
+        "Submission": 474,
+        "Draw": 13,
+        "Other finish": 4
+      },
+      "finish_timing": {
+        "Early": 531,
+        "Middle": 519,
+        "Late": 337
+      },
+      "finish_pct": 48.16,
+      "finish_ci95": [
+        46.34,
+        49.99
+      ],
+      "method_pct": {
+        "Corner Stoppage": 0.73,
+        "Decision": 51.39,
+        "Doctor Stoppage": 0.21,
+        "Draw": 0.45,
+        "Injury Stoppage": 0.14,
+        "KO": 9.58,
+        "Submission": 15.69,
+        "TKO": 21.04,
+        "Technical Submission": 0.76
+      },
+      "family_pct": {
+        "Decision": 51.39,
+        "Draw": 0.45,
+        "KO/TKO": 31.56,
+        "Other finish": 0.14,
+        "Submission": 16.46
+      },
+      "finish_timing_pct": {
+        "Early": 18.44,
+        "Middle": 18.02,
+        "Late": 11.7
+      },
+      "finish_timing_share_pct": {
+        "Early": 38.28,
+        "Middle": 37.42,
+        "Late": 24.3
+      }
+    },
+    "Competitive Low": {
+      "total": 960,
+      "finishes": 479,
+      "methods": {
+        "Decision": 477,
+        "TKO": 198,
+        "Submission": 187,
+        "KO": 80,
+        "Corner Stoppage": 5,
+        "Technical Submission": 8,
+        "Draw": 4,
+        "Injury Stoppage": 1
+      },
+      "rounds": {
+        "5": 185,
+        "4": 27,
+        "1": 237,
+        "2": 121,
+        "3": 390
+      },
+      "families": {
+        "Decision": 477,
+        "KO/TKO": 283,
+        "Submission": 195,
+        "Draw": 4,
+        "Other finish": 1
+      },
+      "finish_timing": {
+        "Early": 237,
+        "Middle": 144,
+        "Late": 98
+      },
+      "finish_pct": 49.9,
+      "finish_ci95": [
+        46.74,
+        53.05
+      ],
+      "method_pct": {
+        "Corner Stoppage": 0.52,
+        "Decision": 49.69,
+        "Draw": 0.42,
+        "Injury Stoppage": 0.1,
+        "KO": 8.33,
+        "Submission": 19.48,
+        "TKO": 20.62,
+        "Technical Submission": 0.83
+      },
+      "family_pct": {
+        "Decision": 49.69,
+        "Draw": 0.42,
+        "KO/TKO": 29.48,
+        "Other finish": 0.1,
+        "Submission": 20.31
+      },
+      "finish_timing_pct": {
+        "Early": 24.69,
+        "Middle": 15.0,
+        "Late": 10.21
+      },
+      "finish_timing_share_pct": {
+        "Early": 49.48,
+        "Middle": 30.06,
+        "Late": 20.46
+      }
+    },
+    "Style Boxer vs Wrestler": {
+      "total": 360,
+      "finishes": 194,
+      "methods": {
+        "Decision": 164,
+        "TKO": 89,
+        "Submission": 63,
+        "KO": 32,
+        "Corner Stoppage": 5,
+        "Technical Submission": 3,
+        "Draw": 2,
+        "Doctor Stoppage": 1,
+        "Injury Stoppage": 1
+      },
+      "rounds": {
+        "5": 206,
+        "4": 28,
+        "1": 58,
+        "2": 42,
+        "3": 26
+      },
+      "families": {
+        "Decision": 164,
+        "KO/TKO": 127,
+        "Submission": 66,
+        "Draw": 2,
+        "Other finish": 1
+      },
+      "finish_timing": {
+        "Early": 58,
+        "Middle": 68,
+        "Late": 68
+      },
+      "finish_pct": 53.89,
+      "finish_ci95": [
+        48.73,
+        58.97
+      ],
+      "method_pct": {
+        "Corner Stoppage": 1.39,
+        "Decision": 45.56,
+        "Doctor Stoppage": 0.28,
+        "Draw": 0.56,
+        "Injury Stoppage": 0.28,
+        "KO": 8.89,
+        "Submission": 17.5,
+        "TKO": 24.72,
+        "Technical Submission": 0.83
+      },
+      "family_pct": {
+        "Decision": 45.56,
+        "Draw": 0.56,
+        "KO/TKO": 35.28,
+        "Other finish": 0.28,
+        "Submission": 18.33
+      },
+      "finish_timing_pct": {
+        "Early": 16.11,
+        "Middle": 18.89,
+        "Late": 18.89
+      },
+      "finish_timing_share_pct": {
+        "Early": 29.9,
+        "Middle": 35.05,
+        "Late": 35.05
+      }
+    },
+    "Behaviour Pressure vs Control": {
+      "total": 360,
+      "finishes": 194,
+      "methods": {
+        "Decision": 164,
+        "TKO": 89,
+        "Submission": 63,
+        "KO": 32,
+        "Corner Stoppage": 5,
+        "Technical Submission": 3,
+        "Draw": 2,
+        "Doctor Stoppage": 1,
+        "Injury Stoppage": 1
+      },
+      "rounds": {
+        "5": 206,
+        "4": 28,
+        "1": 58,
+        "2": 42,
+        "3": 26
+      },
+      "families": {
+        "Decision": 164,
+        "KO/TKO": 127,
+        "Submission": 66,
+        "Draw": 2,
+        "Other finish": 1
+      },
+      "finish_timing": {
+        "Early": 58,
+        "Middle": 68,
+        "Late": 68
+      },
+      "finish_pct": 53.89,
+      "finish_ci95": [
+        48.73,
+        58.97
+      ],
+      "method_pct": {
+        "Corner Stoppage": 1.39,
+        "Decision": 45.56,
+        "Doctor Stoppage": 0.28,
+        "Draw": 0.56,
+        "Injury Stoppage": 0.28,
+        "KO": 8.89,
+        "Submission": 17.5,
+        "TKO": 24.72,
+        "Technical Submission": 0.83
+      },
+      "family_pct": {
+        "Decision": 45.56,
+        "Draw": 0.56,
+        "KO/TKO": 35.28,
+        "Other finish": 0.28,
+        "Submission": 18.33
+      },
+      "finish_timing_pct": {
+        "Early": 16.11,
+        "Middle": 18.89,
+        "Late": 18.89
+      },
+      "finish_timing_share_pct": {
+        "Early": 29.9,
+        "Middle": 35.05,
+        "Late": 35.05
+      }
+    },
+    "Style Kickboxer vs BJJ": {
+      "total": 360,
+      "finishes": 160,
+      "methods": {
+        "TKO": 48,
+        "Submission": 75,
+        "Decision": 195,
+        "KO": 30,
+        "Technical Submission": 7,
+        "Draw": 5
+      },
+      "rounds": {
+        "1": 73,
+        "3": 227,
+        "2": 60
+      },
+      "families": {
+        "KO/TKO": 78,
+        "Submission": 82,
+        "Decision": 195,
+        "Draw": 5
+      },
+      "finish_timing": {
+        "Early": 73,
+        "Middle": 60,
+        "Late": 27
+      },
+      "finish_pct": 44.44,
+      "finish_ci95": [
+        39.4,
+        49.61
+      ],
+      "method_pct": {
+        "Decision": 54.17,
+        "Draw": 1.39,
+        "KO": 8.33,
+        "Submission": 20.83,
+        "TKO": 13.33,
+        "Technical Submission": 1.94
+      },
+      "family_pct": {
+        "Decision": 54.17,
+        "Draw": 1.39,
+        "KO/TKO": 21.67,
+        "Submission": 22.78
+      },
+      "finish_timing_pct": {
+        "Early": 20.28,
+        "Middle": 16.67,
+        "Late": 7.5
+      },
+      "finish_timing_share_pct": {
+        "Early": 45.62,
+        "Middle": 37.5,
+        "Late": 16.88
+      }
+    },
+    "Behaviour Volume vs Submission Hunter": {
+      "total": 360,
+      "finishes": 160,
+      "methods": {
+        "TKO": 48,
+        "Submission": 75,
+        "Decision": 195,
+        "KO": 30,
+        "Technical Submission": 7,
+        "Draw": 5
+      },
+      "rounds": {
+        "1": 73,
+        "3": 227,
+        "2": 60
+      },
+      "families": {
+        "KO/TKO": 78,
+        "Submission": 82,
+        "Decision": 195,
+        "Draw": 5
+      },
+      "finish_timing": {
+        "Early": 73,
+        "Middle": 60,
+        "Late": 27
+      },
+      "finish_pct": 44.44,
+      "finish_ci95": [
+        39.4,
+        49.61
+      ],
+      "method_pct": {
+        "Decision": 54.17,
+        "Draw": 1.39,
+        "KO": 8.33,
+        "Submission": 20.83,
+        "TKO": 13.33,
+        "Technical Submission": 1.94
+      },
+      "family_pct": {
+        "Decision": 54.17,
+        "Draw": 1.39,
+        "KO/TKO": 21.67,
+        "Submission": 22.78
+      },
+      "finish_timing_pct": {
+        "Early": 20.28,
+        "Middle": 16.67,
+        "Late": 7.5
+      },
+      "finish_timing_share_pct": {
+        "Early": 45.62,
+        "Middle": 37.5,
+        "Late": 16.88
+      }
+    },
+    "Style Muay Thai vs Sambo": {
+      "total": 360,
+      "finishes": 165,
+      "methods": {
+        "Decision": 194,
+        "TKO": 71,
+        "KO": 43,
+        "Submission": 46,
+        "Technical Submission": 2,
+        "Draw": 1,
+        "Corner Stoppage": 2,
+        "Injury Stoppage": 1
+      },
+      "rounds": {
+        "3": 229,
+        "1": 76,
+        "2": 55
+      },
+      "families": {
+        "Decision": 194,
+        "KO/TKO": 116,
+        "Submission": 48,
+        "Draw": 1,
+        "Other finish": 1
+      },
+      "finish_timing": {
+        "Early": 76,
+        "Middle": 55,
+        "Late": 34
+      },
+      "finish_pct": 45.83,
+      "finish_ci95": [
+        40.76,
+        51.0
+      ],
+      "method_pct": {
+        "Corner Stoppage": 0.56,
+        "Decision": 53.89,
+        "Draw": 0.28,
+        "Injury Stoppage": 0.28,
+        "KO": 11.94,
+        "Submission": 12.78,
+        "TKO": 19.72,
+        "Technical Submission": 0.56
+      },
+      "family_pct": {
+        "Decision": 53.89,
+        "Draw": 0.28,
+        "KO/TKO": 32.22,
+        "Other finish": 0.28,
+        "Submission": 13.33
+      },
+      "finish_timing_pct": {
+        "Early": 21.11,
+        "Middle": 15.28,
+        "Late": 9.44
+      },
+      "finish_timing_share_pct": {
+        "Early": 46.06,
+        "Middle": 33.33,
+        "Late": 20.61
+      }
+    },
+    "Behaviour Counter vs Sprawl And Brawl": {
+      "total": 360,
+      "finishes": 165,
+      "methods": {
+        "Decision": 194,
+        "TKO": 71,
+        "KO": 43,
+        "Submission": 46,
+        "Technical Submission": 2,
+        "Draw": 1,
+        "Corner Stoppage": 2,
+        "Injury Stoppage": 1
+      },
+      "rounds": {
+        "3": 229,
+        "1": 76,
+        "2": 55
+      },
+      "families": {
+        "Decision": 194,
+        "KO/TKO": 116,
+        "Submission": 48,
+        "Draw": 1,
+        "Other finish": 1
+      },
+      "finish_timing": {
+        "Early": 76,
+        "Middle": 55,
+        "Late": 34
+      },
+      "finish_pct": 45.83,
+      "finish_ci95": [
+        40.76,
+        51.0
+      ],
+      "method_pct": {
+        "Corner Stoppage": 0.56,
+        "Decision": 53.89,
+        "Draw": 0.28,
+        "Injury Stoppage": 0.28,
+        "KO": 11.94,
+        "Submission": 12.78,
+        "TKO": 19.72,
+        "Technical Submission": 0.56
+      },
+      "family_pct": {
+        "Decision": 53.89,
+        "Draw": 0.28,
+        "KO/TKO": 32.22,
+        "Other finish": 0.28,
+        "Submission": 13.33
+      },
+      "finish_timing_pct": {
+        "Early": 21.11,
+        "Middle": 15.28,
+        "Late": 9.44
+      },
+      "finish_timing_share_pct": {
+        "Early": 46.06,
+        "Middle": 33.33,
+        "Late": 20.61
+      }
+    },
+    "Style Wrestler vs Karate": {
+      "total": 360,
+      "finishes": 141,
+      "methods": {
+        "Technical Submission": 1,
+        "Decision": 218,
+        "Submission": 43,
+        "TKO": 73,
+        "KO": 23,
+        "Draw": 1,
+        "Corner Stoppage": 1
+      },
+      "rounds": {
+        "1": 58,
+        "3": 250,
+        "2": 52
+      },
+      "families": {
+        "Submission": 44,
+        "Decision": 218,
+        "KO/TKO": 97,
+        "Draw": 1
+      },
+      "finish_timing": {
+        "Early": 58,
+        "Middle": 52,
+        "Late": 31
+      },
+      "finish_pct": 39.17,
+      "finish_ci95": [
+        34.26,
+        44.3
+      ],
+      "method_pct": {
+        "Corner Stoppage": 0.28,
+        "Decision": 60.56,
+        "Draw": 0.28,
+        "KO": 6.39,
+        "Submission": 11.94,
+        "TKO": 20.28,
+        "Technical Submission": 0.28
+      },
+      "family_pct": {
+        "Decision": 60.56,
+        "Draw": 0.28,
+        "KO/TKO": 26.94,
+        "Submission": 12.22
+      },
+      "finish_timing_pct": {
+        "Early": 16.11,
+        "Middle": 14.44,
+        "Late": 8.61
+      },
+      "finish_timing_share_pct": {
+        "Early": 41.13,
+        "Middle": 36.88,
+        "Late": 21.99
+      }
+    },
+    "Behaviour Cautious vs Dynamic Attacker": {
+      "total": 360,
+      "finishes": 141,
+      "methods": {
+        "Technical Submission": 1,
+        "Decision": 218,
+        "Submission": 43,
+        "TKO": 73,
+        "KO": 23,
+        "Draw": 1,
+        "Corner Stoppage": 1
+      },
+      "rounds": {
+        "1": 58,
+        "3": 250,
+        "2": 52
+      },
+      "families": {
+        "Submission": 44,
+        "Decision": 218,
+        "KO/TKO": 97,
+        "Draw": 1
+      },
+      "finish_timing": {
+        "Early": 58,
+        "Middle": 52,
+        "Late": 31
+      },
+      "finish_pct": 39.17,
+      "finish_ci95": [
+        34.26,
+        44.3
+      ],
+      "method_pct": {
+        "Corner Stoppage": 0.28,
+        "Decision": 60.56,
+        "Draw": 0.28,
+        "KO": 6.39,
+        "Submission": 11.94,
+        "TKO": 20.28,
+        "Technical Submission": 0.28
+      },
+      "family_pct": {
+        "Decision": 60.56,
+        "Draw": 0.28,
+        "KO/TKO": 26.94,
+        "Submission": 12.22
+      },
+      "finish_timing_pct": {
+        "Early": 16.11,
+        "Middle": 14.44,
+        "Late": 8.61
+      },
+      "finish_timing_share_pct": {
+        "Early": 41.13,
+        "Middle": 36.88,
+        "Late": 21.99
+      }
+    },
+    "Style BJJ vs MMA Generalist": {
+      "total": 360,
+      "finishes": 122,
+      "methods": {
+        "Submission": 63,
+        "Decision": 238,
+        "TKO": 38,
+        "KO": 17,
+        "Technical Submission": 2,
+        "Corner Stoppage": 2
+      },
+      "rounds": {
+        "1": 53,
+        "3": 274,
+        "2": 33
+      },
+      "families": {
+        "Submission": 65,
+        "Decision": 238,
+        "KO/TKO": 57
+      },
+      "finish_timing": {
+        "Early": 53,
+        "Middle": 33,
+        "Late": 36
+      },
+      "finish_pct": 33.89,
+      "finish_ci95": [
+        29.19,
+        38.93
+      ],
+      "method_pct": {
+        "Corner Stoppage": 0.56,
+        "Decision": 66.11,
+        "KO": 4.72,
+        "Submission": 17.5,
+        "TKO": 10.56,
+        "Technical Submission": 0.56
+      },
+      "family_pct": {
+        "Decision": 66.11,
+        "KO/TKO": 15.83,
+        "Submission": 18.06
+      },
+      "finish_timing_pct": {
+        "Early": 14.72,
+        "Middle": 9.17,
+        "Late": 10.0
+      },
+      "finish_timing_share_pct": {
+        "Early": 43.44,
+        "Middle": 27.05,
+        "Late": 29.51
+      }
+    },
+    "Behaviour Control vs Pressure": {
+      "total": 360,
+      "finishes": 122,
+      "methods": {
+        "Submission": 63,
+        "Decision": 238,
+        "TKO": 38,
+        "KO": 17,
+        "Technical Submission": 2,
+        "Corner Stoppage": 2
+      },
+      "rounds": {
+        "1": 53,
+        "3": 274,
+        "2": 33
+      },
+      "families": {
+        "Submission": 65,
+        "Decision": 238,
+        "KO/TKO": 57
+      },
+      "finish_timing": {
+        "Early": 53,
+        "Middle": 33,
+        "Late": 36
+      },
+      "finish_pct": 33.89,
+      "finish_ci95": [
+        29.19,
+        38.93
+      ],
+      "method_pct": {
+        "Corner Stoppage": 0.56,
+        "Decision": 66.11,
+        "KO": 4.72,
+        "Submission": 17.5,
+        "TKO": 10.56,
+        "Technical Submission": 0.56
+      },
+      "family_pct": {
+        "Decision": 66.11,
+        "KO/TKO": 15.83,
+        "Submission": 18.06
+      },
+      "finish_timing_pct": {
+        "Early": 14.72,
+        "Middle": 9.17,
+        "Late": 10.0
+      },
+      "finish_timing_share_pct": {
+        "Early": 43.44,
+        "Middle": 27.05,
+        "Late": 29.51
+      }
+    },
+    "Style Sambo vs Boxer": {
+      "total": 360,
+      "finishes": 208,
+      "methods": {
+        "KO": 42,
+        "Decision": 150,
+        "TKO": 81,
+        "Submission": 73,
+        "Corner Stoppage": 5,
+        "Technical Submission": 3,
+        "Doctor Stoppage": 4,
+        "Draw": 2
+      },
+      "rounds": {
+        "3": 31,
+        "5": 182,
+        "2": 43,
+        "4": 24,
+        "1": 80
+      },
+      "families": {
+        "KO/TKO": 132,
+        "Decision": 150,
+        "Submission": 76,
+        "Draw": 2
+      },
+      "finish_timing": {
+        "Early": 80,
+        "Middle": 74,
+        "Late": 54
+      },
+      "finish_pct": 57.78,
+      "finish_ci95": [
+        52.62,
+        62.77
+      ],
+      "method_pct": {
+        "Corner Stoppage": 1.39,
+        "Decision": 41.67,
+        "Doctor Stoppage": 1.11,
+        "Draw": 0.56,
+        "KO": 11.67,
+        "Submission": 20.28,
+        "TKO": 22.5,
+        "Technical Submission": 0.83
+      },
+      "family_pct": {
+        "Decision": 41.67,
+        "Draw": 0.56,
+        "KO/TKO": 36.67,
+        "Submission": 21.11
+      },
+      "finish_timing_pct": {
+        "Early": 22.22,
+        "Middle": 20.56,
+        "Late": 15.0
+      },
+      "finish_timing_share_pct": {
+        "Early": 38.46,
+        "Middle": 35.58,
+        "Late": 25.96
+      }
+    },
+    "Behaviour Submission Hunter vs Volume": {
+      "total": 360,
+      "finishes": 208,
+      "methods": {
+        "KO": 42,
+        "Decision": 150,
+        "TKO": 81,
+        "Submission": 73,
+        "Corner Stoppage": 5,
+        "Technical Submission": 3,
+        "Doctor Stoppage": 4,
+        "Draw": 2
+      },
+      "rounds": {
+        "3": 31,
+        "5": 182,
+        "2": 43,
+        "4": 24,
+        "1": 80
+      },
+      "families": {
+        "KO/TKO": 132,
+        "Decision": 150,
+        "Submission": 76,
+        "Draw": 2
+      },
+      "finish_timing": {
+        "Early": 80,
+        "Middle": 74,
+        "Late": 54
+      },
+      "finish_pct": 57.78,
+      "finish_ci95": [
+        52.62,
+        62.77
+      ],
+      "method_pct": {
+        "Corner Stoppage": 1.39,
+        "Decision": 41.67,
+        "Doctor Stoppage": 1.11,
+        "Draw": 0.56,
+        "KO": 11.67,
+        "Submission": 20.28,
+        "TKO": 22.5,
+        "Technical Submission": 0.83
+      },
+      "family_pct": {
+        "Decision": 41.67,
+        "Draw": 0.56,
+        "KO/TKO": 36.67,
+        "Submission": 21.11
+      },
+      "finish_timing_pct": {
+        "Early": 22.22,
+        "Middle": 20.56,
+        "Late": 15.0
+      },
+      "finish_timing_share_pct": {
+        "Early": 38.46,
+        "Middle": 35.58,
+        "Late": 25.96
+      }
+    },
+    "Style Karate vs Kickboxer": {
+      "total": 360,
+      "finishes": 211,
+      "methods": {
+        "TKO": 122,
+        "Submission": 32,
+        "Decision": 147,
+        "KO": 55,
+        "Draw": 2,
+        "Injury Stoppage": 1,
+        "Technical Submission": 1
+      },
+      "rounds": {
+        "2": 100,
+        "1": 71,
+        "3": 189
+      },
+      "families": {
+        "KO/TKO": 177,
+        "Submission": 33,
+        "Decision": 147,
+        "Draw": 2,
+        "Other finish": 1
+      },
+      "finish_timing": {
+        "Early": 71,
+        "Middle": 100,
+        "Late": 40
+      },
+      "finish_pct": 58.61,
+      "finish_ci95": [
+        53.46,
+        63.58
+      ],
+      "method_pct": {
+        "Decision": 40.83,
+        "Draw": 0.56,
+        "Injury Stoppage": 0.28,
+        "KO": 15.28,
+        "Submission": 8.89,
+        "TKO": 33.89,
+        "Technical Submission": 0.28
+      },
+      "family_pct": {
+        "Decision": 40.83,
+        "Draw": 0.56,
+        "KO/TKO": 49.17,
+        "Other finish": 0.28,
+        "Submission": 9.17
+      },
+      "finish_timing_pct": {
+        "Early": 19.72,
+        "Middle": 27.78,
+        "Late": 11.11
+      },
+      "finish_timing_share_pct": {
+        "Early": 33.65,
+        "Middle": 47.39,
+        "Late": 18.96
+      }
+    },
+    "Behaviour Sprawl And Brawl vs Counter": {
+      "total": 360,
+      "finishes": 211,
+      "methods": {
+        "TKO": 122,
+        "Submission": 32,
+        "Decision": 147,
+        "KO": 55,
+        "Draw": 2,
+        "Injury Stoppage": 1,
+        "Technical Submission": 1
+      },
+      "rounds": {
+        "2": 100,
+        "1": 71,
+        "3": 189
+      },
+      "families": {
+        "KO/TKO": 177,
+        "Submission": 33,
+        "Decision": 147,
+        "Draw": 2,
+        "Other finish": 1
+      },
+      "finish_timing": {
+        "Early": 71,
+        "Middle": 100,
+        "Late": 40
+      },
+      "finish_pct": 58.61,
+      "finish_ci95": [
+        53.46,
+        63.58
+      ],
+      "method_pct": {
+        "Decision": 40.83,
+        "Draw": 0.56,
+        "Injury Stoppage": 0.28,
+        "KO": 15.28,
+        "Submission": 8.89,
+        "TKO": 33.89,
+        "Technical Submission": 0.28
+      },
+      "family_pct": {
+        "Decision": 40.83,
+        "Draw": 0.56,
+        "KO/TKO": 49.17,
+        "Other finish": 0.28,
+        "Submission": 9.17
+      },
+      "finish_timing_pct": {
+        "Early": 19.72,
+        "Middle": 27.78,
+        "Late": 11.11
+      },
+      "finish_timing_share_pct": {
+        "Early": 33.65,
+        "Middle": 47.39,
+        "Late": 18.96
+      }
+    },
+    "Style MMA Generalist vs Muay Thai": {
+      "total": 360,
+      "finishes": 186,
+      "methods": {
+        "KO": 34,
+        "Decision": 174,
+        "Corner Stoppage": 6,
+        "TKO": 84,
+        "Submission": 57,
+        "Injury Stoppage": 1,
+        "Technical Submission": 3,
+        "Doctor Stoppage": 1
+      },
+      "rounds": {
+        "2": 43,
+        "5": 200,
+        "1": 62,
+        "4": 21,
+        "3": 34
+      },
+      "families": {
+        "KO/TKO": 125,
+        "Decision": 174,
+        "Submission": 60,
+        "Other finish": 1
+      },
+      "finish_timing": {
+        "Early": 62,
+        "Middle": 77,
+        "Late": 47
+      },
+      "finish_pct": 51.67,
+      "finish_ci95": [
+        46.51,
+        56.78
+      ],
+      "method_pct": {
+        "Corner Stoppage": 1.67,
+        "Decision": 48.33,
+        "Doctor Stoppage": 0.28,
+        "Injury Stoppage": 0.28,
+        "KO": 9.44,
+        "Submission": 15.83,
+        "TKO": 23.33,
+        "Technical Submission": 0.83
+      },
+      "family_pct": {
+        "Decision": 48.33,
+        "KO/TKO": 34.72,
+        "Other finish": 0.28,
+        "Submission": 16.67
+      },
+      "finish_timing_pct": {
+        "Early": 17.22,
+        "Middle": 21.39,
+        "Late": 13.06
+      },
+      "finish_timing_share_pct": {
+        "Early": 33.33,
+        "Middle": 41.4,
+        "Late": 25.27
+      }
+    },
+    "Behaviour Dynamic Attacker vs Cautious": {
+      "total": 360,
+      "finishes": 186,
+      "methods": {
+        "KO": 34,
+        "Decision": 174,
+        "Corner Stoppage": 6,
+        "TKO": 84,
+        "Submission": 57,
+        "Injury Stoppage": 1,
+        "Technical Submission": 3,
+        "Doctor Stoppage": 1
+      },
+      "rounds": {
+        "2": 43,
+        "5": 200,
+        "1": 62,
+        "4": 21,
+        "3": 34
+      },
+      "families": {
+        "KO/TKO": 125,
+        "Decision": 174,
+        "Submission": 60,
+        "Other finish": 1
+      },
+      "finish_timing": {
+        "Early": 62,
+        "Middle": 77,
+        "Late": 47
+      },
+      "finish_pct": 51.67,
+      "finish_ci95": [
+        46.51,
+        56.78
+      ],
+      "method_pct": {
+        "Corner Stoppage": 1.67,
+        "Decision": 48.33,
+        "Doctor Stoppage": 0.28,
+        "Injury Stoppage": 0.28,
+        "KO": 9.44,
+        "Submission": 15.83,
+        "TKO": 23.33,
+        "Technical Submission": 0.83
+      },
+      "family_pct": {
+        "Decision": 48.33,
+        "KO/TKO": 34.72,
+        "Other finish": 0.28,
+        "Submission": 16.67
+      },
+      "finish_timing_pct": {
+        "Early": 17.22,
+        "Middle": 21.39,
+        "Late": 13.06
+      },
+      "finish_timing_share_pct": {
+        "Early": 33.33,
+        "Middle": 41.4,
+        "Late": 25.27
+      }
+    },
+    "Competitive Mid": {
+      "total": 960,
+      "finishes": 451,
+      "methods": {
+        "Decision": 506,
+        "Submission": 115,
+        "KO": 79,
+        "Draw": 3,
+        "TKO": 244,
+        "Corner Stoppage": 5,
+        "Doctor Stoppage": 2,
+        "Technical Submission": 5,
+        "Injury Stoppage": 1
+      },
+      "rounds": {
+        "5": 198,
+        "1": 141,
+        "2": 153,
+        "4": 22,
+        "3": 446
+      },
+      "families": {
+        "Decision": 506,
+        "Submission": 120,
+        "KO/TKO": 330,
+        "Draw": 3,
+        "Other finish": 1
+      },
+      "finish_timing": {
+        "Early": 141,
+        "Middle": 192,
+        "Late": 118
+      },
+      "finish_pct": 46.98,
+      "finish_ci95": [
+        43.84,
+        50.14
+      ],
+      "method_pct": {
+        "Corner Stoppage": 0.52,
+        "Decision": 52.71,
+        "Doctor Stoppage": 0.21,
+        "Draw": 0.31,
+        "Injury Stoppage": 0.1,
+        "KO": 8.23,
+        "Submission": 11.98,
+        "TKO": 25.42,
+        "Technical Submission": 0.52
+      },
+      "family_pct": {
+        "Decision": 52.71,
+        "Draw": 0.31,
+        "KO/TKO": 34.38,
+        "Other finish": 0.1,
+        "Submission": 12.5
+      },
+      "finish_timing_pct": {
+        "Early": 14.69,
+        "Middle": 20.0,
+        "Late": 12.29
+      },
+      "finish_timing_share_pct": {
+        "Early": 31.26,
+        "Middle": 42.57,
+        "Late": 26.16
+      }
+    },
+    "Competitive High": {
+      "total": 960,
+      "finishes": 457,
+      "methods": {
+        "Decision": 497,
+        "Technical Submission": 9,
+        "Submission": 150,
+        "KO": 117,
+        "TKO": 164,
+        "Corner Stoppage": 11,
+        "Injury Stoppage": 2,
+        "Draw": 6,
+        "Doctor Stoppage": 4
+      },
+      "rounds": {
+        "5": 205,
+        "2": 154,
+        "1": 153,
+        "3": 424,
+        "4": 24
+      },
+      "families": {
+        "Decision": 497,
+        "Submission": 159,
+        "KO/TKO": 296,
+        "Other finish": 2,
+        "Draw": 6
+      },
+      "finish_timing": {
+        "Early": 153,
+        "Middle": 183,
+        "Late": 121
+      },
+      "finish_pct": 47.6,
+      "finish_ci95": [
+        44.46,
+        50.77
+      ],
+      "method_pct": {
+        "Corner Stoppage": 1.15,
+        "Decision": 51.77,
+        "Doctor Stoppage": 0.42,
+        "Draw": 0.62,
+        "Injury Stoppage": 0.21,
+        "KO": 12.19,
+        "Submission": 15.62,
+        "TKO": 17.08,
+        "Technical Submission": 0.94
+      },
+      "family_pct": {
+        "Decision": 51.77,
+        "Draw": 0.62,
+        "KO/TKO": 30.83,
+        "Other finish": 0.21,
+        "Submission": 16.56
+      },
+      "finish_timing_pct": {
+        "Early": 15.94,
+        "Middle": 19.06,
+        "Late": 12.6
+      },
+      "finish_timing_share_pct": {
+        "Early": 33.48,
+        "Middle": 40.04,
+        "Late": 26.48
+      }
+    },
+    "Mismatch": {
+      "total": 960,
+      "finishes": 905,
+      "methods": {
+        "Submission": 425,
+        "KO": 327,
+        "TKO": 130,
+        "Technical Submission": 20,
+        "Decision": 55,
+        "Corner Stoppage": 3
+      },
+      "rounds": {
+        "1": 588,
+        "2": 248,
+        "3": 109,
+        "5": 12,
+        "4": 3
+      },
+      "families": {
+        "Submission": 445,
+        "KO/TKO": 460,
+        "Decision": 55
+      },
+      "finish_timing": {
+        "Early": 588,
+        "Middle": 261,
+        "Late": 56
+      },
+      "finish_pct": 94.27,
+      "finish_ci95": [
+        92.62,
+        95.57
+      ],
+      "method_pct": {
+        "Corner Stoppage": 0.31,
+        "Decision": 5.73,
+        "KO": 34.06,
+        "Submission": 44.27,
+        "TKO": 13.54,
+        "Technical Submission": 2.08
+      },
+      "family_pct": {
+        "Decision": 5.73,
+        "KO/TKO": 47.92,
+        "Submission": 46.35
+      },
+      "finish_timing_pct": {
+        "Early": 61.25,
+        "Middle": 27.19,
+        "Late": 5.83
+      },
+      "finish_timing_share_pct": {
+        "Early": 64.97,
+        "Middle": 28.84,
+        "Late": 6.19
+      }
+    },
+    "Style Boxer vs Sambo": {
+      "total": 120,
+      "finishes": 119,
+      "methods": {
+        "Submission": 53,
+        "KO": 45,
+        "TKO": 16,
+        "Technical Submission": 4,
+        "Decision": 1,
+        "Corner Stoppage": 1
+      },
+      "rounds": {
+        "1": 81,
+        "2": 31,
+        "3": 5,
+        "5": 2,
+        "4": 1
+      },
+      "families": {
+        "Submission": 57,
+        "KO/TKO": 62,
+        "Decision": 1
+      },
+      "finish_timing": {
+        "Early": 81,
+        "Middle": 36,
+        "Late": 2
+      },
+      "finish_pct": 99.17,
+      "finish_ci95": [
+        95.43,
+        99.85
+      ],
+      "method_pct": {
+        "Corner Stoppage": 0.83,
+        "Decision": 0.83,
+        "KO": 37.5,
+        "Submission": 44.17,
+        "TKO": 13.33,
+        "Technical Submission": 3.33
+      },
+      "family_pct": {
+        "Decision": 0.83,
+        "KO/TKO": 51.67,
+        "Submission": 47.5
+      },
+      "finish_timing_pct": {
+        "Early": 67.5,
+        "Middle": 30.0,
+        "Late": 1.67
+      },
+      "finish_timing_share_pct": {
+        "Early": 68.07,
+        "Middle": 30.25,
+        "Late": 1.68
+      }
+    },
+    "Behaviour Pressure vs Counter": {
+      "total": 120,
+      "finishes": 119,
+      "methods": {
+        "Submission": 53,
+        "KO": 45,
+        "TKO": 16,
+        "Technical Submission": 4,
+        "Decision": 1,
+        "Corner Stoppage": 1
+      },
+      "rounds": {
+        "1": 81,
+        "2": 31,
+        "3": 5,
+        "5": 2,
+        "4": 1
+      },
+      "families": {
+        "Submission": 57,
+        "KO/TKO": 62,
+        "Decision": 1
+      },
+      "finish_timing": {
+        "Early": 81,
+        "Middle": 36,
+        "Late": 2
+      },
+      "finish_pct": 99.17,
+      "finish_ci95": [
+        95.43,
+        99.85
+      ],
+      "method_pct": {
+        "Corner Stoppage": 0.83,
+        "Decision": 0.83,
+        "KO": 37.5,
+        "Submission": 44.17,
+        "TKO": 13.33,
+        "Technical Submission": 3.33
+      },
+      "family_pct": {
+        "Decision": 0.83,
+        "KO/TKO": 51.67,
+        "Submission": 47.5
+      },
+      "finish_timing_pct": {
+        "Early": 67.5,
+        "Middle": 30.0,
+        "Late": 1.67
+      },
+      "finish_timing_share_pct": {
+        "Early": 68.07,
+        "Middle": 30.25,
+        "Late": 1.68
+      }
+    },
+    "Style Kickboxer vs Karate": {
+      "total": 120,
+      "finishes": 120,
+      "methods": {
+        "KO": 52,
+        "Submission": 44,
+        "Technical Submission": 4,
+        "TKO": 20
+      },
+      "rounds": {
+        "1": 81,
+        "2": 34,
+        "3": 5
+      },
+      "families": {
+        "KO/TKO": 72,
+        "Submission": 48
+      },
+      "finish_timing": {
+        "Early": 81,
+        "Middle": 34,
+        "Late": 5
+      },
+      "finish_pct": 100.0,
+      "finish_ci95": [
+        96.9,
+        100
+      ],
+      "method_pct": {
+        "KO": 43.33,
+        "Submission": 36.67,
+        "TKO": 16.67,
+        "Technical Submission": 3.33
+      },
+      "family_pct": {
+        "KO/TKO": 60.0,
+        "Submission": 40.0
+      },
+      "finish_timing_pct": {
+        "Early": 67.5,
+        "Middle": 28.33,
+        "Late": 4.17
+      },
+      "finish_timing_share_pct": {
+        "Early": 67.5,
+        "Middle": 28.33,
+        "Late": 4.17
+      }
+    },
+    "Behaviour Volume vs Cautious": {
+      "total": 120,
+      "finishes": 120,
+      "methods": {
+        "KO": 52,
+        "Submission": 44,
+        "Technical Submission": 4,
+        "TKO": 20
+      },
+      "rounds": {
+        "1": 81,
+        "2": 34,
+        "3": 5
+      },
+      "families": {
+        "KO/TKO": 72,
+        "Submission": 48
+      },
+      "finish_timing": {
+        "Early": 81,
+        "Middle": 34,
+        "Late": 5
+      },
+      "finish_pct": 100.0,
+      "finish_ci95": [
+        96.9,
+        100
+      ],
+      "method_pct": {
+        "KO": 43.33,
+        "Submission": 36.67,
+        "TKO": 16.67,
+        "Technical Submission": 3.33
+      },
+      "family_pct": {
+        "KO/TKO": 60.0,
+        "Submission": 40.0
+      },
+      "finish_timing_pct": {
+        "Early": 67.5,
+        "Middle": 28.33,
+        "Late": 4.17
+      },
+      "finish_timing_share_pct": {
+        "Early": 67.5,
+        "Middle": 28.33,
+        "Late": 4.17
+      }
+    },
+    "Style Muay Thai vs MMA Generalist": {
+      "total": 120,
+      "finishes": 113,
+      "methods": {
+        "KO": 47,
+        "Submission": 48,
+        "TKO": 16,
+        "Decision": 7,
+        "Technical Submission": 2
+      },
+      "rounds": {
+        "1": 73,
+        "2": 33,
+        "3": 14
+      },
+      "families": {
+        "KO/TKO": 63,
+        "Submission": 50,
+        "Decision": 7
+      },
+      "finish_timing": {
+        "Early": 73,
+        "Middle": 33,
+        "Late": 7
+      },
+      "finish_pct": 94.17,
+      "finish_ci95": [
+        88.45,
+        97.15
+      ],
+      "method_pct": {
+        "Decision": 5.83,
+        "KO": 39.17,
+        "Submission": 40.0,
+        "TKO": 13.33,
+        "Technical Submission": 1.67
+      },
+      "family_pct": {
+        "Decision": 5.83,
+        "KO/TKO": 52.5,
+        "Submission": 41.67
+      },
+      "finish_timing_pct": {
+        "Early": 60.83,
+        "Middle": 27.5,
+        "Late": 5.83
+      },
+      "finish_timing_share_pct": {
+        "Early": 64.6,
+        "Middle": 29.2,
+        "Late": 6.19
+      }
+    },
+    "Behaviour Counter vs Control": {
+      "total": 120,
+      "finishes": 113,
+      "methods": {
+        "KO": 47,
+        "Submission": 48,
+        "TKO": 16,
+        "Decision": 7,
+        "Technical Submission": 2
+      },
+      "rounds": {
+        "1": 73,
+        "2": 33,
+        "3": 14
+      },
+      "families": {
+        "KO/TKO": 63,
+        "Submission": 50,
+        "Decision": 7
+      },
+      "finish_timing": {
+        "Early": 73,
+        "Middle": 33,
+        "Late": 7
+      },
+      "finish_pct": 94.17,
+      "finish_ci95": [
+        88.45,
+        97.15
+      ],
+      "method_pct": {
+        "Decision": 5.83,
+        "KO": 39.17,
+        "Submission": 40.0,
+        "TKO": 13.33,
+        "Technical Submission": 1.67
+      },
+      "family_pct": {
+        "Decision": 5.83,
+        "KO/TKO": 52.5,
+        "Submission": 41.67
+      },
+      "finish_timing_pct": {
+        "Early": 60.83,
+        "Middle": 27.5,
+        "Late": 5.83
+      },
+      "finish_timing_share_pct": {
+        "Early": 64.6,
+        "Middle": 29.2,
+        "Late": 6.19
+      }
+    },
+    "Style Wrestler vs Boxer": {
+      "total": 120,
+      "finishes": 105,
+      "methods": {
+        "KO": 39,
+        "Submission": 53,
+        "Decision": 15,
+        "TKO": 11,
+        "Technical Submission": 1,
+        "Corner Stoppage": 1
+      },
+      "rounds": {
+        "2": 34,
+        "1": 57,
+        "3": 29
+      },
+      "families": {
+        "KO/TKO": 51,
+        "Submission": 54,
+        "Decision": 15
+      },
+      "finish_timing": {
+        "Early": 57,
+        "Middle": 34,
+        "Late": 14
+      },
+      "finish_pct": 87.5,
+      "finish_ci95": [
+        80.4,
+        92.28
+      ],
+      "method_pct": {
+        "Corner Stoppage": 0.83,
+        "Decision": 12.5,
+        "KO": 32.5,
+        "Submission": 44.17,
+        "TKO": 9.17,
+        "Technical Submission": 0.83
+      },
+      "family_pct": {
+        "Decision": 12.5,
+        "KO/TKO": 42.5,
+        "Submission": 45.0
+      },
+      "finish_timing_pct": {
+        "Early": 47.5,
+        "Middle": 28.33,
+        "Late": 11.67
+      },
+      "finish_timing_share_pct": {
+        "Early": 54.29,
+        "Middle": 32.38,
+        "Late": 13.33
+      }
+    },
+    "Behaviour Cautious vs Submission Hunter": {
+      "total": 120,
+      "finishes": 105,
+      "methods": {
+        "KO": 39,
+        "Submission": 53,
+        "Decision": 15,
+        "TKO": 11,
+        "Technical Submission": 1,
+        "Corner Stoppage": 1
+      },
+      "rounds": {
+        "2": 34,
+        "1": 57,
+        "3": 29
+      },
+      "families": {
+        "KO/TKO": 51,
+        "Submission": 54,
+        "Decision": 15
+      },
+      "finish_timing": {
+        "Early": 57,
+        "Middle": 34,
+        "Late": 14
+      },
+      "finish_pct": 87.5,
+      "finish_ci95": [
+        80.4,
+        92.28
+      ],
+      "method_pct": {
+        "Corner Stoppage": 0.83,
+        "Decision": 12.5,
+        "KO": 32.5,
+        "Submission": 44.17,
+        "TKO": 9.17,
+        "Technical Submission": 0.83
+      },
+      "family_pct": {
+        "Decision": 12.5,
+        "KO/TKO": 42.5,
+        "Submission": 45.0
+      },
+      "finish_timing_pct": {
+        "Early": 47.5,
+        "Middle": 28.33,
+        "Late": 11.67
+      },
+      "finish_timing_share_pct": {
+        "Early": 54.29,
+        "Middle": 32.38,
+        "Late": 13.33
+      }
+    },
+    "Style BJJ vs Kickboxer": {
+      "total": 120,
+      "finishes": 111,
+      "methods": {
+        "Submission": 61,
+        "Decision": 9,
+        "KO": 33,
+        "TKO": 12,
+        "Technical Submission": 5
+      },
+      "rounds": {
+        "2": 23,
+        "1": 77,
+        "5": 10,
+        "3": 8,
+        "4": 2
+      },
+      "families": {
+        "Submission": 66,
+        "Decision": 9,
+        "KO/TKO": 45
+      },
+      "finish_timing": {
+        "Early": 77,
+        "Middle": 31,
+        "Late": 3
+      },
+      "finish_pct": 92.5,
+      "finish_ci95": [
+        86.36,
+        96.0
+      ],
+      "method_pct": {
+        "Decision": 7.5,
+        "KO": 27.5,
+        "Submission": 50.83,
+        "TKO": 10.0,
+        "Technical Submission": 4.17
+      },
+      "family_pct": {
+        "Decision": 7.5,
+        "KO/TKO": 37.5,
+        "Submission": 55.0
+      },
+      "finish_timing_pct": {
+        "Early": 64.17,
+        "Middle": 25.83,
+        "Late": 2.5
+      },
+      "finish_timing_share_pct": {
+        "Early": 69.37,
+        "Middle": 27.93,
+        "Late": 2.7
+      }
+    },
+    "Behaviour Control vs Sprawl And Brawl": {
+      "total": 120,
+      "finishes": 111,
+      "methods": {
+        "Submission": 61,
+        "Decision": 9,
+        "KO": 33,
+        "TKO": 12,
+        "Technical Submission": 5
+      },
+      "rounds": {
+        "2": 23,
+        "1": 77,
+        "5": 10,
+        "3": 8,
+        "4": 2
+      },
+      "families": {
+        "Submission": 66,
+        "Decision": 9,
+        "KO/TKO": 45
+      },
+      "finish_timing": {
+        "Early": 77,
+        "Middle": 31,
+        "Late": 3
+      },
+      "finish_pct": 92.5,
+      "finish_ci95": [
+        86.36,
+        96.0
+      ],
+      "method_pct": {
+        "Decision": 7.5,
+        "KO": 27.5,
+        "Submission": 50.83,
+        "TKO": 10.0,
+        "Technical Submission": 4.17
+      },
+      "family_pct": {
+        "Decision": 7.5,
+        "KO/TKO": 37.5,
+        "Submission": 55.0
+      },
+      "finish_timing_pct": {
+        "Early": 64.17,
+        "Middle": 25.83,
+        "Late": 2.5
+      },
+      "finish_timing_share_pct": {
+        "Early": 69.37,
+        "Middle": 27.93,
+        "Late": 2.7
+      }
+    },
+    "Style Sambo vs Muay Thai": {
+      "total": 120,
+      "finishes": 115,
+      "methods": {
+        "Submission": 86,
+        "KO": 19,
+        "TKO": 9,
+        "Decision": 5,
+        "Technical Submission": 1
+      },
+      "rounds": {
+        "1": 78,
+        "2": 31,
+        "3": 11
+      },
+      "families": {
+        "Submission": 87,
+        "KO/TKO": 28,
+        "Decision": 5
+      },
+      "finish_timing": {
+        "Early": 78,
+        "Middle": 31,
+        "Late": 6
+      },
+      "finish_pct": 95.83,
+      "finish_ci95": [
+        90.62,
+        98.21
+      ],
+      "method_pct": {
+        "Decision": 4.17,
+        "KO": 15.83,
+        "Submission": 71.67,
+        "TKO": 7.5,
+        "Technical Submission": 0.83
+      },
+      "family_pct": {
+        "Decision": 4.17,
+        "KO/TKO": 23.33,
+        "Submission": 72.5
+      },
+      "finish_timing_pct": {
+        "Early": 65.0,
+        "Middle": 25.83,
+        "Late": 5.0
+      },
+      "finish_timing_share_pct": {
+        "Early": 67.83,
+        "Middle": 26.96,
+        "Late": 5.22
+      }
+    },
+    "Behaviour Submission Hunter vs Dynamic Attacker": {
+      "total": 120,
+      "finishes": 115,
+      "methods": {
+        "Submission": 86,
+        "KO": 19,
+        "TKO": 9,
+        "Decision": 5,
+        "Technical Submission": 1
+      },
+      "rounds": {
+        "1": 78,
+        "2": 31,
+        "3": 11
+      },
+      "families": {
+        "Submission": 87,
+        "KO/TKO": 28,
+        "Decision": 5
+      },
+      "finish_timing": {
+        "Early": 78,
+        "Middle": 31,
+        "Late": 6
+      },
+      "finish_pct": 95.83,
+      "finish_ci95": [
+        90.62,
+        98.21
+      ],
+      "method_pct": {
+        "Decision": 4.17,
+        "KO": 15.83,
+        "Submission": 71.67,
+        "TKO": 7.5,
+        "Technical Submission": 0.83
+      },
+      "family_pct": {
+        "Decision": 4.17,
+        "KO/TKO": 23.33,
+        "Submission": 72.5
+      },
+      "finish_timing_pct": {
+        "Early": 65.0,
+        "Middle": 25.83,
+        "Late": 5.0
+      },
+      "finish_timing_share_pct": {
+        "Early": 67.83,
+        "Middle": 26.96,
+        "Late": 5.22
+      }
+    },
+    "Style Karate vs Wrestler": {
+      "total": 120,
+      "finishes": 113,
+      "methods": {
+        "Submission": 27,
+        "KO": 53,
+        "TKO": 32,
+        "Technical Submission": 1,
+        "Decision": 7
+      },
+      "rounds": {
+        "1": 73,
+        "2": 30,
+        "3": 17
+      },
+      "families": {
+        "Submission": 28,
+        "KO/TKO": 85,
+        "Decision": 7
+      },
+      "finish_timing": {
+        "Early": 73,
+        "Middle": 30,
+        "Late": 10
+      },
+      "finish_pct": 94.17,
+      "finish_ci95": [
+        88.45,
+        97.15
+      ],
+      "method_pct": {
+        "Decision": 5.83,
+        "KO": 44.17,
+        "Submission": 22.5,
+        "TKO": 26.67,
+        "Technical Submission": 0.83
+      },
+      "family_pct": {
+        "Decision": 5.83,
+        "KO/TKO": 70.83,
+        "Submission": 23.33
+      },
+      "finish_timing_pct": {
+        "Early": 60.83,
+        "Middle": 25.0,
+        "Late": 8.33
+      },
+      "finish_timing_share_pct": {
+        "Early": 64.6,
+        "Middle": 26.55,
+        "Late": 8.85
+      }
+    },
+    "Behaviour Sprawl And Brawl vs Pressure": {
+      "total": 120,
+      "finishes": 113,
+      "methods": {
+        "Submission": 27,
+        "KO": 53,
+        "TKO": 32,
+        "Technical Submission": 1,
+        "Decision": 7
+      },
+      "rounds": {
+        "1": 73,
+        "2": 30,
+        "3": 17
+      },
+      "families": {
+        "Submission": 28,
+        "KO/TKO": 85,
+        "Decision": 7
+      },
+      "finish_timing": {
+        "Early": 73,
+        "Middle": 30,
+        "Late": 10
+      },
+      "finish_pct": 94.17,
+      "finish_ci95": [
+        88.45,
+        97.15
+      ],
+      "method_pct": {
+        "Decision": 5.83,
+        "KO": 44.17,
+        "Submission": 22.5,
+        "TKO": 26.67,
+        "Technical Submission": 0.83
+      },
+      "family_pct": {
+        "Decision": 5.83,
+        "KO/TKO": 70.83,
+        "Submission": 23.33
+      },
+      "finish_timing_pct": {
+        "Early": 60.83,
+        "Middle": 25.0,
+        "Late": 8.33
+      },
+      "finish_timing_share_pct": {
+        "Early": 64.6,
+        "Middle": 26.55,
+        "Late": 8.85
+      }
+    },
+    "Style MMA Generalist vs BJJ": {
+      "total": 120,
+      "finishes": 109,
+      "methods": {
+        "KO": 39,
+        "TKO": 14,
+        "Submission": 53,
+        "Corner Stoppage": 1,
+        "Decision": 11,
+        "Technical Submission": 2
+      },
+      "rounds": {
+        "1": 68,
+        "2": 32,
+        "3": 20
+      },
+      "families": {
+        "KO/TKO": 54,
+        "Submission": 55,
+        "Decision": 11
+      },
+      "finish_timing": {
+        "Early": 68,
+        "Middle": 32,
+        "Late": 9
+      },
+      "finish_pct": 90.83,
+      "finish_ci95": [
+        84.33,
+        94.8
+      ],
+      "method_pct": {
+        "Corner Stoppage": 0.83,
+        "Decision": 9.17,
+        "KO": 32.5,
+        "Submission": 44.17,
+        "TKO": 11.67,
+        "Technical Submission": 1.67
+      },
+      "family_pct": {
+        "Decision": 9.17,
+        "KO/TKO": 45.0,
+        "Submission": 45.83
+      },
+      "finish_timing_pct": {
+        "Early": 56.67,
+        "Middle": 26.67,
+        "Late": 7.5
+      },
+      "finish_timing_share_pct": {
+        "Early": 62.39,
+        "Middle": 29.36,
+        "Late": 8.26
+      }
+    },
+    "Behaviour Dynamic Attacker vs Volume": {
+      "total": 120,
+      "finishes": 109,
+      "methods": {
+        "KO": 39,
+        "TKO": 14,
+        "Submission": 53,
+        "Corner Stoppage": 1,
+        "Decision": 11,
+        "Technical Submission": 2
+      },
+      "rounds": {
+        "1": 68,
+        "2": 32,
+        "3": 20
+      },
+      "families": {
+        "KO/TKO": 54,
+        "Submission": 55,
+        "Decision": 11
+      },
+      "finish_timing": {
+        "Early": 68,
+        "Middle": 32,
+        "Late": 9
+      },
+      "finish_pct": 90.83,
+      "finish_ci95": [
+        84.33,
+        94.8
+      ],
+      "method_pct": {
+        "Corner Stoppage": 0.83,
+        "Decision": 9.17,
+        "KO": 32.5,
+        "Submission": 44.17,
+        "TKO": 11.67,
+        "Technical Submission": 1.67
+      },
+      "family_pct": {
+        "Decision": 9.17,
+        "KO/TKO": 45.0,
+        "Submission": 45.83
+      },
+      "finish_timing_pct": {
+        "Early": 56.67,
+        "Middle": 26.67,
+        "Late": 7.5
+      },
+      "finish_timing_share_pct": {
+        "Early": 62.39,
+        "Middle": 29.36,
+        "Late": 8.26
+      }
+    }
+  },
+  "hold_transition_counts": {
+    "roots": 2084,
+    "transitions": 74,
+    "named": 55,
+    "invalid": 0
+  },
+  "cradle_setup_counts": {
+    "roots": 0,
+    "used": 0,
+    "named": 0,
+    "invalid": 0
+  },
+  "survival_expansion_counts": {
+    "selected": 16371,
+    "invalid": 0
+  },
+  "balance_advisories": [
+    "Middle finish timing drift accepted by user for the 2% head-damage trial"
+  ],
+  "registry_sha256": "7e6428db43f0e25011975e954db97746cb55d9721837a7377b5bbb7ead1d6a39",
+  "reference_sha256": "a542b5a250af17a62b653be6dcdff4ec69363776ac9d2a0d625f5806ebdff414",
+  "continuation_branch_trial": false,
+  "heel_hook_identity_trial": true,
+  "hold_transitions_trial": true,
+  "cradle_setup_trial": true,
+  "standing_head_damage_trial": true,
+  "kick_power_trial": true,
+  "survival_expansion_trial": true,
+  "stronger_continuation_trial": false,
+  "repertoire_readaptation_trial": false,
+  "jab_readaptation_trial": false,
+  "boxing_chain_pool_trial": false,
+  "continuation_commitment_trial": false,
+  "gift_wrap_control_trial": false,
+  "gift_wrap_mount_trial": true,
+  "continuation_bonus_multiplier": 1.0,
+  "engine_sha256": "9f7ff396394e5f68f782c602e6324068dc2d397227b79fd5b39fdf0c4712bea0",
+  "source_sha256": {
+    "analysis/fight_candidate_context.py": "d4108551d883eb7c4d187d27368453c90dd4c0a81f219bfc53bcbd9bafe91964",
+    "analysis/evaluate_joint_fight_candidate.py": "d1f80a7f13986ba3fdf02a60f4510a70106dde1e44bc763c121d22ea3d5b7913",
+    "analysis/continuation_branch_candidate.py": "f9818b5c4f092c46ba0e36d306a7281c5b70688b1b0f694f7df907d918b8deaf",
+    "analysis/continuation_strength_candidate.py": "2032db734439c8ec1bc69971d5f36fa89b03a04d234091f7d6f0cb4693ad4f52",
+    "analysis/continuation_commitment_candidate.py": "693bedbc8a894393ea1d9a0616a10e7d770c96ea6e3d8f14017d0c808c8d0cdb",
+    "analysis/gift_wrap_control_candidate.py": "490792e89b5a8e8d3e810ccb2fa7ff1bc7f753bea40dbfdfb930d7cf3a3b0530",
+    "analysis/gift_wrap_mount_candidate.py": "5cd146a509fe707ef7d5c5819eee1fc858ad91f0d6693fad77a992ee0bc5960a",
+    "analysis/repertoire_readaptation_candidate.py": "eb9a8646e7ef179c29c47ac90d0faf2cac6353d5fa65b58c0b6f00ecbc00bc19",
+    "analysis/boxing_chain_pool_candidate.py": "20d620d83a908577f04d6daec9a7f39735dd3f61d0dadfc0c48a8d7d703e8019",
+    "analysis/heel_hook_identity_candidate.py": "2e30c136a7d7173676330152a0c0ea408c1739debbc6c1e6bafdac2faa1acb3e",
+    "analysis/submission_chain_candidate.py": "29e7dd51c455c3965b25ba869808919d57eac355ceb99957f40bd8113e2a5188",
+    "analysis/cradle_setup_candidate.py": "779a39bfb5b0547b5ef10a3141faae68dc20ba6e3a7fb6935bbc115b307a3e4c",
+    "analysis/standing_head_damage_candidate.py": "d11a43e1fa368a5cd8542f4478e4c015e5c52e5c7cf87cb42caa8223b47b228b",
+    "analysis/kick_power_candidate.py": "f0a8bf63fd52f29e818a5a83ca1e518e8b0c71544b1fa30cd1dfbff455934caf",
+    "analysis/survival_expansion_candidate.py": "54e07ac2475898b6b05b512a097b823fd5d2b5162d2617eda48dbe41a5a62c16",
+    "fight_moves/catalogue/survival_development.py": "2455143be34f4903ae8ed161fecd11d6bc64a68e4fbe0824e9f23d38ca35daa7",
+    "fight_moves/submission_transition.py": "ebba604134abe5e89bd1b4fe7369d0ea0448f6cece6175559f5b7bf5f1dcb85f",
+    "analysis/prepared_submission_diagnostics.py": "6faefac2078b7a497cf23c136da9066c69e2cf7c5df455e384e1120a7bde5de2",
+    "analysis/von_flue_angle_provenance.py": "69a200b210648d9b13b3f05a8721d2d56dce1177ad49c4cd399720e84347528e",
+    "analysis/generate_move_coverage_report.py": "690dffd9b5d6ca13255335d9264540cf0ad1995174352f0d2ca77be9c1310b65",
+    "fight_moves/catalogue/specialist_entry_development.py": "0e89cc1655589667352576009e1e02b23f4e7473ce80cdb2b189d404778388a0",
+    "fight_moves/catalogue/front_headlock_development.py": "84b9a161f19c4d9afd75be8557536058ff0fa62dab2e8f85aac2e961770561fd",
+    "fight_moves/catalogue/turtle_development.py": "819a39b7fa6c2f92d05a7c003189c76e784ac554b056ed13ec2eb37c445be876",
+    "fight_moves/catalogue/failed_shot_development.py": "00c1d7f63b36ff63ce43d4ba4f38c89314c875f1602bf2d10046d9694274cfeb",
+    "fight_moves/catalogue/standing_back_development.py": "95fa0ee708c23756863789830faab4ca8d3791e51f9151a6f3f799bbe8708000",
+    "fight_moves/catalogue/leg_entanglement_development.py": "de488eff5f3fbf4930624d4c415a5ed525be035bffca6b02992dcc8fd4391673",
+    "fight_moves/submission_identity.py": "d8af5685a7b7d780fdf5cf5d3e802b5ac3d346cb16367806651f9b928ca2f104",
+    "fight_moves/submission_pool.py": "b54759749a7c599a3653e6d2bac575739c5f6b0d9778a75aeb2bd155094e0808",
+    "fight_moves/selection_pool.py": "74f96f3ac9e0eecc3c709b46e8b1cac88cf0edf3c90e09bdb40016da7bb0f3bc",
+    "fight_moves/specialist_intent.py": "b0f724b32c6d9fe710438380612d92b2bb5429ce19edccae2e0451ab0484ce9f",
+    "fight_engine_audit.py": "897422a062807f5fe0afe7b13c142d118d8047c9f917cd219aed2a928f733963"
+  }
+}

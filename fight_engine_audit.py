@@ -22,6 +22,9 @@ from models import Fighter
 
 
 BASELINE_SCHEMA_VERSION = 1
+# User-approved closeness policy: percentage points, not relative percent.
+# Historical counts below remain reference observations, never recaptured targets.
+RESULT_RATE_TOLERANCE_PP = 2.0
 ACCEPTED_RESULT_CALIBRATION = {
     "fight_count": 3840,
     "finishes": 2319,
@@ -683,11 +686,20 @@ def build_move_report(seeds_per_matchup=20, minimum_group_sample=30):
     unreachable_defense_ids = []
     for definition in DEFENSE_REGISTRY.values():
         reachability_opponent.move_mastery = {f"defense:{definition.defense_id}": 100}
+        # A targeted selection probe must satisfy the defense's incoming-attack
+        # restrictions. Blank weapon/target metadata cannot exercise a body
+        # block or a punch-only shoulder roll; never loosen runtime eligibility
+        # merely to make this diagnostic pass.
+        attack_payload = {"defense_families": definition.families, "tags": ()}
+        if "body" in definition.tags:
+            attack_payload["target"] = "body"
+        if "punch" in definition.tags:
+            attack_payload.update(parent_action="power_punch", tags=("strike", "punch"), target="head")
         selected = False
         for tick in range(1, 80):
             defense = engine.select_exchange_defense(
                 reachability_opponent,
-                {"defense_families": definition.families, "tags": ()},
+                attack_payload,
                 sorted(definition.positions)[0],
                 {"round": 1, "tick": tick, "plans": {}},
             )
@@ -890,11 +902,11 @@ def compare_to_baseline(current, baseline, exact_parity=False):
         baseline_ci = baseline_groups.get(group, {}).get("finish_ci95", [0, 0])
         return max(float(current_ci[0]), float(baseline_ci[0])) <= min(float(current_ci[1]), float(baseline_ci[1]))
 
-    if difference("Overall", "finish_pct") > 1.0:
-        failures.append("Overall finish rate moved by more than 1.0 percentage point")
+    if difference("Overall", "finish_pct") > RESULT_RATE_TOLERANCE_PP:
+        failures.append("Overall finish rate moved by more than 2.0 percentage points")
     for method in ("KO", "TKO"):
-        if difference("Overall", "method_pct", method) > 1.0:
-            failures.append(f"{method} rate moved by more than 1.0 percentage point")
+        if difference("Overall", "method_pct", method) > RESULT_RATE_TOLERANCE_PP:
+            failures.append(f"{method} rate moved by more than 2.0 percentage points")
     for tier in ("Low", "Mid", "High"):
         group = f"Competitive {tier}"
         if difference(group, "finish_pct") > 1.5 and not confidence_intervals_overlap(group):
@@ -928,12 +940,11 @@ def compare_to_baseline(current, baseline, exact_parity=False):
 
 
 def compare_to_accepted_calibration(current):
-    """Reject any change to the approved 3,840-bout headline calibration.
+    """Require close headline rates on the complete frozen 3,840-bout corpus.
 
-    The older preservation baseline remains useful for distribution tolerances,
-    but the accepted post-roadmap result is now an exact release invariant.  It
-    is expressed as integer counts first so a rounded percentage cannot hide a
-    one-bout change.
+    Count-derived rates avoid rounding away a boundary failure. Historical
+    counts remain immutable evidence, not exact outcome requirements. Subgroup,
+    reachability and championship timing protections remain independent.
     """
     expected = ACCEPTED_RESULT_CALIBRATION
     overall = (current.get("groups", {}) or {}).get("Overall", {}) or {}
@@ -945,16 +956,6 @@ def compare_to_accepted_calibration(current):
         failures.append(
             f"Accepted calibration requires {expected['fight_count']} fights; current audit has {total}"
         )
-    if finishes != expected["finishes"]:
-        failures.append(
-            f"Accepted finish count changed from {expected['finishes']} to {finishes}"
-        )
-    for method, expected_count in expected["methods"].items():
-        current_count = int(methods.get(method, 0) or 0)
-        if current_count != expected_count:
-            failures.append(
-                f"Accepted {method} count changed from {expected_count} to {current_count}"
-            )
     for reachable_method in ("Doctor Stoppage", "Injury Stoppage"):
         if int(methods.get(reachable_method, 0) or 0) <= 0:
             failures.append(f"{reachable_method} became unreachable in the accepted corpus")
@@ -986,15 +987,16 @@ def compare_to_accepted_calibration(current):
             f"Rounds 4-5 produced only {late_share:.2f}% of five-round finishes; minimum is 6.00%"
         )
     if total:
-        observed_rates = {
-            "finish_pct": round(finishes / total * 100, 2),
-            "KO": round(int(methods.get("KO", 0) or 0) / total * 100, 2),
-            "TKO": round(int(methods.get("TKO", 0) or 0) / total * 100, 2),
-        }
-        for key, expected_rate in expected["rates"].items():
-            if observed_rates[key] != expected_rate:
+        counts = {"finish_pct": finishes, **{
+            method: int(methods.get(method, 0) or 0) for method in expected["methods"]}}
+        expected_counts = {"finish_pct": expected["finishes"], **expected["methods"]}
+        for key, count in counts.items():
+            observed_rate = count / total * 100
+            expected_rate = expected_counts[key] / expected["fight_count"] * 100
+            if abs(observed_rate - expected_rate) > RESULT_RATE_TOLERANCE_PP:
                 failures.append(
-                    f"Accepted {key} changed from {expected_rate:.2f}% to {observed_rates[key]:.2f}%"
+                    f"Accepted {key} moved from {expected_rate:.2f}% to {observed_rate:.2f}%; "
+                    f"maximum drift is {RESULT_RATE_TOLERANCE_PP:.2f} percentage points"
                 )
     return failures
 

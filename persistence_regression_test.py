@@ -4,11 +4,16 @@ import inspect
 import random
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import persistence
 import world as world_module
 from models import Fighter
-from persistence import PersistenceMixin, serialize_fighter_model
+from persistence import (
+    PersistenceMixin,
+    migrate_serialized_career_archetypes,
+    serialize_fighter_model,
+)
 from views import ViewMixin
 from world import WorldMixin
 
@@ -16,6 +21,31 @@ from world import WorldMixin
 def check(condition, message):
     if not condition:
         raise AssertionError(message)
+
+
+def test_career_archetype_migration_is_explicit_and_non_destructive():
+    source = {
+        "month": 24,
+        "roster": [
+            {"fighter_id": "legacy-1", "career_archetype": "Standard Prime"},
+            {"fighter_id": "healthy-1", "career_archetype": "Balanced Development"},
+        ],
+        "promotions": [{"name": "Legacy FC", "roster": [
+            {"fighter_id": "legacy-2", "career_archetype": "Long Prime"},
+        ]}],
+        "combat_sport_worlds": {"Boxing": {"roster": [
+            {"fighter_id": "legacy-3", "career_archetype": "Early Peak"},
+        ]}},
+        "authored": {"career_archetype": "Future authored label"},
+    }
+    migrated, changes = migrate_serialized_career_archetypes(source)
+    check(source["roster"][0]["career_archetype"] == "Standard Prime", "migration mutated its source payload")
+    check(migrated["roster"][0]["career_archetype"] == "Balanced Development", "standard prime was not normalised")
+    check(migrated["promotions"][0]["roster"][0]["career_archetype"] == "Durable Career", "nested promotion row was not normalised")
+    check(migrated["combat_sport_worlds"]["Boxing"]["roster"][0]["career_archetype"] == "Early Maturation", "child-sport row was not normalised")
+    check(migrated["authored"]["career_archetype"] == "Future authored label", "unknown authored value was rewritten")
+    check(len(changes) == 3, f"expected three migration changes, got {len(changes)}")
+    check(all("path" in row and row["from"] != row["to"] for row in changes), "migration audit lacks source paths")
 
 
 def fighter(name="Test Fighter", fighter_id="FTR-test", **updates):
@@ -114,6 +144,22 @@ class SaveFailureProbe(PersistenceMixin):
 
     def close_busy_overlay(self, _busy):
         self.closed_busy = True
+
+
+def test_save_library_reader_does_not_create_missing_save_directory():
+    probe = PersistenceMixin()
+    with tempfile.TemporaryDirectory() as root:
+        missing = Path(root) / "Saves"
+        with patch.object(persistence, "SAVE_DIR", missing):
+            check(probe.primary_save_paths(create=False) == [], "reader should return an empty library")
+            check(not missing.exists(), "save library reader created a missing save directory")
+            check(probe.autosave_dir("weekly", create=False) == missing / "Game 1" / "Autosaves" / "Weekly",
+                  "read-only autosave enumeration resolved the wrong slot path")
+            check(probe.rolling_backup_files(create=False) == [],
+                  "read-only backup enumeration returned phantom files")
+            check(not missing.exists(), "read-only autosave/backup enumeration created save directories")
+            check(probe.primary_save_paths() == [], "create-on-demand compatibility path changed")
+            check(missing.exists(), "explicit create-on-demand path did not create the save directory")
 
 
 class WorldProbe(WorldMixin):
@@ -340,7 +386,7 @@ def test_save_menu_selection_summary_and_action_state():
         probe.format_game_date = lambda month, week: f"Month {month}, Week {week}"
         for name in (
             "save_load_button", "save_copy_button", "save_delete_button",
-            "save_backup_button", "save_move_button",
+            "save_backup_button", "save_move_button", "save_migrate_archetypes_button",
         ):
             setattr(probe, name, Button())
         probe.refresh_save_selection_summary()
@@ -353,6 +399,71 @@ def test_save_menu_selection_summary_and_action_state():
               "save inspector did not identify the selected active career")
         check("Regression FC" in probe.save_selection_detail.value and "Month 3, Week 2" in probe.save_selection_detail.value,
               "save inspector did not expose selected metadata")
+
+
+def test_save_menu_selection_summary_fails_closed_for_malformed_dates():
+    class Value:
+        def __init__(self):
+            self.value = ""
+
+        def set(self, value):
+            self.value = value
+
+    class Button:
+        def configure(self, **_kwargs):
+            pass
+
+    class Listbox:
+        def curselection(self):
+            return (0,)
+
+    with tempfile.TemporaryDirectory() as folder:
+        path = Path(folder) / "savegame.json"
+        path.write_text('{"cash": 100}', encoding="utf-8")
+        probe = TransactionProbe()
+        probe.save_slot_list = Listbox()
+        probe.save_slot_files = [path]
+        probe.save_slot_sources = {path: "Malformed Career"}
+        probe.save_slot_groups = {path: "Main"}
+        probe.save_selection_title = Value()
+        probe.save_selection_detail = Value()
+        probe.active_save_path = lambda: path
+        probe.read_save_metadata_fast = lambda _path: {
+            "company": "Legacy FC", "month": float("inf"), "week": float("nan"),
+            "saved_at": "2026-08-31T12:30",
+        }
+        probe.format_game_date = lambda month, week: f"Month {int(month)}, Week {int(week)}"
+        for name in (
+            "save_load_button", "save_copy_button", "save_delete_button",
+            "save_backup_button", "save_move_button", "save_migrate_archetypes_button",
+        ):
+            setattr(probe, name, Button())
+        probe.refresh_save_selection_summary()
+        check("Unknown game date" in probe.save_selection_detail.value,
+              "malformed save metadata crashed or produced a fabricated calendar date")
+
+
+def test_save_menu_identity_preserves_duplicate_folder_selection():
+    main = Path("C:/MMA Saves/Shared/savegame.json")
+    test_folder = Path("C:/MMA Saves/Folders/Shared/savegame.json")
+    main_key = PersistenceMixin.save_entry_identity(main)
+    test_key = PersistenceMixin.save_entry_identity(test_folder)
+    check(main_key != test_key, "duplicate display names in different folders collapsed to one save identity")
+    reordered = [test_key, main_key]
+    check(PersistenceMixin.save_entry_index(reordered, main_key) == 1,
+          "save selection did not follow its stable path identity after reorder")
+    check(PersistenceMixin.save_entry_index(reordered, "save-entry:missing") is None,
+          "missing save identity was silently mapped to another row")
+
+
+def test_database_menu_identity_is_path_bound():
+    first = Path("C:/MMA Databases/Default.universe.json")
+    second = Path("C:/MMA Databases/Archive/Default.universe.json")
+    first_key = PersistenceMixin.database_entry_identity(first)
+    second_key = PersistenceMixin.database_entry_identity(second)
+    check(first_key != second_key, "database rows with the same display stem collapsed to one identity")
+    check(PersistenceMixin.save_entry_index([second_key, first_key], first_key) == 1,
+          "database selection did not follow its stable path identity after refresh")
 
 
 def test_finish_bonus_save_compatibility():
@@ -628,6 +739,7 @@ def test_signature_move_save_compatibility():
 
 def main():
     random.seed(4401)
+    test_career_archetype_migration_is_explicit_and_non_destructive()
     test_result_index_is_idempotent()
     test_transactional_apply_rolls_back()
     test_serialization_and_metadata_invariants()
@@ -635,6 +747,7 @@ def main():
     test_backup_restore_validates_before_touching_destination()
     test_external_block_prune_skips_symlink_entries()
     test_save_menu_selection_summary_and_action_state()
+    test_save_menu_selection_summary_fails_closed_for_malformed_dates()
     test_finish_bonus_save_compatibility()
     test_friend_identity_save_compatibility()
     test_academy_prospect_identity_save_compatibility()
@@ -650,6 +763,7 @@ def main():
     test_legacy_style_identity_normalization()
     test_legacy_boxing_skill_derivation()
     test_signature_move_save_compatibility()
+    test_save_library_reader_does_not_create_missing_save_directory()
     print("PERSISTENCE REGRESSION TEST PASSED")
 
 

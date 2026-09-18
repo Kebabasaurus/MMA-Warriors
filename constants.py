@@ -10,7 +10,7 @@ ASSET_DIR = BUNDLE_DIR / "assets" if (BUNDLE_DIR / "assets").exists() else APP_D
 APP_ICON_ICO = ASSET_DIR / "app_icon.ico"
 APP_ICON_PNG = ASSET_DIR / "app_icon.png"
 GAME_NAME = "MMA Warriors"
-GAME_VERSION = "3.0.9"
+GAME_VERSION = "3.0.10"
 GAME_TITLE = f"{GAME_NAME} v{GAME_VERSION}"
 AI_CHILD_PROMOTION_MIN_CAPITAL = 1_000_000
 AI_CHILD_PROMOTION_MAX_CAPITAL = 25_000_000
@@ -50,6 +50,13 @@ STAFF_ROLE_EFFECTS = {
         "label": "Talent Relations",
         "summary": "Improves fighter negotiations, trust, contract terms, and the chance of retaining valuable talent.",
         "metric": "Negotiation leverage and roster trust",
+    },
+    # Academy Coach is an additive specialist role.  Existing saves keep the
+    # Trainer fallback until a player explicitly hires and assigns this role.
+    "Academy Coach": {
+        "label": "Academy Coaching",
+        "summary": "Supervises one measurable academy development block and sharpens its training-quality input.",
+        "metric": "Assigned development-block quality",
     },
 }
 STAFF_CONTRACT_DEFAULT_MONTHS = 24
@@ -632,16 +639,10 @@ def normalize_secondary_style(value, primary_style):
     candidate = LEGACY_STYLE_ALIASES.get(candidate, candidate)
     primary = normalize_mma_style(primary_style)
     return candidate if candidate in STYLES and candidate != primary else ""
-TRAITS = [
-    "Fan Favourite", "Fragile", "Clutch", "Slow Starter", "Big Finisher", "Marketable", "Gym Rat", "Erratic",
-    "Weight Bully", "Cardio Machine", "Fast Starter", "Comeback Artist", "Iron Chin", "Glass Cannon",
-    "Submission Ace", "Knockout Artist", "Pressure Fighter", "Counter Specialist", "Showman", "Trash Talker",
-    "Quiet Professional", "Coach Favourite", "Bad Weight Cut", "Injury Magnet", "Media Natural", "Gym Leader",
-    "Front Runner", "Late Bloomer", "Veteran Savvy", "Prospect Mindset", "Short Notice Hero", "Title Mentality",
-    "Technical Learner", "Warrior Spirit", "Fast Healer", "Slow Healer",
-    "Adaptable", "Momentum Fighter", "Regional Star", "Overlooked Talent", "Body Hunter", "Leg Kicker",
-    "Cage Specialist", "Elbow Specialist", "Scramble Artist", "Fight Finisher",
-]
+from fighter_traits import TRAIT_DEFINITIONS
+
+# Catalogue insertion order preserves historical generation draws and editor IDs.
+TRAITS = list(TRAIT_DEFINITIONS)
 BEHAVIOURS = ["Pressure", "Counter", "Volume", "Control", "Submission Hunter", "Sprawl And Brawl", "Dynamic Attacker", "Cautious"]
 POSITIONS = ["range", "pocket", "clinch", "cage", "guard", "half guard", "side control", "mount", "back control"]
 CAMPS = [

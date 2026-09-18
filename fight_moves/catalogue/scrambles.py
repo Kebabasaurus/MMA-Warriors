@@ -1,0 +1,105 @@
+"""scrambles catalogue; historical batches preserve selection order."""
+from ..schema import move, ALL_POSITIONS, STANDING_POSITIONS, CLINCH_POSITIONS, GROUND_POSITIONS
+
+BATCH_011 = (
+    move("chained_reshot", "chained re-shot", "re_shot", frozenset({"failed shot"}),
+         attack_skills=("chain_wrestling", "takedown_speed", "conditioning"), defense_skills=("sprawl", "scrambles"),
+         preferred_styles=("Wrestler", "Freestyle Wrestler"), minimum_skill=58, energy=1.24,
+         tags=("wrestling", "chain", "entry")),
+    move("whizzer_recovery", "whizzer recovery", "recover_shot", frozenset({"failed shot"}),
+         attack_skills=("clinch_defence", "scrambles", "strength"), defense_skills=("chain_wrestling", "cage_wrestling"),
+         preferred_styles=("Wrestler", "Sambo"), tags=("wrestling", "defense", "scramble")),
+    move("lift_mat_return", "lift-and-return mat return", "mat_return", frozenset({"standing back control"}),
+         attack_skills=("slams", "ride_control", "strength"), defense_skills=("get_ups", "scrambles"),
+         preferred_styles=("Wrestler", "Sambo"), minimum_skill=58, energy=1.22,
+         tags=("wrestling", "takedown", "mat-return"), defense_families=("hand fight", "hip turn", "fence post"),
+         entry_family="rear body lock", finish_positions=("back control", "guard")),
+    move("rear_waist_ride", "rear-waist standing ride", "standing_back_ride", frozenset({"standing back control"}),
+         attack_skills=("ride_control", "cage_wrestling", "conditioning"), defense_skills=("get_ups", "clinch_defence"),
+         preferred_styles=("Wrestler", "Catch Wrestler"), tags=("wrestling", "control", "ride")),
+    move("limp_leg_escape", "limp-leg escape", "standing_escape", frozenset({"standing back control"}),
+         attack_skills=("scrambles", "mobility", "clinch_defence"), defense_skills=("ride_control", "cage_wrestling"),
+         preferred_styles=("Freestyle Wrestler", "Sanda"), tags=("wrestling", "escape", "scramble")),
+    move("snapdown_front_headlock", "snapdown to front headlock", "front_headlock", frozenset({"failed shot"}),
+         attack_skills=("sprawl", "clinch_control", "submission_attack"), defense_skills=("scrambles", "get_ups"),
+         preferred_styles=("Wrestler", "Catch Wrestler", "BJJ"), minimum_skill=55,
+         tags=("wrestling", "front-headlock", "transition")),
+    move("front_headlock_go_behind", "front-headlock go-behind", "take_back", frozenset({"front headlock"}),
+         attack_skills=("submission_attack", "transitions", "ride_control"), defense_skills=("scrambles", "back_control"),
+         preferred_styles=("Wrestler", "BJJ", "Catch Wrestler"), minimum_skill=56, energy=1.12,
+         tags=("wrestling", "transition", "back-take")),
+)
+
+BATCH_014 = (
+    move("turtle_breakdown", "turtle breakdown", "turtle_ride", frozenset({"turtle"}),
+         attack_skills=("ride_control", "back_control", "strength"), defense_skills=("get_ups", "scrambles"),
+         preferred_styles=("Wrestler", "Catch Wrestler", "BJJ"), minimum_skill=54,
+         tags=("ground", "transition", "ride")),
+)
+
+BATCH_016 = (
+    move("butterfly_sweep", "butterfly sweep", "sweep", frozenset({"guard", "half guard"}),
+         attack_skills=("guard_work", "scrambles", "transitions"), defense_skills=("top_control", "strength"),
+         preferred_styles=("BJJ", "Judo"), tags=("ground", "sweep", "transition")),
+    move("hip_bump_sweep", "hip-bump sweep", "sweep", frozenset({"guard"}),
+         attack_skills=("guard_work", "transitions", "strength"), defense_skills=("top_control", "reflexes"),
+         preferred_styles=("BJJ", "Luta Livre"), tags=("ground", "sweep", "transition")),
+    move("scissor_sweep", "scissor sweep", "sweep", frozenset({"guard"}),
+         attack_skills=("guard_work", "transitions", "reflexes"), defense_skills=("top_control", "strength"),
+         preferred_styles=("BJJ", "Judo"), minimum_skill=53, energy=1.08,
+         follow_ups=("guard_posture_elbows",), tags=("ground", "sweep", "transition", "guard")),
+    move("flower_sweep", "flower sweep", "sweep", frozenset({"guard"}),
+         attack_skills=("guard_work", "scrambles", "flexibility"), defense_skills=("top_control", "reflexes"),
+         preferred_styles=("BJJ", "Submission Grappler"), minimum_skill=56, energy=1.1,
+         follow_ups=("guard_posture_elbows",), tags=("ground", "sweep", "transition", "guard")),
+    move("waiter_sweep", "waiter sweep", "sweep", frozenset({"guard", "half guard"}),
+         attack_skills=("guard_work", "leg_locks", "transitions"), defense_skills=("top_control", "scrambles"),
+         preferred_styles=("BJJ", "Luta Livre", "Submission Grappler"), minimum_skill=59, energy=1.12,
+         follow_ups=("headquarters_pass",), tags=("ground", "sweep", "transition", "leg-entanglement")),
+    move("lockdown_sweep", "lockdown sweep", "sweep", frozenset({"half guard"}),
+         attack_skills=("bottom_control", "guard_work", "strength"), defense_skills=("top_control", "positional_ability"),
+         preferred_styles=("BJJ", "Luta Livre"), minimum_skill=57, energy=1.12,
+         follow_ups=("guard_posture_elbows",), tags=("ground", "sweep", "transition", "half-guard")),
+    move("sit_out_reversal", "sit-out reversal", "turtle_escape", frozenset({"turtle", "front headlock"}),
+         attack_skills=("scrambles", "mobility", "transitions"), defense_skills=("ride_control", "submission_defence_detail"),
+         preferred_styles=("Wrestler", "Catch Wrestler"), minimum_skill=55, energy=1.14,
+         tags=("ground", "sweep", "scramble")),
+)
+
+BATCH_019 = (
+    move("guillotine_choke", "guillotine choke", "front_headlock_submission", frozenset({"front headlock"}),
+         attack_skills=("submission_attack", "clinch_control", "strength"), defense_skills=("submission_defence_detail", "composure"),
+         preferred_styles=("BJJ", "Luta Livre", "Catch Wrestler"), minimum_skill=55,
+         tags=("ground", "submission", "front-headlock", "choke"), attack_path="front-headlock neck wrap",
+         failure_outcomes=("retain front headlock", "concede guard", "return neutral")),
+    move("anaconda_choke", "anaconda choke", "front_headlock_submission", frozenset({"front headlock"}),
+         attack_skills=("submission_attack", "transitions", "strength"), defense_skills=("submission_defence_detail", "scrambles"),
+         preferred_styles=("BJJ", "Submission Grappler"), minimum_skill=61, energy=1.14,
+         tags=("ground", "submission", "front-headlock", "choke"), attack_path="arm-in front-headlock roll",
+         failure_outcomes=("retain front headlock", "concede guard", "lose position")),
+    move("darce_choke", "D'Arce choke", "front_headlock_submission", frozenset({"front headlock"}),
+         attack_skills=("submission_attack", "transitions", "back_control"), defense_skills=("submission_defence_detail", "scrambles"),
+         preferred_styles=("BJJ", "Luta Livre"), minimum_skill=62, energy=1.14,
+         tags=("ground", "submission", "front-headlock", "choke"), attack_path="arm-in neck thread",
+         failure_outcomes=("retain front headlock", "concede guard", "return neutral")),
+)
+
+BATCH_021 = (
+    move("heel_hook", "heel hook", "counter_leg_lock", frozenset({"leg entanglement"}),
+         attack_skills=("leg_locks", "submission_attack", "counter_timing"), defense_skills=("submission_defence_detail", "composure"),
+         preferred_styles=("Luta Livre", "Submission Grappler", "BJJ"), minimum_skill=66, energy=1.16, counter_risk=1.18,
+         tags=("ground", "submission", "leg-lock", "counter"), attack_path="heel exposure from entanglement",
+         failure_outcomes=("retain entanglement", "lose position", "return neutral")),
+    move("toe_hold", "toe hold", "counter_leg_lock", frozenset({"leg entanglement"}),
+         attack_skills=("leg_locks", "submission_attack", "strength"), defense_skills=("submission_defence_detail", "mobility"),
+         preferred_styles=("Sambo", "Catch Wrestler", "Luta Livre"), minimum_skill=61, energy=1.1,
+         tags=("ground", "submission", "leg-lock", "counter"), attack_path="figure-four foot isolation",
+         failure_outcomes=("retain entanglement", "lose position", "return neutral")),
+)
+
+BATCH_029 = (
+    move("front_headlock_posture_out", "posture out of the front headlock", "front_headlock_escape",
+         frozenset({"front headlock", "turtle"}),
+         attack_skills=("submission_defence_detail", "scrambles", "guard_work"), defense_skills=("ride_control", "top_control"),
+         preferred_styles=("Wrestler", "Freestyle Wrestler"), tags=("escape", "scramble")),
+)

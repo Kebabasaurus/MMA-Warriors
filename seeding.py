@@ -1,4 +1,5 @@
 import json
+import hashlib
 import logging
 import random
 import sys
@@ -1043,7 +1044,8 @@ class SeedMixin:
 
     def assign_fighter_signature_moves(self, fighter):
         """Assign one-to-three legal, skill-supported signatures without RNG."""
-        authored = normalize_signature_moves(getattr(fighter, "signature_moves", []))
+        registry = getattr(self, "_fight_move_registry", None)
+        authored = normalize_signature_moves(getattr(fighter, "signature_moves", []), registry=registry)
         if authored:
             fighter.signature_moves = authored
             return authored
@@ -1051,11 +1053,12 @@ class SeedMixin:
         styles = {fighter.style, getattr(fighter, "secondary_style", "")}
         identity = str(getattr(fighter, "fighter_id", "") or fighter.name)
         count = 1 + sum((index + 3) * ord(char) for index, char in enumerate(identity)) % 3
+        fallback_overall = fighter.overall
 
         def score(definition):
-            if not definition.attack_skills or definition.parent_action in {"survive", "cling"}:
+            if definition.deprecated or not definition.attack_skills or definition.parent_action in {"survive", "cling"}:
                 return None
-            values = [details.get(key, fighter.overall) for key in definition.attack_skills]
+            values = [details.get(key, fallback_overall) for key in definition.attack_skills]
             proficiency = sum(values) / len(values)
             if proficiency < max(48, definition.minimum_skill):
                 return None
@@ -1063,7 +1066,8 @@ class SeedMixin:
             variety = sum((index + 1) * ord(char) for index, char in enumerate(identity + definition.move_id)) % 701 / 100
             return proficiency + style_bonus + variety - (5 if "high-risk" in definition.tags else 0)
 
-        ranked = [(score(definition), definition.move_id) for definition in MOVE_DEFINITIONS]
+        definitions = getattr(self, "_fight_move_definitions", MOVE_DEFINITIONS)
+        ranked = [(score(definition), definition.move_id) for definition in definitions]
         ranked = [row for row in ranked if row[0] is not None]
         fighter.signature_moves = [move_id for _value, move_id in sorted(ranked, reverse=True)[:count]]
         return fighter.signature_moves
@@ -1405,9 +1409,11 @@ class SeedMixin:
             if record.get("special_profile")
         }
 
-    def apply_signature_real_fighter_profile(self, fighter, preserve_career=False, record=None):
+    def apply_signature_real_fighter_profile(self, fighter, preserve_career=False, record=None, signature_profiles=None):
         record = record if isinstance(record, dict) else self.seed_fighter_record_for(fighter.name)
-        targets = record.get("signature_skills") if record else self.signature_real_fighter_detailed_profiles().get(fighter.name)
+        targets = record.get("signature_skills") if record else (
+            signature_profiles if signature_profiles is not None else self.signature_real_fighter_detailed_profiles()
+        ).get(fighter.name)
         if not targets:
             return False
         before_overall = fighter.overall
@@ -1706,7 +1712,8 @@ class SeedMixin:
         pro_trait = 10 if fighter.trait in ("Gym Rat", "Clutch", "Quiet Professional", "Coach Favourite", "Gym Leader", "Title Mentality", "Technical Learner", "Warrior Spirit") else 0
         pro_trait -= 10 if fighter.trait in ("Erratic", "Trash Talker", "Bad Weight Cut") else 0
         fighter.professionalism = max(1, min(99, random.randint(38, 88) + pro_trait))
-        injury_trait = 18 if fighter.trait in ("Fragile", "Injury Magnet", "Slow Healer") else -10 if fighter.trait in ("Iron Chin", "Veteran Savvy", "Fast Healer") else 0
+        fighter.trait_injury_baseline = ""
+        injury_trait = 0  # Current-trait injury effects are read live.
         fighter.injury_proneness = max(1, min(99, random.randint(8, 42) + injury_trait + max(0, fighter.age - 34)))
         finish_trait = 10 if fighter.trait in ("Big Finisher", "Knockout Artist", "Submission Ace", "Glass Cannon", "Fight Finisher") else 0
         fighter.finishing_instinct = max(1, min(99, round((fighter.striking + fighter.grappling) / 2 + random.randint(-10, 18) + finish_trait)))
@@ -1723,7 +1730,7 @@ class SeedMixin:
         fighter.takedown_defence = max(25, min(99, round(fighter.wrestling * 0.7 + fighter.cardio * 0.15 + random.randint(-10, 12))))
         fighter.ground_control = max(25, min(99, round((fighter.wrestling + fighter.grappling) / 2 + random.randint(-10, 10))))
         fighter.submissions = max(25, min(99, round(fighter.grappling * 0.82 + random.randint(-12, 14))))
-        toughness_trait = 8 if fighter.trait in ("Iron Chin", "Comeback Artist", "Title Mentality") else -8 if fighter.trait == "Glass Cannon" else 0
+        toughness_trait = 0  # Durability belongs to current-trait defence, not a permanent seed bonus.
         fighter.toughness = max(25, min(99, round(fighter.chin * 0.7 + fighter.cardio * 0.2 + random.randint(-8, 12) + toughness_trait)))
         fighter.submission_defence = max(25, min(99, round(fighter.grappling * 0.58 + fighter.wrestling * 0.22 + random.randint(-8, 14))))
         fighter.recovery = max(25, min(99, round(fighter.chin * 0.55 + fighter.toughness * 0.2 + random.randint(-8, 12))))
@@ -2121,6 +2128,7 @@ class SeedMixin:
             sponsor_appeal=int(profile.get("sponsor_appeal", max(15, rating - 3))),
             finishing_instinct=int(profile.get("finishing_instinct", rating)),
             injury_proneness=int(profile.get("injury_proneness", 18)),
+            trait_injury_baseline="",
         )
         if sport == "Lethwei":
             fighter.power = min(99, rating + 5)
@@ -3451,7 +3459,7 @@ class SeedMixin:
         return profile
 
     def create_staff_candidate(self):
-        roles = ["Scout", "Doctor", "Marketing", "Matchmaker", "Drug Testing Officer", "Broadcast Producer", "Talent Relations"]
+        roles = ["Scout", "Doctor", "Marketing", "Matchmaker", "Drug Testing Officer", "Broadcast Producer", "Talent Relations", "Academy Coach"]
         famous = [
             ("Mick Maynard", "Matchmaker", 86), ("Sean Shelby", "Matchmaker", 88),
             ("Laura Sanko", "Broadcast Producer", 82), ("Marc Ratner", "Drug Testing Officer", 84),
@@ -3472,20 +3480,98 @@ class SeedMixin:
             "Drug Testing Officer": ["Targeted testing", "Compliance"],
             "Broadcast Producer": ["Live production", "Story packages"],
             "Talent Relations": ["Contract trust", "Veteran management"],
+            "Academy Coach": ["Development blocks", "Prospect fundamentals", "Performance planning"],
         }
-        return {
+        # Keep the legacy random draw order stable while making the newly
+        # approved live specialties discoverable in the candidate market.  A
+        # local identity hash assigns an occasional specialist without adding
+        # a simulation RNG draw or changing older seed fixtures.
+        specialty = random.choice(specialties[role])
+        specialty_digest = int(hashlib.sha256(f"{name}|{role}|specialty".encode("utf-8")).hexdigest()[:8], 16)
+        specialty_upgrade = {
+            "Marketing": ("Campaign Coordinator", 3),
+            "Talent Relations": ("Contract Administrator", 3),
+            "Broadcast Producer": ("Production Coordinator", 2),
+        }.get(role)
+        if specialty_upgrade and specialty_digest % specialty_upgrade[1] == 0:
+            specialty = specialty_upgrade[0]
+        candidate = {
             "name": name, "role": role, "skill": skill, "salary": max(3500, salary),
-            "morale": random.randint(55, 92), "specialty": random.choice(specialties[role]),
+            "morale": random.randint(55, 92), "specialty": specialty,
             "reputation": random.randint(40, min(94, skill + 8)),
             "contract_months": random.randint(12, 36), "contract_type": "Exclusive",
         }
+        # A retired fighter can re-enter the shared market as an Academy Coach,
+        # but remains a separate staff identity.  This is deliberately a
+        # deterministic market projection: no extra RNG draw, no fighter
+        # mutation, and no fame-to-skill conversion.  The original fighter
+        # stays in ``retired_fighters`` with the complete career record so the
+        # player can still review or later negotiate a comeback.
+        return self._link_retired_fighter_academy_candidate(candidate)
+
+    def _link_retired_fighter_academy_candidate(self, candidate):
+        """Link an Academy Coach market row to one retained retired fighter.
+
+        The link is only created for a real Academy Coach row and only when a
+        retired fighter is available.  Existing staff/candidate links are
+        excluded by fighter ID, so repeated market refreshes cannot offer the
+        same career as several simultaneous coaching identities.
+        """
+        if not isinstance(candidate, dict) or candidate.get("role") != "Academy Coach":
+            return candidate
+        retired = [fighter for fighter in (getattr(self, "retired_fighters", []) or [])
+                   if fighter is not None and getattr(fighter, "retired", False)]
+        if not retired:
+            return candidate
+        used_ids = {
+            str(row.get("origin_fighter_id", "") or "").strip()
+            for row in list(getattr(self, "staff", []) or []) + list(getattr(self, "staff_candidates", []) or [])
+            if isinstance(row, dict) and row.get("role") == "Academy Coach"
+        }
+        available = []
+        for fighter in retired:
+            raw_id = str(getattr(fighter, "fighter_id", "") or "").strip()
+            if not raw_id:
+                raw_id = "legacy-retired:" + hashlib.sha256(
+                    f"{getattr(fighter, 'name', '')}|{getattr(fighter, 'weight', '')}|{getattr(fighter, 'record', '')}".encode("utf-8", "replace")
+                ).hexdigest()[:16]
+            if raw_id not in used_ids:
+                available.append((raw_id, fighter))
+        if not available:
+            return candidate
+        raw_id, fighter = sorted(available, key=lambda item: (item[0], str(getattr(item[1], "name", ""))))[0]
+        # Role skill starts at the authored Academy Coach baseline, regardless
+        # of the fighter's fame, OVR or historical record.  The market salary
+        # is still a normal quoted candidate term, not an automatic fighter
+        # compensation offer.
+        candidate["name"] = str(getattr(fighter, "name", candidate.get("name", "Academy Coach")) or "Academy Coach")
+        candidate["role"] = "Academy Coach"
+        candidate["skill"] = 45
+        candidate["salary"] = max(3500, round((45 * 125) / 10) * 10)
+        candidate["specialty"] = "Development blocks"
+        candidate["origin_fighter_id"] = raw_id
+        candidate["origin_fighter_name"] = candidate["name"]
+        candidate["origin_fighter_record"] = str(getattr(fighter, "record", "Not recorded") or "Not recorded")
+        candidate["staff_id"] = "STF-ACADEMY-" + hashlib.sha256(
+            f"{raw_id}|academy-coach".encode("utf-8", "replace")
+        ).hexdigest()[:16]
+        candidate["origin_fighter_snapshot"] = {
+            "fighter_id": raw_id,
+            "name": candidate["name"],
+            "record": candidate["origin_fighter_record"],
+            "gender": str(getattr(fighter, "gender", "") or ""),
+            "weight": str(getattr(fighter, "weight", "") or ""),
+            "retirement_reason": str(getattr(fighter, "retirement_reason", "") or ""),
+        }
+        candidate["career_link"] = "Retired fighter → Academy Coach"
+        return candidate
 
     def seed_staff_candidates(self):
         return [self.create_staff_candidate() for _ in range(14)]
 
     def seed_owner_goals(self):
         return [
-            {"goal": "Keep cash above $150,000", "metric": "cash", "target": 150000, "deadline": 12, "status": "Active"},
-            {"goal": "Reach company popularity 50", "metric": "popularity", "target": 50, "deadline": 18, "status": "Active"},
-            {"goal": "Run at least 4 shows", "metric": "shows", "target": 4, "deadline": 12, "status": "Active"},
+            {"goal_id": "owner-goal-cash", "goal": "Keep cash above $150,000", "metric": "cash", "target": 150000, "deadline": 12, "status": "Active", "goal_type": "achieve_once", "start_month": 1, "owner_company": ""},
+            {"goal_id": "owner-goal-popularity", "goal": "Reach company popularity 50", "metric": "popularity", "target": 50, "deadline": 18, "status": "Active", "goal_type": "achieve_once", "start_month": 1, "owner_company": ""},
+            {"goal_id": "owner-goal-shows", "goal": "Run at least 4 shows", "metric": "shows", "target": 4, "deadline": 12, "status": "Active", "goal_type": "achieve_once", "start_month": 1, "owner_company": ""},
         ]

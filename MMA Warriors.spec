@@ -5,6 +5,10 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(SPECPATH).resolve()
 
+# Authoritative game-package definition. Build Portable.bat invokes this file
+# directly. Keep optional dependency decisions here and cover them with the
+# static shipping regression before changing the packaged runtime graph.
+
 a = Analysis(
     [str(PROJECT_ROOT / 'main.py')],
     pathex=[],
@@ -17,7 +21,10 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['numpy', 'sounddevice', '_sounddevice_data'],
+    # Preserve the canonical batch build's established dependency discovery.
+    # Development-only numpy tools are outside main.py's import graph, and the
+    # game does not import sounddevice; neither is force-excluded here.
+    excludes=[],
     noarchive=False,
     optimize=0,
 )

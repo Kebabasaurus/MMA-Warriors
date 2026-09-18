@@ -62,6 +62,10 @@ class Fighter:
     sport_weight_class: str = ""
     loaned_from_company: str = ""
     loaned_to_promotion: str = ""
+    # A parent/child development loan may carry an agreed return boundary.
+    # Zero means the legacy open-ended loan contract (recall remains manual).
+    loan_return_month: int = 0
+    loan_return_week: int = 0
     multi_sport_records: dict = field(default_factory=dict)
     crossover_history: list = field(default_factory=list)
     birth_country: str = ""
@@ -88,6 +92,10 @@ class Fighter:
     move_mastery_last_month: int = 0
     stance: str = "Orthodox"
     trait: str = "Gym Rat"
+    trait_progress: dict = field(default_factory=dict)
+    trait_history: list = field(default_factory=list)
+    # None denotes an old untracked seed; empty string means no baked-in risk.
+    trait_injury_baseline: str | None = None
     potential: int = 70
     prime_start: int = 26
     prime_end: int = 33
@@ -398,6 +406,9 @@ class Promotion:
     broadcasters: list = field(default_factory=list)
     weight_classes: list = field(default_factory=list)
     scheduled_events: list = field(default_factory=list)
+    # Counter for future-dated child-promotion cards.  Kept separate from the
+    # completed event counter so planning does not change replay numbering.
+    scheduled_event_counter: int = 0
     finance: dict = field(default_factory=dict)
     staff: list = field(default_factory=list)
     scouting: list = field(default_factory=list)
@@ -422,3 +433,7 @@ class Promotion:
     startup_capital: int = 0
     initial_roster_budget: int = 0
     loaned_fighter_ids: list = field(default_factory=list)
+    # Stable promotion identity used by cross-domain feature records. Older
+    # saves omit this field and are assigned an ID during the foundation
+    # migration; names and list positions are never used as identity keys.
+    promotion_id: str = ""

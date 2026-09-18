@@ -240,7 +240,8 @@ def test_fact_driven_exchange_commentary_and_personality_contract():
     landed = semantic_commentary_event("landed")
     rendered = engine.render_exchange_trace_event(landed, personality="Balanced")
     folded = rendered.casefold()
-    require("semantic a" in folded and "single jab" in folded and "head" in folded,
+    display_jab = engine.exchange_display_move(landed).casefold()
+    require("semantic a" in folded and display_jab in folded and "head" in folded,
             "Fact-driven landed call omitted its actor, recorded move, or target")
     require("body kick" not in folded and landed["result"].casefold() not in folded,
             "Exchange renderer relied on a contradictory compatibility result string")
@@ -260,14 +261,14 @@ def test_fact_driven_exchange_commentary_and_personality_contract():
             "Takedown commentary omitted its recorded move or settled position")
 
     technical_call = engine.render_exchange_trace_event(landed, personality="Technical", technical=True)
-    require("single jab" in technical_call.casefold() and "outside parry" in technical_call.casefold(),
+    require(display_jab in technical_call.casefold() and "outside parry" in technical_call.casefold(),
             "Technical commentary did not retain natural move and defense detail")
     require(" [" not in technical_call,
             "Technical commentary restored the removed raw bracket suffix")
 
     for personality in ("Balanced", "Technical", "Excitable", "Concise"):
         call = engine.render_exchange_trace_event(landed, personality=personality)
-        require(call and "single jab" in call.casefold(),
+        require(call and display_jab in call.casefold(),
                 f"{personality} personality failed the fact-driven renderer contract")
 
 
@@ -715,7 +716,7 @@ def test_commentary_uses_only_available_fighter_and_fight_context():
     mastered = semantic_commentary_event("landed")
     mastered.update({"signature": False, "move_mastery": 81})
     mastery_call = engine.render_exchange_trace_event(mastered, personality="Technical", technical=True)
-    require("Recorded Single jab mastery: 81." in mastery_call,
+    require(f"Recorded {engine.exchange_display_move(mastered)} mastery: 81." in mastery_call,
             "Technical commentary omitted available move-mastery evidence")
 
     fighter_a = synthetic_fighter("Camp A", 78, "Muay Thai", "Pressure", 0)
@@ -826,8 +827,8 @@ def test_commentary_stats_style_submission_and_referee_facts():
     })
     power_call = engine.render_exchange_trace_event(power_event, personality="Balanced")
     speed_call = engine.render_exchange_trace_event(speed_event, personality="Balanced")
-    require(power_call != speed_call and "single jab" in power_call.casefold()
-            and "single jab" in speed_call.casefold(),
+    require(power_call != speed_call and engine.exchange_display_move(power_event).casefold() in power_call.casefold()
+            and engine.exchange_display_move(speed_event).casefold() in speed_call.casefold(),
             "Distinct stats and styles did not shape fact-consistent standing commentary")
 
     salted_calls = set()
@@ -1786,15 +1787,22 @@ def test_grappling_state_machine_ownership_paths_and_escapes():
 def test_finish_distribution_comparator_rejects_drift():
     baseline = json.loads(BASELINE_PATH.read_text(encoding="utf-8"))
     changed = json.loads(json.dumps(baseline))
-    changed["groups"]["Overall"]["finish_pct"] += 1.01
+    changed["groups"]["Overall"]["finish_pct"] += 2.01
     failures = compare_to_baseline(changed, baseline)
     require(any("Overall finish rate" in failure for failure in failures),
             "Finish-distribution comparator accepted an out-of-bounds overall drift")
     changed = json.loads(json.dumps(baseline))
-    changed["groups"]["Overall"]["method_pct"]["KO"] += 1.01
+    changed["groups"]["Overall"]["method_pct"]["KO"] += 2.01
     failures = compare_to_baseline(changed, baseline)
     require(any("KO rate" in failure for failure in failures),
             "Finish-distribution comparator accepted an out-of-bounds KO drift")
+    for delta in (-2.0, 2.0):
+        changed = deepcopy(baseline)
+        changed["groups"]["Overall"]["finish_pct"] += delta
+        changed["groups"]["Overall"]["method_pct"]["KO"] += delta
+        changed["groups"]["Overall"]["method_pct"]["TKO"] += delta
+        require(not compare_to_baseline(changed, baseline),
+                "Finish-distribution comparator rejected an inclusive two-point boundary")
     changed = json.loads(json.dumps(baseline))
     changed["parity"][0]["signature"] = "changed"
     failures = compare_to_baseline(changed, baseline, exact_parity=True)
@@ -1824,17 +1832,25 @@ def test_finish_distribution_comparator_rejects_drift():
         },
     }
     require(not compare_to_accepted_calibration(accepted),
-            "Exact accepted-calibration comparator rejected the approved counts")
+            "Bounded accepted-calibration comparator rejected the historical counts")
     for field in ("finishes", "KO", "TKO"):
         changed = deepcopy(accepted)
         if field == "finishes":
             changed["groups"]["Overall"][field] += 1
         else:
             changed["groups"]["Overall"]["methods"][field] += 1
-        failures = compare_to_accepted_calibration(changed)
-        expected_label = "finish" if field == "finishes" else field.casefold()
-        require(any(expected_label in failure.casefold() for failure in failures),
-                f"Accepted calibration failed to reject a one-count {field} change")
+        require(not compare_to_accepted_calibration(changed),
+                f"Bounded calibration rejected a harmless one-count {field} change")
+        for delta, should_fail in ((76, False), (77, True), (-76, False), (-77, True)):
+            changed = deepcopy(accepted)
+            row = changed["groups"]["Overall"]
+            if field == "finishes":
+                row[field] += delta
+            else:
+                row["methods"][field] += delta
+            failures = compare_to_accepted_calibration(changed)
+            require(bool(failures) == should_fail,
+                    f"Two-point boundary incorrectly classified {field} delta {delta}: {failures}")
     for method in ("Doctor Stoppage", "Injury Stoppage"):
         changed = deepcopy(accepted)
         changed["groups"]["Overall"]["methods"][method] = 0
@@ -2046,12 +2062,14 @@ def test_move_registry_trace_contract_and_rng_purity():
     signature_exchanges = [event for event in signature_result.trace if event.get("type") == "exchange"]
     for event in signature_exchanges:
         rendered = engine.render_exchange_trace_event(event)
-        require(event["move"]["name"].casefold() in rendered.casefold(),
+        expected_move = (engine.exchange_display_move(event) if event.get("move_id") == "single_jab"
+                         else event["move"]["name"])
+        require(expected_move.casefold() in rendered.casefold(),
                 "Fight Night call did not describe the recorded move")
         require(" [" not in rendered,
                 "Fight Night call exposed raw target/defense/follow-up metadata")
         technical = engine.render_exchange_trace_event(event, personality="Technical", technical=True)
-        require(event["move"]["name"].casefold() in technical.casefold(),
+        require(expected_move.casefold() in technical.casefold(),
                 "Technical Fight Night call did not describe the recorded move")
         if event.get("outcome") == "defended":
             require(event["defense"]["name"].casefold() in technical.casefold(),
@@ -2261,7 +2279,7 @@ def test_versioned_tuning_defaults_and_dead_finish_paths_are_removed():
         tracker.record_season_result(
             winner, fighter, method, 2, {"title": False, "main": False}, 50, "Audit FC",
         )
-        season = tracker.season_bucket()["fighters"][winner.name]
+        season = tracker.season_bucket()["fighters"][winner.fighter_id]
         require(season["finishes"] == 1
                 and season["kos"] == int(method in KO_METHODS)
                 and season["subs"] == int(method in SUBMISSION_METHODS),
@@ -2831,7 +2849,7 @@ def test_specialist_transitions_occur_in_complete_fights():
 
 def test_defense_mastery_stance_branching_and_round_analysis():
     engine = FightAuditHarness()
-    require(not DEFENSE_REGISTRY_ERRORS and len(DEFENSE_REGISTRY) == 18,
+    require(not DEFENSE_REGISTRY_ERRORS and len(DEFENSE_REGISTRY) == 40,
             "Named defensive registry failed validation or lost expected coverage")
     a = synthetic_fighter("Systems A", 88, "Boxer", "Counter", 71)
     b = synthetic_fighter("Systems B", 86, "Wrestler", "Pressure", 72)

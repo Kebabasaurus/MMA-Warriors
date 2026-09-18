@@ -5,6 +5,7 @@ same JSON files. It never opens or rewrites career saves.
 """
 
 import json
+import hashlib
 import os
 import shutil
 import sys
@@ -20,8 +21,14 @@ from constants import (
     REGIONS, STYLES, TRAITS, WEIGHTS,
 )
 from models import Fighter, Promotion, deterministic_source_fighter_id, new_fighter_id
-from fight_moves import MOVE_REGISTRY, normalize_signature_moves
-from universe_validation import validate_universe_pack as _validate_universe_pack
+from fight_moves.release_registry import (
+    RELEASE_MOVE_REGISTRY as MOVE_REGISTRY,
+    normalize_release_signature_moves as normalize_signature_moves,
+)
+from universe_validation import (
+    preflight_universe_pack as _preflight_universe_pack,
+    validate_universe_pack as _validate_universe_pack,
+)
 
 
 DEFAULT_UNIVERSE_NAME = "Default Universe.universe.json"
@@ -212,6 +219,10 @@ def validate_universe_pack(pack):
     return _validate_universe_pack(pack)
 
 
+def preflight_universe_pack(pack):
+    return _preflight_universe_pack(pack)
+
+
 class UniverseDatabaseEditor:
     def __init__(self, root):
         self.root = root
@@ -226,6 +237,13 @@ class UniverseDatabaseEditor:
         self.company_defaults = self.build_company_defaults()
         self.fighter_selection = None
         self.company_selection = None
+        # Selection is bound to the source record object, not the visible row
+        # position.  The legacy selection fields remain for compatibility with
+        # older callers, while these references survive filtering and sorting.
+        self._selected_fighter_record = None
+        self._selected_company_record = None
+        self.fighter_row_map = {}
+        self.company_row_map = {}
         self.table_sort = {"fighter": ("name", False), "company": ("name", False)}
         self.table_specs = {}
         self.configure_style()
@@ -296,6 +314,9 @@ class UniverseDatabaseEditor:
         ttk.Button(toolbar, text="Save", style="Accent.TButton", command=self.save_database).pack(side="left", padx=3)
         ttk.Button(toolbar, text="Save As", command=self.save_database_as).pack(side="left", padx=3)
         ttk.Button(toolbar, text="Validate", command=self.validate_database).pack(side="left", padx=3)
+        preflight_button = ttk.Button(toolbar, text="Preflight", command=self.preflight_database)
+        preflight_button.pack(side="left", padx=3)
+        Tooltip(preflight_button, "Read-only opening-game check: shows structural errors and playable-risk warnings without repairing or saving the database.")
         profile_button = ttk.Button(toolbar, text="Lock Opening Profiles", command=self.materialize_all_opening_profiles)
         profile_button.pack(side="left", padx=3)
         Tooltip(profile_button, "Writes a complete core and detailed 1-99 skill sheet for every fighter. Future new games then use the exact database values, not seed-time rolls.")
@@ -309,6 +330,19 @@ class UniverseDatabaseEditor:
         self.notebook.add(self.companies_tab, text="Companies")
         self.build_fighters_tab()
         self.build_companies_tab()
+
+    def _editor_notice(self, message):
+        """Keep routine editor guidance beside the control that needs it.
+
+        The standalone editor is also exercised by headless compatibility
+        callers that may not have built the header status label.  Return a
+        boolean so those callers retain the existing dialog fallback.
+        """
+        status = getattr(self, "status_var", None)
+        if status is not None and hasattr(status, "set"):
+            status.set(str(message))
+            return True
+        return False
 
     def build_fighters_tab(self):
         filters = ttk.Frame(self.fighters_tab, style="Panel.TFrame")
@@ -702,7 +736,8 @@ class UniverseDatabaseEditor:
     def apply_quick_fighter_fields(self, fields):
         record = self.selected_fighter()
         if not isinstance(record, dict):
-            messagebox.showinfo("No fighter selected", "Select a fighter first.")
+            if not self._editor_notice("Select a fighter first."):
+                messagebox.showinfo("No fighter selected", "Select a fighter first.")
             return
         updates = {}
         for field in fields:
@@ -741,7 +776,7 @@ class UniverseDatabaseEditor:
             ttk.Label(form, text=f"Signature {index}", style="Panel.TLabel").grid(row=index - 1, column=0, sticky="w", padx=8, pady=6)
             combo = ttk.Combobox(form, textvariable=variable, values=choices, state="readonly", width=34)
             combo.grid(row=index - 1, column=1, sticky="ew", padx=8, pady=6)
-            Tooltip(combo, "Stable move ID from fight_moves.py; legality and supporting skill are rechecked in each exchange.")
+            Tooltip(combo, "Stable technique ID; legality and supporting skill are rechecked in each exchange.")
         form.columnconfigure(1, weight=1)
         ttk.Button(parent, text="Apply Signature Moves", style="Accent.TButton", command=self.apply_signature_moves).pack(anchor="w", padx=20, pady=8)
 
@@ -754,7 +789,8 @@ class UniverseDatabaseEditor:
     def apply_signature_moves(self):
         record = self.selected_fighter()
         if not isinstance(record, dict):
-            messagebox.showinfo("No fighter selected", "Select a fighter first.")
+            if not self._editor_notice("Select a fighter first."):
+                messagebox.showinfo("No fighter selected", "Select a fighter first.")
             return
         values = [variable.get().strip() for variable in self.fighter_signature_move_vars if variable.get().strip()]
         if len(values) != len(set(values)):
@@ -921,7 +957,8 @@ class UniverseDatabaseEditor:
     def apply_core_ratings(self):
         record = self.selected_fighter()
         if not isinstance(record, dict):
-            messagebox.showinfo("No fighter selected", "Select a fighter first.")
+            if not self._editor_notice("Select a fighter first."):
+                messagebox.showinfo("No fighter selected", "Select a fighter first.")
             return
         values = {}
         for field, variable in self.fighter_core_rating_vars.items():
@@ -940,7 +977,8 @@ class UniverseDatabaseEditor:
     def use_suggested_overall(self):
         record = self.selected_fighter()
         if not isinstance(record, dict):
-            messagebox.showinfo("No fighter selected", "Select a fighter first.")
+            if not self._editor_notice("Select a fighter first."):
+                messagebox.showinfo("No fighter selected", "Select a fighter first.")
             return
         overrides = {}
         for field, _label in self.CORE_RATING_FIELDS:
@@ -1025,7 +1063,8 @@ class UniverseDatabaseEditor:
         """Persist a complete, deterministic opening sheet for the selected fighter."""
         record = self.selected_fighter()
         if not isinstance(record, dict):
-            messagebox.showinfo("No fighter selected", "Select a fighter first.")
+            if not self._editor_notice("Select a fighter first."):
+                messagebox.showinfo("No fighter selected", "Select a fighter first.")
             return
         self.materialize_record_opening_profile(record)
         self.refresh_fighter_editor()
@@ -1154,7 +1193,8 @@ class UniverseDatabaseEditor:
     def apply_skill_sheet(self):
         record = self.selected_fighter()
         if not isinstance(record, dict):
-            messagebox.showinfo("No fighter selected", "Select a fighter first.")
+            if not self._editor_notice("Select a fighter first."):
+                messagebox.showinfo("No fighter selected", "Select a fighter first.")
             return False
         values = self.skill_sheet_values(show_errors=True)
         if values is None:
@@ -1205,6 +1245,29 @@ class UniverseDatabaseEditor:
 
     def current_sections(self):
         return self.pack.setdefault("sections", {}) if isinstance(self.pack, dict) else {}
+
+    @staticmethod
+    def _database_row_key(kind, record):
+        """Return a stable UI key, with an explicit non-durable legacy fallback.
+
+        Universe packs normally carry a source fighter/company ID.  Older packs
+        may not; hashing the retained record gives a deterministic display key
+        without treating a mutable list position as identity.  Refresh code
+        adds a suffix for duplicate payloads and keeps the source object in the
+        row map, so an edit cannot silently retarget a different row.
+        """
+        if not isinstance(record, dict):
+            return f"{kind}:legacy:invalid"
+        id_field = "fighter_id" if kind == "fighter" else "company_id"
+        stable_id = str(record.get(id_field, "") or record.get("promotion_id", "") or "").strip()
+        if stable_id:
+            return f"{kind}:{stable_id}"
+        try:
+            payload = json.dumps(record, sort_keys=True, ensure_ascii=True, default=str, separators=(",", ":"))
+        except (TypeError, ValueError):
+            payload = repr(sorted((str(key), repr(value)) for key, value in record.items()))
+        digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()[:20]
+        return f"{kind}:legacy:{digest}"
 
     def fighter_records(self):
         section = self.current_sections().setdefault("fighters", {})
@@ -1346,23 +1409,56 @@ class UniverseDatabaseEditor:
     def validate_database(self):
         if not self.ensure_database_loaded():
             return
-        self.sync_for_save()
-        issues = validate_universe_pack(self.pack)
+        # Validation is a read-only diagnostic.  Build the same candidate
+        # that a save would validate, but keep the live editor mapping and its
+        # source records untouched; ID backfills and grouped-view sync belong
+        # to the explicit save boundary only.
+        candidate = deepcopy(self.pack)
+        sections = candidate.setdefault("sections", {})
+        fighters = sections.setdefault("fighters", {})
+        sync_fighter_groups(fighters)
+        issues = validate_universe_pack(candidate)
         if issues:
             messagebox.showwarning("Validation issues", "\n".join(issues[:60]))
-        else:
-            messagebox.showinfo("Database valid", f"{self.path.name} is valid and ready for a new game.")
-        self.status_var.set(f"Validation complete: {len(issues)} issue(s).")
+        self.status_var.set(
+            f"Validation complete: {len(issues)} issue(s)." if issues
+            else f"{self.path.name} is valid and ready for a new game."
+        )
+
+    def preflight_database(self):
+        """Show non-mutating structural and playable-risk diagnostics."""
+        if not self.ensure_database_loaded():
+            return
+        candidate = deepcopy(self.pack)
+        sections = candidate.setdefault("sections", {})
+        fighters = sections.setdefault("fighters", {})
+        sync_fighter_groups(fighters)
+        findings = preflight_universe_pack(candidate)
+        if findings:
+            lines = []
+            for row in findings[:80]:
+                label = str(row.get("severity", "info")).upper()
+                location = ".".join(part for part in (row.get("entity"), row.get("field")) if part)
+                lines.append(f"[{label}] {location}: {row.get('evidence', '')}\n  Remedy: {row.get('remedy', '')}")
+            if len(findings) > 80:
+                lines.append(f"… {len(findings) - 80} additional finding(s) omitted from this dialog.")
+            messagebox.showwarning("Opening preflight", "\n".join(lines))
+        self.status_var.set(
+            f"Preflight complete: {len(findings)} finding(s)." if findings
+            else f"{self.path.name} has no structural errors or playable-risk warnings."
+        )
 
     def open_database_folder(self):
         try:
             os.startfile(self.database_dir)
         except OSError:
-            messagebox.showinfo("Database folder", str(self.database_dir))
+            if not self._editor_notice(f"Database folder: {self.database_dir}"):
+                messagebox.showinfo("Database folder", str(self.database_dir))
 
     def ensure_database_loaded(self):
         if self.pack is None or self.path is None:
-            messagebox.showinfo("No database selected", "Choose a universe database first.")
+            if not self._editor_notice("Choose a universe database first."):
+                messagebox.showinfo("No database selected", "Choose a universe database first.")
             return False
         return True
 
@@ -1549,6 +1645,13 @@ class UniverseDatabaseEditor:
     def refresh_fighters(self):
         if not self.ensure_database_loaded():
             return
+        selected_record = self._selected_fighter_record
+        if selected_record is None and isinstance(self.fighter_selection, int):
+            # Compatibility with a pre-identity session that selected a source
+            # index before this editor version was opened.
+            records = self.fighter_records()
+            if 0 <= self.fighter_selection < len(records):
+                selected_record = records[self.fighter_selection]
         owners = sorted({str(record.get("owner", "Free Agent")) for record in self.fighter_records() if isinstance(record, dict)})
         styles = sorted({str(record.get("style")) for record in self.fighter_records() if record.get("style")})
         regions = sorted({str(record.get("region")) for record in self.fighter_records() if record.get("region")})
@@ -1559,8 +1662,29 @@ class UniverseDatabaseEditor:
         self.refresh_filter_choice(self.fighter_region_filter, self.fighter_region_combo, regions, "All regions")
         for item in self.fighter_tree.get_children():
             self.fighter_tree.delete(item)
-        for index, record in self.sort_rows("fighter", self.filtered_fighters()):
-            self.fighter_tree.insert("", "end", iid=str(index), values=(record.get("name", ""), record.get("owner", ""), record.get("weight", ""), record.get("gender", ""), self.fighter_opening_rating(record), record.get("potential", ""), record.get("popularity", record.get("pop", "")), record.get("age", ""), record.get("style", ""), record.get("region", "")))
+        self.fighter_row_map = {}
+        used_row_ids = set()
+        selected_row_id = None
+        for _index, record in self.sort_rows("fighter", self.filtered_fighters()):
+            base_row_id = self._database_row_key("fighter", record)
+            row_id = base_row_id
+            suffix = 2
+            while row_id in used_row_ids:
+                row_id = f"{base_row_id}#{suffix}"
+                suffix += 1
+            used_row_ids.add(row_id)
+            self.fighter_row_map[row_id] = record
+            self.fighter_tree.insert("", "end", iid=row_id, values=(record.get("name", ""), record.get("owner", ""), record.get("weight", ""), record.get("gender", ""), self.fighter_opening_rating(record), record.get("potential", ""), record.get("popularity", record.get("pop", "")), record.get("age", ""), record.get("style", ""), record.get("region", "")))
+            if record is selected_record:
+                selected_row_id = row_id
+        if selected_row_id is not None:
+            self.fighter_tree.selection_set(selected_row_id)
+            self.fighter_tree.see(selected_row_id)
+            self.fighter_selection = selected_row_id
+            self._selected_fighter_record = selected_record
+        else:
+            self.fighter_selection = None
+            self._selected_fighter_record = None
         values = self.fighter_field_names()
         self.fighter_bulk_field_box["values"] = values
         if not self.fighter_bulk_field.get() and values:
@@ -1589,14 +1713,21 @@ class UniverseDatabaseEditor:
 
     def select_fighter(self):
         selection = self.fighter_tree.selection()
-        self.fighter_selection = int(selection[0]) if selection else None
+        self.fighter_selection = selection[0] if selection else None
+        self._selected_fighter_record = self.fighter_row_map.get(selection[0]) if selection else None
         self.refresh_fighter_editor()
 
     def selected_fighter(self):
-        if self.fighter_selection is None:
-            return None
-        records = self.fighter_records()
-        return records[self.fighter_selection] if 0 <= self.fighter_selection < len(records) else None
+        record = getattr(self, "_selected_fighter_record", None)
+        if isinstance(record, dict) and any(candidate is record for candidate in self.fighter_records()):
+            return record
+        selection = getattr(self, "fighter_selection", None)
+        if isinstance(selection, str):
+            record = getattr(self, "fighter_row_map", {}).get(selection)
+            if isinstance(record, dict):
+                self._selected_fighter_record = record
+                return record
+        return None
 
     def refresh_fighter_editor(self):
         self.refresh_record_editor("fighter", self.selected_fighter())
@@ -1604,6 +1735,7 @@ class UniverseDatabaseEditor:
     def refresh_companies(self):
         if not self.ensure_database_loaded():
             return
+        selected_record = self._selected_company_record
         company_rows = self.filtered_companies()
         regions = sorted({str(record.get("region")) for _key, record in company_rows if record.get("region")})
         reputations = sorted({str(record.get("reputation")) for _key, record in company_rows if record.get("reputation")})
@@ -1612,9 +1744,30 @@ class UniverseDatabaseEditor:
         self.refresh_filter_choice(self.company_kind_filter, self.company_kind_combo, ("Player", "AI", "Regional"), "All types")
         for item in self.company_tree.get_children():
             self.company_tree.delete(item)
+        self.company_row_map = {}
+        used_row_ids = set()
+        selected_row_id = None
         for key, record in self.sort_rows("company", self.filtered_companies()):
             kind = self.company_kind_for_key(key)
-            self.company_tree.insert("", "end", iid=str(key), values=(record.get("name", ""), record.get("region", ""), record.get("reputation", ""), record.get("size", ""), record.get("cash", ""), record.get("stability", ""), record.get("roster_key", ""), kind))
+            base_row_id = self._database_row_key("company", record)
+            row_id = base_row_id
+            suffix = 2
+            while row_id in used_row_ids:
+                row_id = f"{base_row_id}#{suffix}"
+                suffix += 1
+            used_row_ids.add(row_id)
+            self.company_row_map[row_id] = record
+            self.company_tree.insert("", "end", iid=row_id, values=(record.get("name", ""), record.get("region", ""), record.get("reputation", ""), record.get("size", ""), record.get("cash", ""), record.get("stability", ""), record.get("roster_key", ""), kind))
+            if record is selected_record:
+                selected_row_id = row_id
+        if selected_row_id is not None:
+            self.company_tree.selection_set(selected_row_id)
+            self.company_tree.see(selected_row_id)
+            self.company_selection = selected_row_id
+            self._selected_company_record = selected_record
+        else:
+            self.company_selection = None
+            self._selected_company_record = None
         values = self.company_field_names()
         self.company_bulk_field_box["values"] = values
         if not self.company_bulk_field.get() and values:
@@ -1636,22 +1789,22 @@ class UniverseDatabaseEditor:
     def select_company(self):
         selection = self.company_tree.selection()
         self.company_selection = selection[0] if selection else None
+        self._selected_company_record = self.company_row_map.get(selection[0]) if selection else None
         self.refresh_company_editor()
 
     def selected_company(self):
-        if self.company_selection is None:
-            return None
-        if self.company_selection == "player":
-            return self.current_sections().get("companies", {}).get("player_company")
-        if str(self.company_selection).startswith("regional:"):
-            try:
-                return self.regional_company_records()[int(str(self.company_selection).split(":", 1)[1])]
-            except (IndexError, TypeError, ValueError):
-                return None
-        try:
-            return self.company_records()[int(self.company_selection)]
-        except (IndexError, TypeError, ValueError):
-            return None
+        record = getattr(self, "_selected_company_record", None)
+        if isinstance(record, dict):
+            current = self.current_sections().get("companies", {})
+            if record is current.get("player_company") or any(candidate is record for candidate in self.company_records()) or any(candidate is record for candidate in self.regional_company_records()):
+                return record
+        selection = getattr(self, "company_selection", None)
+        if isinstance(selection, str):
+            record = getattr(self, "company_row_map", {}).get(selection)
+            if isinstance(record, dict):
+                self._selected_company_record = record
+                return record
+        return None
 
     def refresh_company_editor(self):
         self.refresh_record_editor("company", self.selected_company())
@@ -1850,7 +2003,8 @@ class UniverseDatabaseEditor:
     def apply_field(self, kind):
         record = self.record_for_kind(kind)
         if not isinstance(record, dict):
-            messagebox.showinfo("No record selected", "Select a record first.")
+            if not self._editor_notice("Select a record first."):
+                messagebox.showinfo("No record selected", "Select a record first.")
             return
         if kind == "fighter":
             field, value_text = self.fighter_field_var.get().strip(), self.fighter_value_text
@@ -1892,7 +2046,9 @@ class UniverseDatabaseEditor:
         if not isinstance(record, dict) or not field:
             return
         if field in FIGHTER_REQUIRED_FIELDS if kind == "fighter" else field in COMPANY_REQUIRED_FIELDS:
-            messagebox.showwarning("Required field", f"{field} is required and cannot be removed.")
+            notice = f"{field} is required and cannot be removed."
+            if not self._editor_notice(notice):
+                messagebox.showwarning("Required field", notice)
             return
         record.pop(field, None)
         self.refresh_all()
@@ -1901,7 +2057,8 @@ class UniverseDatabaseEditor:
         record = self.record_for_kind(kind)
         raw = self.fighter_raw_text if kind == "fighter" else self.company_raw_text
         if not isinstance(record, dict):
-            messagebox.showinfo("No record selected", "Select a record first.")
+            if not self._editor_notice("Select a record first."):
+                messagebox.showinfo("No record selected", "Select a record first.")
             return
         try:
             edited = json.loads(raw.get("1.0", "end").strip() or "{}")
@@ -1923,7 +2080,9 @@ class UniverseDatabaseEditor:
         else:
             rows, field, operation, raw_value = self.filtered_companies(), self.company_bulk_field.get().strip(), self.company_bulk_operation.get(), self.company_bulk_value.get()
         if not rows or not field:
-            messagebox.showinfo("Nothing to edit", "Choose a field and leave at least one record in the current filter.")
+            notice = "Choose a field and leave at least one record in the current filter."
+            if not self._editor_notice(notice):
+                messagebox.showinfo("Nothing to edit", notice)
             return
         value = json_value(raw_value)
         if not messagebox.askyesno("Apply bulk edit", f"{operation} {field} on {len(rows)} filtered {kind}s?"):
@@ -1956,19 +2115,23 @@ class UniverseDatabaseEditor:
             "record_w": 0, "record_l": 0, "record_d": 0, "region": "USA", "nationality": "American", "style": "Well-Rounded",
         }
         self.fighter_records().append(record)
-        self.fighter_selection = len(self.fighter_records()) - 1
+        self._selected_fighter_record = record
+        self.fighter_selection = None
         self.refresh_fighters()
 
     def duplicate_fighter(self):
         record = self.selected_fighter()
         if not isinstance(record, dict):
-            messagebox.showinfo("No fighter selected", "Select a fighter to duplicate.")
+            notice = "Select a fighter to duplicate."
+            if not self._editor_notice(notice):
+                messagebox.showinfo("No fighter selected", notice)
             return
         copied = deepcopy(record)
         copied["name"] = f"{record.get('name', 'Fighter')} Copy"
         copied["fighter_id"] = new_fighter_id()
         self.fighter_records().append(copied)
-        self.fighter_selection = len(self.fighter_records()) - 1
+        self._selected_fighter_record = copied
+        self.fighter_selection = None
         self.refresh_fighters()
 
     def delete_fighter(self):
@@ -1977,7 +2140,18 @@ class UniverseDatabaseEditor:
             return
         if not messagebox.askyesno("Delete fighter", f"Delete {record.get('name', 'this fighter')} from this database?"):
             return
-        self.fighter_records().pop(self.fighter_selection)
+        records = self.fighter_records()
+        try:
+            records.remove(record)
+        except ValueError:
+            notice = "The selected fighter is no longer in this database view. Refresh and choose it again."
+            if not self._editor_notice(notice):
+                messagebox.showwarning("Fighter changed", notice)
+            self._selected_fighter_record = None
+            self.fighter_selection = None
+            self.refresh_fighters()
+            return
+        self._selected_fighter_record = None
         self.fighter_selection = None
         self.refresh_fighters()
 
@@ -1989,38 +2163,58 @@ class UniverseDatabaseEditor:
             return
         record = {"name": name.strip(), "region": "USA", "size": 50, "cash": 1000000, "reputation": "National", "roster_key": name.strip(), "target_roster_size": 120, "personality": "Balanced"}
         self.company_records().append(record)
-        self.company_selection = str(len(self.company_records()) - 1)
+        self._selected_company_record = record
+        self.company_selection = None
         self.refresh_companies()
 
     def duplicate_company(self):
         record = self.selected_company()
         if not isinstance(record, dict):
-            messagebox.showinfo("No company selected", "Select a company to duplicate.")
+            notice = "Select a company to duplicate."
+            if not self._editor_notice(notice):
+                messagebox.showinfo("No company selected", notice)
             return
         copied = deepcopy(record)
         copied["name"] = f"{record.get('name', 'Company')} Copy"
         copied["roster_key"] = copied["name"]
-        if str(self.company_selection).startswith("regional:"):
+        source_is_regional = any(candidate is record for candidate in self.regional_company_records())
+        if source_is_regional:
             self.regional_company_records().append(copied)
-            self.company_selection = f"regional:{len(self.regional_company_records()) - 1}"
         else:
             self.company_records().append(copied)
-            self.company_selection = str(len(self.company_records()) - 1)
+        self._selected_company_record = copied
+        self.company_selection = None
         self.refresh_companies()
 
     def delete_company(self):
-        if self.company_selection == "player":
-            messagebox.showwarning("Player company", "The player company cannot be deleted from a universe pack.")
-            return
         record = self.selected_company()
         if not isinstance(record, dict):
             return
+        player_record = self.current_sections().get("companies", {}).get("player_company")
+        if record is player_record:
+            notice = "The player company cannot be deleted from a universe pack."
+            if not self._editor_notice(notice):
+                messagebox.showwarning("Player company", notice)
+            return
         if not messagebox.askyesno("Delete company", f"Delete {record.get('name', 'this company')}? Fighters stay in the database and should be reassigned with a bulk owner edit."):
             return
-        if str(self.company_selection).startswith("regional:"):
-            self.regional_company_records().pop(int(str(self.company_selection).split(":", 1)[1]))
-        else:
-            self.company_records().pop(int(self.company_selection))
+        removed = False
+        for records in (self.company_records(), self.regional_company_records()):
+            try:
+                records.remove(record)
+                removed = True
+                break
+            except ValueError:
+                continue
+        if not removed:
+            notice = "The selected company is no longer in this database view. Refresh and choose it again."
+            if not self._editor_notice(notice):
+                messagebox.showwarning("Company changed", notice)
+            self._selected_company_record = None
+            self.company_selection = None
+            self.refresh_companies()
+            return
+        self._selected_company_record = None
         self.company_selection = None
         self.refresh_companies()
 

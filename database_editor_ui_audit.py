@@ -45,10 +45,14 @@ def audit_all_visible_values(app, kind):
     for index, record in enumerate(rows):
         if kind == "fighter":
             app.fighter_selection = index
+            # The editor routes by source record identity; list order is only
+            # a compatibility field and may differ after sorting/filtering.
+            app._selected_fighter_record = record
             app.refresh_fighter_editor()
             field_var = app.fighter_field_var
         else:
             app.company_selection = str(index) if index < len(app.company_records()) else f"regional:{index - len(app.company_records())}"
+            app._selected_company_record = record
             app.refresh_company_editor()
             field_var = app.company_field_var
         for field, value in record.items():
@@ -69,10 +73,12 @@ def audit_apply_paths(app, kind):
             seen.add(field)
             if kind == "fighter":
                 app.fighter_selection = index
+                app._selected_fighter_record = record
                 app.refresh_fighter_editor()
                 app.fighter_field_var.set(field)
             else:
                 app.company_selection = str(index) if index < len(app.company_records()) else f"regional:{index - len(app.company_records())}"
+                app._selected_company_record = record
                 app.refresh_company_editor()
                 app.company_field_var.set(field)
             before = deepcopy(value)
@@ -87,6 +93,7 @@ def audit_apply_paths(app, kind):
 def audit_rating_controls(app):
     index = next(index for index, row in enumerate(app.fighter_records()) if row.get("name") == "Paddy Pimblett")
     app.fighter_selection = index
+    app._selected_fighter_record = app.fighter_records()[index]
     app.refresh_fighter_editor()
     record = app.selected_fighter()
     for field, _label in app.CORE_RATING_FIELDS:

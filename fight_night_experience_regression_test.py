@@ -428,7 +428,9 @@ class FightNightSourceInvariantTests(unittest.TestCase):
 
     def test_review_and_replay_clean_fighter_display_names(self):
         source = self.source
-        self.assertIn('self.display_fighter_names_in_text(str(line), log) for line in replay_lines', source)
+        self.assertIn('return build_event_archive(self, title, package)', source)
+        archive = (ROOT / 'fight_night_archive.py').read_text(encoding='utf-8')
+        self.assertIn('app.display_fighter_names_in_text', archive)
         self.assertIn('log.get("detailed_lines", log.get("lines", [])), commentary_mode_var.get()', source)
         self.assertIn("for line in review_lines", source)
         self.assertIn('left_copy = self.display_fighter_name_value(log.get("a", "Red corner"))', source)
@@ -443,10 +445,16 @@ class FightNightSourceInvariantTests(unittest.TestCase):
 
     def test_round_and_high_impact_calls_have_distinct_live_styles(self):
         source = self.source
-        self.assertIn('text.tag_configure("round_separator"', source)
-        self.assertIn('"─" * 64 + "\\n", "round_separator"', source)
-        self.assertIn('background=impact_background', source)
-        self.assertIn('background=finish_background', source)
+        self.assertIn('insert_fight_timeline_line(text, value, tag=visual_tag)', source)
+        self.assertIn('configure_fight_timeline(text, self.colors)', source)
+        styles = (ROOT / 'fight_night_presentation.py').read_text(encoding='utf-8')
+        self.assertIn('for tag in ("heading", "round", "result")', styles)
+        self.assertIn('"impact": (colors.get("gold", accent)', styles)
+        self.assertIn('"knockdown": (colors.get("gold", accent)', styles)
+        self.assertIn('"cut": (colors.get("red", impact)', styles)
+        self.assertIn('"finish": (colors.get("red", impact)', styles)
+        self.assertIn('relief="raised", borderwidth=1', styles)
+        self.assertIn('"timeline_hanging"', styles)
 
 
 if __name__ == "__main__":

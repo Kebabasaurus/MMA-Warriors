@@ -54,6 +54,17 @@ def run_player_media_checks(app):
     check(len(offers) >= 2, "A new player company must receive default media offers")
     check(all(offer.get("events_remaining", 0) > 0 for offer in offers), "Every media offer needs a positive event commitment")
 
+    assessed = app.media_offer_assessment(offers[0])
+    check(0 <= assessed["score"] <= 100 and assessed["gross"] > 0,
+          "Media offer assessment did not expose a bounded value and gross package")
+    counter_offer = offers[-1]
+    old_reach = counter_offer["reach"]
+    accepted_counter, _message = app.counter_player_media_offer(counter_offer["id"], "Wider Reach", roll=1)
+    check(accepted_counter and counter_offer["reach"] == min(99, old_reach + 5),
+          "Successful wider-reach negotiation did not improve the selected offer")
+    check(not app.counter_player_media_offer(counter_offer["id"], "Wider Reach", roll=1)[0],
+          "A media outlet answered more than one counteroffer")
+
     market_offer = next(
         (
             offer for offer in offers
@@ -98,6 +109,21 @@ def run_player_media_checks(app):
 
     capacity = app.media_action_capacity()
     check(capacity >= 2, "Player media capacity must allow at least two weekly actions")
+    marketing_lead = next((member for member in app.staff if member.get("role") == "Marketing"), None)
+    if marketing_lead:
+        original_specialty = marketing_lead.get("specialty")
+        marketing_lead["specialty"] = "Regional campaigns"
+        ordinary_spec = app._media_action_spec("Press Tour", fighter_a)
+        marketing_lead["specialty"] = "Campaign Coordinator"
+        coordinated_spec = app._media_action_spec("Press Tour", fighter_a)
+        check(coordinated_spec["staff_cost_saving"] > 0 and coordinated_spec["cost"] < ordinary_spec["cost"],
+              "Campaign Coordinator did not reduce the quoted paid-media cost")
+        check(coordinated_spec["base_cost"] == ordinary_spec["cost"],
+              "Campaign Coordinator changed the underlying campaign price basis")
+        foreign_spec = app._media_action_spec("Press Tour", fighter_a, promotion=object())
+        check(foreign_spec["staff_cost_saving"] == 0 and foreign_spec["cost"] == foreign_spec["base_cost"],
+              "Player Campaign Coordinator leaked into another promotion's media quote")
+        marketing_lead["specialty"] = original_specialty
     history_before = len(app.finance["media_campaign_history"])
     campaign_fighters = app.roster[: capacity + 1]
     random.seed(1103)
@@ -120,6 +146,64 @@ def run_player_media_checks(app):
     check(ok, f"Fighter remained incorrectly locked in the next week: {text}")
 
     return contract, event
+
+
+def run_sponsor_management_checks(app):
+    finance = app.ensure_player_media_state()
+    finance["sponsor_offers"] = [{
+        "id": "test-sponsor", "name": "Test Hydration", "category": "Hydration",
+        "fee": 10_000, "months": 12, "fit": 80, "relationship": 50,
+        "activation_requirement": "Maintain company stability above 45",
+        "conduct_threshold": 35, "expires_month": app.month + 1,
+    }]
+    finance_before_preview = deepcopy(finance)
+    rng_before_preview = random.getstate()
+    assessment = app.sponsor_offer_assessment(finance["sponsor_offers"][0])
+    check(finance == finance_before_preview and random.getstate() == rng_before_preview,
+          "Sponsor offer valuation preview changed state or consumed RNG")
+    check(assessment["annual"] == 120_000 and 0 <= assessment["score"] <= 100
+          and assessment["verdict"] in ("STRONG FIT", "WORKABLE", "LOW VALUE"),
+          "Sponsor comparison did not value fee, fit and term correctly")
+    check(assessment["max_per_event"] == 10_000 and assessment["estimated_per_event"] == 10_000
+          and assessment["term_months"] == 12 and assessment["activation_ready"],
+          "Sponsor comparison did not separate contracted maximum from current estimate")
+    accepted, _message = app.counter_sponsor_offer("test-sponsor", roll=1)
+    check(accepted and finance["sponsor_offers"][0]["fee"] == 11_200,
+          "Successful sponsor counter did not raise the event fee by 12 percent")
+    check(not app.counter_sponsor_offer("test-sponsor", roll=1)[0],
+          "A sponsor answered more than one counteroffer")
+
+    deal = finance["sponsor_offers"][0]
+    old_stability = app.company_stability
+    app.company_stability = 45
+    ready, reason = app.sponsor_activation_status(deal)
+    check(not ready and "stability" in reason, "Sponsor stability requirement was only descriptive")
+    at_risk = app.sponsor_offer_assessment(deal)
+    check(not at_risk["activation_ready"] and at_risk["estimated_per_event"] == round(deal["fee"] * .5)
+          and "stability" in at_risk["activation_reason"],
+          "Sponsor preview did not disclose its activation-adjusted estimate")
+    delivery_deal = {**deal, "activation_requirement": "Deliver at least one event each month"}
+    finance["media_audience_history"] = []
+    check(not app.sponsor_activation_status(delivery_deal)[0]
+          and app.sponsor_activation_status(delivery_deal, event={"month": app.month, "week": app.week})[0],
+          "Monthly event-delivery sponsor requirement was not enforced at settlement")
+    check(app.sponsor_event_fee(deal) == deal["fee"] // 2,
+          "An at-risk sponsor did not reduce its event payment")
+    app.company_stability = max(46, old_stability)
+    check(app.sponsor_activation_status(deal)[0], "A satisfied sponsor requirement stayed at risk")
+
+    featured = app.roster[0]
+    old_champion, old_rank = featured.champion, featured.ranking_position
+    featured.champion = True
+    ranked_deal = {**deal, "activation_requirement": "Feature a ranked fighter in campaign media"}
+    finance["media_campaign_history"] = []
+    check(not app.sponsor_activation_status(ranked_deal)[0],
+          "Ranked-fighter activation passed without current-month campaign work")
+    finance["media_campaign_history"] = [{"month": app.month, "subject": featured.name}]
+    check(app.sponsor_activation_status(ranked_deal)[0],
+          "Current-month champion media did not activate its sponsor")
+    featured.champion, featured.ranking_position = old_champion, old_rank
+    app.company_stability = old_stability
 
 
 def run_legacy_migration_check(app):
@@ -211,6 +295,7 @@ def main():
     root.withdraw()
     try:
         app = FightEmpireApp(root)
+        run_sponsor_management_checks(app)
         player_contract, player_event = run_player_media_checks(app)
         run_legacy_migration_check(app)
         ai_promo, ai_contract, ai_event = run_ai_media_checks(app)

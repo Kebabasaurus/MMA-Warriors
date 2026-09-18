@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "source_sha256": "f91913fd3211b9266db192073d6b875f3cb73d096856ebc53a8da53764b1065f",
+  "updates": {
+    "single_jab": {
+      "follow_ups": [
+        "one_two",
+        "jab_to_shot",
+        "double_jab"
+      ]
+    },
+    "double_jab": {
+      "follow_ups": [
+        "one_two",
+        "up_jab",
+        "collar_tie_entry"
+      ]
+    },
+    "up_jab": {
+      "follow_ups": [
+        "one_two",
+        "collar_tie_entry",
+        "power_jab"
+      ]
+    },
+    "pawing_jab": {
+      "follow_ups": [
+        "double_leg_entry",
+        "body_lock_entry",
+        "flicker_jab"
+      ]
+    },
+    "flicker_jab": {
+      "follow_ups": [
+        "one_two",
+        "single_jab",
+        "collar_tie_entry"
+      ]
+    },
+    "retreating_jab": {
+      "follow_ups": [
+        "one_two",
+        "single_jab",
+        "collar_tie_entry"
+      ]
+    },
+    "outside_step_jab": {
+      "follow_ups": [
+        "one_two",
+        "body_lock_entry",
+        "power_jab"
+      ]
+    },
+    "power_jab": {
+      "follow_ups": [
+        "lead_hook_cross",
+        "double_leg_entry",
+        "collar_tie_entry"
+      ]
+    },
+    "step_in_jab": {
+      "follow_ups": [
+        "one_two",
+        "collar_tie_entry",
+        "power_jab"
+      ]
+    },
+    "ride_control": {
+      "follow_ups": [
+        "hip_pressure_ride",
+        "posture_punches",
+        "half_guard_kimura"
+      ]
+    },
+    "inside_biceps_entry": {
+      "follow_ups": [
+        "clinch_knee",
+        "pummel_to_underhook",
+        "knee_tap"
+      ]
+    },
+    "forearm_frame_entry": {
+      "follow_ups": [
+        "short_clinch_boxing",
+        "pummel_to_underhook",
+        "knee_tap"
+      ]
+    },
+    "collar_tie_entry": {
+      "follow_ups": [
+        "clinch_knee",
+        "pummel_to_underhook",
+        "knee_tap"
+      ]
+    },
+    "frame_and_pivot_exit": {
+      "follow_ups": [
+        "side_kick",
+        "single_jab",
+        "one_two"
+      ]
+    },
+    "collar_tie_strip_exit": {
+      "follow_ups": [
+        "single_jab",
+        "one_two",
+        "body_lock_entry"
+      ]
+    },
+    "pivot_exit": {
+      "follow_ups": [
+        "side_kick",
+        "single_jab",
+        "one_two"
+      ]
+    },
+    "pummel_to_underhook": {
+      "follow_ups": [
+        "knee_tap",
+        "clinch_knee",
+        "head_position_pin"
+      ]
+    },
+    "swim_to_space": {
+      "follow_ups": [
+        "side_kick",
+        "single_jab",
+        "one_two"
+      ]
+    },
+    "shoulder_pressure": {
+      "follow_ups": [
+        "short_clinch_boxing",
+        "body_lock_trip",
+        "head_position_pin"
+      ]
+    },
+    "body_head_ground_chain": {
+      "follow_ups": [
+        "position_pass",
+        "guard_top_head_arm",
+        "chest_to_chest_pin"
+      ]
+    },
+    "knee_on_belly_pressure": {
+      "follow_ups": [
+        "crucifix_elbows",
+        "mount_transition",
+        "half_guard_brabo"
+      ]
+    },
+    "guard_posture_elbows": {
+      "follow_ups": [
+        "headquarters_pass",
+        "guard_top_head_arm",
+        "staggered_base_guard_control"
+      ]
+    },
+    "headquarters_pass": {
+      "follow_ups": [
+        "half_guard_crossface_strikes",
+        "half_guard_crossface_control",
+        "half_guard_kimura"
+      ]
+    },
+    "position_pass": {
+      "follow_ups": [
+        "top_submission_chain",
+        "back_take_transition",
+        "knee_on_belly_pressure"
+      ]
+    },
+    "over_under_entry": {
+      "follow_ups": [
+        "outside_trip",
+        "pummel_to_underhook",
+        "short_clinch_boxing"
+      ]
+    },
+    "double_underhooks": {
+      "follow_ups": [
+        "knee_tap",
+        "pummel_to_underhook",
+        "short_clinch_boxing"
+      ]
+    },
+    "shoulder_turn_exit": {
+      "follow_ups": [
+        "double_jab",
+        "single_leg_entry",
+        "one_two"
+      ]
+    },
+    "frame_exit": {
+      "follow_ups": [
+        "lead_teep",
+        "single_jab",
+        "one_two"
+      ]
+    },
+    "post_and_push_exit": {
+      "follow_ups": [
+        "lead_teep",
+        "single_jab",
+        "one_two"
+      ]
+    },
+    "head_position_pin": {
+      "follow_ups": [
+        "knee_tap",
+        "short_clinch_boxing",
+        "inside_biceps_control"
+      ]
+    }
+  }
+}

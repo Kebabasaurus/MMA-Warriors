@@ -13,9 +13,10 @@ from dataclasses import asdict
 from pathlib import Path
 from tkinter import ttk
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import test_support
-from fight_moves import MOVE_REGISTRY
+from fight_moves.release_registry import RELEASE_MOVE_REGISTRY as MOVE_REGISTRY
 
 
 ROOT = Path(__file__).resolve().parent
@@ -546,6 +547,8 @@ def _run_smoke_suite():
             mixed_style_count >= round(len(all_objects) * 0.55),
             "Opening world did not seed the intended breadth of mixed-style fighters",
         )
+        assert_true(app._fight_move_registry is MOVE_REGISTRY,
+                    "Opening application must use the same release catalogue as save validation")
         invalid_signatures = [
             (fighter.name, fighter.signature_moves)
             for fighter in all_objects
@@ -1105,7 +1108,10 @@ def _run_smoke_suite():
         history_a.bout_rating_history = list(original_bout_history)
         history_a.bout_rating_history.insert(0, {"date": "Month 3 Week 2", "result": "W", "opponent_name": history_b.name})
         app._matchup_history_cache = {}
-        assert_true(app.matchup_history_indicator(history_a, history_b) == "1 prior", "Matchmaking did not detect a prior meeting")
+        assert_true(app.matchup_history_summary(history_a, history_b) == (1, 3),
+                    "Matchmaking did not retain the prior meeting count and date")
+        assert_true(app.matchup_history_indicator(history_a, history_b) == "1 prior / unknown",
+                    "Legacy name-only history must show the meeting without inventing rematch evidence")
         assert_true(app.matchup_display_name(history_a, history_b).endswith(" II"), "Matchmaking did not label the rematch correctly")
         repeated_score = app.matchmaking_score(history_a, history_b)[0]
         assert_true(app.fighter_last_fight_date_label(history_a) == app.format_game_date(3, 2), "Matchmaking lost the fighter's last-fight date")
@@ -1132,7 +1138,7 @@ def _run_smoke_suite():
         app.configure_booking_panel_layout(1400)
         assert_true(app.booking_horizontal_split.cget("orient") == "horizontal" and str(app.booking_horizontal_split.panes()[0]) == str(app.booking_available_panel),
                     "Wide Matchmaking did not restore the dense side-by-side layout")
-        assert_true("20 METRICS AVAILABLE" in app.available_columns_hint.cget("text"),
+        assert_true(f"all {len(app.available_tree.cget('columns'))} metrics" in app.available_columns_hint.cget("text"),
                     "Available Fighters does not signal that more table metrics exist")
         original_booked = list(app.booked)
         history_b_available_week = history_b.available_week
@@ -1434,7 +1440,10 @@ def _run_smoke_suite():
         assert_true(child_probe.roster and child_probe.startup_capital == 1_000_000,
                     "MMA child promotion did not spend startup capital on an opening roster")
         parent_candidate = next(fighter for fighter in app.roster if not fighter.retirement_pending and not fighter.injured)
-        loan_ok, _loan_note = app.loan_fighter_to_child_promotion(child_probe.name, parent_candidate.fighter_id)
+        loan_ok, _loan_note = app.loan_fighter_to_child_promotion(
+            child_probe.name, parent_candidate.fighter_id,
+            return_month=app.month + 1, return_week=1,
+        )
         assert_true(loan_ok and parent_candidate not in app.roster and parent_candidate in child_probe.roster,
                     "Player fighter could not be loaned into the MMA child promotion")
         parent_candidate.contract_months = 0
@@ -1453,9 +1462,10 @@ def _run_smoke_suite():
                     "MMA child-promotion and loan state did not serialize")
         app.apply_world_data(child_save)
         child_probe = next(promo for promo in app.promotions if promo.name == "Smoke AI Development")
-        assert_true(child_probe.is_child_promotion and child_probe.loaned_fighter_ids,
-                    "MMA child-promotion and loan state did not survive save/load")
         loaded_parent_candidate = next(fighter for fighter in child_probe.roster if fighter.fighter_id == parent_candidate.fighter_id)
+        assert_true(child_probe.is_child_promotion and child_probe.loaned_fighter_ids and
+                    loaded_parent_candidate.loan_return_month == app.month + 1 and loaded_parent_candidate.loan_return_week == 1,
+                    "MMA child-promotion and loan state did not survive save/load")
         recall_ok, _recall_note = app.recall_fighter_from_child_promotion(child_probe.name, loaded_parent_candidate.fighter_id)
         assert_true(recall_ok and any(fighter.fighter_id == loaded_parent_candidate.fighter_id for fighter in app.roster) and not loaded_parent_candidate.loaned_to_promotion,
                     "Loaned MMA fighter could not be recalled to the parent company")
@@ -1518,11 +1528,12 @@ def _run_smoke_suite():
                     "Cancelled-bout handling created a dedicated rebooking card")
         app.scheduled_events = []
         app.queue_cancelled_bout_rebooking({"name": "Smoke Test 1"}, {"tier": "Prelims"}, [snapshot_a.name, snapshot_b.name])
-        assert_true(not app.scheduled_events and not app.pending_rebookings,
-                    "A cancelled bout without a future card did not fall away cleanly")
+        assert_true(not app.scheduled_events and len(app.pending_rebookings) == 1 and
+                    app.pending_rebookings[0].get("status") == "needs_review",
+                    "A cancelled bout without a future card was not retained for rebooking review")
         cancellable = {"name": "Cancel Me", "venue": "Regional Arena", "region": app.player_region, "city": "London", "month": app.month + 2, "week": 1, "fights": []}
         app.scheduled_events = [cancellable]
-        app.refresh_upcoming(); app.upcoming_tree.selection_set("0")
+        app.refresh_upcoming(); app.upcoming_tree.selection_set(next(iter(app.upcoming_event_rows)))
         app.cancel_selected_scheduled_event()
         assert_true(cancellable in app.scheduled_events, "Card cancellation did not require inline confirmation")
         app.cancel_selected_scheduled_event()
@@ -2077,7 +2088,7 @@ def _run_smoke_suite():
         assert_true(all(getattr(fighter, "camp_intensity", "") for fighter in app.roster[:25]), "Fighter camp-intensity profiles missing")
         assert_true(all("specialty" in member and "reputation" in member for member in app.staff), "Staff specialization profiles missing")
         assert_true(all(member.get("contract_months", 0) > 0 and member.get("contract_type") for member in app.staff), "Staff contracts were not seeded")
-        assert_true(set(game.STAFF_ROLE_EFFECTS) == {"Scout", "Doctor", "Marketing", "Matchmaker", "Drug Testing Officer", "Broadcast Producer", "Talent Relations"}, "Staff effect guide is missing a staff role")
+        assert_true(set(game.STAFF_ROLE_EFFECTS) == {"Scout", "Doctor", "Marketing", "Matchmaker", "Drug Testing Officer", "Broadcast Producer", "Talent Relations", "Academy Coach"}, "Staff effect guide is missing a staff role")
         legacy_staff = {"name": "Legacy Staff", "role": "Doctor", "skill": 60, "salary": 6000, "morale": 70}
         staff_before = app.staff
         app.staff = [legacy_staff]
@@ -2173,7 +2184,7 @@ def _run_smoke_suite():
         app.record_season_result(draw_a, draw_b, "Draw", 3, {"title": False, "main": False}, 50, app.player_company_name)
         draw_stats = app.season_bucket()["fighters"]
         assert_true((draw_a.record_d, draw_b.record_d) == (draws_before[0] + 1, draws_before[1] + 1), "Draws did not update both fighter records")
-        assert_true(draw_stats[draw_a.name].get("draws") and not draw_stats[draw_a.name]["wins"], "Draw was incorrectly recorded as a win")
+        assert_true(draw_stats[draw_a.fighter_id].get("draws") and not draw_stats[draw_a.fighter_id]["wins"], "Draw was incorrectly recorded as a win")
 
         sport_history_probe = app.combat_sport_worlds["Boxing"]["roster"][0]
         app.record_combat_sport_rating_snapshot(sport_history_probe, "Boxing")
@@ -2649,8 +2660,10 @@ def _run_smoke_suite():
         app.scouting_reports.pop(rival_fighter.name, None)
         assert_true(not app.fighter_profile_stats_visible(rival_fighter, app.promotions[0].name),
                     "Unscouted rival profile still exposes private ratings")
-        assert_true(app.start_scout_report_for_fighter(rival_fighter, "basic"),
-                    "A rival-promotion fighter cannot be scouted from their profile")
+        with patch("views.messagebox.askyesno", return_value=True) as scouting_confirmation:
+            assert_true(app.start_scout_report_for_fighter(rival_fighter, "basic"),
+                        "A rival-promotion fighter cannot be scouted from their profile")
+            scouting_confirmation.assert_called_once()
         assert_true(app.scouting_reports[rival_report_key]["status"] == "In progress",
                     "Rival profile scouting did not create a report")
         profile_windows_before = set(root.winfo_children())

@@ -1,0 +1,1295 @@
+{
+  "sha256": "d15acf267482cef7d44139784a66838349f5ebb7715f961de6ffce36857800fa",
+  "snapshot": {
+    "bouts": [
+      {
+        "case_id": "low-competitive-1:0",
+        "defense_payloads": 26,
+        "defenses_sha256": "46429dfb0af9f6fce65d281df46747dd244344f68db8c60cd1d35fab077ce13c",
+        "fixture_sha256": "ec0749f6b835e230765fd453f3eeeeeee641bb759fb39e63bacb28791cb915e5",
+        "mechanics_sha256": "610d7e515d075e7b4452024723cce1bfcb705b04084231aa2feebec51b891a07",
+        "move_payloads": 26,
+        "moves_sha256": "100e5985b7a96b152a0ba73ea6e0650e911cc7e3f82c069b08b1ab9eb1c0713a",
+        "seed": 9310000,
+        "sequence_events": 26,
+        "sequences_sha256": "29b9fc02e6e7689d7050558a87a1276e1a98b0c5c1b9fe2c78b0a41fab497c05",
+        "trace_events": 27,
+        "trace_sha256": "3f9e8b9bab22e12eb5e020a46183974e6b178e85baa5f5667e9c9cd53316c81f"
+      },
+      {
+        "case_id": "low-competitive-2:0",
+        "defense_payloads": 54,
+        "defenses_sha256": "2ee7dc53361310506e9c7285a7d85defe76186c1961b3cf841745579d98ed304",
+        "fixture_sha256": "d0ef6c092c3cbb1fa1149ff6d22aa568f8448e0b5e0af00018552e269560fae0",
+        "mechanics_sha256": "706eca81059f0dfc07c3a12aac7add77a70aaf3f9e93750dfdae8d30965d2217",
+        "move_payloads": 54,
+        "moves_sha256": "ad62e8e63fafde76e60fb22ce58eb8de2b4c4fdc1afb7c561ebe4950cc40d5ee",
+        "seed": 9320000,
+        "sequence_events": 54,
+        "sequences_sha256": "406f5b5bdb95aa47866ee3e477dd71fb8de7d62fef07bea5be35c2b1c36dadb2",
+        "trace_events": 55,
+        "trace_sha256": "53dbc03337bb1905a27e8b1f4075c5ffe41c15b971bf775d00d6ca27d0efc54d"
+      },
+      {
+        "case_id": "low-competitive-3:0",
+        "defense_payloads": 54,
+        "defenses_sha256": "c9273c4136554287c0ae75ec4bca5a3f1cd18c27912963cf05cafd17579e2729",
+        "fixture_sha256": "0f67f9e1d494e0d9186c68d905a83991387fabdf8cf3254c3251fdfdd438ad9f",
+        "mechanics_sha256": "fa09364ea5842857611fee705b3c5bf62b38f8834ba02ebfd070df972b57862e",
+        "move_payloads": 54,
+        "moves_sha256": "ef5d5f22b7cc168cfa36072ecc484573bc86d7365bd3635efa68157542443674",
+        "seed": 9330000,
+        "sequence_events": 54,
+        "sequences_sha256": "ee4d87e9b5bb09808697d9c32451ce5bf4a17bbcb9a2f03caf532080532feef6",
+        "trace_events": 55,
+        "trace_sha256": "9a5804234bea90cf9276c8258809a30a4f16760278fc1bbe5bf0c4ce8057b33e"
+      },
+      {
+        "case_id": "low-competitive-4:0",
+        "defense_payloads": 8,
+        "defenses_sha256": "06710454023ae090729b67c659844e9b7b4a9730ef30c2aa843a65b79e19535e",
+        "fixture_sha256": "8be0b28841f57a65e6933391ad48b59fc5684db8b7fd4224c2ca506157b0ff08",
+        "mechanics_sha256": "b8452c69f669fccd9468178c5411a126f6e2a5ebc20268a10d26819cb0938e6a",
+        "move_payloads": 8,
+        "moves_sha256": "0aad4bcca175be617ecb53f3c1bec2a9475ef9ac7f1a6eacff749b158a3d225a",
+        "seed": 9340000,
+        "sequence_events": 8,
+        "sequences_sha256": "62f5accbf8efb7ec1953f043ec5248ed7938fed60f2bf67e138f9a6df971de5e",
+        "trace_events": 9,
+        "trace_sha256": "928594fccfa1a8c82c560a3f99a87cf6a5cd65328f768248e96ada9c0e2ee15f"
+      },
+      {
+        "case_id": "low-competitive-5:0",
+        "defense_payloads": 19,
+        "defenses_sha256": "2c25e3d08192f48b8e411c772b04cc89d026adcb5767def492a9bde201a77ead",
+        "fixture_sha256": "8a5bccbdd115d0a9ae7e890a364faae990bab616e1792eba74c6d897d361800e",
+        "mechanics_sha256": "d1a6af62f0cd51af0011e7f87410749aa3281085b9a1ee727fed1d7039c83b9d",
+        "move_payloads": 19,
+        "moves_sha256": "e72f8d2af009f975d0ffa2cfa87214332dca389bf6e74342defcb3fbb4b7e91f",
+        "seed": 9350000,
+        "sequence_events": 19,
+        "sequences_sha256": "f14eaf28d6881d071d994f96eac82db6ca8013e0b4d83a785534a49e8cea0339",
+        "trace_events": 20,
+        "trace_sha256": "4b5ea2aac1a4be9f3b1f902c2effaabf966be9a252e552aa402d44fbfe65512c"
+      },
+      {
+        "case_id": "low-competitive-6:0",
+        "defense_payloads": 26,
+        "defenses_sha256": "2a7e049916cde1248cacf68271a6336c379c27f1e0d6d06efe85c9ea9b86b9e0",
+        "fixture_sha256": "be827b2124e798cd36d4da84636ad71c263c346d5fa20b916c12d4f4842a1feb",
+        "mechanics_sha256": "b6a54d940a55b79f591b1b94cb5549d85a16eb9afc44f8d4dfce92a3f7c3313b",
+        "move_payloads": 26,
+        "moves_sha256": "cb7f1d8b7ea49b1a44a2a785c4c446afd26877cb59b86e034b0e10c3eec1c177",
+        "seed": 9360000,
+        "sequence_events": 26,
+        "sequences_sha256": "1ee556e1d82ce5de4399f8b87428b2026a0a77a1cffaab2006f431827415e3d3",
+        "trace_events": 27,
+        "trace_sha256": "16e0072b1bfc3be610f0e8f261893fb49d8963805e11f97abb0118201abfe0b7"
+      },
+      {
+        "case_id": "low-competitive-7:0",
+        "defense_payloads": 8,
+        "defenses_sha256": "116e4029dfed7c75fcbcf14efd05ff72400bacaa142dd3f227a591d9944b7c37",
+        "fixture_sha256": "c878550ac079194eb7cb83bc4ddbf5deaa65aa205f1d3f408d30ef73ade978ea",
+        "mechanics_sha256": "d405cf6da7d8a5d67750014b8fd9804a99cc78a6122c772f0119ed1005999c19",
+        "move_payloads": 8,
+        "moves_sha256": "55382d148ea3ed0a68fffaa18821b070491a6e141858f6b81c7946dde0427763",
+        "seed": 9370000,
+        "sequence_events": 8,
+        "sequences_sha256": "8d69e292ef36f6573f5adef96ff5bcca51a5f3bd560388962388d96adf3bd587",
+        "trace_events": 9,
+        "trace_sha256": "7fc839ca7d5ca02e766ecb66f4a32923152723da65fef2f9c2c98e4b44a829ab"
+      },
+      {
+        "case_id": "low-competitive-8:0",
+        "defense_payloads": 90,
+        "defenses_sha256": "6288d240335f3c13bd137dc7f073d67c2c3cc403ac8a2fe6fb076dd91ce389d1",
+        "fixture_sha256": "9431ad88a5dcf4b609ed94077a9f12efd8b016d6041e6b1824adfc82de0ae17c",
+        "mechanics_sha256": "073f77132ea25f2943a3b3c0c31468c7a42c39bcb44c38b8e08421cb00c11d24",
+        "move_payloads": 90,
+        "moves_sha256": "47c74233f8b1fab342c6047fd2faefeda9b6df30153e29cc236ab145bf3d5264",
+        "seed": 9380000,
+        "sequence_events": 90,
+        "sequences_sha256": "6eb3aeecbbf3424ab6995eb1bb22725c4b3bc716e84ae11420f31a8d381e37ab",
+        "trace_events": 91,
+        "trace_sha256": "e5986d277d52e99ec96438dcf7167706ee539b3e151aece097301b67b8bcb959"
+      },
+      {
+        "case_id": "mid-competitive-1:0",
+        "defense_payloads": 90,
+        "defenses_sha256": "6445e65b0f9abffc83557b2d7697c105a47ef1ce64c3b1f17df960108d9a1551",
+        "fixture_sha256": "15c7da1839106f35a96d7f5fbc976a3f9c8d3971f4f9428b1e725cd2f2694d98",
+        "mechanics_sha256": "a2f67e638eea2dba81dd83be12229c5b420554788496b2df0342edace2af0f36",
+        "move_payloads": 90,
+        "moves_sha256": "84437c603efe46d72882c3fcbf0b3c680ea93d9a56ac95523f469937149ab83a",
+        "seed": 9390000,
+        "sequence_events": 90,
+        "sequences_sha256": "f4c789da9fe4ba1848599bd2250a566e8eb61ad1d7c1f711e022743008371628",
+        "trace_events": 91,
+        "trace_sha256": "16c26677c3aacdb49049f67ebfaf32b9395eb4dbb3d34fe42def66b7edf3e5ff"
+      },
+      {
+        "case_id": "mid-competitive-2:0",
+        "defense_payloads": 2,
+        "defenses_sha256": "f10bc5bfcb14bb43efc6bf1ecc9e81127c625dd44929275b6c8ad3920cb71d7b",
+        "fixture_sha256": "b66ded3c2e0ff68cb283977c8bd4737ac23996a6c07c3f3f16d1d989a806d3bf",
+        "mechanics_sha256": "9d21c611f4644fcd2eb5d619a18359b6acbe88dd274781432d83d5c0d5305df1",
+        "move_payloads": 2,
+        "moves_sha256": "50c40079fdf7436a69f9f3200209af1de3f1f9420eecfef5519b2163f1a4820d",
+        "seed": 9400000,
+        "sequence_events": 2,
+        "sequences_sha256": "e245771ddb999f8fff89b4bd0118596843b6dd1cf94553d315c49ef99c9677d4",
+        "trace_events": 3,
+        "trace_sha256": "e9aa423aa9a4cdf5c025bbaac1e8f74e8dd4b1ecd7cb9891c5322da27a5d2281"
+      },
+      {
+        "case_id": "mid-competitive-3:0",
+        "defense_payloads": 17,
+        "defenses_sha256": "325853aff86e903ed1b8cd358176ff197a64adcb0883f434e1da9cc0c6129cb8",
+        "fixture_sha256": "727cb5106fd65dd9a9dd2ab0440ffa6d46e76df2916bd2822304832c475f568f",
+        "mechanics_sha256": "8c055d0ffe3e753a332fd73fbfdcc99527d030d32b3cdea48daa02d54b16c6ce",
+        "move_payloads": 17,
+        "moves_sha256": "982ed7f8cc579286182375234952fed1a5b99a0e3c7a114e48d9813d173fe932",
+        "seed": 9410000,
+        "sequence_events": 17,
+        "sequences_sha256": "5fd616044adcf480977b169ee87d0905ecaf8c260f6aa26d42eea55bbc6cf7ff",
+        "trace_events": 18,
+        "trace_sha256": "ddafdd2298a85b04e7142cd542d2b7c323b2d0f79c061a097d9c85454409a646"
+      },
+      {
+        "case_id": "mid-competitive-4:0",
+        "defense_payloads": 26,
+        "defenses_sha256": "831ce0065d9214bde64fc951029006193f316a75c6128eddd2949ff09cfee62c",
+        "fixture_sha256": "bb9d50db1813a9865064314711626b7d1dc868a0641667b995bb8c81250ed0c4",
+        "mechanics_sha256": "c1117ea5956b3e0f7c4ee838d6ac6ed61043ea0ae68ece6f341a6f262b39d88d",
+        "move_payloads": 26,
+        "moves_sha256": "c27e17caf5c71444366df95984cffcc9a0ab3e211f3fa3a2b9349ceeaa0398a1",
+        "seed": 9420000,
+        "sequence_events": 26,
+        "sequences_sha256": "39c1d2b87ab1e9260f8270e7d819a98381c8a8ee2e8d630b485b56ac6ae7bcec",
+        "trace_events": 27,
+        "trace_sha256": "79501a9736649c0207dac123d5d2b64cde5921b873ce58d2e70376d94ce4a8bb"
+      },
+      {
+        "case_id": "mid-competitive-5:0",
+        "defense_payloads": 54,
+        "defenses_sha256": "d4c9624b44495958284dc526f77e869dde0ec1c0b2e51d40f2a53b4371f484aa",
+        "fixture_sha256": "57630e2d766695f9a8dc85e2a65e00d6a416a750d3e030b9f1642fa829b037d5",
+        "mechanics_sha256": "fcba0e22ffba24375c03748c863e8dba247c84facc186422b62f8c5d302af5a2",
+        "move_payloads": 54,
+        "moves_sha256": "21394fa654a345a7797f20553e4c89aa382a5ce627defaf197bcb6a00af3b26d",
+        "seed": 9430000,
+        "sequence_events": 54,
+        "sequences_sha256": "cb382f5577e3a0f95bb19c0e89474f15262d3b291177482772bdecb9dc18d3dc",
+        "trace_events": 55,
+        "trace_sha256": "8333226f1f9d53e04592f5ad66c3498f36b5e22f12675aa1eae7df5c8b5bbb7a"
+      },
+      {
+        "case_id": "mid-competitive-6:0",
+        "defense_payloads": 26,
+        "defenses_sha256": "3bdb1157058f4443e54f39daae397582905fe5bbb1d5d2aa80de3af5ce0bd6c2",
+        "fixture_sha256": "92e1a33c6c032fcb9dbca3c604b57014bae1e92fba7da1f09a30f38b91a57f76",
+        "mechanics_sha256": "f4cd5729ffa6e2a2e5f70f48f73ea0f7bff153ee35eefa2c943865aa81cd8e43",
+        "move_payloads": 26,
+        "moves_sha256": "ad6bc82ce7f28377a7a222902599a82f901856d46ae1d2a68afaa31d94e116ff",
+        "seed": 9440000,
+        "sequence_events": 26,
+        "sequences_sha256": "776a870fbff9db15d10ecfec7c9aab41c55bc89c1ff24db6c17808a306107002",
+        "trace_events": 27,
+        "trace_sha256": "b30705bbe6b5343ec0a871ed60c6be62ca98f327d2bb3af7a51e66485975b206"
+      },
+      {
+        "case_id": "mid-competitive-7:0",
+        "defense_payloads": 54,
+        "defenses_sha256": "241417295a5dfa1052e06a0eb10ec861f84a9b56ff1cbf09b4bd996a54373149",
+        "fixture_sha256": "fe7bcf8c2024bfebb677c9d793539df0da360eb8eba9b8d61eebbf57677bcdb4",
+        "mechanics_sha256": "8b91a627ec1990111836fbef6cd02cbc26239b1727ee581c4915732ad5cc062b",
+        "move_payloads": 54,
+        "moves_sha256": "c379b62adb4f3b93f03f18870aab173debb437e664368bb72082d9b459dc42e8",
+        "seed": 9450000,
+        "sequence_events": 54,
+        "sequences_sha256": "4d6628e81bbec6afbafb9fe2f74a9ca7315af7af965729e96a04041dcd26afd3",
+        "trace_events": 55,
+        "trace_sha256": "89a8fa03e0730469f42383903e9503aa26c7aa6c3e6c567e8f2447d678413878"
+      },
+      {
+        "case_id": "mid-competitive-8:0",
+        "defense_payloads": 90,
+        "defenses_sha256": "af71a5fce618cac7888fd1e94c5c46112c942db1badc7be45b28729f6388b1e9",
+        "fixture_sha256": "f08db310881ff05501565cc9dc1dee280645c33c9616f656ae2b39556bf435d6",
+        "mechanics_sha256": "c1da5cad55a217e3ecd80de133c312bda2298dcfa5fbc2f1353852fe2e7c306e",
+        "move_payloads": 90,
+        "moves_sha256": "e70db2836402a651c8107db0ced172b84cc0e133cbf1fa9b26f898ade19f768b",
+        "seed": 9460000,
+        "sequence_events": 90,
+        "sequences_sha256": "d09885efdf7a16e6da54a54ffb59853f33524969c659826c6a4f6dee52171626",
+        "trace_events": 91,
+        "trace_sha256": "333db6fe7df57356ad41f58f0152ba52e8b962f3c368312ae5a4a4b86e868365"
+      },
+      {
+        "case_id": "high-competitive-1:0",
+        "defense_payloads": 47,
+        "defenses_sha256": "8e737ca8e2e3d99bc35e71674a157a63cb775a2e748305dab94862b985bc6ece",
+        "fixture_sha256": "6d6f3357621f26b8ea8f12fc61cee5eeabef1f95581c46762c1e9265f344fa08",
+        "mechanics_sha256": "bdef622f01b5dd0f13da5bc36156508ab4c8bee8313004be1c58b6709c91f347",
+        "move_payloads": 47,
+        "moves_sha256": "8f0276b031417eb16486a7efe2527501832cd08e479ae1b9906c6ed368609a14",
+        "seed": 9470000,
+        "sequence_events": 47,
+        "sequences_sha256": "de32226d2c62f180ca78af3c8003ba1caf01313f5cded25bc1b8502cfe8315bd",
+        "trace_events": 48,
+        "trace_sha256": "12f27270fc0a420b1ad9dc6919372ddd75bda4f25bb422133e3eb3b67b63eb5d"
+      },
+      {
+        "case_id": "high-competitive-2:0",
+        "defense_payloads": 13,
+        "defenses_sha256": "99eac67f46f524d94c64c44284995de5f880eca84d411bad0649d19569a04d6a",
+        "fixture_sha256": "bce4ec507e8762665d868e63dbb829e508ec745ee734d2c6a10b5f85e62bfc76",
+        "mechanics_sha256": "c361deb717a8d37758d58faa7244c3af127215ede0dfa1f8fa0a301e6682ddf2",
+        "move_payloads": 13,
+        "moves_sha256": "219d317fc7d20faccadf9c01fa66edf581cc939f5cc16cf3ed3e7d58d56a3da5",
+        "seed": 9480000,
+        "sequence_events": 13,
+        "sequences_sha256": "6bfe0b536808919af3e224e7ab8aea7b5c874e7af355c87e48cfc7ca8bb41fe1",
+        "trace_events": 14,
+        "trace_sha256": "c6a23568b4ede52779f4e9a20742ded59ed8f6d9c9ec3d2deccbd45cc19c4885"
+      },
+      {
+        "case_id": "high-competitive-3:0",
+        "defense_payloads": 54,
+        "defenses_sha256": "37232f10ba347aa269d7dff72628f52bbd409cb377c8436700916e2bda299af6",
+        "fixture_sha256": "f28ebd6ba50b74f3bf633693f12f81245ba568854afcafcbbf52704707132e56",
+        "mechanics_sha256": "9239266c1238cc8fed1fb783df912782e8f8b47399f320594e1eeb05b9e387e2",
+        "move_payloads": 54,
+        "moves_sha256": "2fb779349a2bead4ef00d7eeed31449dc4524f02ff46e371a702efa44920b0da",
+        "seed": 9490000,
+        "sequence_events": 54,
+        "sequences_sha256": "3bcd9619ce470f0ea30bae7b3556d686f16ecb92fa9b21922daa5b4af01c1ed6",
+        "trace_events": 55,
+        "trace_sha256": "4fb08d58563266912a112d3e5f1b1a74c74941e6c91076884437bf7014c09908"
+      },
+      {
+        "case_id": "high-competitive-4:0",
+        "defense_payloads": 54,
+        "defenses_sha256": "8381cddc75370a481d3b33ef783b4e26171e7e7b4cdad243b98e1619054ab2cd",
+        "fixture_sha256": "f1258d4f35dcf7795be2511c470f49f9e3cc63f00a47a65b45b6d5ad921b23e7",
+        "mechanics_sha256": "170d3877fca1ed04426e6f45e9c2d7a7139590e7acd90f04f60568b765187856",
+        "move_payloads": 54,
+        "moves_sha256": "ea5c5f60417f9b2c50396674b25de4fcee98a341db227b0e50cae862deac144c",
+        "seed": 9500000,
+        "sequence_events": 54,
+        "sequences_sha256": "1f03da3c230cf7479e2188a26dcacc8114a488da55b4ee77d81b4dee600d9c4e",
+        "trace_events": 55,
+        "trace_sha256": "84c4b5e16a664daa591680cf247c4c54abbe6f90e52ea66671b846c3750cc592"
+      },
+      {
+        "case_id": "high-competitive-5:0",
+        "defense_payloads": 54,
+        "defenses_sha256": "94f9d493118e5dfbb11d418431504c5c6cda7e0aa8be133996a1bb91150d8a85",
+        "fixture_sha256": "b720c0555571783abbf34dcf62164afcf58df510c06f84778ba4d3891d94c800",
+        "mechanics_sha256": "67493377065b80d7a416ad2df55680ea6c9c3d4201a513bb608416a0711dd3d8",
+        "move_payloads": 54,
+        "moves_sha256": "fb5475cc3232235cba96dbd3376c5937ec1b4b26cf277dad9206e150bbe7ebbb",
+        "seed": 9510000,
+        "sequence_events": 54,
+        "sequences_sha256": "71b211f463893375f38712540a2c1361e5151c66efaf3dc85602e3a4649c3d32",
+        "trace_events": 55,
+        "trace_sha256": "a4ce9976506ff5df29ed05e4a92b527e7fb41cd458ae85e99c607ea1bc6faa86"
+      },
+      {
+        "case_id": "high-competitive-6:0",
+        "defense_payloads": 25,
+        "defenses_sha256": "a1c65316de7d763fa518438c68d2003d9ea20df99f4103ecab5ab1174ad4946c",
+        "fixture_sha256": "df3c9df24ff9310c78f4d20dd2c4f8eb65548a9767ae05a1509152c23e8129f0",
+        "mechanics_sha256": "f17931e76984597244f8f90d37a9bae39bf31d1aca4ddd4a06abd6e727c83b9f",
+        "move_payloads": 25,
+        "moves_sha256": "c60b7f03150bfef7b418d49771a63910693465889d606d21cf74194744a9ad7e",
+        "seed": 9520000,
+        "sequence_events": 25,
+        "sequences_sha256": "182cdb232d3d29af98707d49b088b8b5d668deb492a4ddfec0dcc32743bbdf01",
+        "trace_events": 26,
+        "trace_sha256": "3e3241c6712006b244702942ab0282b4471e48df3f91f78e3d9e9d00bdae226e"
+      },
+      {
+        "case_id": "high-competitive-7:0",
+        "defense_payloads": 54,
+        "defenses_sha256": "02e02dc384b201063b5cd0c1460caea67ec3523e42f4239f6bffaa5ff84bd5b1",
+        "fixture_sha256": "89e19527a5af450a00b74d6ca0c11f34c02bb79d25fc7422d6ac9cc921a28d13",
+        "mechanics_sha256": "87ce2f5992a1b26eddfbbf36d3b4d2a92dd2bd4827cf9f79c20ad1bed6354bec",
+        "move_payloads": 54,
+        "moves_sha256": "b2a70cc59a4c44ac8477f85bbcbb7624c4233af2a7fd6e62c308336393495c81",
+        "seed": 9530000,
+        "sequence_events": 54,
+        "sequences_sha256": "60771dd68040add6f32061deddfae6f45d59e07c1d0be355d620d3894ec6e39f",
+        "trace_events": 55,
+        "trace_sha256": "afcf806ed030ecdb0e018e71ed4541c24e9d709439d06ca7f486e98fd157ee5a"
+      },
+      {
+        "case_id": "high-competitive-8:0",
+        "defense_payloads": 90,
+        "defenses_sha256": "f077ef4be5a174141e3f114e9071a74123168e7688469cdabf48c06a13803126",
+        "fixture_sha256": "3acef8f76d5fe0706f36af64885e366ef2cbec2e7fe71869fbce93febf4516c2",
+        "mechanics_sha256": "daf3f4e433201d6a312f257709823934d17f72e37bd3cd7d81ae225b0cd1c1b4",
+        "move_payloads": 90,
+        "moves_sha256": "d78b4a479c50fe6471a42cbd11369ce67d25dd2989d42f1932f90dd2809fc63e",
+        "seed": 9540000,
+        "sequence_events": 90,
+        "sequences_sha256": "a3fdf61d15776a130542c6bb168bcff783b1cbf382b164d209b492ac3cc624e4",
+        "trace_events": 91,
+        "trace_sha256": "8d7b81d0b9c02ad0c0c90d6d43f75b1a28133cbe3caf97c22471f91b62863868"
+      },
+      {
+        "case_id": "mismatch-1:0",
+        "defense_payloads": 5,
+        "defenses_sha256": "d6a0d86d8e1f6bedcf359598c6674a1b8d68b75adcb654e65b78facf3a90cb64",
+        "fixture_sha256": "ae02ae9e30fbb6440da5096155bfc4b5755fdd087ef78b7711103b676d03ba13",
+        "mechanics_sha256": "3458eabcc5dcbc141da3c1af08889bfa5d09c32ecab0f4fbf9869ed61025a764",
+        "move_payloads": 5,
+        "moves_sha256": "b90527adfa19c73150176dad08be5abaebae58f1df7c17c0cf618c0886c6f705",
+        "seed": 9550000,
+        "sequence_events": 5,
+        "sequences_sha256": "42b13b08c063c553627839fbf3ece31aedd3d28e4e8d10c857139694aeb7a43b",
+        "trace_events": 6,
+        "trace_sha256": "4fe1f545a71273574066e58d536d80d43d9c92af2072b67c7f66c47659df0407"
+      },
+      {
+        "case_id": "mismatch-2:0",
+        "defense_payloads": 6,
+        "defenses_sha256": "3706a68911557ba22d70016fdf2be05c8ada533f746a50f83e4fa0088c8d95da",
+        "fixture_sha256": "de797548ed2e660c89994e919583ae83d0f47f49ea18f3ea6723b24020f1c149",
+        "mechanics_sha256": "941c0c7c8ac21974a7eca22b461ddb733772956d88ae1ff93ed90c971e142269",
+        "move_payloads": 6,
+        "moves_sha256": "7b983bb6e8354e246ee23b91c4e8b5aa5b322f629959c6f596a0a652574917f8",
+        "seed": 9560000,
+        "sequence_events": 6,
+        "sequences_sha256": "6625e3ba833c3603be1b407024e6c0bbf6ebfa9edb2e66cde2a208328a5396a3",
+        "trace_events": 7,
+        "trace_sha256": "8bba9ec65c0068e60ed60ac1fdc16d5c1f1a1ebb72b988d5a764444fbb24d0e1"
+      },
+      {
+        "case_id": "mismatch-3:0",
+        "defense_payloads": 6,
+        "defenses_sha256": "6da86aa795352b03ebc073c3f20fe7474dc96ffb623c7cef5e73dc2cbe2a16ed",
+        "fixture_sha256": "14a4337472009ac544ea8663779c0da001ce909ed4b5c9e0cd44878a77ad54ae",
+        "mechanics_sha256": "dedccb64699fe379a8b5959edc9bffcb005bc9376fa2c7f855728b91f4f07e37",
+        "move_payloads": 6,
+        "moves_sha256": "b787191fd67aee56b8b9d65275f86f4d6712d904664a71356c706fd16e77cc72",
+        "seed": 9570000,
+        "sequence_events": 6,
+        "sequences_sha256": "7f2c34492be3692211cedf4bac4c319e82f02a515bd9275706af94a39698212a",
+        "trace_events": 7,
+        "trace_sha256": "7288e371e57ae60ec9850f54f18297a2c97bdecc0d199519d976b02f93d73b60"
+      },
+      {
+        "case_id": "mismatch-4:0",
+        "defense_payloads": 39,
+        "defenses_sha256": "5bc7c7301232609eaffe35508c42bb5005fa4ccdadd19c5e2d9d71decafbc722",
+        "fixture_sha256": "24ea7ff5dd29b7a92667a553945d00436d81bfddff85d5d84c0b206b146de170",
+        "mechanics_sha256": "863054deddd277ff3e789f2d00bcdea0960a30f957684c4b03b16bedcbe0e9e5",
+        "move_payloads": 39,
+        "moves_sha256": "f034a76a11eb84b5819edb009f1000ef125c43f411e63ec2710417ca90a187b0",
+        "seed": 9580000,
+        "sequence_events": 39,
+        "sequences_sha256": "4e7795dc81dc1ae124cc72435bfa6be6e6a8f7a18cde9a9dccf58971d8cac53f",
+        "trace_events": 40,
+        "trace_sha256": "468245b30533c800e110001bba753008d4ec598602e73efc652edf42902bba7f"
+      },
+      {
+        "case_id": "mismatch-5:0",
+        "defense_payloads": 14,
+        "defenses_sha256": "b45c065a1e1eedd279fa51d2ed7b90b3c17d10a4ddbaf06811d3eb72b4bbe2e3",
+        "fixture_sha256": "6511122cf12274f25cc6c8698ffe2e18a15ef2bd5e6c7eafbd3d7ee7513c6aef",
+        "mechanics_sha256": "a2853dc2a7e2ac31c25774b1da49ffdbdefbfc0edf6315c46a0c1a6f5f0ea80a",
+        "move_payloads": 14,
+        "moves_sha256": "c4c1d548c85e1f0c350d03ad9d6d2b8d809eb37879634dd3221ce0298717d18c",
+        "seed": 9590000,
+        "sequence_events": 14,
+        "sequences_sha256": "c509c068e730218b2f1c5dca66c48b66c6139849f6762315f481dfa0d4347253",
+        "trace_events": 15,
+        "trace_sha256": "1e29b9f9feb4f2b35bbc1d7f396b0274890632dd95960d68dd0497cd4f468dbe"
+      },
+      {
+        "case_id": "mismatch-6:0",
+        "defense_payloads": 44,
+        "defenses_sha256": "df6e10364afc68ae4aed478a9f82898c09c5e1f4f9f4b9d1eb3e8bdbd7ae3dab",
+        "fixture_sha256": "a285a7611329b09dd229be58406f9cde168d471ebb2964e4a5724a3235e6555f",
+        "mechanics_sha256": "1e61710ec4c57d573cb6733934f4aaabfb73cc88b19211323e6da243a262323e",
+        "move_payloads": 44,
+        "moves_sha256": "af7c55e08377b6af46e7cc3be5700c8f3e2ad23b5abcc2fe5459dc246995d187",
+        "seed": 9600000,
+        "sequence_events": 44,
+        "sequences_sha256": "5e477fc8d7e9348b1031341f099ac13357637c97a2988f463526ab38ab655d2c",
+        "trace_events": 45,
+        "trace_sha256": "20fd2bc3d8785e799679ce74ee0411badd6b9c79cc546c869be2010007efbca2"
+      },
+      {
+        "case_id": "mismatch-7:0",
+        "defense_payloads": 14,
+        "defenses_sha256": "b8bc46b1f7ceabd97f4effc31600fb8715b40faf32bff9252926ff137e10a562",
+        "fixture_sha256": "527d3c82d3be0474b3961add66554b3e5b45b50e88d4e552aff64e0d597cc3ba",
+        "mechanics_sha256": "1a4da1e0c46332d3ff17ade13aa474ac85c6a92fb4791209c577fafc7a385e81",
+        "move_payloads": 14,
+        "moves_sha256": "4e20aff9746a362cfd8675a1dd14d173bf66b2b35322c4f3dd2f10d7a70cc85d",
+        "seed": 9610000,
+        "sequence_events": 14,
+        "sequences_sha256": "b235006a518430cd5717ef8afcee3b9e2f01a7dfa68ec4acae513fa9edfa4f2c",
+        "trace_events": 15,
+        "trace_sha256": "260187876615195de9450a1e48c6e54cface46a47bd6455cdf310d80aaeec90d"
+      },
+      {
+        "case_id": "mismatch-8:0",
+        "defense_payloads": 54,
+        "defenses_sha256": "badfca5180583b96ffe5fcf7564771808b3a551b509e045e544e0c35f98149d6",
+        "fixture_sha256": "b4417cb5633d0f6450f70147989e6bfb0451333ca62145a4e2c7d961bb673cbd",
+        "mechanics_sha256": "34043a091efbdb48caa3b99af9d08c76ff4e725043bed24867ac94e21f431095",
+        "move_payloads": 54,
+        "moves_sha256": "d6c132ec1daada84a8a41abf2bc54b62652ec7d85452b9d0d86dcbdb2736e0d6",
+        "seed": 9620000,
+        "sequence_events": 54,
+        "sequences_sha256": "d9f774a5d1c9321c1f88ef49a70ae3a8e72877c222f06151f6e3a81386df4cbf",
+        "trace_events": 55,
+        "trace_sha256": "8d6065968690cd816fea93fe5b6e3aa6fba53f12afd2a229cd3a5065ac47bd5a"
+      },
+      {
+        "case_id": "style-coverage-1:0",
+        "defense_payloads": 90,
+        "defenses_sha256": "4855aebe302073535eed1694a1c5aa6d6684495465744ed00dfa0436145526d5",
+        "fixture_sha256": "2e28f8da0fd12faeb57533101777941399bd4bb1c14c0126b21cafc2ab5d91ff",
+        "mechanics_sha256": "598797f494279b8851a5f2af8970aba8160ce15c16ace5a92e36bf5450ef3c5f",
+        "move_payloads": 90,
+        "moves_sha256": "04e13793b0ab0c5ef3afa953efda6bfa3ec57f6fb67023669bbd75897d971f2a",
+        "seed": 9630000,
+        "sequence_events": 90,
+        "sequences_sha256": "9a0b48017a002afc66d3f5ddddec4c40f70c4d4b2b649914f837f65e80d4c97a",
+        "trace_events": 91,
+        "trace_sha256": "8f78b14d69a5420f90f8f70b6b799a6afaf450fc9a3855549f47bd9401b78787"
+      },
+      {
+        "case_id": "style-coverage-2:0",
+        "defense_payloads": 54,
+        "defenses_sha256": "1e29452a124a7fa2635c9dc44bd59f5ebb8063b342c58e768f0b1335a00b708b",
+        "fixture_sha256": "20bf64983d797c5728f3ffbf5daec257b55dc5b1430e5add48a68cf18dda8dd8",
+        "mechanics_sha256": "eb2707edae36086f40850826f6da03296871b0ac269ca98ea80ea8d4827deca1",
+        "move_payloads": 54,
+        "moves_sha256": "6012d06aadfa929b8aa774ad7dc5abdce5b83de6702767bbb2bee8e8a6711c06",
+        "seed": 9640000,
+        "sequence_events": 54,
+        "sequences_sha256": "1947ca7d54f0362ec60048a1c954a2e0f0e96cfce01771d3d7693dc39871de3b",
+        "trace_events": 55,
+        "trace_sha256": "53a6d15284a76e93c53dad7c44c99b79037b4b1f781c67a91993135e9f47ae6b"
+      },
+      {
+        "case_id": "style-coverage-3:0",
+        "defense_payloads": 54,
+        "defenses_sha256": "4de931e2c6dddd46dd83a6e6e559c258ac5f576e6245f0cd512d95da7885acfd",
+        "fixture_sha256": "8db32bdc6f5992230f5afc4d5f0c0035b8ef646e0ba24e29141fcd6d4b24fb5c",
+        "mechanics_sha256": "7c819744709a3658edb880277106a72b99ae947a8864cb5411a1a1804702cdc7",
+        "move_payloads": 54,
+        "moves_sha256": "f07db688768690f0cd5e9bcdbb3f8cb5480e5a123d62cabd5ba0a1842510c8af",
+        "seed": 9650000,
+        "sequence_events": 54,
+        "sequences_sha256": "a5005561be946f8070033bff042faae25e5a8369369b19199164f93b8d8d364b",
+        "trace_events": 55,
+        "trace_sha256": "bcf48036219acd3c2acc49c54e9ab244e3cf4cda3d5d6badd19845c74cf2c45a"
+      },
+      {
+        "case_id": "style-coverage-4:0",
+        "defense_payloads": 90,
+        "defenses_sha256": "28616d06661696f7483c4806401d6250624ec07c433e4208efa8ff7742da4a7f",
+        "fixture_sha256": "681fab076cad335d2693bd5c76be70463e57de7af84b1fddd75a3e6bdcb7787b",
+        "mechanics_sha256": "33a219394e8ce7b70ee61307e3e6488343b24de619c461d39ecaccd07ad8bc9c",
+        "move_payloads": 90,
+        "moves_sha256": "cea5737c76572f6feafad9a88e78ef8e16fedde85472501d146487369eaf0d36",
+        "seed": 9660000,
+        "sequence_events": 90,
+        "sequences_sha256": "4f3d9e453903a0844793f05e31d77b8342c322db97d52094a2a06996ef630d25",
+        "trace_events": 91,
+        "trace_sha256": "f83977c027b1bc36105a383f3acd06e0f8e12953469412c7fa3c7aab9692404e"
+      },
+      {
+        "case_id": "style-coverage-5:0",
+        "defense_payloads": 54,
+        "defenses_sha256": "441ed0e134bc0361229e9b2f197267065c4d81ebe621f1a2f52a2d5babb3bb63",
+        "fixture_sha256": "50dc71ae20eb4608ed40a21292bd68f769e0e02647555b4af259da96d4c9cdf2",
+        "mechanics_sha256": "5a7eadf36c4b0f3dcce934a4e9aa57f5f7ce19bd58362d8ba084aa0596a22a7e",
+        "move_payloads": 54,
+        "moves_sha256": "f4251fa120c1f0271946aa80721d44e9687da193bb39f5604c4baaefddc9d3ea",
+        "seed": 9670000,
+        "sequence_events": 54,
+        "sequences_sha256": "eed4a553d54b3d2d6682bf3f7f0d216f275935c424cc4be03626b3ebda0735e0",
+        "trace_events": 55,
+        "trace_sha256": "1689232abd198452b7e60d833b54c1d988c4a3a4fe491ea9d87c00aa6de7b124"
+      },
+      {
+        "case_id": "style-coverage-6:0",
+        "defense_payloads": 54,
+        "defenses_sha256": "49d323ba7f0371457cd91ba65d2271fd17acea3a9af21fb75b4f9b4a2b7e5676",
+        "fixture_sha256": "bae0be72a9b9eaa1a6712453907fbf545706f34ce53bb2e61a138f83e44a5d0c",
+        "mechanics_sha256": "aa442b02e79627b778ab4776f069870a94296f38a1289d81fe4fb6fb12b73b5b",
+        "move_payloads": 54,
+        "moves_sha256": "c01c23b35a48d4bac718f32a3a716b104c7776956e26d2d571a59ad14100ca5d",
+        "seed": 9680000,
+        "sequence_events": 54,
+        "sequences_sha256": "29b8417e8c0af8fba1058913cab8f2cc876106983c88e0545c89473666c77ee3",
+        "trace_events": 55,
+        "trace_sha256": "defdea7d7bc44fe61cce711918ca47d275160ed15caffebb96ab31dd622b1fb7"
+      },
+      {
+        "case_id": "style-coverage-7:0",
+        "defense_payloads": 1,
+        "defenses_sha256": "d1681bd8a4d928b35902ce061fd380c71e8ff8cef5e782c40edd6630e5cfab39",
+        "fixture_sha256": "1eddab7dbe247820b9f1bec7ff64f1814c16efd8271e3e64190dc1bc4876a7b8",
+        "mechanics_sha256": "03a59f3bebead9e67b25795182000a1140781087a2c4eb3ae44102aae42e473b",
+        "move_payloads": 1,
+        "moves_sha256": "4ef81b3d7f063b7bc586843f2db3b986a01fc0b793b76e3967398ac25949c35e",
+        "seed": 9690000,
+        "sequence_events": 1,
+        "sequences_sha256": "a359c5b19930341d3fdb55ea410d834b24e6df175d0b95edb04ab66b4a62acd4",
+        "trace_events": 2,
+        "trace_sha256": "3e55c986209300086947a3ffa06949f1ad7c2d8adc71511eef1ea9a525e1ace9"
+      },
+      {
+        "case_id": "style-coverage-8:0",
+        "defense_payloads": 10,
+        "defenses_sha256": "f33e1307fa772b8c62b6138858bb8757af3822324ed65f3f1326974cbb5ec8cd",
+        "fixture_sha256": "08d5541ad779aaf5627b7a50018858848a1598cff11c312e33a6d5e3aefd7f0c",
+        "mechanics_sha256": "eb4bf9295c566f9ba49afafab38f901c547da4374aed02d64adab5352e031331",
+        "move_payloads": 10,
+        "moves_sha256": "191074b17d2fb654a3417bd881aadaf79787ba9c838c34e142eae85bb3d4e37d",
+        "seed": 9700000,
+        "sequence_events": 10,
+        "sequences_sha256": "60a47f39cf2bcdee4a489424bb438d06c9c0de4e21b0753831f62efc5feaaf82",
+        "trace_events": 11,
+        "trace_sha256": "57aef7245b03e35c4874a5ec6845bdcee44d433dc89d1246adff7b99098dacc4"
+      },
+      {
+        "case_id": "style-coverage-9:0",
+        "defense_payloads": 54,
+        "defenses_sha256": "f61829708b42f22a5b2158ab7f10e9ea90b32fb28cfd9566b5f964e0ff939913",
+        "fixture_sha256": "0d60c9f2408e11fe329473b3412cb37039a81167b017432cec8d42d39d1c60dc",
+        "mechanics_sha256": "befb8d0fb5ddcd8d8f6d488ef4de068c0693ef2ef96ae1909b8433f90eaf3824",
+        "move_payloads": 54,
+        "moves_sha256": "a02525fa693b294d2d7bac46cc8b1ec2d28f00a01932cde91aaceabc06f0a4b3",
+        "seed": 9710000,
+        "sequence_events": 54,
+        "sequences_sha256": "ddb8c274ffd305931068ac98dc58e839ca74a4b7f399b51467f7a101bbf1ad34",
+        "trace_events": 55,
+        "trace_sha256": "c215bcccde8fb27e9e0d4547eb48c260ed3bd7a2c8920e6efff57d28eba60fd9"
+      },
+      {
+        "case_id": "style-coverage-10:0",
+        "defense_payloads": 35,
+        "defenses_sha256": "43f625eaf27ec257931a32d4c80f59435aad1934a3a6b17339c6cfee314fa9ba",
+        "fixture_sha256": "74a4b7d4366e1ec05360a0a847f2eecd8651b7d13654eea9cc0eb54425a7be4a",
+        "mechanics_sha256": "f77f6c6348024ea308cbcc5bf172743ce608eb3b1479f66159c0b5f378f29f0b",
+        "move_payloads": 35,
+        "moves_sha256": "6901b794e8190ed26d46267f00dac564146c17cfa0cabe05292369f1c4e6f210",
+        "seed": 9720000,
+        "sequence_events": 35,
+        "sequences_sha256": "a18f66967d4f3435defadf83c60e41de3fbf2c91e72415d7686fbea49c90f85b",
+        "trace_events": 36,
+        "trace_sha256": "197bdb72328f9c90f4ae979e2b594c386932e726d83371c2a0d7f634687bb6a4"
+      },
+      {
+        "case_id": "stance-coverage-closed:0",
+        "defense_payloads": 54,
+        "defenses_sha256": "a2dfa546f653d6979014d457af4fc4d260a78470770bc567e22d1d79d0603444",
+        "fixture_sha256": "dc40dfd0e8e2cd6a1ef2dc5970dfcb654d401547a9e86e3f16cecfa534b3b165",
+        "mechanics_sha256": "9c40ec5f75d0755c354f4fa78778f52d16a15e54489bcead49394acf955132e9",
+        "move_payloads": 54,
+        "moves_sha256": "182bff825455d6eb72420898c8bd2a4cbbea6cb85ab45b487e954ea5199cc6d3",
+        "seed": 9730000,
+        "sequence_events": 54,
+        "sequences_sha256": "43d6d487d4a16279efadbe48471eb06fcc1301d3ae25b17e32aa5271ccef178f",
+        "trace_events": 55,
+        "trace_sha256": "c9d5e0f56e89b1ea12918d4a560c6350f3b1d765c944ea54217a8c1ef438ea0e"
+      },
+      {
+        "case_id": "stance-coverage-switch:0",
+        "defense_payloads": 19,
+        "defenses_sha256": "6fe0bbd62a84c467fe93f94095cb76d4cd60cb97ec5a6d8efafd04b783f31060",
+        "fixture_sha256": "dc48132e6b24f0d321f208de73018a0553bc703820637dcf295ababdc13932e7",
+        "mechanics_sha256": "6f8fadef500d276304856dd76f1b3bc18511762a4001893ad26dd2eb242d07d9",
+        "move_payloads": 19,
+        "moves_sha256": "f875a54c02294f3a2b368e1b3ace8167e423e9fbd93a3d8f8699972087d86381",
+        "seed": 9740000,
+        "sequence_events": 19,
+        "sequences_sha256": "7c3461144f289f1e84a137af8078c090c51046a6bc8cfbdaaca2ca61d6ed8766",
+        "trace_events": 20,
+        "trace_sha256": "41f5e4c3d0bc49b829762da5ee74640c4d766f913de2af784608acf8b8acc26b"
+      }
+    ],
+    "fight_count": 44,
+    "projection_version": 1,
+    "registry_sha256": "16776c4d0ed38a2f1a7d11de11bf98e9472f738e18331805ecd78b5b0277fc44",
+    "schema_version": 1,
+    "seed_base": 9310000,
+    "seeds_per_matchup": 1,
+    "specs": [
+      {
+        "a_behaviour": "Pressure",
+        "a_level": 58,
+        "a_style": "Boxer",
+        "b_behaviour": "Control",
+        "b_level": 59,
+        "b_style": "Wrestler",
+        "fight": {
+          "main": true,
+          "title": true
+        },
+        "id": "low-competitive-1",
+        "matchup": "Competitive",
+        "tier": "Low"
+      },
+      {
+        "a_behaviour": "Volume",
+        "a_level": 59,
+        "a_style": "Kickboxer",
+        "b_behaviour": "Submission Hunter",
+        "b_level": 60,
+        "b_style": "BJJ",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "low-competitive-2",
+        "matchup": "Competitive",
+        "tier": "Low"
+      },
+      {
+        "a_behaviour": "Counter",
+        "a_level": 60,
+        "a_style": "Muay Thai",
+        "b_behaviour": "Sprawl And Brawl",
+        "b_level": 61,
+        "b_style": "Sambo",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "low-competitive-3",
+        "matchup": "Competitive",
+        "tier": "Low"
+      },
+      {
+        "a_behaviour": "Cautious",
+        "a_level": 58,
+        "a_style": "Wrestler",
+        "b_behaviour": "Dynamic Attacker",
+        "b_level": 58,
+        "b_style": "Karate",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "low-competitive-4",
+        "matchup": "Competitive",
+        "tier": "Low"
+      },
+      {
+        "a_behaviour": "Control",
+        "a_level": 59,
+        "a_style": "BJJ",
+        "b_behaviour": "Pressure",
+        "b_level": 59,
+        "b_style": "MMA Generalist",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "low-competitive-5",
+        "matchup": "Competitive",
+        "tier": "Low"
+      },
+      {
+        "a_behaviour": "Submission Hunter",
+        "a_level": 60,
+        "a_style": "Sambo",
+        "b_behaviour": "Volume",
+        "b_level": 60,
+        "b_style": "Boxer",
+        "fight": {
+          "main": true,
+          "title": false
+        },
+        "id": "low-competitive-6",
+        "matchup": "Competitive",
+        "tier": "Low"
+      },
+      {
+        "a_behaviour": "Sprawl And Brawl",
+        "a_level": 58,
+        "a_style": "Karate",
+        "b_behaviour": "Counter",
+        "b_level": 61,
+        "b_style": "Kickboxer",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "low-competitive-7",
+        "matchup": "Competitive",
+        "tier": "Low"
+      },
+      {
+        "a_behaviour": "Dynamic Attacker",
+        "a_level": 59,
+        "a_style": "MMA Generalist",
+        "b_behaviour": "Cautious",
+        "b_level": 58,
+        "b_style": "Muay Thai",
+        "fight": {
+          "main": false,
+          "title": true
+        },
+        "id": "low-competitive-8",
+        "matchup": "Competitive",
+        "tier": "Low"
+      },
+      {
+        "a_behaviour": "Pressure",
+        "a_level": 70,
+        "a_style": "Boxer",
+        "b_behaviour": "Control",
+        "b_level": 71,
+        "b_style": "Wrestler",
+        "fight": {
+          "main": true,
+          "title": true
+        },
+        "id": "mid-competitive-1",
+        "matchup": "Competitive",
+        "tier": "Mid"
+      },
+      {
+        "a_behaviour": "Volume",
+        "a_level": 71,
+        "a_style": "Kickboxer",
+        "b_behaviour": "Submission Hunter",
+        "b_level": 72,
+        "b_style": "BJJ",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "mid-competitive-2",
+        "matchup": "Competitive",
+        "tier": "Mid"
+      },
+      {
+        "a_behaviour": "Counter",
+        "a_level": 72,
+        "a_style": "Muay Thai",
+        "b_behaviour": "Sprawl And Brawl",
+        "b_level": 73,
+        "b_style": "Sambo",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "mid-competitive-3",
+        "matchup": "Competitive",
+        "tier": "Mid"
+      },
+      {
+        "a_behaviour": "Cautious",
+        "a_level": 70,
+        "a_style": "Wrestler",
+        "b_behaviour": "Dynamic Attacker",
+        "b_level": 70,
+        "b_style": "Karate",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "mid-competitive-4",
+        "matchup": "Competitive",
+        "tier": "Mid"
+      },
+      {
+        "a_behaviour": "Control",
+        "a_level": 71,
+        "a_style": "BJJ",
+        "b_behaviour": "Pressure",
+        "b_level": 71,
+        "b_style": "MMA Generalist",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "mid-competitive-5",
+        "matchup": "Competitive",
+        "tier": "Mid"
+      },
+      {
+        "a_behaviour": "Submission Hunter",
+        "a_level": 72,
+        "a_style": "Sambo",
+        "b_behaviour": "Volume",
+        "b_level": 72,
+        "b_style": "Boxer",
+        "fight": {
+          "main": true,
+          "title": false
+        },
+        "id": "mid-competitive-6",
+        "matchup": "Competitive",
+        "tier": "Mid"
+      },
+      {
+        "a_behaviour": "Sprawl And Brawl",
+        "a_level": 70,
+        "a_style": "Karate",
+        "b_behaviour": "Counter",
+        "b_level": 73,
+        "b_style": "Kickboxer",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "mid-competitive-7",
+        "matchup": "Competitive",
+        "tier": "Mid"
+      },
+      {
+        "a_behaviour": "Dynamic Attacker",
+        "a_level": 71,
+        "a_style": "MMA Generalist",
+        "b_behaviour": "Cautious",
+        "b_level": 70,
+        "b_style": "Muay Thai",
+        "fight": {
+          "main": false,
+          "title": true
+        },
+        "id": "mid-competitive-8",
+        "matchup": "Competitive",
+        "tier": "Mid"
+      },
+      {
+        "a_behaviour": "Pressure",
+        "a_level": 83,
+        "a_style": "Boxer",
+        "b_behaviour": "Control",
+        "b_level": 84,
+        "b_style": "Wrestler",
+        "fight": {
+          "main": true,
+          "title": true
+        },
+        "id": "high-competitive-1",
+        "matchup": "Competitive",
+        "tier": "High"
+      },
+      {
+        "a_behaviour": "Volume",
+        "a_level": 84,
+        "a_style": "Kickboxer",
+        "b_behaviour": "Submission Hunter",
+        "b_level": 85,
+        "b_style": "BJJ",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "high-competitive-2",
+        "matchup": "Competitive",
+        "tier": "High"
+      },
+      {
+        "a_behaviour": "Counter",
+        "a_level": 85,
+        "a_style": "Muay Thai",
+        "b_behaviour": "Sprawl And Brawl",
+        "b_level": 86,
+        "b_style": "Sambo",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "high-competitive-3",
+        "matchup": "Competitive",
+        "tier": "High"
+      },
+      {
+        "a_behaviour": "Cautious",
+        "a_level": 83,
+        "a_style": "Wrestler",
+        "b_behaviour": "Dynamic Attacker",
+        "b_level": 83,
+        "b_style": "Karate",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "high-competitive-4",
+        "matchup": "Competitive",
+        "tier": "High"
+      },
+      {
+        "a_behaviour": "Control",
+        "a_level": 84,
+        "a_style": "BJJ",
+        "b_behaviour": "Pressure",
+        "b_level": 84,
+        "b_style": "MMA Generalist",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "high-competitive-5",
+        "matchup": "Competitive",
+        "tier": "High"
+      },
+      {
+        "a_behaviour": "Submission Hunter",
+        "a_level": 85,
+        "a_style": "Sambo",
+        "b_behaviour": "Volume",
+        "b_level": 85,
+        "b_style": "Boxer",
+        "fight": {
+          "main": true,
+          "title": false
+        },
+        "id": "high-competitive-6",
+        "matchup": "Competitive",
+        "tier": "High"
+      },
+      {
+        "a_behaviour": "Sprawl And Brawl",
+        "a_level": 83,
+        "a_style": "Karate",
+        "b_behaviour": "Counter",
+        "b_level": 86,
+        "b_style": "Kickboxer",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "high-competitive-7",
+        "matchup": "Competitive",
+        "tier": "High"
+      },
+      {
+        "a_behaviour": "Dynamic Attacker",
+        "a_level": 84,
+        "a_style": "MMA Generalist",
+        "b_behaviour": "Cautious",
+        "b_level": 83,
+        "b_style": "Muay Thai",
+        "fight": {
+          "main": false,
+          "title": true
+        },
+        "id": "high-competitive-8",
+        "matchup": "Competitive",
+        "tier": "High"
+      },
+      {
+        "a_behaviour": "Pressure",
+        "a_level": 84,
+        "a_style": "Boxer",
+        "b_behaviour": "Counter",
+        "b_level": 58,
+        "b_style": "Sambo",
+        "fight": {
+          "main": true,
+          "title": false
+        },
+        "id": "mismatch-1",
+        "matchup": "Mismatch",
+        "tier": "Mixed"
+      },
+      {
+        "a_behaviour": "Volume",
+        "a_level": 85,
+        "a_style": "Kickboxer",
+        "b_behaviour": "Cautious",
+        "b_level": 59,
+        "b_style": "Karate",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "mismatch-2",
+        "matchup": "Mismatch",
+        "tier": "Mixed"
+      },
+      {
+        "a_behaviour": "Counter",
+        "a_level": 86,
+        "a_style": "Muay Thai",
+        "b_behaviour": "Control",
+        "b_level": 60,
+        "b_style": "MMA Generalist",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "mismatch-3",
+        "matchup": "Mismatch",
+        "tier": "Mixed"
+      },
+      {
+        "a_behaviour": "Cautious",
+        "a_level": 87,
+        "a_style": "Wrestler",
+        "b_behaviour": "Submission Hunter",
+        "b_level": 61,
+        "b_style": "Boxer",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "mismatch-4",
+        "matchup": "Mismatch",
+        "tier": "Mixed"
+      },
+      {
+        "a_behaviour": "Control",
+        "a_level": 84,
+        "a_style": "BJJ",
+        "b_behaviour": "Sprawl And Brawl",
+        "b_level": 58,
+        "b_style": "Kickboxer",
+        "fight": {
+          "main": true,
+          "title": false
+        },
+        "id": "mismatch-5",
+        "matchup": "Mismatch",
+        "tier": "Mixed"
+      },
+      {
+        "a_behaviour": "Submission Hunter",
+        "a_level": 85,
+        "a_style": "Sambo",
+        "b_behaviour": "Dynamic Attacker",
+        "b_level": 59,
+        "b_style": "Muay Thai",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "mismatch-6",
+        "matchup": "Mismatch",
+        "tier": "Mixed"
+      },
+      {
+        "a_behaviour": "Sprawl And Brawl",
+        "a_level": 86,
+        "a_style": "Karate",
+        "b_behaviour": "Pressure",
+        "b_level": 60,
+        "b_style": "Wrestler",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "mismatch-7",
+        "matchup": "Mismatch",
+        "tier": "Mixed"
+      },
+      {
+        "a_behaviour": "Dynamic Attacker",
+        "a_level": 87,
+        "a_style": "MMA Generalist",
+        "b_behaviour": "Volume",
+        "b_level": 61,
+        "b_style": "BJJ",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "mismatch-8",
+        "matchup": "Mismatch",
+        "tier": "Mixed"
+      },
+      {
+        "a_behaviour": "Pressure",
+        "a_level": 76,
+        "a_style": "Dutch Kickboxer",
+        "b_behaviour": "Cautious",
+        "b_level": 75,
+        "b_style": "MMA Generalist",
+        "fight": {
+          "main": true,
+          "title": false
+        },
+        "id": "style-coverage-1",
+        "matchup": "Competitive",
+        "tier": "Style coverage"
+      },
+      {
+        "a_behaviour": "Volume",
+        "a_level": 76,
+        "a_style": "Taekwondo",
+        "b_behaviour": "Control",
+        "b_level": 75,
+        "b_style": "MMA Generalist",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "style-coverage-2",
+        "matchup": "Competitive",
+        "tier": "Style coverage"
+      },
+      {
+        "a_behaviour": "Counter",
+        "a_level": 76,
+        "a_style": "Sanda",
+        "b_behaviour": "Submission Hunter",
+        "b_level": 75,
+        "b_style": "MMA Generalist",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "style-coverage-3",
+        "matchup": "Competitive",
+        "tier": "Style coverage"
+      },
+      {
+        "a_behaviour": "Cautious",
+        "a_level": 76,
+        "a_style": "Freestyle Wrestler",
+        "b_behaviour": "Sprawl And Brawl",
+        "b_level": 75,
+        "b_style": "MMA Generalist",
+        "fight": {
+          "main": true,
+          "title": false
+        },
+        "id": "style-coverage-4",
+        "matchup": "Competitive",
+        "tier": "Style coverage"
+      },
+      {
+        "a_behaviour": "Control",
+        "a_level": 76,
+        "a_style": "Catch Wrestler",
+        "b_behaviour": "Dynamic Attacker",
+        "b_level": 75,
+        "b_style": "MMA Generalist",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "style-coverage-5",
+        "matchup": "Competitive",
+        "tier": "Style coverage"
+      },
+      {
+        "a_behaviour": "Submission Hunter",
+        "a_level": 76,
+        "a_style": "Luta Livre",
+        "b_behaviour": "Pressure",
+        "b_level": 75,
+        "b_style": "MMA Generalist",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "style-coverage-6",
+        "matchup": "Competitive",
+        "tier": "Style coverage"
+      },
+      {
+        "a_behaviour": "Sprawl And Brawl",
+        "a_level": 76,
+        "a_style": "Judo",
+        "b_behaviour": "Volume",
+        "b_level": 75,
+        "b_style": "MMA Generalist",
+        "fight": {
+          "main": true,
+          "title": false
+        },
+        "id": "style-coverage-7",
+        "matchup": "Competitive",
+        "tier": "Style coverage"
+      },
+      {
+        "a_behaviour": "Dynamic Attacker",
+        "a_level": 76,
+        "a_style": "Grappler",
+        "b_behaviour": "Counter",
+        "b_level": 75,
+        "b_style": "MMA Generalist",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "style-coverage-8",
+        "matchup": "Competitive",
+        "tier": "Style coverage"
+      },
+      {
+        "a_behaviour": "Pressure",
+        "a_level": 76,
+        "a_style": "Submission Grappler",
+        "b_behaviour": "Cautious",
+        "b_level": 75,
+        "b_style": "MMA Generalist",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "style-coverage-9",
+        "matchup": "Competitive",
+        "tier": "Style coverage"
+      },
+      {
+        "a_behaviour": "Volume",
+        "a_level": 76,
+        "a_style": "Well-Rounded",
+        "b_behaviour": "Control",
+        "b_level": 75,
+        "b_style": "MMA Generalist",
+        "fight": {
+          "main": true,
+          "title": false
+        },
+        "id": "style-coverage-10",
+        "matchup": "Competitive",
+        "tier": "Style coverage"
+      },
+      {
+        "a_behaviour": "Counter",
+        "a_level": 76,
+        "a_stance": "Orthodox",
+        "a_style": "Boxer",
+        "b_behaviour": "Pressure",
+        "b_level": 75,
+        "b_stance": "Orthodox",
+        "b_style": "Kickboxer",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "stance-coverage-closed",
+        "matchup": "Competitive",
+        "tier": "Stance coverage"
+      },
+      {
+        "a_behaviour": "Dynamic Attacker",
+        "a_level": 76,
+        "a_stance": "Switch",
+        "a_style": "Karate",
+        "b_behaviour": "Control",
+        "b_level": 75,
+        "b_stance": "Orthodox",
+        "b_style": "Wrestler",
+        "fight": {
+          "main": false,
+          "title": false
+        },
+        "id": "stance-coverage-switch",
+        "matchup": "Competitive",
+        "tier": "Stance coverage"
+      }
+    ]
+  }
+}

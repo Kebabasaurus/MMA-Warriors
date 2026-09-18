@@ -111,6 +111,26 @@ def main():
         require(max(covered, key=lambda name: covered[name]["profit"]) == "Spectacle",
                 "Behind a wide-reach broadcast deal, the richest production must be the right call.")
 
+        # --- approved production specialty -------------------------------
+        # Swap only the specialty on one otherwise identical lead so the
+        # saving is measured against the same broadcast lift and all non-stage
+        # obligations remain unchanged.
+        production_lead = {"staff_id": "audit-production", "name": "Audit Producer",
+                           "role": "Broadcast Producer", "skill": 45, "morale": 65,
+                           "specialty": "Live production"}
+        app.staff.append(production_lead)
+        ordinary_stage = finance_for(app, fight, ticket_price=fair, production_tier="Premium")
+        production_lead["specialty"] = "Production Coordinator"
+        coordinated_stage = finance_for(app, fight, ticket_price=fair, production_tier="Premium")
+        require(coordinated_stage["production_staging_saving"] > 0,
+                "Production Coordinator did not expose its approved staging saving.")
+        require(coordinated_stage["production"] < ordinary_stage["production"],
+                "Production Coordinator did not reduce the settled production charge.")
+        require(coordinated_stage["production_staging"] < ordinary_stage["production_staging"],
+                "Production Coordinator changed no eligible staging subtotal.")
+        production_lead["specialty"] = "Live production"
+        app.staff.remove(production_lead)
+
         # --- marketing --------------------------------------------------------
         unmarketed = finance_for(app, fight, ticket_price=fair, marketing_budget=0)
         marketed = finance_for(app, fight, ticket_price=fair, marketing_budget=60_000)

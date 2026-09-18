@@ -1,0 +1,801 @@
+{
+  "schema_version": 1,
+  "source_sha256": "88f99d11b05837cbcb49dd71761523decc570df1dbb5cb802b59da3246828de4",
+  "updates": {
+    "body_jab": {
+      "follow_ups": [
+        "one_two",
+        "jab_to_shot"
+      ]
+    },
+    "power_jab": {
+      "follow_ups": [
+        "lead_hook_cross",
+        "double_leg_entry"
+      ]
+    },
+    "up_jab": {
+      "follow_ups": [
+        "one_two",
+        "collar_tie_entry"
+      ]
+    },
+    "lead_hook_cross": {
+      "follow_ups": [
+        "rear_uppercut",
+        "body_lock_entry"
+      ]
+    },
+    "double_jab_cross": {
+      "follow_ups": [
+        "lead_hook_cross",
+        "double_leg_entry"
+      ]
+    },
+    "cross_hook_cross": {
+      "follow_ups": [
+        "rear_uppercut",
+        "over_under_entry"
+      ]
+    },
+    "body_head_change": {
+      "follow_ups": [
+        "lead_hook_cross",
+        "collar_tie_entry"
+      ]
+    },
+    "jab_uppercut_lead_hook": {
+      "follow_ups": [
+        "rear_uppercut",
+        "double_underhooks"
+      ]
+    },
+    "double_jab_body_cross": {
+      "follow_ups": [
+        "lead_hook_cross",
+        "jab_to_shot"
+      ]
+    },
+    "cross_body_hook_lead_hook": {
+      "follow_ups": [
+        "rear_uppercut",
+        "body_lock_entry"
+      ]
+    },
+    "stance_shift_cross_hook": {
+      "follow_ups": [
+        "rear_uppercut",
+        "single_leg_entry"
+      ]
+    },
+    "boxing_pressure_flurry": {
+      "follow_ups": [
+        "rear_uppercut",
+        "collar_tie_entry"
+      ]
+    },
+    "corkscrew_cross": {
+      "follow_ups": [
+        "lead_hook_cross",
+        "head_round_kick"
+      ]
+    },
+    "spinning_backfist": {
+      "follow_ups": [
+        "side_kick",
+        "body_lock_entry"
+      ]
+    },
+    "check_hook": {
+      "follow_ups": [
+        "head_round_kick",
+        "double_leg_entry"
+      ]
+    },
+    "pull_counter": {
+      "follow_ups": [
+        "lead_hook_cross",
+        "head_round_kick"
+      ]
+    },
+    "slip_cross": {
+      "follow_ups": [
+        "rear_uppercut",
+        "body_lock_entry"
+      ]
+    },
+    "intercepting_knee": {
+      "follow_ups": [
+        "collar_tie_entry",
+        "lead_teep"
+      ]
+    },
+    "jab_cross_rear_knee": {
+      "follow_ups": [
+        "thai_plum_entry",
+        "lead_teep"
+      ]
+    },
+    "hook_elbow_knee": {
+      "follow_ups": [
+        "thai_plum_entry",
+        "head_round_kick"
+      ]
+    },
+    "flying_knee": {
+      "follow_ups": [
+        "collar_tie_entry",
+        "lead_teep"
+      ]
+    },
+    "switch_flying_knee": {
+      "follow_ups": [
+        "thai_plum_entry",
+        "side_kick"
+      ]
+    },
+    "step_in_elbow": {
+      "follow_ups": [
+        "collar_tie_entry",
+        "rear_uppercut"
+      ]
+    },
+    "spinning_elbow": {
+      "follow_ups": [
+        "body_lock_entry",
+        "side_kick"
+      ]
+    },
+    "boxer_double_jab_pivot_cross_hook": {
+      "follow_ups": [
+        "rear_uppercut",
+        "collar_tie_entry"
+      ]
+    },
+    "muay_thai_teep_cross_elbow_knee": {
+      "follow_ups": [
+        "thai_plum_entry",
+        "lead_teep"
+      ]
+    },
+    "karate_blitz_cross_hook_exit": {
+      "follow_ups": [
+        "side_kick",
+        "head_round_kick"
+      ]
+    },
+    "boxer_shift_step_cross_finisher": {
+      "follow_ups": [
+        "rear_uppercut",
+        "collar_tie_entry"
+      ]
+    },
+    "dutch_high_guard_cross_hook_finisher": {
+      "follow_ups": [
+        "head_round_kick",
+        "collar_tie_entry"
+      ]
+    },
+    "muay_thai_frame_elbow_finisher": {
+      "follow_ups": [
+        "thai_plum_entry",
+        "lead_teep"
+      ]
+    },
+    "karate_blitz_reverse_cross_finisher": {
+      "follow_ups": [
+        "side_kick",
+        "head_round_kick"
+      ]
+    },
+    "mma_generalist_elbow_knee_finisher": {
+      "follow_ups": [
+        "body_lock_entry",
+        "lead_teep"
+      ]
+    },
+    "inside_low_kick": {
+      "follow_ups": [
+        "single_jab",
+        "overhand"
+      ]
+    },
+    "outside_low_kick": {
+      "follow_ups": [
+        "one_two",
+        "head_round_kick"
+      ]
+    },
+    "body_round_kick": {
+      "follow_ups": [
+        "single_jab",
+        "head_round_kick"
+      ]
+    },
+    "calf_kick": {
+      "follow_ups": [
+        "one_two",
+        "single_leg_entry"
+      ]
+    },
+    "low_kick_counter": {
+      "follow_ups": [
+        "one_two",
+        "head_round_kick"
+      ]
+    },
+    "question_mark_kick": {
+      "follow_ups": [
+        "single_jab",
+        "collar_tie_entry"
+      ]
+    },
+    "wheel_kick": {
+      "follow_ups": [
+        "side_kick",
+        "single_jab"
+      ]
+    },
+    "spinning_back_kick": {
+      "follow_ups": [
+        "single_jab",
+        "side_kick"
+      ]
+    },
+    "switch_body_kick": {
+      "follow_ups": [
+        "one_two",
+        "thai_plum_entry"
+      ]
+    },
+    "jab_low_kick": {
+      "follow_ups": [
+        "one_two",
+        "double_leg_entry"
+      ]
+    },
+    "cross_body_kick": {
+      "follow_ups": [
+        "lead_hook_cross",
+        "head_round_kick"
+      ]
+    },
+    "hook_low_kick": {
+      "follow_ups": [
+        "rear_uppercut",
+        "collar_tie_entry"
+      ]
+    },
+    "punch_head_kick": {
+      "follow_ups": [
+        "single_jab",
+        "lead_teep"
+      ]
+    },
+    "double_jab_low_kick": {
+      "follow_ups": [
+        "one_two",
+        "jab_to_shot"
+      ]
+    },
+    "cross_hook_body_kick": {
+      "follow_ups": [
+        "lead_hook_cross",
+        "head_round_kick"
+      ]
+    },
+    "axe_kick": {
+      "follow_ups": [
+        "single_jab",
+        "side_kick"
+      ]
+    },
+    "jumping_front_kick": {
+      "follow_ups": [
+        "single_jab",
+        "lead_teep"
+      ]
+    },
+    "kickboxer_cross_hook_switch_kick": {
+      "follow_ups": [
+        "one_two",
+        "head_round_kick"
+      ]
+    },
+    "dutch_high_guard_hook_cross_low_kick": {
+      "follow_ups": [
+        "lead_hook_cross",
+        "head_round_kick"
+      ]
+    },
+    "taekwondo_side_back_round_chain": {
+      "follow_ups": [
+        "side_kick",
+        "single_jab"
+      ]
+    },
+    "mma_generalist_cross_kick_clinch_chain": {
+      "follow_ups": [
+        "body_lock_entry",
+        "lead_teep"
+      ]
+    },
+    "kickboxer_cross_high_kick_finisher": {
+      "follow_ups": [
+        "single_jab",
+        "lead_teep"
+      ]
+    },
+    "taekwondo_spinning_hook_kick_finisher": {
+      "follow_ups": [
+        "side_kick",
+        "single_jab"
+      ]
+    },
+    "sanda_jumping_side_kick_finisher": {
+      "follow_ups": [
+        "single_jab",
+        "body_lock_entry"
+      ]
+    },
+    "well_rounded_cross_head_kick_finisher": {
+      "follow_ups": [
+        "single_jab",
+        "lead_teep"
+      ]
+    },
+    "short_clinch_boxing": {
+      "follow_ups": [
+        "clinch_knee",
+        "double_leg_finish"
+      ]
+    },
+    "clinch_knee": {
+      "follow_ups": [
+        "body_lock_trip",
+        "inside_trip"
+      ]
+    },
+    "inside_uppercut": {
+      "follow_ups": [
+        "clinch_knee",
+        "knee_tap"
+      ]
+    },
+    "collar_tie_elbow": {
+      "follow_ups": [
+        "clinch_knee",
+        "inside_trip"
+      ]
+    },
+    "inside_body_hook": {
+      "follow_ups": [
+        "inside_uppercut",
+        "body_lock_trip"
+      ]
+    },
+    "shoulder_grind": {
+      "follow_ups": [
+        "short_clinch_boxing",
+        "double_leg_finish"
+      ]
+    },
+    "fence_pressure": {
+      "follow_ups": [
+        "pummel_to_underhook",
+        "short_clinch_boxing",
+        "double_leg_finish"
+      ]
+    },
+    "pummel_to_underhook": {
+      "follow_ups": [
+        "knee_tap",
+        "clinch_knee"
+      ]
+    },
+    "shoulder_pressure": {
+      "follow_ups": [
+        "short_clinch_boxing",
+        "body_lock_trip"
+      ]
+    },
+    "pivot_exit": {
+      "follow_ups": [
+        "side_kick",
+        "lead_teep"
+      ]
+    },
+    "frame_exit": {
+      "follow_ups": [
+        "lead_teep",
+        "head_round_kick"
+      ]
+    },
+    "frame_and_pivot_exit": {
+      "follow_ups": [
+        "side_kick",
+        "head_round_kick"
+      ]
+    },
+    "post_and_push_exit": {
+      "follow_ups": [
+        "lead_teep",
+        "side_kick"
+      ]
+    },
+    "swim_to_space": {
+      "follow_ups": [
+        "side_kick",
+        "lead_teep"
+      ]
+    },
+    "double_leg_entry": {
+      "follow_ups": [
+        "double_leg_finish",
+        "chest_to_chest_pin",
+        "position_pass"
+      ]
+    },
+    "single_leg_entry": {
+      "follow_ups": [
+        "single_leg_finish",
+        "hip_pressure_ride",
+        "knee_slice_pass"
+      ]
+    },
+    "ankle_pick_entry": {
+      "follow_ups": [
+        "single_leg_finish",
+        "chest_to_chest_pin",
+        "position_pass"
+      ]
+    },
+    "reactive_shot": {
+      "follow_ups": [
+        "double_leg_finish",
+        "hip_pressure_ride",
+        "knee_slice_pass"
+      ]
+    },
+    "jab_to_shot": {
+      "follow_ups": [
+        "double_leg_finish",
+        "chest_to_chest_pin",
+        "position_pass"
+      ]
+    },
+    "overhand_to_double": {
+      "follow_ups": [
+        "double_leg_finish",
+        "hip_pressure_ride",
+        "knee_slice_pass"
+      ]
+    },
+    "sanda_side_kick_overhand_shot": {
+      "follow_ups": [
+        "single_leg_finish",
+        "chest_to_chest_pin",
+        "position_pass"
+      ]
+    },
+    "wrestler_jab_overhand_double": {
+      "follow_ups": [
+        "double_leg_finish",
+        "hip_pressure_ride",
+        "knee_slice_pass"
+      ]
+    },
+    "freestyle_feint_reshot_chain": {
+      "follow_ups": [
+        "single_leg_finish",
+        "chest_to_chest_pin",
+        "position_pass"
+      ]
+    },
+    "well_rounded_jab_low_kick_level_change": {
+      "follow_ups": [
+        "double_leg_finish",
+        "hip_pressure_ride",
+        "knee_slice_pass"
+      ]
+    },
+    "double_leg_finish": {
+      "follow_ups": [
+        "hip_pressure_ride",
+        "posture_punches",
+        "position_pass"
+      ]
+    },
+    "single_leg_finish": {
+      "follow_ups": [
+        "chest_to_chest_pin",
+        "short_ground_elbows",
+        "knee_slice_pass"
+      ]
+    },
+    "body_lock_trip": {
+      "follow_ups": [
+        "chest_to_chest_pin",
+        "body_head_ground_chain",
+        "position_pass"
+      ]
+    },
+    "inside_trip": {
+      "follow_ups": [
+        "hip_pressure_ride",
+        "posture_punches",
+        "knee_slice_pass"
+      ]
+    },
+    "outside_trip": {
+      "follow_ups": [
+        "chest_to_chest_pin",
+        "short_ground_elbows",
+        "position_pass"
+      ]
+    },
+    "high_crotch_finish": {
+      "follow_ups": [
+        "hip_pressure_ride",
+        "body_head_ground_chain",
+        "knee_slice_pass"
+      ]
+    },
+    "knee_tap": {
+      "follow_ups": [
+        "chest_to_chest_pin",
+        "posture_punches",
+        "position_pass"
+      ]
+    },
+    "hip_toss": {
+      "follow_ups": [
+        "chest_to_chest_pin",
+        "short_ground_elbows",
+        "knee_slice_pass"
+      ]
+    },
+    "lateral_drop": {
+      "follow_ups": [
+        "hip_pressure_ride",
+        "body_head_ground_chain",
+        "position_pass"
+      ]
+    },
+    "ride_control": {
+      "follow_ups": [
+        "ride_wrist_punches",
+        "posture_punches",
+        "half_guard_kimura"
+      ]
+    },
+    "chest_to_chest_pin": {
+      "follow_ups": [
+        "short_ground_elbows",
+        "position_pass",
+        "guard_top_head_arm"
+      ]
+    },
+    "hip_pressure_ride": {
+      "follow_ups": [
+        "body_head_ground_chain",
+        "knee_slice_pass",
+        "half_guard_arm_triangle"
+      ]
+    },
+    "knee_on_belly_pressure": {
+      "follow_ups": [
+        "crucifix_elbows",
+        "arm_triangle",
+        "half_guard_brabo"
+      ]
+    },
+    "posture_punches": {
+      "follow_ups": [
+        "position_pass",
+        "guard_top_head_arm"
+      ]
+    },
+    "short_ground_elbows": {
+      "follow_ups": [
+        "knee_slice_pass",
+        "half_guard_darce"
+      ]
+    },
+    "body_head_ground_chain": {
+      "follow_ups": [
+        "position_pass",
+        "guard_top_head_arm"
+      ]
+    },
+    "ride_wrist_punches": {
+      "follow_ups": [
+        "underhook_half_guard_pass",
+        "rear_naked_choke",
+        "turtle_breakdown"
+      ]
+    },
+    "turtle_wrist_ride_strikes": {
+      "follow_ups": [
+        "turtle_breakdown"
+      ]
+    },
+    "wrestler_wrist_ride_hammerfist_finisher": {
+      "follow_ups": [
+        "underhook_half_guard_pass",
+        "arm_triangle",
+        "turtle_breakdown"
+      ]
+    },
+    "freestyle_mat_return_ground_pound_finisher": {
+      "follow_ups": [
+        "underhook_half_guard_pass",
+        "arm_triangle",
+        "turtle_breakdown"
+      ]
+    },
+    "half_guard_pass": {
+      "follow_ups": [
+        "crucifix_elbows",
+        "mount_transition",
+        "arm_triangle"
+      ]
+    },
+    "knee_slice_pass": {
+      "follow_ups": [
+        "half_guard_kimura",
+        "arm_triangle",
+        "mount_transition"
+      ]
+    },
+    "guard_armbar": {
+      "follow_ups": [
+        "triangle_choke",
+        "kimura_guard",
+        "technical_standup"
+      ]
+    },
+    "triangle_choke": {
+      "follow_ups": [
+        "kimura_guard",
+        "hip_bump_sweep",
+        "technical_standup"
+      ]
+    },
+    "kimura_guard": {
+      "follow_ups": [
+        "hip_bump_sweep",
+        "butterfly_sweep",
+        "technical_standup"
+      ]
+    },
+    "omoplata": {
+      "follow_ups": [
+        "butterfly_sweep",
+        "technical_standup"
+      ]
+    },
+    "guard_submission_chain": {
+      "follow_ups": [
+        "butterfly_sweep",
+        "technical_standup"
+      ]
+    },
+    "bjj_triangle_armbar_finisher": {
+      "follow_ups": [
+        "kimura_guard",
+        "hip_bump_sweep",
+        "technical_standup"
+      ]
+    },
+    "luta_outside_heel_hook_finisher": {
+      "follow_ups": [
+        "guard_submission_chain",
+        "butterfly_sweep",
+        "technical_standup"
+      ]
+    },
+    "sambo_rolling_kneebar_finisher": {
+      "follow_ups": [
+        "kimura_guard",
+        "butterfly_sweep",
+        "technical_standup"
+      ]
+    },
+    "guard_recovery": {
+      "follow_ups": [
+        "guard_armbar",
+        "butterfly_sweep",
+        "technical_standup"
+      ]
+    },
+    "closed_guard_retention": {
+      "follow_ups": [
+        "triangle_choke",
+        "hip_bump_sweep",
+        "technical_standup"
+      ]
+    },
+    "elbow_knee_guard_recovery": {
+      "follow_ups": [
+        "guard_submission_chain",
+        "butterfly_sweep",
+        "technical_standup"
+      ]
+    },
+    "back_control_handfight_recovery": {
+      "follow_ups": [
+        "guard_submission_chain",
+        "hip_bump_sweep",
+        "technical_standup"
+      ]
+    },
+    "butterfly_sweep": {
+      "follow_ups": [
+        "chest_to_chest_pin",
+        "posture_punches",
+        "position_pass"
+      ]
+    },
+    "hip_bump_sweep": {
+      "follow_ups": [
+        "hip_pressure_ride",
+        "short_ground_elbows",
+        "knee_slice_pass"
+      ]
+    },
+    "technical_standup": {
+      "follow_ups": [
+        "lead_teep",
+        "side_kick"
+      ]
+    },
+    "post_and_build_getup": {
+      "follow_ups": [
+        "lead_teep",
+        "head_round_kick"
+      ]
+    },
+    "tripod_standup": {
+      "follow_ups": [
+        "side_kick",
+        "lead_teep"
+      ]
+    },
+    "defensive_cling": {
+      "follow_ups": [
+        "guard_recovery",
+        "guard_submission_chain",
+        "technical_standup"
+      ]
+    },
+    "wrist_ride_neutralize": {
+      "follow_ups": [
+        "guard_recovery",
+        "guard_submission_chain",
+        "technical_standup"
+      ]
+    },
+    "closed_guard_hold": {
+      "follow_ups": [
+        "guard_submission_chain",
+        "butterfly_sweep",
+        "technical_standup"
+      ]
+    },
+    "underhook_stall": {
+      "follow_ups": [
+        "guard_recovery",
+        "butterfly_sweep",
+        "technical_standup"
+      ]
+    },
+    "head_pinch_stall": {
+      "follow_ups": [
+        "guard_recovery",
+        "guard_submission_chain",
+        "technical_standup"
+      ]
+    }
+  }
+}

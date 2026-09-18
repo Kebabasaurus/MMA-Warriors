@@ -1,0 +1,7 @@
+{
+  "fights_per_arm": 300,
+  "before_mean_bottom_moves": 1.5667,
+  "after_mean_bottom_moves": 1.6883,
+  "paired_mechanics_equal": true,
+  "failures": []
+}

@@ -1,9 +1,11 @@
 import json
+import hashlib
 import random
 import re
 import sys
 import traceback
 from datetime import datetime
+from copy import deepcopy
 import tkinter as tk
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -16,6 +18,139 @@ from models import Fighter, Gym, Promotion
 class AwardsMixin:
     """End-of-year awards: a season tracker fed by every fight (player and AI),
     resolved into award winners when the calendar rolls into a new year."""
+
+    @staticmethod
+    def _super_event_safe_int(value, fallback=0):
+        """Read a legacy numeric term without letting a malformed save crash.
+
+        Closeout readers and mutation boundaries must preserve the raw offer
+        for review.  This helper supplies only a bounded diagnostic fallback;
+        it never writes the repaired value back to the offer.
+        """
+        if isinstance(value, bool):
+            return int(fallback or 0)
+        try:
+            return int(value if value is not None else fallback)
+        except (TypeError, ValueError):
+            return int(fallback or 0)
+
+    @staticmethod
+    def _record_fighter_row_id(company, fighter, fallback_index=0):
+        """Return a source-bound leaderboard row key.
+
+        Record ledgers can contain same-name fighters, so opening a profile
+        must not resolve from the visible name column.  Legacy fighters with
+        no durable ID receive a deterministic fingerprint for this reader;
+        the fallback index is retained only as an explicit UI marker when the
+        row has no identifying fields at all.
+        """
+        fighter_id = str(getattr(fighter, "fighter_id", "") or "").strip()
+        if fighter_id:
+            return f"record-fighter:{fighter_id}"
+        payload = {
+            "company": str(company or ""),
+            "name": str(getattr(fighter, "name", "") or ""),
+            "gender": str(getattr(fighter, "gender", "") or ""),
+            "weight": str(getattr(fighter, "weight", "") or ""),
+            "record": str(getattr(fighter, "record", "") or ""),
+        }
+        payload["raw_type"] = type(fighter).__name__
+        digest = hashlib.sha1(json.dumps(payload, sort_keys=True, default=str).encode("utf-8")).hexdigest()[:20]
+        return f"legacy-record-fighter:{digest}"
+
+    @staticmethod
+    def _title_lineage_row_id(lineage):
+        """Build a stable key for one promotion/division lineage row."""
+        lineage = lineage if isinstance(lineage, dict) else {}
+        payload = "|".join(str(lineage.get(key, "") or "") for key in ("company", "tier", "division"))
+        digest = hashlib.sha1(payload.encode("utf-8")).hexdigest()[:20]
+        return f"title-lineage:{digest}"
+
+    @staticmethod
+    def _title_history_entry_row_id(lineage, entry, fallback_index=0):
+        """Build a source-bound key for a title-history detail row."""
+        lineage = lineage if isinstance(lineage, dict) else {}
+        entry = entry if isinstance(entry, dict) else {}
+        fighter_id = str(entry.get("fighter_id", "") or "").strip()
+        payload = {
+            "company": lineage.get("company", ""), "division": lineage.get("division", ""),
+            "action": entry.get("action", ""), "date": entry.get("date", ""),
+            "fighter_id": fighter_id, "fighter": entry.get("fighter", ""),
+            "note": entry.get("note", ""),
+        }
+        payload["raw_type"] = type(entry).__name__
+        digest = hashlib.sha1(json.dumps(payload, sort_keys=True, default=str).encode("utf-8")).hexdigest()[:20]
+        prefix = "title-entry" if fighter_id else "legacy-title-entry"
+        return f"{prefix}:{digest}"
+
+    @staticmethod
+    def super_event_offer_ui_identity(offer, index=0, used_ids=None):
+        """Return a stable, display-only identity for an opportunity row.
+
+        Saved offer IDs are authoritative.  Older offers without an ID receive a
+        deterministic fingerprint from their immutable terms; duplicate source
+        IDs are disambiguated with a deterministic suffix.  This helper never
+        mutates the offer or the saved opportunity collection.
+        """
+        offer = offer if isinstance(offer, dict) else {}
+        used = used_ids if isinstance(used_ids, set) else set()
+        source_id = str(offer.get("id", "") or "").strip()
+        if source_id:
+            base = f"super-event:{source_id}"
+        else:
+            fingerprint_fields = (
+                "name", "kind", "venue", "deadline_month", "issued_month",
+                "status", "deposit", "setup", "security", "reserve",
+            )
+            payload = {field: offer.get(field) for field in fingerprint_fields}
+            encoded = json.dumps(payload, sort_keys=True, default=str, separators=(",", ":"))
+            digest = hashlib.sha1(encoded.encode("utf-8")).hexdigest()[:16]
+            base = f"legacy-super-event:{digest}"
+        candidate = base
+        suffix = 2
+        while candidate in used:
+            candidate = f"{base}#{suffix}"
+            suffix += 1
+        used.add(candidate)
+        return candidate
+
+    @staticmethod
+    def historical_record_ui_identity(scope, key, used_ids=None):
+        """Return a stable presentation key for one record-book row."""
+        used = used_ids if isinstance(used_ids, set) else set()
+        scope_key = str(scope or "record").strip().lower() or "record"
+        record_key = str(key or "record").strip() or "record"
+        base = f"record:{scope_key}:{record_key}"
+        candidate = base
+        suffix = 2
+        while candidate in used:
+            candidate = f"{base}#{suffix}"
+            suffix += 1
+        used.add(candidate)
+        return candidate
+
+    @staticmethod
+    def achievement_ui_identity(entry, index=0, used_ids=None):
+        """Return a stable presentation key for one achievement row."""
+        entry = entry if isinstance(entry, dict) else {}
+        used = used_ids if isinstance(used_ids, set) else set()
+        source_id = str(entry.get("id", "") or "").strip()
+        if source_id:
+            base = f"achievement:{source_id}:{str(entry.get('target', '') or '').strip()}"
+        else:
+            payload = {
+                key: entry.get(key)
+                for key in ("scope", "target", "company", "title", "description", "month", "year")
+            }
+            encoded = json.dumps(payload, sort_keys=True, default=str, separators=(",", ":"))
+            base = f"legacy-achievement:{hashlib.sha1(encoded.encode('utf-8')).hexdigest()[:16]}"
+        candidate = base
+        suffix = 2
+        while candidate in used:
+            candidate = f"{base}#{suffix}"
+            suffix += 1
+        used.add(candidate)
+        return candidate
 
     def current_year(self):
         return 2026 + (self.month - 1) // 12
@@ -34,17 +169,40 @@ class AwardsMixin:
     def unlock_achievement(self, scope, target, company, achievement_id, title, description, fighter=None):
         """Record an unlock once; achievement entries are a permanent world ledger."""
         self.ensure_season_containers()
-        if any(entry.get("id") == achievement_id and entry.get("target") == target for entry in self.achievement_log):
+        fighter_id = str(getattr(fighter, "fighter_id", "") or "").strip() if fighter is not None else ""
+        # A fighter's display name is not a durable identity (two active
+        # careers may legitimately share it).  New entries therefore dedupe by
+        # the saved fighter id; only old, id-less rows use the historical name
+        # fallback.  This keeps the permanent ledger append-only without
+        # allowing one same-named fighter to consume another's milestone.
+        def same_unlock(entry):
+            if not isinstance(entry, dict) or entry.get("id") != achievement_id:
+                return False
+            existing_id = str(entry.get("fighter_id", "") or "").strip()
+            if fighter_id and existing_id:
+                return existing_id == fighter_id
+            if not fighter_id and not existing_id:
+                return entry.get("target") == target
+            return False
+
+        if any(same_unlock(entry) for entry in self.achievement_log):
             return False
         entry = {
             "id": achievement_id, "scope": scope, "target": target, "company": company,
             "title": title, "description": description, "month": self.month,
             "year": self.current_year(),
         }
+        if fighter_id:
+            entry["fighter_id"] = fighter_id
         self.achievement_log.insert(0, entry)
         self.achievement_log = self.achievement_log[:1000]
-        if fighter is None and scope == "Fighter" and hasattr(self, "find_fighter_anywhere"):
-            fighter = self.find_fighter_anywhere(target)
+        if fighter is None and scope == "Fighter":
+            # Legacy callers may supply only a display name.  Resolve it only
+            # when that name identifies one career; a duplicate is left
+            # unattached rather than mutating an arbitrary fighter.
+            resolver = getattr(self, "resolve_award_fighter", None)
+            if callable(resolver):
+                fighter = resolver(target, "")
         if fighter:
             fighter.career_achievements = (getattr(fighter, "career_achievements", None) or [])
             fighter.career_achievements.append(title)
@@ -175,14 +333,42 @@ class AwardsMixin:
         self.company_milestone_progress = progress
         self.expire_super_event_offers()
         self.roll_super_event_opportunity()
+        # Regional host invitations are a separate, optional planning lane.
+        # The monthly boundary is the only automatic generation owner; the
+        # Region Hub itself remains a reader and never rolls an offer.
+        if hasattr(self, "expire_regional_invitations"):
+            self.expire_regional_invitations()
+        if hasattr(self, "generate_regional_invitation"):
+            self.generate_regional_invitation()
 
     def expire_super_event_offers(self):
         active = []
         for offer in list(getattr(self, "super_event_offers", []) or []):
             if offer.get("status") == "Offered" and self.month > int(offer.get("deadline_month", self.month)):
-                offer["status"] = "Expired"
+                close_result = self.close_super_event_project(
+                    offer, outcome="Expired",
+                    reason="The invitation window ended before the project was accepted.",
+                )
+                if isinstance(close_result, dict) and close_result.get("needs_review"):
+                    offer["closeout_review"] = str(close_result.get("reason", "Refresh the opportunity before closing it."))
+                    active.append(offer)
+                    continue
                 self.company_safety = max(0, self.company_safety - 2)
                 self.news.insert(0, f"Super-event invitation expired: {offer.get('name', 'Opportunity')}. The industry questions the missed window.")
+                continue
+            elif offer.get("status") == "Planning" and self.month > int(offer.get("deadline_month", self.month)):
+                close_result = self.close_super_event_project(
+                    offer, outcome="Expired",
+                    reason="The planning window ended before the project was scheduled.",
+                )
+                # A stale revision/status must fail closed without making the
+                # live opportunity disappear.  Keep the planning row visible
+                # so the player can refresh/review it instead of leaving an
+                # orphaned ``super_event_project`` behind.
+                if isinstance(close_result, dict) and close_result.get("needs_review"):
+                    offer["closeout_review"] = str(close_result.get("reason", "Refresh the project before closing it."))
+                    active.append(offer)
+                continue
             if offer.get("status") in ("Offered", "Planning", "Scheduled"):
                 active.append(offer)
         self.super_event_offers = active[-12:]
@@ -223,7 +409,7 @@ class AwardsMixin:
     def super_event_readiness(self, offer):
         offer = offer or {}
         fights = list(getattr(self, "booked", []) or [])
-        participants = [self.get_fighter(name) for fight in fights for name in fight.get("fighters", []) if name != "TBA" and self.get_fighter(name)]
+        participants = self._super_event_participants(fights)
         unique = list({fighter.fighter_id: fighter for fighter in participants}.values())
         title_bouts = sum(1 for fight in fights if fight.get("title"))
         star_count = sum(1 for fighter in unique if fighter.popularity >= 55 or fighter.star_quality >= 72)
@@ -243,7 +429,7 @@ class AwardsMixin:
 
     def validate_super_event_card(self, offer, fights=None):
         fights = list(fights if fights is not None else getattr(self, "booked", []))
-        participants = [self.get_fighter(name) for fight in fights for name in fight.get("fighters", []) if name != "TBA" and self.get_fighter(name)]
+        participants = self._super_event_participants(fights)
         stars = len({fighter.fighter_id for fighter in participants if fighter.popularity >= 55 or fighter.star_quality >= 72})
         titles = sum(1 for fight in fights if fight.get("title"))
         missing = []
@@ -252,17 +438,66 @@ class AwardsMixin:
         if stars < int(offer.get("min_stars", 0)): missing.append(f"{offer['min_stars']} recognisable stars")
         return missing
 
+    def _super_event_participants(self, fights):
+        """Resolve booked participants by saved fighter ID, failing closed on names.
+
+        Super-event readiness is a reader.  Legacy cards can contain a display
+        name without an ID, but duplicate careers must not make the readiness
+        calculation crash or silently credit the first same-named fighter.
+        """
+        participants = []
+        resolver = getattr(self, "resolve_fighter", None)
+        getter = getattr(self, "get_fighter", None)
+        for fight in fights or []:
+            if not isinstance(fight, dict):
+                continue
+            names = fight.get("fighters", []) if isinstance(fight.get("fighters", []), list) else []
+            fighter_ids = fight.get("fighter_ids", []) if isinstance(fight.get("fighter_ids", []), list) else []
+            for index, name in enumerate(names):
+                if name in (None, "", "TBA"):
+                    continue
+                reference = fighter_ids[index] if index < len(fighter_ids) and fighter_ids[index] else name
+                fighter = None
+                if callable(resolver):
+                    try:
+                        fighter = resolver(reference)
+                    except Exception:
+                        fighter = None
+                elif callable(getter):
+                    try:
+                        fighter = getter(reference)
+                    except (LookupError, TypeError, ValueError):
+                        fighter = None
+                if fighter is not None:
+                    participants.append(fighter)
+        return participants
+
     def accept_super_event_offer(self, offer):
         if offer.get("status") != "Offered":
             return False, "That invitation is no longer open."
-        total_commitment = int(offer.get("deposit", 0)) + int(offer.get("setup", 0)) + int(offer.get("security", 0))
+        terms = self.super_event_terms_snapshot(offer)
+        total_commitment = terms["deposit"] + terms["setup"] + terms["security_cost"]
         if self.cash - total_commitment < int(offer.get("reserve", 0)):
             return False, f"Approval requires ${offer['reserve']:,} to remain after the projected ${total_commitment:,} commitment."
-        self.cash -= int(offer.get("deposit", 0))
-        self.record_finance_transaction(f"Super-event approval: {offer['name']}", costs=int(offer.get("deposit", 0)))
+        self.cash -= terms["deposit"]
+        self.record_finance_transaction(f"Super-event approval: {offer['name']}", costs=terms["deposit"])
+        # New approvals carry one canonical, immutable terms snapshot.  Keep
+        # the template keys as authored evidence, but make settlement consume
+        # the same security/revenue names that the approval review displayed.
+        offer.update(terms)
         offer["status"] = "Planning"
         offer["accepted_month"] = self.month
-        offer["remaining_setup_cost"] = int(offer.get("setup", 0))
+        offer["project_revision"] = max(1, int(offer.get("project_revision", 0) or 0) + 1)
+        offer["deposit_payment_reference"] = f"super-event-approval:{offer.get('id', 'legacy')}:{self.month}:{self.week}"
+        offer["accepted_terms"] = {
+            "terms_version": 2,
+            "template": {"deposit": terms["deposit"], "setup": terms["setup"], "security": terms["template_security"], "revenue": terms["template_revenue"]},
+            "canonical": {"deposit": terms["deposit"], "setup": terms["setup"], "security_cost": terms["security_cost"], "revenue_multiplier": terms["revenue_multiplier"]},
+            "accepted_month": int(self.month),
+            "payment_reference": offer["deposit_payment_reference"],
+            "refund_terms": "Approval deposit is sunk; no refund is created without a recorded payment reference.",
+        }
+        offer["remaining_setup_cost"] = terms["setup"]
         offer["novelty"] = self.super_event_novelty(offer)
         self.super_event_project = offer
         self.event_name.set(f"{self.player_company_name}: {offer['name']}")
@@ -274,29 +509,351 @@ class AwardsMixin:
         self.news.insert(0, f"Approved: {offer['name']}. Build the card and clear approval before {self.format_game_date(offer['deadline_month'], 1)}.")
         return True, "Project approved. The booking screen has been prepared."
 
+    @staticmethod
+    def super_event_terms_snapshot(offer):
+        """Normalize one approval's terms without mutating the source offer.
+
+        Existing invitation templates use ``security``/``revenue`` while the
+        settlement calculator consumes ``security_cost``/``revenue_multiplier``.
+        A newly accepted offer stores both forms so the original terms remain
+        auditable and the event path cannot silently fall back to zero/neutral.
+        """
+        offer = offer if isinstance(offer, dict) else {}
+
+        def money(primary, fallback=0):
+            try:
+                return max(0, int(offer.get(primary, fallback) or 0))
+            except (TypeError, ValueError):
+                return max(0, int(fallback or 0))
+
+        def multiplier(primary, fallback=1.0):
+            try:
+                return max(0.0, float(offer.get(primary, fallback) or fallback))
+            except (TypeError, ValueError):
+                return max(0.0, float(fallback))
+
+        template_security = money("security")
+        template_revenue = multiplier("revenue")
+        return {
+            "terms_version": 2,
+            "deposit": money("deposit"),
+            "setup": money("setup"),
+            "security_cost": money("security_cost", template_security),
+            "revenue_multiplier": multiplier("revenue_multiplier", template_revenue),
+            "template_security": template_security,
+            "template_revenue": template_revenue,
+        }
+
+    @staticmethod
+    def super_event_commitment_snapshot(offer, package=None):
+        """Return an additive paid/sunk/refundable/unpaid project breakdown.
+
+        The existing event calculator remains the money owner.  This helper
+        only projects the accepted terms and, when a settlement package is
+        supplied, attributes the already-recorded super-event setup amount to
+        setup then security.  It never refunds, charges, or mutates ``offer``.
+        Legacy rows without accepted terms are explicit manual-review evidence
+        instead of receiving invented refund rules.
+        """
+        offer = offer if isinstance(offer, dict) else {}
+        accepted = offer.get("accepted_terms") if isinstance(offer.get("accepted_terms"), dict) else {}
+        canonical = accepted.get("canonical") if isinstance(accepted.get("canonical"), dict) else {}
+
+        def money(value, fallback=0):
+            try:
+                return max(0, int(value if value is not None else fallback))
+            except (TypeError, ValueError):
+                return max(0, int(fallback or 0))
+
+        deposit = money(canonical.get("deposit", offer.get("deposit", 0)))
+        setup = money(canonical.get("setup", offer.get("setup", 0)))
+        security = money(canonical.get("security_cost", offer.get("security_cost", offer.get("security", 0))))
+        accepted_month = offer.get("accepted_month")
+        deposit_paid = deposit if accepted_month is not None else 0
+        settled_setup_security = 0
+        if isinstance(package, dict):
+            finance = package.get("finance", {})
+            if isinstance(finance, dict):
+                settled_setup_security = money(finance.get("super_event_setup", 0))
+        setup_paid = min(setup, settled_setup_security)
+        security_paid = min(security, max(0, settled_setup_security - setup_paid))
+        paid_components = {
+            "approval_deposit": deposit_paid,
+            "setup": setup_paid,
+            "security": security_paid,
+        }
+        planned_components = {
+            "approval_deposit": deposit,
+            "setup": setup,
+            "security": security,
+        }
+        paid_total = sum(paid_components.values())
+        planned_total = sum(planned_components.values())
+        unpaid_components = {
+            key: max(0, planned_components[key] - paid_components[key])
+            for key in planned_components
+        }
+        legacy_terms = not bool(accepted)
+        return {
+            "terms_version": AwardsMixin._super_event_safe_int(offer.get("terms_version", 1) or 1, 1),
+            "planned_components": planned_components,
+            "paid_components": paid_components,
+            "paid_total": paid_total,
+            "sunk_total": paid_total,
+            "refundable_total": 0,
+            "unpaid_components": unpaid_components,
+            "unpaid_total": sum(unpaid_components.values()),
+            "payment_references": [str(offer.get("deposit_payment_reference", "") or "")] if deposit_paid and offer.get("deposit_payment_reference") else [],
+            "refund_status": (
+                "Manual review: legacy terms contain no refund schedule."
+                if legacy_terms else
+                "No refund created; accepted terms mark the approval deposit as sunk."
+            ),
+            "source": "legacy terms; incomplete" if legacy_terms else "accepted terms snapshot",
+        }
+
+    @staticmethod
+    def super_event_transition_allowed(current_status, target_status):
+        """Validate one project state transition without touching the offer.
+
+        The public ``outcome`` field historically uses ``Success``; the
+        lifecycle state uses ``Completed`` so readers can distinguish a
+        successful terminal project from an offer that is still active.
+        Status-less legacy rows remain readable, but a known state cannot jump
+        over approval or scheduling.
+        """
+        current = str(current_status or "").strip()
+        target = str(target_status or "").strip()
+        if target == "Success":
+            target = "Completed"
+        if not target:
+            return False
+        if not current:
+            return True
+        if current == target:
+            return True
+        transitions = {
+            "Offered": {"Planning", "Cancelled", "Expired"},
+            "Planning": {"Scheduled", "Cancelled", "Expired"},
+            "Scheduled": {"Completed", "Failed", "Cancelled"},
+            "Accepted": {"Planning", "Cancelled", "Expired"},
+        }
+        return target in transitions.get(current, set())
+
+    def _super_event_revision_conflict(self, offer):
+        """Return a source-bound revision conflict for a stale offer copy."""
+        if not isinstance(offer, dict):
+            return "Invalid super-event project record."
+        offer_id = str(offer.get("id", "") or "").strip()
+        if not offer_id or offer.get("project_revision") in (None, ""):
+            return ""
+        try:
+            incoming = max(1, int(offer.get("project_revision")))
+        except (TypeError, ValueError):
+            return "The project revision is malformed; review the saved project before continuing."
+        live_rows = [
+            row for row in (getattr(self, "super_event_offers", []) or [])
+            if isinstance(row, dict) and str(row.get("id", "") or "") == offer_id
+        ]
+        project = getattr(self, "super_event_project", None)
+        if isinstance(project, dict) and str(project.get("id", "") or "") == offer_id:
+            live_rows.append(project)
+        for live in live_rows:
+            if live is offer:
+                continue
+            incoming_status = str(offer.get("status", "") or "").strip()
+            live_status = str(live.get("status", "") or "").strip()
+            if incoming_status and live_status and incoming_status != live_status:
+                return f"The project state changed from {incoming_status} to {live_status}; refresh and review it before continuing."
+            try:
+                live_revision = max(1, int(live.get("project_revision")))
+            except (TypeError, ValueError):
+                return "The active project revision is malformed; review the saved project before continuing."
+            if live_revision != incoming:
+                return f"The project changed from revision {incoming} to revision {live_revision}; refresh and review it before continuing."
+        return ""
+
+    def close_super_event_project(self, offer, *, outcome="Cancelled", reason="", event_name="", package=None):
+        """Close a super-event agreement exactly once without inventing money.
+
+        Cancellation/expiry keeps any recorded approval deposit sunk, clears
+        only the matching active project and appends one terminal history row.
+        Completion uses the same idempotent guard, while its sporting effects
+        remain owned by ``complete_super_event``.
+        """
+        offer = offer if isinstance(offer, dict) else {}
+        offer_id = str(offer.get("id", "") or "")
+        if not offer_id:
+            # A deterministic compatibility identity keeps a legacy project
+            # idempotent without using a mutable list position or RNG.
+            offer_id = f"legacy-super-event:{str(offer.get('name', 'project') or 'project').strip()}:{offer.get('accepted_month', offer.get('issued_month', 0))}"
+        history = getattr(self, "super_event_history", []) or []
+        existing = next((row for row in history if offer_id and str(row.get("id", "")) == offer_id), None)
+        if existing:
+            if getattr(self, "super_event_project", None) and str(self.super_event_project.get("id", "")) == offer_id:
+                self.super_event_project = None
+            self.super_event_offers = [row for row in getattr(self, "super_event_offers", []) or [] if str(row.get("id", "")) != offer_id]
+            return dict(existing)
+        current_status = str(offer.get("status", "") or "").strip()
+        # A stale event/offer object must not push an already-terminal project
+        # through a second closeout path. Legacy rows without a status remain
+        # compatible and receive the requested terminal outcome.
+        if current_status in {"Completed", "Failed", "Cancelled", "Expired"}:
+            return {
+                "id": offer_id,
+                "name": offer.get("name", "Super Event"),
+                "kind": offer.get("kind", ""),
+                "outcome": current_status,
+                "state": current_status,
+                "reason": str(reason or "Already terminal; no second closeout applied."),
+                "settlement_key": f"super-event:{offer_id}:terminal",
+                "commitment": self.super_event_commitment_snapshot(offer, package=package),
+                "already_terminal": True,
+            }
+        status = str(outcome or "Cancelled")
+        target_state = "Completed" if status == "Success" else status
+        if not self.super_event_transition_allowed(current_status, target_state):
+            return {
+                "id": offer_id,
+                "name": offer.get("name", "Super Event"),
+                "kind": offer.get("kind", ""),
+                "outcome": "Needs review",
+                "state": "Needs review",
+                "reason": f"Invalid project transition: {current_status or 'legacy'} → {target_state}.",
+                "settlement_key": f"super-event:{offer_id}:terminal",
+                "commitment": self.super_event_commitment_snapshot(offer, package=package),
+                "needs_review": True,
+            }
+        revision_conflict = self._super_event_revision_conflict(offer)
+        if revision_conflict:
+            return {
+                "id": offer_id,
+                "name": offer.get("name", "Super Event"),
+                "kind": offer.get("kind", ""),
+                "outcome": "Needs review",
+                "state": "Needs review",
+                "reason": revision_conflict,
+                "settlement_key": f"super-event:{offer_id}:terminal",
+                "commitment": self.super_event_commitment_snapshot(offer, package=package),
+                "needs_review": True,
+            }
+        # Keep the public outcome wording (Success/Failed) for existing
+        # history readers, while storing the state-machine terminal state that
+        # lifecycle readers can reason about consistently.
+        terminal_state = "Completed" if status == "Success" else status
+        finance = (package or {}).get("finance", {}) if isinstance(package, dict) else {}
+        commitment = self.super_event_commitment_snapshot(offer, package=package)
+        row = {
+            "id": offer_id, "name": offer.get("name", "Super Event"), "kind": offer.get("kind", ""),
+            "milestone": offer.get("milestone", ""), "month": self._super_event_safe_int(getattr(self, "month", 1) or 1, 1),
+            "outcome": status, "event": event_name or (package or {}).get("event_name", ""),
+            "reason": str(reason or ""), "terms_version": self._super_event_safe_int(offer.get("terms_version", 1) or 1, 1),
+            "deposit_paid": self._super_event_safe_int(offer.get("deposit", 0) or 0) if offer.get("accepted_month") else 0,
+            "attendance": finance.get("attendance", 0), "profit": (package or {}).get("profit", 0),
+            "state": terminal_state, "settlement_key": f"super-event:{offer_id}:terminal",
+            "project_revision": self._super_event_safe_int(offer.get("project_revision", 1) or 1, 1),
+            "accepted_terms": deepcopy(offer.get("accepted_terms", {})) if isinstance(offer.get("accepted_terms"), dict) else {},
+            "commitment": commitment,
+        }
+        self.super_event_history = [row] + list(history)
+        self.super_event_history = self.super_event_history[:60]
+        offer["status"] = status
+        self.super_event_offers = [row for row in getattr(self, "super_event_offers", []) or [] if str(row.get("id", "")) != offer_id]
+        if getattr(self, "super_event_project", None) and str(self.super_event_project.get("id", "")) == offer_id:
+            self.super_event_project = None
+        return dict(row)
+
     def complete_super_event(self, event, package):
         offer = dict(event.get("super_event", {}) or {})
         if not offer:
             return
+        if not isinstance(package, dict):
+            return {
+                "id": str(offer.get("id", "") or ""),
+                "name": offer.get("name", "Super Event"),
+                "outcome": "Needs review", "state": "Needs review",
+                "reason": "Settlement package evidence is malformed; no project effects were applied.",
+                "settlement_key": f"super-event:{offer.get('id', 'legacy')}:terminal",
+                "needs_review": True,
+            }
+        current_status = str(offer.get("status", "") or "").strip()
+        # Completion belongs to a scheduled project. A stale or cancelled
+        # event copy must not recreate a terminal history row or apply the
+        # project effects a second time. Status-less legacy packages remain
+        # readable for compatibility.
+        if current_status and current_status != "Scheduled":
+            existing = next((row for row in getattr(self, "super_event_history", []) or []
+                             if str(row.get("id", "")) == str(offer.get("id", ""))), None)
+            return dict(existing) if existing else None
+        revision_conflict = self._super_event_revision_conflict(offer)
+        if revision_conflict:
+            return {
+                "id": str(offer.get("id", "") or ""),
+                "name": offer.get("name", "Super Event"),
+                "outcome": "Needs review", "state": "Needs review",
+                "reason": revision_conflict,
+                "settlement_key": f"super-event:{offer.get('id', 'legacy')}:terminal",
+                "needs_review": True,
+            }
+        existing = next((row for row in getattr(self, "super_event_history", []) or [] if str(row.get("id", "")) == str(offer.get("id", ""))), None)
+        if existing:
+            return dict(existing)
         finance = package.get("finance", {}) or {}
-        attendance_ratio = finance.get("attendance", 0) / max(1, finance.get("venue_capacity", 1))
-        success = package.get("profit", 0) >= 0 and attendance_ratio >= .45 and package.get("average_excitement", 0) >= 43
+        if not isinstance(finance, dict):
+            return {
+                "id": str(offer.get("id", "") or ""),
+                "name": offer.get("name", "Super Event"),
+                "outcome": "Needs review", "state": "Needs review",
+                "reason": "Settlement finance evidence is malformed; no project effects were applied.",
+                "settlement_key": f"super-event:{offer.get('id', 'legacy')}:terminal",
+                "needs_review": True,
+            }
+
+        def finite_number(value):
+            if isinstance(value, bool):
+                return None
+            try:
+                number = float(value)
+            except (TypeError, ValueError):
+                return None
+            return number if number == number and abs(number) != float("inf") else None
+
+        attendance = finite_number(finance.get("attendance", 0))
+        venue_capacity = finite_number(finance.get("venue_capacity", 1))
+        profit = finite_number(package.get("profit", 0))
+        excitement = finite_number(package.get("average_excitement", 0))
+        if attendance is None or venue_capacity is None or profit is None or excitement is None or venue_capacity <= 0:
+            return {
+                "id": str(offer.get("id", "") or ""),
+                "name": offer.get("name", "Super Event"),
+                "outcome": "Needs review", "state": "Needs review",
+                "reason": "Settlement attendance, capacity, profit or excitement evidence is malformed; no project effects were applied.",
+                "settlement_key": f"super-event:{offer.get('id', 'legacy')}:terminal",
+                "needs_review": True,
+            }
+        attendance_ratio = attendance / venue_capacity
+        success = profit >= 0 and attendance_ratio >= .45 and excitement >= 43
         outcome = "Success" if success else "Failed"
-        pop_delta = int(offer.get("reward", 3)) if success else -max(2, int(offer.get("reward", 3)) // 2)
-        stability_delta = max(1, int(offer.get("reward", 3)) // 2) if success else -3
+        reward = max(0, self._super_event_safe_int(offer.get("reward", 3) or 3, 3))
+        pop_delta = reward if success else -max(2, reward // 2)
+        stability_delta = max(1, reward // 2) if success else -3
+        # Seal the project before applying its derived sporting/business
+        # effects.  A stale event copy can still fail the closeout's revision
+        # or status guard; in that case the player must review the project and
+        # none of the popularity, stability, safety or news effects may leak.
+        history = self.close_super_event_project(
+            offer, outcome=outcome, event_name=package.get("event_name", ""), package=package,
+        )
+        if not isinstance(history, dict) or history.get("needs_review"):
+            return history
         self.company_pop = max(1, min(100, self.company_pop + pop_delta))
         self.company_stability = max(1, min(100, self.company_stability + stability_delta))
         self.company_safety = max(0, min(100, self.company_safety + (2 if success else -4)))
-        history = {"id": offer.get("id"), "name": offer.get("name"), "kind": offer.get("kind"), "milestone": offer.get("milestone"), "month": self.month, "outcome": outcome, "attendance": finance.get("attendance", 0), "profit": package.get("profit", 0), "event": package.get("event_name", "")}
-        self.super_event_history.insert(0, history)
-        self.super_event_history = self.super_event_history[:60]
-        offer["status"] = outcome
-        self.super_event_offers = [row for row in self.super_event_offers if row.get("id") != offer.get("id")]
-        self.super_event_project = None
         headline = f"{offer.get('name', 'Super Event')} {outcome.lower()}: {package.get('event_name', '')}"
         detail = f"Attendance {finance.get('attendance', 0):,}; profit ${package.get('profit', 0):,}; popularity {pop_delta:+}; stability {stability_delta:+}."
         self.news.insert(0, headline)
         self.record_world_story("Super Event", headline, detail, [self.player_company_name], importance=5 if success else 3)
+        return history
 
     def open_company_milestones_window(self):
         self.update_company_safety_and_standing()
@@ -322,8 +879,11 @@ class AwardsMixin:
         offer_tree.pack(fill="both", expand=True, padx=6, pady=6)
         detail = tk.Text(window, height=8, wrap="word", bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 9), padx=10, pady=8)
         detail.pack(fill="x", padx=8, pady=(0, 6)); detail.config(state="disabled")
+        project_status_var = tk.StringVar(value="Select an opportunity to inspect its readiness and commitment.")
+        ttk.Label(window, textvariable=project_status_var, style="Inset.TLabel", anchor="w", justify="left", wraplength=1060).pack(fill="x", padx=10, pady=(0, 5))
         footer = ttk.Frame(window, style="Inset.TFrame"); footer.pack(fill="x", padx=8, pady=(0, 8))
         offers = []
+        offer_rows = {}
         def render():
             stats.config(text=f"Cash ${self.cash:,.0f}  |  Valuation {self.company_valuation():,}  |  Safety & Standing {self.company_safety}/100")
             milestone_tree.delete(*milestone_tree.get_children())
@@ -333,21 +893,37 @@ class AwardsMixin:
                 state = progress.get(rule["id"], {})
                 status = "UNLOCKED" if rule["id"] in unlocked else "Building"
                 milestone_tree.insert("", "end", iid=rule["id"], values=(status, f"{state.get('months', 0)}/{rule['months']} mo", f"${rule['cash']:,}", rule["unlock"]))
+            previous_selection = offer_tree.selection()
             offers[:] = list(getattr(self, "super_event_offers", []) or [])
+            offer_rows.clear()
             offer_tree.delete(*offer_tree.get_children())
+            used_ids = set()
             for index, offer in enumerate(offers):
                 ready = self.super_event_readiness(offer)["score"]
-                offer_tree.insert("", "end", iid=str(index), values=(offer.get("kind", ""), offer.get("venue", ""), self.format_game_date(offer.get("deadline_month", self.month), 1), offer.get("status", ""), f"{ready}/100"))
+                row_id = self.super_event_offer_ui_identity(offer, index=index, used_ids=used_ids)
+                offer_rows[row_id] = offer
+                offer_tree.insert("", "end", iid=row_id, values=(offer.get("kind", ""), offer.get("venue", ""), self.format_game_date(offer.get("deadline_month", self.month), 1), offer.get("status", ""), f"{ready}/100"))
+            if previous_selection and previous_selection[0] in offer_rows:
+                offer_tree.selection_set(previous_selection[0])
+                offer_tree.focus(previous_selection[0])
         def selected_offer():
             selected = offer_tree.selection()
-            return offers[int(selected[0])] if selected else None
+            return offer_rows.get(selected[0]) if selected else None
         def show_offer(_event=None):
             offer = selected_offer()
             if not offer: return
             read = self.super_event_readiness(offer)
             missing = self.validate_super_event_card(offer)
+            commitment = self.super_event_commitment_snapshot(offer)
+            paid = commitment.get("paid_total", 0)
+            unpaid = commitment.get("unpaid_total", 0)
+            commitment_line = (
+                f"Paid/sunk ${paid:,}; unpaid commitment ${unpaid:,}; refundable ${commitment.get('refundable_total', 0):,}. "
+                f"{commitment.get('refund_status', '')}"
+            )
             text = (f"{offer['name']}\n\n{offer['kind']} at {offer['venue']}\n"
                     f"Approval deposit ${offer['deposit']:,}; remaining setup/security ${offer['setup'] + offer['security']:,}; reserve ${offer['reserve']:,}.\n"
+                    f"Commitment: {commitment_line}\n"
                     f"Spectacle novelty: {int(self.super_event_novelty(offer) * 100)}% commercial impact.\n"
                     f"Card approval: {offer['min_fights']} fights, {offer['min_titles']} title fights, {offer['min_stars']} recognisable stars.\n\n"
                     f"READINESS {read['score']}/100\nFinancial {read['financial']} | Prestige {read['prestige']} | Card {read['card']} | Star power {read['star_power']} | Safety {read['safety']} | Venue {read['venue']}\n"
@@ -355,13 +931,36 @@ class AwardsMixin:
             detail.config(state="normal"); detail.delete("1.0", "end"); detail.insert("end", text); detail.config(state="disabled")
         def accept():
             offer = selected_offer()
-            if not offer: return
+            if not offer:
+                project_status_var.set("Select a super-event opportunity before approving it.")
+                return
             ok, message = self.accept_super_event_offer(offer)
             if ok:
+                project_status_var.set("Project approved. Continue in the Booking desk to complete its card.")
                 self.select_tab("booking"); window.destroy()
             else:
-                messagebox.showwarning("Project cannot be approved", message, parent=window)
+                project_status_var.set(f"Approval blocked: {message}")
+        def cancel_project():
+            offer = selected_offer()
+            if not offer or offer.get("status") != "Planning":
+                project_status_var.set("Select an accepted Planning project before closing it.")
+                return
+            if not messagebox.askyesno(
+                "Cancel super-event project",
+                f"Cancel {offer.get('name', 'this project')}?\n\nAny paid approval deposit remains sunk. Unperformed setup/security is not charged, and the cancelled project stays in history.",
+                parent=window,
+            ):
+                return
+            self.close_super_event_project(
+                offer, outcome="Cancelled", reason="Player cancelled the project during planning.",
+            )
+            self.news.insert(0, f"Super-event project cancelled: {offer.get('name', 'Opportunity')}.")
+            project_status_var.set(f"Cancelled {offer.get('name', 'the project')}. Paid deposits remain sunk; unperformed setup/security was not charged.")
+            render()
+            if hasattr(self, "refresh_all"):
+                self.refresh_all()
         ttk.Button(footer, text="Accept Selected Project", style="Accent.TButton", command=accept).pack(side="left", padx=4, pady=4)
+        ttk.Button(footer, text="Cancel Planning Project", command=cancel_project).pack(side="left", padx=4, pady=4)
         ttk.Button(footer, text="Refresh", command=render).pack(side="left", padx=4, pady=4)
         ttk.Button(footer, text="Close", command=window.destroy).pack(side="right", padx=4, pady=4)
         offer_tree.bind("<<TreeviewSelect>>", show_offer); render()
@@ -388,23 +987,41 @@ class AwardsMixin:
         detail = tk.Text(window, height=4, wrap="word", bg=self.colors["panel_dark"], fg=self.colors["text"], font=("Tahoma", 9), padx=10, pady=8)
         detail.pack(fill="x", padx=8, pady=(0, 8)); detail.config(state="disabled")
         visible = []
+        achievement_rows = {}
         def render(*_args):
+            previous_selection = tree.selection()
             visible[:] = [entry for entry in self.achievement_log if scope.get() == "All" or entry.get("scope") == scope.get()]
+            achievement_rows.clear()
             tree.delete(*tree.get_children())
+            used_ids = set()
             for index, entry in enumerate(visible):
-                tree.insert("", "end", iid=str(index), values=(entry.get("year", ""), entry.get("scope", ""), entry.get("target", ""), entry.get("company", ""), entry.get("title", ""), entry.get("description", "")))
+                row_id = self.achievement_ui_identity(entry, index=index, used_ids=used_ids)
+                achievement_rows[row_id] = entry
+                tree.insert("", "end", iid=row_id, values=(entry.get("year", ""), entry.get("scope", ""), entry.get("target", ""), entry.get("company", ""), entry.get("title", ""), entry.get("description", "")))
+            if previous_selection and previous_selection[0] in achievement_rows:
+                tree.selection_set(previous_selection[0]); tree.focus(previous_selection[0])
             summary.config(text=f"{len(visible)} unlocked")
         def select(_event=None):
             chosen = tree.selection()
             detail.config(state="normal"); detail.delete("1.0", "end")
             if chosen:
-                entry = visible[int(chosen[0])]
+                entry = achievement_rows.get(chosen[0])
+                if not entry:
+                    detail.config(state="disabled")
+                    return
                 detail.insert("end", f"{entry['title']}\n{entry['target']} — {entry['description']}\nUnlocked {self.format_game_date(entry.get('month', 1), entry.get('week', 1))}.")
             detail.config(state="disabled")
         def open_profile(_event=None):
             chosen = tree.selection()
-            if chosen and visible[int(chosen[0])].get("scope") == "Fighter":
-                fighter = self.find_fighter_anywhere(visible[int(chosen[0])]["target"])
+            entry = achievement_rows.get(chosen[0]) if chosen else None
+            if entry and entry.get("scope") == "Fighter":
+                # Prefer the immutable historical identity.  A legacy row has
+                # no id, so resolve the name only when it is unique; an
+                # ambiguous duplicate fails closed rather than opening the
+                # wrong career snapshot.
+                fighter = self.resolve_award_fighter(
+                    entry.get("target", ""), entry.get("fighter_id", "")
+                ) if hasattr(self, "resolve_award_fighter") else None
                 if fighter:
                     self.open_fighter_profile_window(fighter)
         scope.trace_add("write", render); tree.bind("<<TreeviewSelect>>", select); tree.bind("<Double-1>", open_profile); render()
@@ -413,6 +1030,32 @@ class AwardsMixin:
         self.ensure_season_containers()
         key = self.year_label(year)
         return self.season_stats.setdefault(key, {"fighters": {}, "fights": [], "companies": {}})
+
+    def resolve_award_fighter(self, name, fighter_id=""):
+        """Legacy names resolve only when unique; an explicit ID never falls back."""
+        candidates = {
+            str(fighter.fighter_id): fighter
+            for _company, fighter in self.fighter_instances_with_companies(include_retired=True)
+            if (str(fighter.fighter_id) == str(fighter_id) if fighter_id else fighter.name == name)
+        }
+        return next(iter(candidates.values())) if len(candidates) == 1 else None
+
+    def season_fighter_record(self, fighters, fighter):
+        identity = str(fighter.fighter_id)
+        if identity not in fighters:
+            legacy = fighters.get(fighter.name)
+            if isinstance(legacy, dict):
+                owner = self.resolve_award_fighter(fighter.name, legacy.get("fighter_id", ""))
+                if owner is not None and str(owner.fighter_id) == identity:
+                    fighters[identity] = fighters.pop(fighter.name)
+                elif not legacy.get("fighter_id"):
+                    # Preserve ambiguous historical totals without awarding them
+                    # to whichever same-named fighter happens to compete first.
+                    legacy["identity_unresolved"] = True
+            fighters.setdefault(identity, self.blank_season_fighter(fighter))
+        record = fighters[identity]
+        record.update({"name": fighter.name, "fighter_id": identity})
+        return record
 
     def record_season_result(self, winner, loser, method, round_no, fight, excitement, company):
         """Log a result for later award scoring, including draws without false W/L credit."""
@@ -432,11 +1075,11 @@ class AwardsMixin:
             is_sub = method in SUBMISSION_METHODS
             is_title = bool(fight.get("title"))
 
-            wrec = fighters.setdefault(winner.name, self.blank_season_fighter(winner))
+            wrec = self.season_fighter_record(fighters, winner)
             wrec.update({"gender": winner.gender, "weight": winner.weight, "age": winner.age,
                          "popularity": winner.popularity, "company": company})
 
-            lrec = fighters.setdefault(loser.name, self.blank_season_fighter(loser))
+            lrec = self.season_fighter_record(fighters, loser)
             lrec.update({"gender": loser.gender, "weight": loser.weight, "age": loser.age})
             if method == "Draw":
                 wrec["draws"] = wrec.get("draws", 0) + 1
@@ -457,6 +1100,7 @@ class AwardsMixin:
 
             bucket["fights"].append({
                 "winner": winner.name, "loser": loser.name, "method": method, "round": round_no,
+                "winner_id": winner.fighter_id, "loser_id": loser.fighter_id,
                 "excitement": int(excitement), "weight": winner.weight, "gender": winner.gender,
                 "title": is_title, "main": bool(fight.get("main")), "company": company,
                 "date": f"Month {self.month} Week {self.week}",
@@ -476,7 +1120,7 @@ class AwardsMixin:
             })
 
     def blank_season_fighter(self, fighter):
-        return {"name": fighter.name, "wins": 0, "losses": 0, "draws": 0, "finishes": 0, "kos": 0, "subs": 0,
+        return {"name": fighter.name, "fighter_id": fighter.fighter_id, "wins": 0, "losses": 0, "draws": 0, "finishes": 0, "kos": 0, "subs": 0,
                 "title_wins": 0, "best_excitement": 0, "signature_win": "", "company": "",
                 "gender": fighter.gender, "weight": fighter.weight, "age": fighter.age,
                 "popularity": fighter.popularity}
@@ -488,15 +1132,15 @@ class AwardsMixin:
         bucket = self.season_stats.get(self.year_label(year))
         if not bucket:
             return []
-        fighters = bucket["fighters"]
+        fighters = {key: value for key, value in bucket["fighters"].items() if not value.get("identity_unresolved")}
         fights = bucket["fights"]
         if not fights:
             return []
         awards = []
 
-        def add(category, winner, detail, company=""):
+        def add(category, winner, detail, company="", fighter_id=""):
             if winner:
-                awards.append({"category": category, "winner": winner, "detail": detail, "company": company})
+                awards.append({"category": category, "winner": winner, "winner_id": fighter_id, "detail": detail, "company": company})
 
         # Fighter of the Year
         contenders = [f for f in fighters.values() if f["wins"] >= 2]
@@ -513,12 +1157,13 @@ class AwardsMixin:
             if best["finishes"]:
                 extras.append(f"{best['finishes']} finish{'es' if best['finishes'] > 1 else ''}")
             tail = f" ({', '.join(extras)})" if extras else ""
-            add("Fighter of the Year", best["name"], f"Went {record}{tail}.", best["company"])
+            add("Fighter of the Year", best["name"], f"Went {record}{tail}.", best["company"], best.get("fighter_id", ""))
 
         # Fight of the Year
         foty_fight = max(fights, key=lambda r: r["excitement"])
         add("Fight of the Year", f"{foty_fight['winner']} vs {foty_fight['loser']}",
-            f"{foty_fight['winner']} def. {foty_fight['loser']} by {foty_fight['method']} "
+            (f"{foty_fight['winner']} vs {foty_fight['loser']} ended in a draw " if foty_fight["method"] == "Draw" else
+             f"{foty_fight['winner']} def. {foty_fight['loser']} by {foty_fight['method']} ") +
             f"(R{foty_fight['round']}) - excitement {foty_fight['excitement']}.", foty_fight["company"])
 
         # Knockout of the Year
@@ -526,14 +1171,14 @@ class AwardsMixin:
         if kos:
             best_ko = max(kos, key=lambda r: r["excitement"])
             add("Knockout of the Year", best_ko["winner"],
-                f"{best_ko['method']} over {best_ko['loser']} (R{best_ko['round']}).", best_ko["company"])
+                f"{best_ko['method']} over {best_ko['loser']} (R{best_ko['round']}).", best_ko["company"], best_ko.get("winner_id", ""))
 
         # Submission of the Year
         subs = [r for r in fights if r["method"] in SUBMISSION_METHODS]
         if subs:
             best_sub = max(subs, key=lambda r: r["excitement"])
             add("Submission of the Year", best_sub["winner"],
-                f"{best_sub['method']} over {best_sub['loser']} (R{best_sub['round']}).", best_sub["company"])
+                f"{best_sub['method']} over {best_sub['loser']} (R{best_sub['round']}).", best_sub["company"], best_sub.get("winner_id", ""))
 
         # Prospect of the Year (young, winning)
         prospects = [f for f in fighters.values() if f["age"] <= 24 and f["wins"] >= 2]
@@ -541,14 +1186,14 @@ class AwardsMixin:
             best_p = max(prospects, key=lambda f: (f["wins"] * 2 + f["finishes"] - f["losses"]))
             add("Prospect of the Year", best_p["name"],
                 f"Age {best_p['age']}, went {best_p['wins']}-{best_p['losses']} with {best_p['finishes']} finishes.",
-                best_p["company"])
+                best_p["company"], best_p.get("fighter_id", ""))
 
         # Veteran of the Year (older, still winning)
         vets = [f for f in fighters.values() if f["age"] >= 34 and f["wins"] >= 2]
         if vets:
             best_v = max(vets, key=lambda f: (f["wins"] * 2 + f["finishes"] - f["losses"]))
             add("Veteran of the Year", best_v["name"],
-                f"Age {best_v['age']}, went {best_v['wins']}-{best_v['losses']}.", best_v["company"])
+                f"Age {best_v['age']}, went {best_v['wins']}-{best_v['losses']}.", best_v["company"], best_v.get("fighter_id", ""))
 
         # Promotion of the Year (busiest + most decisive scene)
         companies = bucket.get("companies", {})
@@ -587,7 +1232,9 @@ class AwardsMixin:
     def apply_award_effects(self, awards):
         """Winning an award is a career milestone: a small, lasting bump."""
         for award in awards:
-            fighter = self.find_fighter_anywhere(award["winner"]) if hasattr(self, "find_fighter_anywhere") else None
+            if award["category"] in {"Promotion of the Year", "Fight of the Year"}:
+                continue
+            fighter = self.resolve_award_fighter(award["winner"], award.get("winner_id", ""))
             if not fighter:
                 continue
             fighter.popularity = min(100, fighter.popularity + 4)
@@ -798,7 +1445,7 @@ class AwardsMixin:
                     current["end_action"] = "Dethroned"
                     reigns.append(current)
                 current = {
-                    "fighter": entry.get("fighter", ""), "start_month": month,
+                    "fighter": entry.get("fighter", ""), "fighter_id": entry.get("fighter_id", ""), "start_month": month,
                     "start_date": entry.get("date", ""), "defenses": 0,
                     "end_month": None, "end_action": "", "note": entry.get("note", ""),
                 }
@@ -872,6 +1519,8 @@ class AwardsMixin:
             fighter_tree.column(column, width=width, anchor=anchor)
         self.make_tree_sortable(fighter_tree)
         fighter_tree.pack(fill="both", expand=True, padx=6, pady=(0, 6))
+        fighter_rows = {}
+        used_fighter_row_ids = set()
 
         def fighter_value(fighter, category):
             bouts = fighter.record_w + fighter.record_l + getattr(fighter, "record_d", 0)
@@ -911,7 +1560,14 @@ class AwardsMixin:
             return values[category]
 
         def refresh_fighter_records(*_args):
+            previous_selection = fighter_tree.selection()
+            previous_fighter = fighter_rows.get(previous_selection[0]) if previous_selection else None
+            previous_identity = self._record_fighter_row_id(
+                previous_fighter[0], previous_fighter[1]
+            ) if isinstance(previous_fighter, tuple) and len(previous_fighter) == 2 else ""
             fighter_tree.delete(*fighter_tree.get_children())
+            fighter_rows.clear()
+            used_fighter_row_ids.clear()
             seen = set()
             rows = []
             for company, fighter in self.all_database_fighters_with_companies():
@@ -924,15 +1580,27 @@ class AwardsMixin:
                 value, display = fighter_value(fighter, record_category.get())
                 if value >= 0:
                     rows.append((value, fighter.name, company, fighter, display))
-            for position, (_value, name, company, fighter, display) in enumerate(sorted(rows, key=lambda row: (row[0], row[3].record_w, row[3].elo_rating), reverse=True)[:100], 1):
+            for position, (_value, name, company, fighter, display) in enumerate(sorted(rows, key=lambda row: (row[0], row[3].record_w, row[3].elo_rating, row[1], row[2], getattr(row[3], "fighter_id", "")), reverse=True)[:100], 1):
                 status = "Hall of Fame" if getattr(fighter, "hall_of_fame", False) else ("Retired" if getattr(fighter, "retired", False) else "Active")
-                fighter_tree.insert("", "end", values=(position, name, company, f"{fighter.gender} {fighter.weight}", fighter.record, display, status))
+                base_id = self._record_fighter_row_id(company, fighter, fallback_index=position)
+                row_id = base_id
+                duplicate = 2
+                while row_id in used_fighter_row_ids:
+                    row_id = f"{base_id}#{duplicate}"
+                    duplicate += 1
+                used_fighter_row_ids.add(row_id)
+                fighter_rows[row_id] = (company, fighter)
+                fighter_tree.insert("", "end", iid=row_id, values=(position, name, company, f"{fighter.gender} {fighter.weight}", fighter.record, display, status))
+                if previous_identity and self._record_fighter_row_id(company, fighter) == previous_identity:
+                    fighter_tree.selection_set(row_id)
+                    fighter_tree.focus(row_id)
 
         def open_selected_record(_event=None):
             selected = fighter_tree.selection()
             if not selected:
                 return
-            fighter = self.find_fighter_anywhere(fighter_tree.item(selected[0], "values")[1])
+            source_row = fighter_rows.get(selected[0])
+            fighter = source_row[1] if isinstance(source_row, tuple) and len(source_row) == 2 else None
             if fighter:
                 self.open_fighter_profile_window(fighter)
 
@@ -1097,7 +1765,7 @@ class AwardsMixin:
         detail_scroll.pack(side="right", fill="y")
         detail_tree.pack(side="left", fill="both", expand=True, padx=(4, 0), pady=(2, 4))
 
-        state = {"lineage_by_row": {}, "selected": None}
+        state = {"lineage_by_row": {}, "entry_by_row": {}, "selected": None}
 
         def action_tag(action):
             if action in crown_actions:
@@ -1167,6 +1835,7 @@ class AwardsMixin:
 
         def show_lineage(lineage):
             state["selected"] = lineage
+            state["entry_by_row"] = {}
             detail_tree.delete(*detail_tree.get_children())
             if not lineage:
                 header_var.set("Select a championship to view its full lineage.")
@@ -1186,7 +1855,8 @@ class AwardsMixin:
             reign_lookup = {}
             for reign in lineage["reigns"]:
                 reign_lookup[(reign["fighter"], reign["start_date"])] = reign
-            for entry in lineage["entries"]:
+            used_entry_ids = set()
+            for index, entry in enumerate(lineage["entries"]):
                 action = str(entry.get("action", ""))
                 reign_label = ""
                 if action in crown_actions:
@@ -1196,11 +1866,22 @@ class AwardsMixin:
                         reign_label = self.format_month_span((end if end is not None else now) - (reign.get("start_month") or now))
                         if end is None:
                             reign_label += " (current)"
-                detail_tree.insert("", "end", tags=(action_tag(action),), values=(
+                base_entry_id = self._title_history_entry_row_id(lineage, entry, fallback_index=index)
+                entry_id = base_entry_id
+                duplicate = 2
+                while entry_id in used_entry_ids:
+                    entry_id = f"{base_entry_id}#{duplicate}"
+                    duplicate += 1
+                used_entry_ids.add(entry_id)
+                state["entry_by_row"][entry_id] = entry
+                detail_tree.insert("", "end", iid=entry_id, tags=(action_tag(action),), values=(
                     self.belt_history_date_label(entry), action, entry.get("fighter", ""), reign_label, entry.get("note", ""),
                 ))
 
         def refresh_lineage_list(*_args):
+            previous_selection = lineage_tree.selection()
+            previous_lineage = state["lineage_by_row"].get(previous_selection[0]) if previous_selection else None
+            previous_lineage_id = self._title_lineage_row_id(previous_lineage) if previous_lineage else ""
             lineage_tree.delete(*lineage_tree.get_children())
             state["lineage_by_row"] = {}
             query = search_var.get().strip().lower()
@@ -1219,7 +1900,11 @@ class AwardsMixin:
                     haystack = f"{lineage['company']} {lineage['division']} {lineage['holder']}".lower()
                     if query not in haystack and not any(query in (r.get("fighter", "") or "").lower() for r in lineage["reigns"]):
                         continue
-                row_id = f"lineage:{index}"
+                row_id = self._title_lineage_row_id(lineage)
+                duplicate = 2
+                while row_id in state["lineage_by_row"]:
+                    row_id = f"{self._title_lineage_row_id(lineage)}#{duplicate}"
+                    duplicate += 1
                 state["lineage_by_row"][row_id] = lineage
                 champion = lineage["holder"] or "— vacant —"
                 lineage_tree.insert("", "end", iid=row_id, tags=() if lineage["holder"] else ("vacant",), values=(
@@ -1227,10 +1912,13 @@ class AwardsMixin:
                     lineage["changes"], lineage["defenses"],
                 ))
             children = lineage_tree.get_children()
-            if children:
-                lineage_tree.selection_set(children[0])
-                lineage_tree.focus(children[0])
-                show_lineage(state["lineage_by_row"].get(children[0]))
+            restored = next((row_id for row_id, row in state["lineage_by_row"].items()
+                             if previous_lineage_id and self._title_lineage_row_id(row) == previous_lineage_id), None)
+            chosen = restored or (children[0] if children else None)
+            if chosen:
+                lineage_tree.selection_set(chosen)
+                lineage_tree.focus(chosen)
+                show_lineage(state["lineage_by_row"].get(chosen))
             else:
                 show_lineage(None)
 
@@ -1253,8 +1941,9 @@ class AwardsMixin:
             selected = detail_tree.selection()
             if not selected:
                 return
-            name = detail_tree.item(selected[0], "values")[2]
-            fighter = self.find_fighter_anywhere(name) if name else None
+            entry = state["entry_by_row"].get(selected[0], {})
+            name = str(entry.get("fighter", "") or "")
+            fighter = self.resolve_award_fighter(name, entry.get("fighter_id", "")) if name else None
             if fighter:
                 self.open_fighter_profile_window(fighter)
 
@@ -1384,12 +2073,20 @@ class AwardsMixin:
         for scope in ("world", "promotion", "event"):
             for key, entry in self.historical_records.get(scope, {}).items():
                 rows.append((scope.title(), key, entry))
-        for index, (scope, key, entry) in enumerate(sorted(rows, key=lambda row: (row[0], row[1]))):
-            tree.insert("", "end", iid=str(index), values=(scope, key, entry.get("value", 0), ", ".join(entry.get("holders", [])), entry.get("date", ""), entry.get("event", ""), entry.get("promotion", "")))
+        record_rows = {}
+        used_ids = set()
+        for scope, key, entry in sorted(rows, key=lambda row: (row[0], row[1])):
+            row_id = self.historical_record_ui_identity(scope, key, used_ids=used_ids)
+            record_rows[row_id] = (scope, key, entry)
+            tree.insert("", "end", iid=row_id, values=(scope, key, entry.get("value", 0), ", ".join(entry.get("holders", [])), entry.get("date", ""), entry.get("event", ""), entry.get("promotion", "")))
         def show_history(_event=None):
             selected = tree.selection(); detail.config(state="normal"); detail.delete("1.0", "end")
             if selected:
-                scope, key, entry = rows[int(selected[0])]
+                selected_row = record_rows.get(selected[0])
+                if not selected_row:
+                    detail.config(state="disabled")
+                    return
+                scope, key, entry = selected_row
                 history = entry.get("history", [])
                 detail.insert("end", f"{scope.upper()} — {key}\nCurrent: {entry.get('value', 0)} — {', '.join(entry.get('holders', []))}\nSet: {entry.get('date', '')} | {entry.get('event', '')}\n\nPrevious holders:\n")
                 detail.insert("end", "\n".join(f"{old.get('value', 0)} — {', '.join(old.get('holders', []))} ({old.get('date', '')}; {old.get('event', '') or old.get('promotion', '')})" for old in history) or "No previous holder recorded.")

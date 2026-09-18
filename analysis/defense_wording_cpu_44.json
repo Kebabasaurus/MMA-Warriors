@@ -1,0 +1,121 @@
+{
+  "scope": "44 identical combined440 fixtures, three alternating paired whole-bout CPU samples; small noisy sample, not career latency",
+  "instrumentation": "AST removes13 additional options before formatting; all other helper statements preserved; comparisons remove trace commentary only",
+  "source_sha256": {
+    "fight_engine.py": "f61a6c32ced1e86984e22177e9cbcadf0a54cf8efe9ca1be7418eee7b423ce85",
+    "fight_engine_audit.py": "897422a062807f5fe0afe7b13c142d118d8047c9f917cd219aed2a928f733963",
+    "analysis/benchmark_defense_wording.py": "bcb11d528dbf369833ca9f70c1b93253a69ce41c85bb8b087ec5cef58904a6c8",
+    "fight_moves/chains.py": "0868168a237b283663993bbcd1be9d8a29549944ea69f14a3675d0710438b691",
+    "fight_moves/coverage.py": "742866f75252710b55fe23efd786433d114f40d6d54b4f3bcbf470f06e474a8f",
+    "fight_moves/defenses.py": "30a02bf257da47a119d1c9ed26214cbb38b35c96e9fd7ad70f97d7aa2864556a",
+    "fight_moves/defense_expansion.py": "6e1f99b1684f31808bf198482d74ac19a6715f77a61d7fd0fd98e1e15bbdceec",
+    "fight_moves/followup_continuity.py": "bc0d6216c7a59e6a13e426d36696c7dc5c1a217c3807bf99551495680e9d978b",
+    "fight_moves/followup_defensive_continuity.py": "1017230f2474eedcc60234de2e63915f0f451d89c764f4a0f4b095823497876f",
+    "fight_moves/followup_diversity.py": "8bdcd54cde448bfbdc8ef8fe598ffad8d4daa71bd47940af3fdcce5f5d44265d",
+    "fight_moves/followup_expansion.py": "58e63b055a25428c0cc7886556e2b6ab2ac6f5a0c021c50b4d751571a9adfb73",
+    "fight_moves/index.py": "97f0f52b83b14f8633b1d305d5441137ca05d5d1761c030bd6fd4f2b0f4fb92d",
+    "fight_moves/legacy_ids.py": "807763e71255c481baac2ec6412053769287572a4e3e6efd85ffd255e7a17064",
+    "fight_moves/presets.py": "628d990d522da6fb68193404af61ebcd76528a267dd59a4c701eb4bdf15c94ba",
+    "fight_moves/registry.py": "2266ad63e05b71102220a7ddf8147b0e3e689614cd9c2cb92c43ec6d46a816f2",
+    "fight_moves/schema.py": "4ed368325f3b2c277541479124706eef9376cba17c290e88cb076a34c67ce5a5",
+    "fight_moves/selection_pool.py": "74f96f3ac9e0eecc3c709b46e8b1cac88cf0edf3c90e09bdb40016da7bb0f3bc",
+    "fight_moves/specialist_intent.py": "b0f724b32c6d9fe710438380612d92b2bb5429ce19edccae2e0451ab0484ce9f",
+    "fight_moves/submission_identity.py": "d8af5685a7b7d780fdf5cf5d3e802b5ac3d346cb16367806651f9b928ca2f104",
+    "fight_moves/submission_pool.py": "b54759749a7c599a3653e6d2bac575739c5f6b0d9778a75aeb2bd155094e0808",
+    "fight_moves/submission_transition.py": "ebba604134abe5e89bd1b4fe7369d0ea0448f6cece6175559f5b7bf5f1dcb85f",
+    "fight_moves/validation.py": "51ec19e640c19a3f4f6f0934bbfef88cec5b315c2dd855b904998889dc3ca5be",
+    "fight_moves/__init__.py": "5815168c52dbe06cc595b4b0d4b5f56d41240e28c6eb886ded7667431f453235",
+    "fight_moves/catalogue/bottom_development.py": "dca9f0a709151ad90a47569d4e1508c0f5aee6be7c0e410b100ba2a10e07c1d3",
+    "fight_moves/catalogue/bottom_submission_development.py": "6e212ba755dbc5b4c56603ab2b202fa2dce81e25f8bee265c4ad3f2c43f4ab5c",
+    "fight_moves/catalogue/clinch.py": "a89cf0a46f182fafed1d7b2aa0b507b39249d1742bb9e9e38a6273772a9574fe",
+    "fight_moves/catalogue/clinch_development.py": "d32c07ef0835516b53b519a64d19c5e2f40bb4939133c516588c4c4c3ca966b2",
+    "fight_moves/catalogue/escapes.py": "67cd27f431e17c8191e21059e15e69f445614dafcaf48f1f7e9b3a62195d95a5",
+    "fight_moves/catalogue/failed_shot_development.py": "00c1d7f63b36ff63ce43d4ba4f38c89314c875f1602bf2d10046d9694274cfeb",
+    "fight_moves/catalogue/front_headlock_development.py": "84b9a161f19c4d9afd75be8557536058ff0fa62dab2e8f85aac2e961770561fd",
+    "fight_moves/catalogue/ground_control.py": "ba2aec86a5d15b55fe5de7b207890722ea103823c75730c32974d1445c05f93b",
+    "fight_moves/catalogue/ground_top_development.py": "63731f3c97b26da7549c45ad40f6f774eb6e48d808403b2f0cc4f8ba2d89c5f6",
+    "fight_moves/catalogue/jab_development.py": "cd3375addc719c61573e0c048110475a8089afbe5b2091aaeb9eee7837561947",
+    "fight_moves/catalogue/kicks.py": "57bedd6dfa86f1a0efd38659094419d1c6bd4104a7b615d823e8156656d52522",
+    "fight_moves/catalogue/kick_development.py": "8ceca24a93fc61c8963ca14f9a8bd9ab532eaa6f115b25ebb1afea5de0d74895",
+    "fight_moves/catalogue/leg_entanglement_development.py": "de488eff5f3fbf4930624d4c415a5ed525be035bffca6b02992dcc8fd4391673",
+    "fight_moves/catalogue/passes.py": "1d5bbda640e0937dace2e4c4cdc5f4c1f2065fe7b3e4a82c7e3676fa87c0cbff",
+    "fight_moves/catalogue/power_punch_development.py": "19cdc9807ecd8e26ee75fbb186522667debe9de7e1f571387f547a44f4ae606d",
+    "fight_moves/catalogue/punches.py": "b846349c8087d8d7b9de3236165599861b2d0d8221ae05f68bb62fdbce45291f",
+    "fight_moves/catalogue/scrambles.py": "d1e44ed7cf664489f4c02e5b4188382a7b022daca24269a368367ea1db50fc67",
+    "fight_moves/catalogue/specialist_entry_development.py": "0e89cc1655589667352576009e1e02b23f4e7473ce80cdb2b189d404778388a0",
+    "fight_moves/catalogue/standing_back_development.py": "95fa0ee708c23756863789830faab4ca8d3791e51f9151a6f3f799bbe8708000",
+    "fight_moves/catalogue/style_signatures.py": "d64d5cc4bf09e06e970a84bdaf501164896eedd81dee1cf127a7e2327c3f2c24",
+    "fight_moves/catalogue/submissions.py": "7ba3e9f4d6d547884075a115d993d54a35015b0f9dcedf69a66b3a96e40f4b2e",
+    "fight_moves/catalogue/survival_development.py": "2455143be34f4903ae8ed161fecd11d6bc64a68e4fbe0824e9f23d38ca35daa7",
+    "fight_moves/catalogue/takedowns.py": "4b39f431e1e068d3af1d8769a18a93304973942c28b432c756835f83ecbb3031",
+    "fight_moves/catalogue/top_submissions.py": "034b6f5711dc37f1ccaaffc8508a4ee8a626440fcabe3731e39a547e2b53f109",
+    "fight_moves/catalogue/turtle_development.py": "819a39b7fa6c2f92d05a7c003189c76e784ac554b056ed13ec2eb37c445be876",
+    "fight_moves/catalogue/wrestling_development.py": "f8115411aa787fe83e87995cf23be7ecd12edbcbda599d5cd6411f53f956f30e",
+    "fight_moves/catalogue/__init__.py": "484a3a81d8f94f8d877b85dbdc9c8091e57f2e8aaf68b21790513e517847d4ee",
+    "analysis/boxing_chain_pool_candidate.py": "20d620d83a908577f04d6daec9a7f39735dd3f61d0dadfc0c48a8d7d703e8019",
+    "analysis/compare_candidate_striking.py": "0507a5d5095af4fbb4e84da1dc783af747cee7df0dfcf3a6dc97d44aaaa588fc",
+    "analysis/continuation_branch_candidate.py": "f9818b5c4f092c46ba0e36d306a7281c5b70688b1b0f694f7df907d918b8deaf",
+    "analysis/continuation_commitment_candidate.py": "693bedbc8a894393ea1d9a0616a10e7d770c96ea6e3d8f14017d0c808c8d0cdb",
+    "analysis/continuation_strength_candidate.py": "2032db734439c8ec1bc69971d5f36fa89b03a04d234091f7d6f0cb4693ad4f52",
+    "analysis/cradle_setup_candidate.py": "779a39bfb5b0547b5ef10a3141faae68dc20ba6e3a7fb6935bbc115b307a3e4c",
+    "analysis/evaluate_joint_fight_candidate.py": "bf7aa7ac227ac64960ce7d58ee3628e56fee0b3a0fb2441eb29b85cbc1154b5a",
+    "analysis/evaluate_specialist_entry_candidate.py": "09f297a72d69fe29aae16fd04eefc7768d9a24019e40b02921c6fc5f32e94fcd",
+    "analysis/fight_candidate_context.py": "d4108551d883eb7c4d187d27368453c90dd4c0a81f219bfc53bcbd9bafe91964",
+    "analysis/gift_wrap_control_candidate.py": "490792e89b5a8e8d3e810ccb2fa7ff1bc7f753bea40dbfdfb930d7cf3a3b0530",
+    "analysis/gift_wrap_mount_candidate.py": "5cd146a509fe707ef7d5c5819eee1fc858ad91f0d6693fad77a992ee0bc5960a",
+    "analysis/heel_hook_identity_candidate.py": "2e30c136a7d7173676330152a0c0ea408c1739debbc6c1e6bafdac2faa1acb3e",
+    "analysis/kick_power_candidate.py": "f0a8bf63fd52f29e818a5a83ca1e518e8b0c71544b1fa30cd1dfbff455934caf",
+    "analysis/repertoire_readaptation_candidate.py": "eb9a8646e7ef179c29c47ac90d0faf2cac6353d5fa65b58c0b6f00ecbc00bc19",
+    "analysis/standing_head_damage_candidate.py": "d11a43e1fa368a5cd8542f4478e4c015e5c52e5c7cf87cb42caa8223b47b228b",
+    "analysis/submission_chain_candidate.py": "29e7dd51c455c3965b25ba869808919d57eac355ceb99957f40bd8113e2a5188",
+    "analysis/survival_expansion_candidate.py": "50771f1e9155ae71a8f492514635ba601e4a90ff86d6b06a07c66cb44d471856"
+  },
+  "reconstructed_ast_sha256": "66137a2a406923ef220f7b49c31abcc9920b0e9397dc2d6cc0d8f53860ecf266",
+  "fixture_sha256": "a8179f0027b7bfc0964f042814706383e64dc74bdb2f23f213ab3f9fb739d3ed",
+  "all_bout_facts_and_rng_parity": true,
+  "arms": {
+    "old": [
+      {
+        "cpu_seconds": 1.53125,
+        "audit_sha256": "02ea9eafc2b892a5406bee7d79bcda1aa6b1d1d2b274ff2edbdb103b19169265",
+        "facts_sha256": "fac843e3916688030aca3eb533ae7517a60ae2a8f473d5ad911859ad34e94795",
+        "rng_sha256": "43ca8cc14f79fe9e3a3ae1b13828cd3b8ce2da65cb76cf76b0d737d84d11bb3a"
+      },
+      {
+        "cpu_seconds": 2.078125,
+        "audit_sha256": "02ea9eafc2b892a5406bee7d79bcda1aa6b1d1d2b274ff2edbdb103b19169265",
+        "facts_sha256": "fac843e3916688030aca3eb533ae7517a60ae2a8f473d5ad911859ad34e94795",
+        "rng_sha256": "43ca8cc14f79fe9e3a3ae1b13828cd3b8ce2da65cb76cf76b0d737d84d11bb3a"
+      },
+      {
+        "cpu_seconds": 2.0625,
+        "audit_sha256": "02ea9eafc2b892a5406bee7d79bcda1aa6b1d1d2b274ff2edbdb103b19169265",
+        "facts_sha256": "fac843e3916688030aca3eb533ae7517a60ae2a8f473d5ad911859ad34e94795",
+        "rng_sha256": "43ca8cc14f79fe9e3a3ae1b13828cd3b8ce2da65cb76cf76b0d737d84d11bb3a"
+      }
+    ],
+    "new": [
+      {
+        "cpu_seconds": 2.0,
+        "audit_sha256": "1705ea9d86db03fc9edd928054cecab982fadc8fbb67571935716667cb85c423",
+        "facts_sha256": "fac843e3916688030aca3eb533ae7517a60ae2a8f473d5ad911859ad34e94795",
+        "rng_sha256": "43ca8cc14f79fe9e3a3ae1b13828cd3b8ce2da65cb76cf76b0d737d84d11bb3a"
+      },
+      {
+        "cpu_seconds": 2.046875,
+        "audit_sha256": "1705ea9d86db03fc9edd928054cecab982fadc8fbb67571935716667cb85c423",
+        "facts_sha256": "fac843e3916688030aca3eb533ae7517a60ae2a8f473d5ad911859ad34e94795",
+        "rng_sha256": "43ca8cc14f79fe9e3a3ae1b13828cd3b8ce2da65cb76cf76b0d737d84d11bb3a"
+      },
+      {
+        "cpu_seconds": 2.09375,
+        "audit_sha256": "1705ea9d86db03fc9edd928054cecab982fadc8fbb67571935716667cb85c423",
+        "facts_sha256": "fac843e3916688030aca3eb533ae7517a60ae2a8f473d5ad911859ad34e94795",
+        "rng_sha256": "43ca8cc14f79fe9e3a3ae1b13828cd3b8ce2da65cb76cf76b0d737d84d11bb3a"
+      }
+    ]
+  },
+  "median_old_cpu_seconds": 2.0625,
+  "median_new_cpu_seconds": 2.046875,
+  "median_cpu_change_pct": -0.7575757575757569
+}

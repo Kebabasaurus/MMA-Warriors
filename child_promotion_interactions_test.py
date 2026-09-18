@@ -24,9 +24,30 @@ def main():
         launch_ok, child = app.launch_ai_child_promotion(1_000_000, "Balanced", 25, "Interaction Child")
         require(launch_ok and child.roster, "child launch did not create an opening roster")
 
+        # Future child cards are explicit planning records.  They appear in the
+        # shared schedule without reserving a fighter or running matchmaking
+        # until the committed week, and duplicate monthly plans are rejected.
+        schedule_ok, schedule_note, scheduled = app.schedule_child_promotion_event(
+            child.promotion_id, app.month + 2, 2, "Interaction Child Showcase",
+        )
+        require(schedule_ok and scheduled and scheduled["status"] == "Scheduled",
+                f"future child card could not be committed: {schedule_note}")
+        require(any(row.get("event_id") == scheduled["event_id"] for row in child.scheduled_events),
+                "future child card was not retained on the child promotion")
+        saved_boundary = (app.month, app.week)
+        app.month, app.week = app.month + 2, 2
+        require(app.ai_should_run_show(child), "a due child card was still gated by the probabilistic show roll")
+        app.month, app.week = saved_boundary
+        duplicate_ok, _duplicate_note, _duplicate = app.schedule_child_promotion_event(
+            child.promotion_id, app.month + 2, 3, "Duplicate month",
+        )
+        require(not duplicate_ok, "child promotion accepted two future cards in one month")
+        cancel_ok, _cancel_note = app.cancel_child_promotion_event(child.promotion_id, scheduled["event_id"])
+        require(cancel_ok and not child.scheduled_events, "future child card could not be cancelled by stable ID")
+
         # Ordinary company takeover must not detach a child from its parent.
         old_name = app.player_company_name
-        with patch("persistence.messagebox.showinfo"):
+        with patch("persistence.messagebox.showinfo"), patch("persistence.messagebox.showwarning"):
             require(app.take_control_of_company(child.name) is False, "ordinary takeover accepted a child promotion")
         require(app.player_company_name == old_name and child in app.promotions, "blocked takeover mutated ownership")
 

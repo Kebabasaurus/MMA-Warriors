@@ -6,6 +6,7 @@ import random
 import tempfile
 import tkinter as tk
 from pathlib import Path
+from unittest.mock import patch
 
 from main import FightEmpireApp
 from persistence import load_save_payload
@@ -115,7 +116,7 @@ def main():
         # of being treated as an opponent attempting a reversal.
         original_attack = app.action_attack_value
         original_defence = app.action_defence_value
-        app.action_attack_value = lambda *_args: 100
+        app.action_attack_value = lambda *_args: 0
         app.action_defence_value = lambda *_args: 0
         fight_state = {
             "fighter_keys": {id(a): "a", id(b): "b"},
@@ -131,9 +132,21 @@ def main():
             "a": {"impact": 0, "control": 0, "danger": 0},
             "b": {"impact": 0, "control": 0, "danger": 0},
         }
-        app.resolve_exchange(a, b, "cage_control", fight_state, round_stats)
+        # A neutral contest tests ordinary retention. The release engine may
+        # legitimately turn an overwhelming win into a standing rear body lock.
+        with patch.object(app.fight_mechanics_rng(), "randint", return_value=0):
+            app.resolve_exchange(a, b, "cage_control", fight_state, round_stats)
         require(fight_state["clinch_controller"] == "a" and fight_state["clinch_ticks"] == 5,
                 "existing cage controller was misclassified as the trapped fighter")
+        require(fight_state["position"] == "cage" and round_stats["a"]["control"] == 3,
+                "ordinary cage retention lost its position or earned control")
+        app.action_attack_value = lambda *_args: 100
+        with patch.object(app.fight_mechanics_rng(), "randint", return_value=0):
+            app.resolve_exchange(a, b, "cage_control", fight_state, round_stats)
+        require(fight_state["position"] == "standing back control"
+                and fight_state["clinch_controller"] == "a" and fight_state["clinch_ticks"] == 0
+                and round_stats["a"]["control"] == 6,
+                "successful rear-body-lock transition lost the same-name fighter's private slot")
 
         # A miss is not unanswered offense, while a meaningful takedown answers
         # an earlier striking sequence even if the responder never throws back.
@@ -141,6 +154,8 @@ def main():
             "fighter_keys": {id(a): "a", id(b): "b"},
             "position": "range", "top": None, "bottom": None,
             "clinch_controller": None, "unanswered": {"a": 0, "b": 0},
+            "knockdowns": {"a": 0, "b": 0},
+            "damage": {"a": 0, "b": 0}, "body": {"a": 0, "b": 0},
             "stats": {
                 "a": {"sig": 0, "sig_att": 0, "td": 0, "td_att": 0, "sub_att": 0},
                 "b": {"sig": 0, "sig_att": 0, "td": 0, "td_att": 0, "sub_att": 0},

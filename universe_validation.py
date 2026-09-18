@@ -9,7 +9,7 @@ from collections import Counter
 from dataclasses import dataclass
 
 from constants import BEHAVIOURS, COMBAT_SPORT_WEIGHT_CLASSES, DETAILED_SKILL_GROUPS, REGIONS, STYLES, TRAITS, WEIGHTS
-from fight_moves import MOVE_REGISTRY
+from fight_moves.release_registry import RELEASE_MOVE_REGISTRY as MOVE_REGISTRY
 
 
 FIGHTER_REQUIRED_FIELDS = ("name", "placement", "owner", "weight", "gender", "rating", "age", "region", "nationality")
@@ -273,3 +273,189 @@ def validate_universe_pack(pack):
 
 def validate_universe_section(section, value, *, company_names=()):
     return [str(issue) for issue in validate_universe_section_issues(section, value, company_names=company_names)]
+
+
+def _preflight_row(severity, category, entity, field, evidence, remedy):
+    """Build the stable, UI-friendly shape used by editor preflight readers."""
+    return {
+        "severity": str(severity),
+        "category": str(category),
+        "entity": str(entity),
+        "field": str(field),
+        "evidence": str(evidence),
+        "remedy": str(remedy),
+    }
+
+
+def _preflight_numeric(value):
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _preflight_title_values(value):
+    """Yield (field, holder) pairs from optional authored title structures."""
+    if isinstance(value, dict):
+        for field, holder in value.items():
+            if isinstance(holder, (dict, list, tuple)):
+                yield str(field), holder
+            elif holder not in (None, "", False):
+                yield str(field), holder
+    elif isinstance(value, (list, tuple)):
+        for index, holder in enumerate(value):
+            yield str(index), holder
+
+
+def _preflight_find_title_references(value, path=()):
+    """Find optional belt/title-holder maps without treating ordinary booleans as titles."""
+    if isinstance(value, dict):
+        for key, child in value.items():
+            key_text = str(key)
+            normalised = key_text.casefold().replace("-", "_").replace(" ", "_")
+            if normalised in {"belts", "titles", "title_holders", "champions", "championships"}:
+                yield path + (key_text,), child
+            # A title map can be nested in an authored section; recurse so the
+            # diagnostic still catches references without knowing every schema.
+            yield from _preflight_find_title_references(child, path + (key_text,))
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            yield from _preflight_find_title_references(child, path + (str(index),))
+
+
+def preflight_universe_pack(pack):
+    """Return structural errors and playable-risk warnings without mutating *pack*.
+
+    The ordinary validator remains the save gate.  This richer read model is
+    intentionally observational: it reports authored data that is invalid or
+    likely to produce a difficult opening, but never deletes a record, appoints
+    a champion, signs a replacement or rewrites IDs.
+    """
+    findings = []
+    for issue in validate_universe_pack_issues(pack):
+        category = "reference" if any(token in issue.reason.casefold() for token in ("reference", "owner", "duplicate")) else "schema"
+        findings.append(_preflight_row(
+            "error", category, f"{issue.section}.{issue.record}" if issue.record else issue.section,
+            issue.field, issue.reason, "Correct the authored record and run Preflight again.",
+        ))
+    if not isinstance(pack, dict):
+        return findings
+    sections = pack.get("sections")
+    if not isinstance(sections, dict):
+        return findings
+
+    company_section = sections.get("companies", {})
+    known_companies = {}
+    if isinstance(company_section, dict):
+        player = company_section.get("player_company")
+        if isinstance(player, dict) and player.get("name"):
+            known_companies[str(player["name"]).casefold()] = player
+        for row in company_section.get("promotions", []):
+            if isinstance(row, dict) and row.get("name"):
+                known_companies[str(row["name"]).casefold()] = row
+                if row.get("roster_key"):
+                    known_companies[str(row["roster_key"]).casefold()] = row
+        for row in company_section.get("regional_feeders", []):
+            if isinstance(row, dict) and row.get("name"):
+                known_companies[str(row["name"]).casefold()] = row
+
+    # Parent-company links are optional, but when authored they must point to
+    # a known company.  This is a structural reference error, not a repair job.
+    if isinstance(company_section, dict):
+        for index, row in enumerate(company_section.get("promotions", [])):
+            if not isinstance(row, dict) or not row.get("parent_company"):
+                continue
+            parent = str(row["parent_company"])
+            if parent.casefold() not in known_companies:
+                findings.append(_preflight_row(
+                    "error", "reference", f"companies.{row.get('name', index)}", "parent_company",
+                    f"references unknown company {parent!r}",
+                    "Point the child at an existing company or remove the optional parent reference.",
+                ))
+
+    fighters_section = sections.get("fighters", {})
+    records = fighters_section.get("all_fighters", []) if isinstance(fighters_section, dict) else []
+    if not isinstance(records, list):
+        records = []
+    active_groups = {}
+    free_pool = {}
+    salaries_by_owner = {}
+    salary_fields = ("salary", "weekly_salary", "contract_salary", "annual_salary", "pay")
+    for index, fighter in enumerate(records):
+        if not isinstance(fighter, dict):
+            continue
+        owner = str(fighter.get("owner", "")).strip()
+        placement = str(fighter.get("placement", "")).casefold()
+        weight = str(fighter.get("weight", "")).strip() or "Unknown division"
+        gender = str(fighter.get("gender", "")).strip() or "Unknown gender"
+        key = (owner, weight, gender)
+        is_free = placement in {"free_agent", "free_agents"} or owner.casefold() in {"free agent", "legend", ""}
+        if is_free:
+            free_pool[(weight, gender)] = free_pool.get((weight, gender), 0) + 1
+        elif owner:
+            active_groups.setdefault(key, []).append(fighter)
+        for field in salary_fields:
+            amount = fighter.get(field)
+            if _preflight_numeric(amount) and amount > 0 and owner and not is_free:
+                salaries_by_owner[owner] = salaries_by_owner.get(owner, 0) + amount
+                break
+
+    for (owner, weight, gender), group in sorted(active_groups.items(), key=lambda item: tuple(str(part).casefold() for part in item[0])):
+        if len(group) < 2:
+            entity = f"company:{owner}"
+            findings.append(_preflight_row(
+                "warning", "population", entity, f"{weight}/{gender}",
+                f"only {len(group)} active fighter is authored in this division",
+                "Add or acquire a plausible same-division opponent before booking a normal opening card.",
+            ))
+            available = free_pool.get((weight, gender), 0)
+            if available == 0:
+                findings.append(_preflight_row(
+                    "warning", "population", entity, "available_talent",
+                    f"no free agent is authored for {weight}/{gender}",
+                    "Add a matching free agent or accept that this division may require a move-up/down or cancellation.",
+                ))
+
+    # Explicit payroll fields are optional in universe packs.  Only compare
+    # them when authored, avoiding an invented salary model for older packs.
+    if isinstance(company_section, dict):
+        company_rows = []
+        player = company_section.get("player_company")
+        if isinstance(player, dict):
+            company_rows.append(player)
+        company_rows.extend(row for row in company_section.get("promotions", []) if isinstance(row, dict))
+        for row in company_rows:
+            display_owner = str(row.get("name", "")).strip()
+            aliases = [display_owner, str(row.get("roster_key", "")).strip()]
+            owner = next((alias for alias in aliases if alias and alias in salaries_by_owner), "")
+            if not owner:
+                continue
+            cash = row.get("cash")
+            if _preflight_numeric(cash) and salaries_by_owner[owner] > cash:
+                findings.append(_preflight_row(
+                    "warning", "payroll", f"company:{display_owner or owner}", "cash",
+                    f"authored fighter payroll {salaries_by_owner[owner]:,.0f} exceeds starting cash {cash:,.0f}",
+                    "Raise starting cash, reduce authored compensation, or mark the record as free agency.",
+                ))
+
+    # Optional title maps occur only in custom packs.  Resolve by immutable
+    # fighter ID first and then exact authored name; current game rankings are
+    # deliberately not consulted by this editor diagnostic.
+    fighter_ids = {str(row.get("fighter_id")).strip() for row in records if isinstance(row, dict) and str(row.get("fighter_id", "")).strip()}
+    fighter_names = {str(row.get("name")).casefold() for row in records if isinstance(row, dict) and str(row.get("name", "")).strip()}
+    for path, title_map in _preflight_find_title_references(pack):
+        for field, holder in _preflight_title_values(title_map):
+            candidate = holder
+            if isinstance(holder, dict):
+                candidate = holder.get("fighter_id") or holder.get("fighter") or holder.get("name") or holder.get("holder")
+            elif isinstance(holder, (list, tuple)):
+                # A list may be an authored title row; only inspect the first
+                # scalar holder when one is present.
+                candidate = next((item for item in holder if isinstance(item, (str, int))), None)
+            if candidate in (None, "", False):
+                continue
+            text = str(candidate).strip()
+            if text and text not in fighter_ids and text.casefold() not in fighter_names:
+                findings.append(_preflight_row(
+                    "error", "reference", ".".join(path), field,
+                    f"title holder {text!r} does not resolve to an authored fighter",
+                    "Use a saved fighter_id or an exact authored fighter name; do not appoint a replacement during validation.",
+                ))
+    return findings

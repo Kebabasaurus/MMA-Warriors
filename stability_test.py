@@ -277,8 +277,9 @@ def exercise_media_story_reader(app, root):
         require(entries[1].get("headline") == legacy and entries[1].get("detail") == legacy, "Legacy news did not receive a safe reader fallback")
 
         rows = app.website_news.get_children()
-        require(rows == ("story:0", "story:1"), "Media Desk story table did not populate in news order")
-        app.website_news.selection_set("story:0")
+        require(len(rows) == 2 and all(row_id not in ("story:0", "story:1") for row_id in rows), "Media Desk story table did not use source-bound row identities")
+        first_story_id = rows[0]
+        app.website_news.selection_set(first_story_id)
         app.show_selected_media_story()
         preview = app.website_news_preview.get("1.0", "end-1c")
         require(headline in preview and long_detail in preview, "Selected story preview omitted the headline or full detail")
@@ -294,7 +295,7 @@ def exercise_media_story_reader(app, root):
         require(set(root.winfo_children()) == before_windows, "Empty Media Desk selection opened an unexpected window")
         require("Select a headline" in app.website_news_preview.get("1.0", "end-1c"), "Empty selection did not show the safe preview prompt")
 
-        app.website_news.selection_set("story:0")
+        app.website_news.selection_set(first_story_id)
         app.show_selected_media_story()
         world_before = json.dumps(app.serialize_world(), sort_keys=True)
         # serialize_world currently performs legacy division repairs and may
@@ -343,7 +344,7 @@ def exercise_normal_and_retirement_events(app, root):
     live_window = next(
         child for child in root.winfo_children()
         if isinstance(child, tk.Toplevel)
-        and any(widget.winfo_class() == "TButton" and widget.cget("text") == "Skip Event" for widget in descendants(child))
+        and any(widget.winfo_class() == "TButton" and widget.cget("text") == "Close Replay" for widget in descendants(child))
     )
     require(live_window.winfo_width() <= live_window.winfo_screenwidth() and live_window.winfo_height() <= live_window.winfo_screenheight(), "Live fight viewer exceeds the laptop screen")
     live_widgets = list(descendants(live_window))
@@ -365,8 +366,10 @@ def exercise_normal_and_retirement_events(app, root):
     play.invoke()
     root.update_idletasks()
     require(commentary.get("1.0", "end") == first_playback, "Repeated Play created a duplicate playback chain")
-    skip = next((widget for widget in descendants(live_window) if widget.winfo_class() == "TButton" and widget.cget("text") == "Skip Event"), None)
-    require(skip is not None, "Live fight viewer did not expose Skip Event")
+    replay_buttons = {widget.cget("text") for widget in descendants(live_window) if widget.winfo_class() == "TButton"}
+    require({"Watch Selected", "Main Event", "Next Fight"}.issubset(replay_buttons), "Replay viewer is missing direct fight navigation")
+    skip = next((widget for widget in descendants(live_window) if widget.winfo_class() == "TButton" and widget.cget("text") == "Close Replay"), None)
+    require(skip is not None, "Replay viewer did not expose Close Replay")
     skip.invoke()
     root.update_idletasks()
     close_secondary_windows(root)
@@ -960,12 +963,14 @@ def exercise_save_roundtrip(app):
         "Legacy save retention was not migrated to two rolling slots",
     )
     replay_package = {
+        "record_id": "stability-archive-link",
         "date": "Month 1 Week 1", "company": "Stability AI", "event_name": "Archive Link Test",
         "log": ["Full commentary line one", "Full commentary line two"],
         "fight_logs": [{"heading": "A vs B", "lines": ["Exchange", "Result"]}],
     }
     app.ai_event_archive.insert(0, replay_package)
     app.result_records.insert(0, {
+        "record_id": replay_package["record_id"],
         "date": replay_package["date"], "company": replay_package["company"], "event": replay_package["event_name"],
         "summary": "Archive link test", "log": replay_package["log"], "fight_logs": replay_package["fight_logs"],
     })

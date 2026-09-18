@@ -1,0 +1,217 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-18",
+  "purpose": "One-time lossless context-routing provenance; hashes describe extraction, not a ban on future contract edits.",
+  "original_agents": {
+    "path": "docs/archive/2026-09-18/AGENTS.before-context-routing.md",
+    "bytes": 289196,
+    "sha256": "d259eb2a329a6aecb3f0fc5ef88c3ef73beb1e3ad0eeb5ebe3597f67c9191eb7"
+  },
+  "original_readme": {
+    "path": "docs/archive/2026-09-18/README.before-context-routing.md",
+    "bytes": 225573,
+    "sha256": "e8b66437f65aa766bbeb066d072b31dd78404d2f5ebf393883d33db69e1e4393"
+  },
+  "sections": [
+    {
+      "path": "docs/developer/contracts/01-documentation-navigation.md",
+      "heading": "## Documentation navigation",
+      "original_line": 3,
+      "byte_start": 35,
+      "byte_length": 465,
+      "sha256": "844b295e5bbd75fe606ee3f957f98886d240a6d5a11f1624a53fc9f7526848c6"
+    },
+    {
+      "path": "docs/developer/contracts/02-reader-and-presentation-rules.md",
+      "heading": "## Fight Night presentation",
+      "original_line": 11,
+      "byte_start": 500,
+      "byte_length": 17750,
+      "sha256": "ee365bc601bd0e1c46b8956d92ea8c27d0939f316c9dea6d0c9e398d3bbf8e23"
+    },
+    {
+      "path": "docs/developer/contracts/03-fighter-traits.md",
+      "heading": "## Trait catalogue and progression",
+      "original_line": 258,
+      "byte_start": 18250,
+      "byte_length": 1507,
+      "sha256": "f3cd9adfe97e58a888d70a7e7dca4023d90fa8eed84dbace9ad0fa798ff4acc3"
+    },
+    {
+      "path": "docs/developer/contracts/04-spectator-controls.md",
+      "heading": "## Spectator simulation controls",
+      "original_line": 279,
+      "byte_start": 19757,
+      "byte_length": 1404,
+      "sha256": "00c1a893a12406ab1794d899460b1bc8e55464778cc5302301d13a8af12c3596"
+    },
+    {
+      "path": "docs/developer/contracts/05-performance-and-domain-rules.md",
+      "heading": "## App performance",
+      "original_line": 302,
+      "byte_start": 21161,
+      "byte_length": 23112,
+      "sha256": "9c010d145c2794d74d7ce62b1214ebb40eefb6f4b9171215db896d06ff283255"
+    },
+    {
+      "path": "docs/developer/contracts/06-portrait-catalogue.md",
+      "heading": "## Portrait catalogue version 3",
+      "original_line": 636,
+      "byte_start": 44273,
+      "byte_length": 3274,
+      "sha256": "a8d08c67a6c558a11a9442d25d38a00c05538d5a3636e3452c84181aca3457e7"
+    },
+    {
+      "path": "docs/developer/contracts/07-native-release-and-experiments.md",
+      "heading": "## Native 440 release integration (6 September 2026)",
+      "original_line": 684,
+      "byte_start": 47547,
+      "byte_length": 44303,
+      "sha256": "cfbdd8caba3fe42dc25cc4ee5315fd0eb92c00263bf95e65da7b4fd9d898a1bd"
+    },
+    {
+      "path": "docs/developer/contracts/08-finish-balance-and-experiments.md",
+      "heading": "## Current finish-balance policy — supersedes exact-count instructions below",
+      "original_line": 1229,
+      "byte_start": 91850,
+      "byte_length": 29003,
+      "sha256": "82c24453c95cbf2246a17625efa2bf26a343e7de746ccadf28bd916e1d413e76"
+    },
+    {
+      "path": "docs/developer/contracts/09-working-agreement.md",
+      "heading": "## 1. Working Agreement for Coding Agents",
+      "original_line": 1546,
+      "byte_start": 120853,
+      "byte_length": 5404,
+      "sha256": "9b4ab72bbb6a85f3f62a18ab396fc5b3965cece3ec3d5eaf18432a25dad9030e"
+    },
+    {
+      "path": "docs/developer/contracts/10-product-principles.md",
+      "heading": "## 2. Product Goal and Design Principles",
+      "original_line": 1641,
+      "byte_start": 126257,
+      "byte_length": 779,
+      "sha256": "17e50bda9d5d92eb602c63f7caae4450dcaf0b7acea76d6100b4a91e258f8463"
+    },
+    {
+      "path": "docs/developer/contracts/11-architecture-reference.md",
+      "heading": "## 3. Architecture at a Glance",
+      "original_line": 1658,
+      "byte_start": 127036,
+      "byte_length": 13857,
+      "sha256": "393c476d402056772bf9449454662f748c1d809cfb30ed92dad03390474b1517"
+    },
+    {
+      "path": "docs/developer/contracts/12-state-and-control-flow.md",
+      "heading": "## 4. State Ownership and Control Flow",
+      "original_line": 1824,
+      "byte_start": 140893,
+      "byte_length": 6374,
+      "sha256": "ddac44034b3ae18b24ef8d151b8f8f2f8c6a2e31e768059d61884318b34ca13f"
+    },
+    {
+      "path": "docs/developer/contracts/13-persistence.md",
+      "heading": "## 5. Save Compatibility and Persistent State",
+      "original_line": 1948,
+      "byte_start": 147267,
+      "byte_length": 6097,
+      "sha256": "d62d904ce8ac971f6af3b4e9fe682f54c605737cda1188592d5e5743642fb5ee"
+    },
+    {
+      "path": "docs/developer/contracts/14-world-and-promotions.md",
+      "heading": "## 6. Promotions, Spectator Mode, and World AI",
+      "original_line": 2044,
+      "byte_start": 153364,
+      "byte_length": 28606,
+      "sha256": "938a4c51c7b9cbe4dd350d7306222edb07885ca219b3751c92cf6eb48cf4eab3"
+    },
+    {
+      "path": "docs/developer/contracts/15-new-promotion-starts.md",
+      "heading": "## 7. New Promotion Starts",
+      "original_line": 2427,
+      "byte_start": 181970,
+      "byte_length": 1266,
+      "sha256": "76a1706d15b1cdfd3b9316cdcde25ba183cc9dd5f19a85f1633c5ed0d2097cf8"
+    },
+    {
+      "path": "docs/developer/contracts/16-matchmaking.md",
+      "heading": "## 8. Matchmaking and Availability",
+      "original_line": 2447,
+      "byte_start": 183236,
+      "byte_length": 1089,
+      "sha256": "04fa71509414ee6b85a858edf998ca5e840ec04c22050c1f199679e749948335"
+    },
+    {
+      "path": "docs/developer/contracts/17-fight-engine-and-commentary.md",
+      "heading": "## 9. Fight Engine and Fight-Night Presentation",
+      "original_line": 2472,
+      "byte_start": 184325,
+      "byte_length": 48830,
+      "sha256": "8cd6f3ee262277faee395000bcce2408d9f710910bbeb1b5ba2148e305fe198f"
+    },
+    {
+      "path": "docs/developer/contracts/18-contracts-and-weigh-ins.md",
+      "heading": "## 10. Contracts, Weigh-ins, and Shared Rules",
+      "original_line": 3058,
+      "byte_start": 233155,
+      "byte_length": 1542,
+      "sha256": "4d7238f004566b5bf4b89f3d8d5d2a350f6e7151cbef29d303435688c7da7e45"
+    },
+    {
+      "path": "docs/developer/contracts/19-development-and-staff.md",
+      "heading": "## 11. Gyms, Development, and Awards",
+      "original_line": 3083,
+      "byte_start": 234697,
+      "byte_length": 7640,
+      "sha256": "74485e4588c3e0a7af80a37f689fc30a156ca547b8375113b343fd164b97f4a5"
+    },
+    {
+      "path": "docs/developer/contracts/20-ui-and-accessibility.md",
+      "heading": "## 12. UI, Themes, and Accessibility",
+      "original_line": 3190,
+      "byte_start": 242337,
+      "byte_length": 17318,
+      "sha256": "f601bb210cf978efbce213bf5f8b9e282d426fdf933c6cba51adc6ce4e97a7c5"
+    },
+    {
+      "path": "docs/developer/contracts/21-data-quality.md",
+      "heading": "## 13. Data Quality",
+      "original_line": 3416,
+      "byte_start": 259655,
+      "byte_length": 2641,
+      "sha256": "afacce18e2e245dea850267199f350d1b61a73627bdc2ab463411475f4aea553"
+    },
+    {
+      "path": "docs/developer/contracts/22-testing-and-shipping.md",
+      "heading": "## 14. Testing and Shipping",
+      "original_line": 3450,
+      "byte_start": 262296,
+      "byte_length": 5601,
+      "sha256": "57dd6c0022462ecc9caef3a0ac4a516f18e72bcef90532bd6eddbbd0c46e9308"
+    },
+    {
+      "path": "docs/developer/contracts/23-change-recipes.md",
+      "heading": "## 15. Common Change Recipes",
+      "original_line": 3565,
+      "byte_start": 267897,
+      "byte_length": 1152,
+      "sha256": "dae415b37ce130be52d4624348a0a3831099084563089ea4805b2b0cd1a3aa01"
+    },
+    {
+      "path": "docs/developer/contracts/24-pitfalls-and-audio.md",
+      "heading": "## 16. Common Pitfalls",
+      "original_line": 3612,
+      "byte_start": 269049,
+      "byte_length": 3459,
+      "sha256": "498fef6bc4c9ff783f5c4ed358a4fa624464c4c2eeeb340649f375ca16f53068"
+    },
+    {
+      "path": "docs/developer/contracts/25-product-and-identity-rules.md",
+      "heading": "## 17. Current Product Direction",
+      "original_line": 3654,
+      "byte_start": 272508,
+      "byte_length": 16688,
+      "sha256": "ce14f2179ccfe0a93b090b68e81f336d5d29df810e6977c4b918f06a748c5bd3"
+    }
+  ]
+}

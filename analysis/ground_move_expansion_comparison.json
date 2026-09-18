@@ -1,0 +1,19 @@
+{
+  "fights_per_arm": 300,
+  "additions": 44,
+  "before": {
+    "total_move_selections": 13312,
+    "mean_distinct_moves_per_fighter": 16.34,
+    "top_ten_move_share_pct": 25.97,
+    "chained_selection_pct": 5.46
+  },
+  "after": {
+    "total_move_selections": 13312,
+    "mean_distinct_moves_per_fighter": 16.575,
+    "top_ten_move_share_pct": 25.97,
+    "chained_selection_pct": 6.3
+  },
+  "mechanics_equal": true,
+  "missing": [],
+  "failures": []
+}

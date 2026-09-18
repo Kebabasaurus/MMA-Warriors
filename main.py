@@ -14,13 +14,18 @@ from ui import UIMixin
 from admin import AdminMixin
 from seeding import SeedMixin
 from media import MediaMixin
+from staff_management import StaffManagementMixin
 from views import ViewMixin
 from events import EventMixin
-from fight_engine import FightEngineMixin
+from grand_prix import GrandPrixMixin
+from fight_release import ReleaseFightEngineMixin as FightEngineMixin
 from world import WorldMixin
 from persistence import PersistenceMixin, configure_runtime_logging, install_global_exception_handlers, register_crash_app, write_crash_report
 from awards import AwardsMixin
 from audio import FightNightAudioMixin
+from feature_foundation import FoundationMixin
+from booking_workbench import BookingWorkbenchMixin
+from contract_batch_workbench import ContractBatchWorkbenchMixin
 
 
 class StartupSplash:
@@ -103,10 +108,15 @@ class FightEmpireApp(
     AdminMixin,
     SeedMixin,
     MediaMixin,
+    StaffManagementMixin,
     ViewMixin,
+    GrandPrixMixin,
     EventMixin,
     FightEngineMixin,
     WorldMixin,
+    FoundationMixin,
+    BookingWorkbenchMixin,
+    ContractBatchWorkbenchMixin,
     PersistenceMixin,
     AwardsMixin,
 ):
@@ -147,6 +157,12 @@ class FightEmpireApp(
         self.super_event_offers = []
         self.super_event_history = []
         self.super_event_project = None
+        self.grand_prix_series = []
+        # Optional regional-host invitations are separate from milestone
+        # super-events.  They are small, deterministic planning offers whose
+        # lifecycle is persisted so a save/reload cannot create a second one.
+        self.regional_invitations = []
+        self.regional_invitation_history = []
         self.theme_name = "Dark Mode"
         self.player_company_name = PLAYER_PROMOTION_NAME
         self.spectator_mode = False
@@ -199,6 +215,12 @@ class FightEmpireApp(
         self.staff = self.seed_staff()
         self.staff_candidates = self.seed_staff_candidates()
         self.ensure_staff_profiles()
+        self.ensure_staff_management_state()
+        self.drug_testing_state = self._default_drug_testing_state()
+        self.booking_workbench = self._default_booking_workbench_state()
+        self.ensure_booking_workbench_state()
+        self.contract_batch_workbench = self._default_contract_batch_state()
+        self.ensure_contract_batch_state()
         self.scouting = []
         self.scouting_reports = {}
         self.scouting_searches = []
@@ -213,7 +235,9 @@ class FightEmpireApp(
         self.inbox = []
         self.inbox_hidden_types = set()
         self.owner_goals = self.seed_owner_goals()
-        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "active_fighter_target": 1200, "ai_offer_market_target": 100, "global_result_replay_limit": 2000, "auto_renew_enabled": False, "scouting_mode": True, "ui_matchup_insight_collapsed": True, "fight_night_audio_enabled": True, "fight_night_audio_output": "System default", "fight_night_audio_volume": 55, "autosave_enabled": True, "autosave_interval_months": 2, "autosave_weekly_keep": 2, "autosave_monthly_keep": 2, "save_backup_keep": 2, "save_retention_version": 4, "detailed_skill_balance_version": 1}
+        if hasattr(self, "ensure_owner_goal_records"):
+            self.ensure_owner_goal_records()
+        self.rules = {"rounds": 3, "title_rounds": 5, "round_length": 5, "drug_testing": "Standard", "judging_randomness": 2, "active_fighter_target": 1200, "ai_offer_market_target": 100, "global_result_replay_limit": 2000, "auto_renew_enabled": False, "scouting_mode": True, "ui_matchup_insight_collapsed": True, "fight_night_audio_enabled": True, "fight_night_audio_output": "System default", "fight_night_audio_volume": 55, "autosave_enabled": True, "autosave_interval_months": 2, "autosave_weekly_keep": 2, "autosave_monthly_keep": 2, "save_backup_keep": 2, "save_retention_version": 4, "detailed_skill_balance_version": 1, "simulation_pause_policy": {"version": 1, "enabled": False, "target": None, "stop_on_event": False, "watched_fighter_ids": [], "watched_company_names": [], "event_cursor": [], "last_completed_boundary": None, "stop_reason": ""}}
         self.rules["allow_mixed_gender"] = False
         self.broadcasters = [{"name": "Regional Webcast", "reach": 22, "fee": 12000, "type": "Streaming"}]
         self.media_companies = []
@@ -228,11 +252,18 @@ class FightEmpireApp(
         ]
         self.world_chronicle = []
         self.story_threads = []
+        self.story_subscriptions = []
+        self.relationship_cases = []
         self._story_thread_index = {}
         self.defunct_promotions = []
         self.booked = []
         self.scheduled_events = []
         self.pending_rebookings = []
+        # Seeded records receive the same stable IDs as records migrated from
+        # a legacy save.  The operation ledger itself remains empty until a
+        # player action is committed.
+        self.ensure_foundation_state()
+        self.ensure_foundation_ids()
         self.event_log = []
         self.season_stats = {}
         self.awards_history = []
@@ -297,6 +328,8 @@ class FightEmpireApp(
         self.retired_legacy_filter = tk.StringVar(value="All")
         self.audit_runs = tk.IntVar(value=250)
         self.play_audit_years = tk.IntVar(value=30)
+        self.play_audit_seed = tk.IntVar(value=260712)
+        self.play_audit_time_limit_seconds = tk.IntVar(value=300)
         self.fight_timer_delay = tk.IntVar(value=2150)
         self.sim_fighter_a = tk.StringVar(value="")
         self.sim_fighter_b = tk.StringVar(value="")
@@ -307,6 +340,7 @@ class FightEmpireApp(
         self.sim_camp_weeks_a = tk.IntVar(value=8)
         self.sim_camp_weeks_b = tk.IntVar(value=8)
         self.sim_tournament_size = tk.IntVar(value=8)
+        self.grand_prix_event_count = tk.IntVar(value=1)
         self.sim_generate_count = tk.IntVar(value=25)
         self.sim_generate_age = tk.StringVar(value="Random")
         self.sim_generate_ability = tk.StringVar(value="Random")
@@ -334,6 +368,8 @@ class FightEmpireApp(
             "Are you sure you want to close MMA Warriors?\n\nRemember to save your game before exiting.",
             parent=self.root,
         ):
+            if hasattr(self, "cancel_scouting_target_refresh"):
+                self.cancel_scouting_target_refresh()
             self.root.destroy()
 
     def handle_spectator_space_stop(self, _event=None):

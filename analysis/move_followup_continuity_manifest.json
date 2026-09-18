@@ -1,0 +1,216 @@
+{
+  "schema_version": 1,
+  "source_sha256": "8a071f8bd31994c8a431f41f2dd9517a09c143ea454b3b6b97d4352fe3796bbe",
+  "updates": {
+    "shoulder_pinch_cling": {
+      "follow_ups": [
+        "guard_recovery",
+        "guard_submission_chain",
+        "technical_standup"
+      ]
+    },
+    "wrist_elbow_cling": {
+      "follow_ups": [
+        "guard_recovery",
+        "guard_armbar",
+        "technical_standup"
+      ]
+    },
+    "biceps_tie_cling": {
+      "follow_ups": [
+        "guard_recovery",
+        "kimura_guard",
+        "technical_standup"
+      ]
+    },
+    "overhook_clamp_cling": {
+      "follow_ups": [
+        "kimura_guard",
+        "guard_recovery",
+        "technical_standup"
+      ]
+    },
+    "sambo_overhand_body_lock_trip": {
+      "follow_ups": [
+        "outside_trip",
+        "shoulder_pressure",
+        "clinch_knee"
+      ]
+    },
+    "wrist_to_collar_entry": {
+      "follow_ups": [
+        "clinch_knee",
+        "pummel_to_underhook",
+        "knee_tap"
+      ]
+    },
+    "inside_biceps_control": {
+      "follow_ups": [
+        "clinch_knee",
+        "shoulder_grind",
+        "knee_tap"
+      ]
+    },
+    "clinch_knee": {
+      "follow_ups": [
+        "body_lock_trip",
+        "inside_trip",
+        "hip_pin_fence_control"
+      ]
+    },
+    "gift_wrap_transition": {
+      "follow_ups": [
+        "mounted_hammerfist_flurry",
+        "rear_naked_choke",
+        "body_triangle_back_control"
+      ]
+    },
+    "two_on_one_clinch_control": {
+      "follow_ups": [
+        "single_leg_finish",
+        "short_clinch_boxing",
+        "hip_pin_fence_control"
+      ]
+    },
+    "half_guard_crossface_control": {
+      "follow_ups": [
+        "underhook_half_guard_pass",
+        "half_guard_darce",
+        "half_guard_diagonal_elbows"
+      ]
+    },
+    "mma_generalist_cross_kick_clinch_chain": {
+      "follow_ups": [
+        "body_lock_entry",
+        "lead_teep",
+        "single_jab"
+      ]
+    },
+    "thai_plum_entry": {
+      "follow_ups": [
+        "clinch_knee",
+        "pummel_to_underhook",
+        "knee_tap"
+      ]
+    },
+    "body_lock_entry": {
+      "follow_ups": [
+        "body_lock_trip",
+        "shoulder_grind",
+        "short_clinch_boxing"
+      ]
+    },
+    "single_underhook_entry": {
+      "follow_ups": [
+        "knee_tap",
+        "shoulder_grind",
+        "short_clinch_boxing"
+      ]
+    },
+    "horizontal_clinch_elbow": {
+      "follow_ups": [
+        "short_clinch_boxing",
+        "frame_exit",
+        "hip_pin_fence_control"
+      ]
+    },
+    "russian_tie_entry": {
+      "follow_ups": [
+        "single_leg_finish",
+        "short_clinch_boxing",
+        "shoulder_pressure"
+      ]
+    },
+    "body_jab": {
+      "follow_ups": [
+        "one_two",
+        "jab_to_shot",
+        "single_jab"
+      ]
+    },
+    "mma_generalist_elbow_knee_finisher": {
+      "follow_ups": [
+        "body_lock_entry",
+        "lead_teep",
+        "single_jab"
+      ]
+    },
+    "inside_uppercut": {
+      "follow_ups": [
+        "clinch_knee",
+        "knee_tap",
+        "hip_pin_fence_control"
+      ]
+    },
+    "body_lock_pass": {
+      "follow_ups": [
+        "half_guard_crossface_strikes",
+        "knee_on_belly_pressure",
+        "half_guard_arm_triangle"
+      ]
+    },
+    "guard_alternating_straights": {
+      "follow_ups": [
+        "body_lock_pass",
+        "guard_top_head_arm",
+        "staggered_base_guard_control"
+      ]
+    },
+    "underhook_lift_exit": {
+      "follow_ups": [
+        "single_jab",
+        "double_leg_entry",
+        "one_two"
+      ]
+    },
+    "shoulder_to_chest_entry": {
+      "follow_ups": [
+        "body_lock_trip",
+        "shoulder_pressure",
+        "clinch_knee"
+      ]
+    },
+    "short_rib_knee": {
+      "follow_ups": [
+        "collar_tie_elbow",
+        "inside_trip",
+        "overhook_fence_clamp"
+      ]
+    },
+    "elbow_control_entry": {
+      "follow_ups": [
+        "knee_tap",
+        "pummel_to_underhook",
+        "short_clinch_boxing"
+      ]
+    },
+    "staggered_base_guard_control": {
+      "follow_ups": [
+        "headquarters_pass",
+        "guard_top_head_arm",
+        "guard_hammerfist_chain"
+      ]
+    },
+    "posture_punches": {
+      "follow_ups": [
+        "position_pass",
+        "guard_top_head_arm",
+        "staggered_base_guard_control"
+      ]
+    },
+    "underhook_half_guard_pass": {
+      "follow_ups": [
+        "crucifix_elbows",
+        "reverse_scarf_hold_control",
+        "arm_triangle"
+      ]
+    },
+    "back_take_transition": {
+      "follow_ups": [
+        "rear_naked_choke",
+        "body_triangle_back_control",
+        "back_control_short_punches"
+      ]
+    }
+  }
+}

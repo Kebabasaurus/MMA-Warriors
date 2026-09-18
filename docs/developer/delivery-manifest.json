@@ -1,0 +1,4589 @@
+{
+  "schema_version": 2,
+  "content_normalization": "LF for text; raw bytes for binary assets",
+  "generated_on": "2026-09-18",
+  "purpose": "Proposed reviewable source delivery; no files are staged or released by this manifest.",
+  "content_sha256": "b529d152004b490a51878be3d0b1b14bdcec90b64c722c3c59835bfe8cb11a3b",
+  "file_count": 758,
+  "files": [
+    {
+      "path": ".gitattributes",
+      "role": "project_configuration",
+      "bytes": 737,
+      "sha256": "852d7a718e3e9a64e49a2b524887f42423f323340197b5aa121b52372cd91294"
+    },
+    {
+      "path": ".gitignore",
+      "role": "project_configuration",
+      "bytes": 741,
+      "sha256": "dbe22b25eb4c4a4a65a84251aff25ac1ea73b61fb4168b23dfe7db896f8731be"
+    },
+    {
+      "path": "Academy and Combat Sports Tabs Plan.txt",
+      "role": "project_configuration",
+      "bytes": 7636,
+      "sha256": "c7bf5cea40226450673e9377908ba7aa8bbfaa5d7e339af27edc1f0e8f43ce87"
+    },
+    {
+      "path": "academy_coach_regression_test.py",
+      "role": "test",
+      "bytes": 6015,
+      "sha256": "c9f6ced0762273d5da7288c4210d557b4b146381e186d42b7d35957d0098fb70"
+    },
+    {
+      "path": "admin.py",
+      "role": "runtime_source",
+      "bytes": 140704,
+      "sha256": "82d71c1c0ce825c7fc54cbdfe7094388f310847842fcfe9e00665f959161717f"
+    },
+    {
+      "path": "advance_notifications_regression_test.py",
+      "role": "test",
+      "bytes": 1814,
+      "sha256": "fa0d64d8b1356bf97ab691fc4d9f58c4ebb3729d6f107da60606c7f57faeac59"
+    },
+    {
+      "path": "AGENTS.md",
+      "role": "documentation",
+      "bytes": 6645,
+      "sha256": "bf5ecb8684f80d63a4d27f627c478700a7b8f06d4099e98822d66afed9df521f"
+    },
+    {
+      "path": "ai_card_logic_regression_test.py",
+      "role": "test",
+      "bytes": 2934,
+      "sha256": "d662eb577d6080ada3fbb39af8dee1c9b9491045e3055321e6a19dcd2bac7913"
+    },
+    {
+      "path": "analysis/benchmark_boxing_chain_pool.py",
+      "role": "test_support",
+      "bytes": 3770,
+      "sha256": "50a1509270b2eccac7bda644baf1dbf583d94ffa1d05a2542c12bd0924b40f75"
+    },
+    {
+      "path": "analysis/benchmark_defense_wording.py",
+      "role": "test_support",
+      "bytes": 5948,
+      "sha256": "bcb11d528dbf369833ca9f70c1b93253a69ce41c85bb8b087ec5cef58904a6c8"
+    },
+    {
+      "path": "analysis/benchmark_submission_development.py",
+      "role": "test_support",
+      "bytes": 2278,
+      "sha256": "b43afc0b1e97dbf89aae7944529fbebbad25a2b6476fd3cd9128335b338fc6d6"
+    },
+    {
+      "path": "analysis/benchmark_survival_expansion.py",
+      "role": "test_support",
+      "bytes": 4054,
+      "sha256": "a8f8764c18c09d976defa90329da6c9bcbb3d163d979d2100a65a79aef21f7e7"
+    },
+    {
+      "path": "analysis/bottom_move_expansion_comparison.json",
+      "role": "test_fixture",
+      "bytes": 155,
+      "sha256": "863170468e11b9cf74474458a27291a1d55fb981f7ff638645d2f1a23d23366d"
+    },
+    {
+      "path": "analysis/boxing_chain_pool_candidate.py",
+      "role": "test_support",
+      "bytes": 5320,
+      "sha256": "20d620d83a908577f04d6daec9a7f39735dd3f61d0dadfc0c48a8d7d703e8019"
+    },
+    {
+      "path": "analysis/chain_selection_diagnostics.py",
+      "role": "test_support",
+      "bytes": 13542,
+      "sha256": "28464667d77ba1553f0b46693514aaa8237b4b7db48c2f235decc8b8318bcb24"
+    },
+    {
+      "path": "analysis/compare_bottom_move_expansion.py",
+      "role": "test_support",
+      "bytes": 2813,
+      "sha256": "280316642e824f06ddd040b7c6fdca6c1385b55ab6b91ab5508157203f411207"
+    },
+    {
+      "path": "analysis/compare_candidate_striking.py",
+      "role": "test_support",
+      "bytes": 20992,
+      "sha256": "0507a5d5095af4fbb4e84da1dc783af747cee7df0dfcf3a6dc97d44aaaa588fc"
+    },
+    {
+      "path": "analysis/compare_followup_diversity.py",
+      "role": "test_support",
+      "bytes": 2800,
+      "sha256": "580391a6287bad19a5e30c927d2107b529e5e4f4b682c16a3f23ea28e445b7f7"
+    },
+    {
+      "path": "analysis/compare_ground_move_expansion.py",
+      "role": "test_support",
+      "bytes": 1246,
+      "sha256": "a434d24544f695d2cb66c0d99e0660ef7739a8dad59e0b6c75f811c68fe21ac4"
+    },
+    {
+      "path": "analysis/compare_striking_move_expansion.py",
+      "role": "test_support",
+      "bytes": 3111,
+      "sha256": "3362a703d80c1c0328a90d36912f9b5305aac098547cdef83ac8c6bd0b39fa00"
+    },
+    {
+      "path": "analysis/continuation_branch_candidate.py",
+      "role": "test_support",
+      "bytes": 4437,
+      "sha256": "f9818b5c4f092c46ba0e36d306a7281c5b70688b1b0f694f7df907d918b8deaf"
+    },
+    {
+      "path": "analysis/continuation_commitment_candidate.py",
+      "role": "test_support",
+      "bytes": 2426,
+      "sha256": "693bedbc8a894393ea1d9a0616a10e7d770c96ea6e3d8f14017d0c808c8d0cdb"
+    },
+    {
+      "path": "analysis/continuation_strength_candidate.py",
+      "role": "test_support",
+      "bytes": 1732,
+      "sha256": "2032db734439c8ec1bc69971d5f36fa89b03a04d234091f7d6f0cb4693ad4f52"
+    },
+    {
+      "path": "analysis/cradle_matchup_diagnostics.py",
+      "role": "test_support",
+      "bytes": 8262,
+      "sha256": "1be17f1b677cc3d8c7024803634dfab6bb8ff0cedbae0d6a6a2e3536185ddd05"
+    },
+    {
+      "path": "analysis/cradle_setup_candidate.py",
+      "role": "test_support",
+      "bytes": 14891,
+      "sha256": "779a39bfb5b0547b5ef10a3141faae68dc20ba6e3a7fb6935bbc115b307a3e4c"
+    },
+    {
+      "path": "analysis/defense_wording_cpu_44.json",
+      "role": "test_fixture",
+      "bytes": 10175,
+      "sha256": "70bedb2df4d84f4bfcaaa1ee7b0e5b663358952dfe0d32fe7ee7d1fdfe7ab73e"
+    },
+    {
+      "path": "analysis/evaluate_joint_fight_candidate.py",
+      "role": "test_support",
+      "bytes": 26357,
+      "sha256": "bf7aa7ac227ac64960ce7d58ee3628e56fee0b3a0fb2441eb29b85cbc1154b5a"
+    },
+    {
+      "path": "analysis/evaluate_release_runtime.py",
+      "role": "test_support",
+      "bytes": 6817,
+      "sha256": "6e7360f47d399fd479d9c575c63ac1c8b53f3f830bd65f6c82686d8914b0014d"
+    },
+    {
+      "path": "analysis/evaluate_specialist_entry_candidate.py",
+      "role": "test_support",
+      "bytes": 1514,
+      "sha256": "09f297a72d69fe29aae16fd04eefc7768d9a24019e40b02921c6fc5f32e94fcd"
+    },
+    {
+      "path": "analysis/expand_authored_signatures.py",
+      "role": "test_support",
+      "bytes": 5553,
+      "sha256": "fc248f63ac2a240e30453ab8e171f6fa3f6e916b722e9eab71729c8723f76ee8"
+    },
+    {
+      "path": "analysis/failed_shot_escape_intent.py",
+      "role": "test_support",
+      "bytes": 5288,
+      "sha256": "60a9e131c12c9eea0b078939f04c6a5250a7f09a2e33daf10ec2545e77bd613f"
+    },
+    {
+      "path": "analysis/fight_candidate_context.py",
+      "role": "test_support",
+      "bytes": 9172,
+      "sha256": "d4108551d883eb7c4d187d27368453c90dd4c0a81f219bfc53bcbd9bafe91964"
+    },
+    {
+      "path": "analysis/fight_engine_action_baseline.json",
+      "role": "test_fixture",
+      "bytes": 16666,
+      "sha256": "be983bb49268318587cd8e3a99bcb042daef7fe32ed563740bc0cbec62728eaa"
+    },
+    {
+      "path": "analysis/fight_engine_baseline.json",
+      "role": "test_fixture",
+      "bytes": 1793316,
+      "sha256": "6660d21064e13dc3b40cd9bbb5681a9857e986953e2a0964482e7af2cc97ad4f"
+    },
+    {
+      "path": "analysis/fight_engine_move_report.json",
+      "role": "test_fixture",
+      "bytes": 634303,
+      "sha256": "f1d1e0d8449a0f0d18db6e0f06aa6f5701c5adab092f9932d504b416206bd825"
+    },
+    {
+      "path": "analysis/fight_engine_specialist_transition_report.json",
+      "role": "test_fixture",
+      "bytes": 20993,
+      "sha256": "66f70b3520b4d591010bac6e9bf11e67ba24ce0fa45cad20df7977d9c51ccd0d"
+    },
+    {
+      "path": "analysis/generate_chain_opportunity_report.py",
+      "role": "test_support",
+      "bytes": 16611,
+      "sha256": "6a3e08d38636f60799265ad24cb7376c6dc285497db852ba9d418a1f7aa852a6"
+    },
+    {
+      "path": "analysis/generate_fight_action_baseline.py",
+      "role": "test_support",
+      "bytes": 1549,
+      "sha256": "7c479c6c934bcfd6a8a0340d6b51a8b4d95bf9bae5c65a4e51cb4c72a4751f26"
+    },
+    {
+      "path": "analysis/generate_fight_commentary_report.py",
+      "role": "test_support",
+      "bytes": 36305,
+      "sha256": "00c1b983539b895c8cec8dc67c81b0e21c932578e0068a3067807484a4fd7966"
+    },
+    {
+      "path": "analysis/generate_fight_engine_baseline.py",
+      "role": "test_support",
+      "bytes": 1923,
+      "sha256": "245e9246bd627aebaeea52a82d789946b0bad976a6bd62e3d9d67b8045e0711c"
+    },
+    {
+      "path": "analysis/generate_fight_move_report.py",
+      "role": "test_support",
+      "bytes": 1305,
+      "sha256": "efd0e4de5924cfaa9566afaa7d151d892897db5005beb8aa4815843fed90fd2d"
+    },
+    {
+      "path": "analysis/generate_move_coverage_report.py",
+      "role": "test_support",
+      "bytes": 38819,
+      "sha256": "4883e194de4127e20f1c75a804f7d28ab5271f82975c422a648c3c7f8db31430"
+    },
+    {
+      "path": "analysis/generate_specialist_transition_report.py",
+      "role": "test_support",
+      "bytes": 1072,
+      "sha256": "e7141698f362bd8cd65eb9e00ee8d1bdc05797beab19c09df2a9621c1c856591"
+    },
+    {
+      "path": "analysis/generate_variety_opportunity_report.py",
+      "role": "test_support",
+      "bytes": 10643,
+      "sha256": "a43f350948f55e97fbc6e355dc0ca9f68b97ba0a89a9850a77e6eb8be914fb8b"
+    },
+    {
+      "path": "analysis/gift_wrap_control_candidate.py",
+      "role": "test_support",
+      "bytes": 1178,
+      "sha256": "490792e89b5a8e8d3e810ccb2fa7ff1bc7f753bea40dbfdfb930d7cf3a3b0530"
+    },
+    {
+      "path": "analysis/gift_wrap_mount_candidate.py",
+      "role": "test_support",
+      "bytes": 1521,
+      "sha256": "5cd146a509fe707ef7d5c5819eee1fc858ad91f0d6693fad77a992ee0bc5960a"
+    },
+    {
+      "path": "analysis/ground_move_expansion_comparison.json",
+      "role": "test_fixture",
+      "bytes": 452,
+      "sha256": "34ebfa55422b6456115913f8fe48763d7312e9e37d7bf769f925c7d61d30092b"
+    },
+    {
+      "path": "analysis/heel_hook_identity_candidate.py",
+      "role": "test_support",
+      "bytes": 850,
+      "sha256": "2e30c136a7d7173676330152a0c0ea408c1739debbc6c1e6bafdac2faa1acb3e"
+    },
+    {
+      "path": "analysis/jab_timing_diagnostics.py",
+      "role": "test_support",
+      "bytes": 13374,
+      "sha256": "44c7071c9d2eb837ecfde57ff6bcc990ae2aae0999d8d377ecbf9466bb80ca7a"
+    },
+    {
+      "path": "analysis/joint_candidate_gift_wrap_mount_calibration.json",
+      "role": "test_fixture",
+      "bytes": 53149,
+      "sha256": "6f51dc9afb3821dc239def5d943d65f08710ee7c1e043d7531c7c24d2a4f7df9"
+    },
+    {
+      "path": "analysis/joint_candidate_gift_wrap_mount_coverage.json",
+      "role": "test_fixture",
+      "bytes": 229100,
+      "sha256": "b39c53cf97ebc4cb611fd69210a211c8b4b8c49e59fa9b64e97a0c3f0a9e1d4b"
+    },
+    {
+      "path": "analysis/joint_candidate_mount_jab_calibration.json",
+      "role": "test_fixture",
+      "bytes": 53458,
+      "sha256": "dac5071c312becd3420f63a6abf785cf74ce8dbe5142a3d7f94148b44f6e8dbc"
+    },
+    {
+      "path": "analysis/kick_power_candidate.py",
+      "role": "test_support",
+      "bytes": 2386,
+      "sha256": "f0a8bf63fd52f29e818a5a83ca1e518e8b0c71544b1fa30cd1dfbff455934caf"
+    },
+    {
+      "path": "analysis/mount_repertoire_selection_300.json",
+      "role": "test_fixture",
+      "bytes": 16823205,
+      "sha256": "9f295c1e063943e8b686470cc696d9f155c327741da27b241bdcb2b034239b52"
+    },
+    {
+      "path": "analysis/move_coverage_reference.json",
+      "role": "test_fixture",
+      "bytes": 21739,
+      "sha256": "0e13d183402d047edd706036fb95f0bcebf12af4eecdf039a7d47fefdd9458e5"
+    },
+    {
+      "path": "analysis/move_coverage_report.json",
+      "role": "test_fixture",
+      "bytes": 93239,
+      "sha256": "853407c8a011cf18780cea3a984b945c30292800f73ea509fd340a4c23c4538c"
+    },
+    {
+      "path": "analysis/move_followup_continuity_manifest.json",
+      "role": "test_fixture",
+      "bytes": 4644,
+      "sha256": "32e5f884f6b9c1841b05d3d69ba3b844c9d530761790cf85ec02bca15388025f"
+    },
+    {
+      "path": "analysis/move_followup_diversity_manifest.json",
+      "role": "test_fixture",
+      "bytes": 4242,
+      "sha256": "6ce94ecb06245690b18adcdb39117693ccded83965d03db81d6900022b6d2ce8"
+    },
+    {
+      "path": "analysis/move_followup_phase31_revised_manifest.json",
+      "role": "test_fixture",
+      "bytes": 16056,
+      "sha256": "4149dff45363cc43d7bf276dde64bdc174dcad673f18bc12130a7d66a2f156b5"
+    },
+    {
+      "path": "analysis/move_registry_followup_continuity.json",
+      "role": "test_fixture",
+      "bytes": 754057,
+      "sha256": "53c8ba9efeba5228239c730eb6f6da815c4b9c26608babb983efc5160836f58d"
+    },
+    {
+      "path": "analysis/move_registry_followup_diversity.json",
+      "role": "test_fixture",
+      "bytes": 752709,
+      "sha256": "04d1a63ca1a3119973a5f08349f60a04f3d9a4faa89600ea95fa40e2f5735e7c"
+    },
+    {
+      "path": "analysis/move_registry_parity.json",
+      "role": "test_fixture",
+      "bytes": 522032,
+      "sha256": "2ad0775be5cd2d7e9c20cc0733bd2b2f1c878e16e7503e97797c8b737b47eb64"
+    },
+    {
+      "path": "analysis/move_registry_phase29.json",
+      "role": "test_fixture",
+      "bytes": 543059,
+      "sha256": "26ee9e6c1f4ad77a1ecef0a55eb39525e305807cc48d0d754ea44374a4e924fd"
+    },
+    {
+      "path": "analysis/move_registry_phase30_33.json",
+      "role": "test_fixture",
+      "bytes": 604914,
+      "sha256": "853335c36bd2c0a3019c9f32a0aae2b5799f91213844d1c465d1a9149d8c0591"
+    },
+    {
+      "path": "analysis/move_registry_phase31_revised.json",
+      "role": "test_fixture",
+      "bytes": 741706,
+      "sha256": "817b7643c8aa027d71ae9693371642bd9901ed5a43ebd4213c6878a5cd63f83b"
+    },
+    {
+      "path": "analysis/move_registry_schema2.json",
+      "role": "test_fixture",
+      "bytes": 751740,
+      "sha256": "ec805111f82fc2c132690ef3ca146fccec8deeb0761440654c3c26e9f0964cbf"
+    },
+    {
+      "path": "analysis/move_registry_slice5.json",
+      "role": "test_fixture",
+      "bytes": 672789,
+      "sha256": "15fbe745d9a496d9567b6cde607355c07dce9587ebab37d39832e3c6a2eee199"
+    },
+    {
+      "path": "analysis/move_registry_slice6.json",
+      "role": "test_fixture",
+      "bytes": 732788,
+      "sha256": "1679aef4f7e187519f09ce107d4d3f73720607f9ddfafe88e47b079a5e9ab405"
+    },
+    {
+      "path": "analysis/move_selection_followup_continuity.json",
+      "role": "test_fixture",
+      "bytes": 50646,
+      "sha256": "3a93748d0976c61fc6a23c83997e5375cc589134af9d4dae391e13dc7f39fb1f"
+    },
+    {
+      "path": "analysis/move_selection_phase31.json",
+      "role": "test_fixture",
+      "bytes": 50646,
+      "sha256": "33c4b55ae4c22eca9d880c665b6916530e76c1cfa6f3b55a0ef4af7279ab40ea"
+    },
+    {
+      "path": "analysis/player_finance_balance_audit.py",
+      "role": "test_support",
+      "bytes": 5112,
+      "sha256": "2692bada0117a61c77ef6808683c4c52241248c8c1356702d4d3c0ceea453511"
+    },
+    {
+      "path": "analysis/portraits/diversity_v2/manifest.json",
+      "role": "test_fixture",
+      "bytes": 75398,
+      "sha256": "8c24c287385a31561121bf21712ac657ab45b9992b06ae32a72e6fa038ea4395"
+    },
+    {
+      "path": "analysis/portraits/expansion_v3/manifest.json",
+      "role": "test_fixture",
+      "bytes": 173131,
+      "sha256": "75c670177240fb3bba48bb451892143d0f52f7eb14efb2505ca16bace877078e"
+    },
+    {
+      "path": "analysis/portraits/generate_portrait_contact_sheet.py",
+      "role": "test_fixture",
+      "bytes": 7514,
+      "sha256": "6505ce8c5bdb3789c9fcc2e03809af8dc756b94c5abc2fc88a755ed3d16cf9c2"
+    },
+    {
+      "path": "analysis/portraits/legacy_v2_vectors.json",
+      "role": "test_fixture",
+      "bytes": 1582,
+      "sha256": "2287803239b046bac77320748db295fe5384fffb636bb79d3b408db3e2104b33"
+    },
+    {
+      "path": "analysis/portraits/portrait_comic_reference.py",
+      "role": "test_fixture",
+      "bytes": 15303,
+      "sha256": "c61b75612d321a9861843523c1d42bcad0f38bb9da30b3541acdfd20eff310da"
+    },
+    {
+      "path": "analysis/portraits/portrait_prototype.py",
+      "role": "test_fixture",
+      "bytes": 15665,
+      "sha256": "0be5771d33a7e02dfcc2fc97ae33da44baa63f405d4984443101238831e23ad5"
+    },
+    {
+      "path": "analysis/portraits/render_omalley_variants.py",
+      "role": "test_fixture",
+      "bytes": 1895,
+      "sha256": "c6d33ff37459e20f177c913ca47a25e2c1164c7c430fba4520be13fe34f0fd24"
+    },
+    {
+      "path": "analysis/portraits/review_portrait_diversity.py",
+      "role": "test_fixture",
+      "bytes": 3647,
+      "sha256": "e7df3eb520c210048ce0c0fd210e39344bf13772dd2519968f81a2e2b601e3ca"
+    },
+    {
+      "path": "analysis/portraits/review_portrait_expansion.py",
+      "role": "test_fixture",
+      "bytes": 3821,
+      "sha256": "2746ed8fa6af3c400f9bfff718afb688089caf11c7973740a06033f23334c0aa"
+    },
+    {
+      "path": "analysis/portraits/top_101_200_2026_09/identities.json",
+      "role": "test_fixture",
+      "bytes": 79690,
+      "sha256": "eec8a60a965e977590c4518e6a8753e5ddd8ac465f2b6b2bd36b66af391b2dd6"
+    },
+    {
+      "path": "analysis/portraits/top_101_200_2026_09/manifest.json",
+      "role": "test_fixture",
+      "bytes": 79686,
+      "sha256": "a480c2f4e2c3c44df8f0906b0be2cdc8ddf6d6963710dd9bb3b864012ea400b8"
+    },
+    {
+      "path": "analysis/portraits/top_101_200_current_2026_09_18/identities.json",
+      "role": "test_fixture",
+      "bytes": 79690,
+      "sha256": "eec8a60a965e977590c4518e6a8753e5ddd8ac465f2b6b2bd36b66af391b2dd6"
+    },
+    {
+      "path": "analysis/portraits/top_101_200_current_2026_09_18/portraits_104.png",
+      "role": "test_fixture",
+      "bytes": 201477,
+      "sha256": "5be9586d5799d998328670aafcacae384d1ef5c0bed27a2cc543a2dad51aac79"
+    },
+    {
+      "path": "analysis/portraits/top_101_200_current_2026_09_18/portraits_180.png",
+      "role": "test_fixture",
+      "bytes": 356306,
+      "sha256": "dbc20269e6cef926d28dbd1ae90d94c4c3b9e7fd38371d2ee2ed187da4ddd112"
+    },
+    {
+      "path": "analysis/portraits/top_101_200_current_2026_09_18/portraits_72.png",
+      "role": "test_fixture",
+      "bytes": 137794,
+      "sha256": "a33ff8e97d5f2e1628872b0a850df082c06b13ee1e273e0cf32155cf7f7b674b"
+    },
+    {
+      "path": "analysis/portraits/top_101_200_current_2026_09_18/portraits_98.png",
+      "role": "test_fixture",
+      "bytes": 187384,
+      "sha256": "7149cff4afdac35f5130cd80e7d969b401a663c4267ef00c0cece7e09095fe06"
+    },
+    {
+      "path": "analysis/portraits/top_101_200_current_2026_09_18/review.html",
+      "role": "test_fixture",
+      "bytes": 493382,
+      "sha256": "bdc2aa5adbc1251efa7b5dc911582a453ea4731f39b826f994318711eeca8b68"
+    },
+    {
+      "path": "analysis/portraits/top_201_300_2026_09/identities.json",
+      "role": "test_fixture",
+      "bytes": 79729,
+      "sha256": "54484625bdf59794386522776e66de5a9530a121827b0e5c12f6ebce0bf627ec"
+    },
+    {
+      "path": "analysis/portraits/top_201_300_current_2026_09_18/identities.json",
+      "role": "test_fixture",
+      "bytes": 79729,
+      "sha256": "54484625bdf59794386522776e66de5a9530a121827b0e5c12f6ebce0bf627ec"
+    },
+    {
+      "path": "analysis/portraits/top_201_300_current_2026_09_18/portraits_104.png",
+      "role": "test_fixture",
+      "bytes": 185446,
+      "sha256": "d36e3cd5c4ccb63c6d000a19e9786a9854c26499cb91c4afc1d74c080fe0acfa"
+    },
+    {
+      "path": "analysis/portraits/top_201_300_current_2026_09_18/portraits_180.png",
+      "role": "test_fixture",
+      "bytes": 330196,
+      "sha256": "7cc6c45f0b35d6a3f839c32b14373930785eaba83e17db1890089fa446edeee1"
+    },
+    {
+      "path": "analysis/portraits/top_201_300_current_2026_09_18/portraits_72.png",
+      "role": "test_fixture",
+      "bytes": 127314,
+      "sha256": "2012546fd82ef178ead0a2925d8fc2330bf83ad345cf648755179a0595f9ec87"
+    },
+    {
+      "path": "analysis/portraits/top_201_300_current_2026_09_18/portraits_98.png",
+      "role": "test_fixture",
+      "bytes": 173868,
+      "sha256": "81e5d593626651ba1c5448a9e06916718393823dfe19f0b9d184d079c1e04cbf"
+    },
+    {
+      "path": "analysis/portraits/top_201_300_current_2026_09_18/review.html",
+      "role": "test_fixture",
+      "bytes": 476010,
+      "sha256": "3b6d7d84a4bb24188b576c5938e15fc2fa65b1dfc9e60a58d7c3b8924ffe7596"
+    },
+    {
+      "path": "analysis/portraits/top_301_400_2026_09/identities.json",
+      "role": "test_fixture",
+      "bytes": 79698,
+      "sha256": "4b5abbf22ffd1a074ed5ffba192b09e0fab7dd63957612dbd01b997b941f4ea7"
+    },
+    {
+      "path": "analysis/portraits/top_301_400_current_2026_09_18/identities.json",
+      "role": "test_fixture",
+      "bytes": 79698,
+      "sha256": "4b5abbf22ffd1a074ed5ffba192b09e0fab7dd63957612dbd01b997b941f4ea7"
+    },
+    {
+      "path": "analysis/portraits/top_301_400_current_2026_09_18/portraits_104.png",
+      "role": "test_fixture",
+      "bytes": 191416,
+      "sha256": "8d54b2a025f12f2e7bf0f606dd9e0ab9772bf0bbeef4b54f7b648a3269474b4f"
+    },
+    {
+      "path": "analysis/portraits/top_301_400_current_2026_09_18/portraits_180.png",
+      "role": "test_fixture",
+      "bytes": 340542,
+      "sha256": "ee647a5037e58de67c6f666636be1459c4203d67fb62f5a4748c3f315fc2b23c"
+    },
+    {
+      "path": "analysis/portraits/top_301_400_current_2026_09_18/portraits_72.png",
+      "role": "test_fixture",
+      "bytes": 131700,
+      "sha256": "1509bb3d33f81302a8bc973f603f52895217bc0c2d934e83381025b88142ff9f"
+    },
+    {
+      "path": "analysis/portraits/top_301_400_current_2026_09_18/portraits_98.png",
+      "role": "test_fixture",
+      "bytes": 179366,
+      "sha256": "a7c2560d100c1f934e9990be75c27b8f645b994213f51e98d435e11fd50788f0"
+    },
+    {
+      "path": "analysis/portraits/top_301_400_current_2026_09_18/review.html",
+      "role": "test_fixture",
+      "bytes": 483554,
+      "sha256": "724d5baeee1e84386cf2c1b4f31b2deb37b94fcd9a369da363b020d9d4908a22"
+    },
+    {
+      "path": "analysis/portraits/top_51_100_2026_09/identities.json",
+      "role": "test_fixture",
+      "bytes": 39841,
+      "sha256": "866b5258e45f76bb252c3477f7430016df9414ea05d975663f8c136ed3582a90"
+    },
+    {
+      "path": "analysis/portraits/top_51_100_2026_09/manifest.json",
+      "role": "test_fixture",
+      "bytes": 39839,
+      "sha256": "1dcaf58869e5f02e33c629c54ccaa44ce909dedcc426aa089045caf02b7897a9"
+    },
+    {
+      "path": "analysis/portraits/top_51_100_current_2026_09_18/identities.json",
+      "role": "test_fixture",
+      "bytes": 39841,
+      "sha256": "866b5258e45f76bb252c3477f7430016df9414ea05d975663f8c136ed3582a90"
+    },
+    {
+      "path": "analysis/portraits/top_51_100_current_2026_09_18/portraits_104.png",
+      "role": "test_fixture",
+      "bytes": 101424,
+      "sha256": "1773994e34c6bfd129d61311f77180691e2d92e0e8521cbd9b7008dc792212b0"
+    },
+    {
+      "path": "analysis/portraits/top_51_100_current_2026_09_18/portraits_180.png",
+      "role": "test_fixture",
+      "bytes": 179523,
+      "sha256": "2e2b808ded48159e6989695c56aa0711126e4a90da9709f4dbf54b2ed617e75c"
+    },
+    {
+      "path": "analysis/portraits/top_51_100_current_2026_09_18/portraits_72.png",
+      "role": "test_fixture",
+      "bytes": 69006,
+      "sha256": "cd7e152ac5b3d4c497797dc6bfa344112b987e68d4646c5cff3dd45e1078da52"
+    },
+    {
+      "path": "analysis/portraits/top_51_100_current_2026_09_18/portraits_98.png",
+      "role": "test_fixture",
+      "bytes": 94957,
+      "sha256": "980f2733bd06f1990013d08be3b3f7b016aa5d257c60951c2fd2528b2fd30806"
+    },
+    {
+      "path": "analysis/portraits/top_51_100_current_2026_09_18/review.html",
+      "role": "test_fixture",
+      "bytes": 248863,
+      "sha256": "0cf66015c5e7afcc6ed03342be096487d49df37b7097ce3ad1ed1bc5d19185fc"
+    },
+    {
+      "path": "analysis/prepared_submission_diagnostics.py",
+      "role": "test_support",
+      "bytes": 8736,
+      "sha256": "6faefac2078b7a497cf23c136da9066c69e2cf7c5df455e384e1120a7bde5de2"
+    },
+    {
+      "path": "analysis/preview_fight_night.py",
+      "role": "test_support",
+      "bytes": 8858,
+      "sha256": "f8192e481b176ae09600056a72e2613ebc8e26c2a7fc7589825898aa961d4e7c"
+    },
+    {
+      "path": "analysis/README.md",
+      "role": "documentation",
+      "bytes": 3596,
+      "sha256": "20dac2415f9744b2df95a0128dd80cbcea12c8241cb0edf1a5f3dbc9178b590d"
+    },
+    {
+      "path": "analysis/repertoire_opportunity_cohorts.py",
+      "role": "test_support",
+      "bytes": 5038,
+      "sha256": "1295036a6e1956de05580d073393dae95ee4557b8f071bc0a8dc89b705977a56"
+    },
+    {
+      "path": "analysis/repertoire_readaptation_candidate.py",
+      "role": "test_support",
+      "bytes": 2748,
+      "sha256": "eb9a8646e7ef179c29c47ac90d0faf2cac6353d5fa65b58c0b6f00ecbc00bc19"
+    },
+    {
+      "path": "analysis/repertoire_selection_diagnostics.py",
+      "role": "test_support",
+      "bytes": 12254,
+      "sha256": "2b41ce05e235e0e317091d513e24921ea87c6776de119a02021b6871e890264b"
+    },
+    {
+      "path": "analysis/resume_play_audit_260719.py",
+      "role": "test_support",
+      "bytes": 352,
+      "sha256": "60c22670c82835b335683716f182003083d4e978ced673497a2c9869f08c752a"
+    },
+    {
+      "path": "analysis/round_counter_expiry.py",
+      "role": "test_support",
+      "bytes": 5139,
+      "sha256": "3834d3640bd4a3e558d06ea1840bf73cf32b006b827c92b8188836ecc8eb5fbb"
+    },
+    {
+      "path": "analysis/run_play_audit_260720.py",
+      "role": "test_support",
+      "bytes": 349,
+      "sha256": "99345d7af51e0a1d4662cf0d91a50ad0e5cdc28b1b0b1787b4b558b0b901970a"
+    },
+    {
+      "path": "analysis/standing_counter_diagnostics.py",
+      "role": "test_support",
+      "bytes": 7750,
+      "sha256": "b757ca1c1f5de196d44053cfadfeef8b42d5fdb38d6ea0604f15cfa298e9f669"
+    },
+    {
+      "path": "analysis/standing_head_damage_candidate.py",
+      "role": "test_support",
+      "bytes": 2733,
+      "sha256": "d11a43e1fa368a5cd8542f4478e4c015e5c52e5c7cf87cb42caa8223b47b228b"
+    },
+    {
+      "path": "analysis/striking_move_expansion_comparison.json",
+      "role": "test_fixture",
+      "bytes": 454,
+      "sha256": "9c311a62fcaa47a100a7bb2bcdefd691bfe4502a49c8a260824a8ba9fab4bd93"
+    },
+    {
+      "path": "analysis/submission_chain_candidate.py",
+      "role": "test_support",
+      "bytes": 8964,
+      "sha256": "29e7dd51c455c3965b25ba869808919d57eac355ceb99957f40bd8113e2a5188"
+    },
+    {
+      "path": "analysis/survival_expansion_440_calibration.json",
+      "role": "test_fixture",
+      "bytes": 54765,
+      "sha256": "492dcd15d298c25b0e13050434bac155a40efee7da2d564a1233eaa2e2506c4b"
+    },
+    {
+      "path": "analysis/survival_expansion_440_defense_fix_25000.json",
+      "role": "test_fixture",
+      "bytes": 1886102,
+      "sha256": "1e4027f6ec158d3c3e0e49daeb98ee46fa1c19ce46c6e39e1ea8ec0e381e4c35"
+    },
+    {
+      "path": "analysis/survival_expansion_440_release_check_300.json",
+      "role": "test_fixture",
+      "bytes": 297537,
+      "sha256": "46f2f62feb3fcbc58acd442657ae07f8ca7e509b2b53583d38cc4c00cadedc2a"
+    },
+    {
+      "path": "analysis/survival_expansion_candidate.py",
+      "role": "test_support",
+      "bytes": 3624,
+      "sha256": "50771f1e9155ae71a8f492514635ba601e4a90ff86d6b06a07c66cb44d471856"
+    },
+    {
+      "path": "analysis/survival_unused_diagnostics.py",
+      "role": "test_support",
+      "bytes": 2831,
+      "sha256": "297f277a4ce4b7c27577a1b094df3b6c5207e5902601e413ce764e764d9ba5ae"
+    },
+    {
+      "path": "analysis/ui_review_20260912/MMA_WARRIORS_FEATURE_DEVELOPMENT_PLAN.md",
+      "role": "documentation",
+      "bytes": 814304,
+      "sha256": "7d8cc587a120bf85512b7f4a30bbaedef4720ea3a170afa9149681f7b54c5f02"
+    },
+    {
+      "path": "analysis/validate_fight_release.py",
+      "role": "test_support",
+      "bytes": 18157,
+      "sha256": "0db7bdc1898faffa9b235182c405a7cac24d6ab3de050a1794e7038cf14462c3"
+    },
+    {
+      "path": "analysis/verify_release_integration.py",
+      "role": "test_support",
+      "bytes": 7435,
+      "sha256": "30afebcb930e783c162c5d5aa49e37671f0fe2215674fbb5b2d0d37d5286e237"
+    },
+    {
+      "path": "analysis/von_flue_angle_provenance.py",
+      "role": "test_support",
+      "bytes": 8500,
+      "sha256": "69a200b210648d9b13b3f05a8721d2d56dce1177ad49c4cd399720e84347528e"
+    },
+    {
+      "path": "app_performance_regression_test.py",
+      "role": "test",
+      "bytes": 9277,
+      "sha256": "115a74ef087dcf5858225137ebb99ae4159c385cd68be2becaeff8d2ee300ad9"
+    },
+    {
+      "path": "assets/app_icon.ico",
+      "role": "runtime_asset",
+      "bytes": 49117,
+      "sha256": "418bd71324bf7a533f6c10148570520563e101ff8bf69d7a0e19bef1ce322987"
+    },
+    {
+      "path": "assets/app_icon.png",
+      "role": "runtime_asset",
+      "bytes": 27771,
+      "sha256": "2f354b70286deb4c59dde05ddc218cb40413607f9f31e41e9ce844a67973e07d"
+    },
+    {
+      "path": "assets/corpora_human_names.json",
+      "role": "runtime_asset",
+      "bytes": 44284,
+      "sha256": "16b4c21d7ef65d2565b49e7c5448f9bad66c1b5fec72ccf346377a2c0af1a5b0"
+    },
+    {
+      "path": "assets/crowd_audio/clean_strike_ooh.wav",
+      "role": "runtime_asset",
+      "bytes": 282284,
+      "sha256": "9820ac3d3387de9b8ab493323071117ef7299d43df0b926e2d311e78f7b66d21"
+    },
+    {
+      "path": "assets/crowd_audio/clean_strike_ooh_02.wav",
+      "role": "runtime_asset",
+      "bytes": 282284,
+      "sha256": "baf3d6a22afbf81a606f676e7abc6516107363fd507c45f6b7fa41ee115f2365"
+    },
+    {
+      "path": "assets/crowd_audio/clean_strike_ooh_03.wav",
+      "role": "runtime_asset",
+      "bytes": 282284,
+      "sha256": "bdccc83f2e590bb2672fe2a277d59b516416494bc07f9f1a7e292bb02be38392"
+    },
+    {
+      "path": "assets/crowd_audio/controversial_decision_boos.wav",
+      "role": "runtime_asset",
+      "bytes": 1058444,
+      "sha256": "4d776306d3e34f3b9503e23fbafe3f68dee1993cb01636e55b4032b58273e7c8"
+    },
+    {
+      "path": "assets/crowd_audio/controversial_decision_boos_02.wav",
+      "role": "runtime_asset",
+      "bytes": 1058444,
+      "sha256": "30e02a1c2388cf87150a98d37538f157992c75e6e4cccd133db2e52e83b1a009"
+    },
+    {
+      "path": "assets/crowd_audio/controversial_decision_boos_03.wav",
+      "role": "runtime_asset",
+      "bytes": 1058444,
+      "sha256": "64c93957c80b7842aeb816cc33b000c550ec207870dd20f2b2c8191af70ae9fb"
+    },
+    {
+      "path": "assets/crowd_audio/decision_tension_murmur.wav",
+      "role": "runtime_asset",
+      "bytes": 1058444,
+      "sha256": "76d480d7b59c6e2c55ab5ed89509ab99c4e01ec5c2735bf9fa94af95c32d3801"
+    },
+    {
+      "path": "assets/crowd_audio/decision_tension_murmur_02.wav",
+      "role": "runtime_asset",
+      "bytes": 1058444,
+      "sha256": "9b3e82c700e1aca369b231e3bfb52bff8be5182ffacb7ba9d47f886c8003c8aa"
+    },
+    {
+      "path": "assets/crowd_audio/decision_tension_murmur_03.wav",
+      "role": "runtime_asset",
+      "bytes": 1058444,
+      "sha256": "ba117f574ee93df45131afb916e9bc6a331bc3ab4f27ad3f2e2f53f056599ffe"
+    },
+    {
+      "path": "assets/crowd_audio/inactivity_boos.wav",
+      "role": "runtime_asset",
+      "bytes": 705644,
+      "sha256": "ab71f27c06ea4c209429281be9c67b062b62c81f64fcd9439e2ca272e93d5c52"
+    },
+    {
+      "path": "assets/crowd_audio/inactivity_boos_02.wav",
+      "role": "runtime_asset",
+      "bytes": 705644,
+      "sha256": "26ac9ff3c8a74ffdd57b24631d500db55b1521bf2a01da8d3b6e7ddb9f6030f4"
+    },
+    {
+      "path": "assets/crowd_audio/inactivity_boos_03.wav",
+      "role": "runtime_asset",
+      "bytes": 705644,
+      "sha256": "cf6350848a87001a6ae5527d271ba30706c190b34bb651991b74d7c499661a57"
+    },
+    {
+      "path": "assets/crowd_audio/knockdown_gasp_roar.wav",
+      "role": "runtime_asset",
+      "bytes": 564524,
+      "sha256": "c139e8ea57ee73b6f5671f35cff2f6e78edba89a977146493d98299d3b66d10e"
+    },
+    {
+      "path": "assets/crowd_audio/knockdown_gasp_roar_02.wav",
+      "role": "runtime_asset",
+      "bytes": 564524,
+      "sha256": "d1ebf19ced54914b18602af1cb7e8619891ee50e710b0f348b0455335e1abf89"
+    },
+    {
+      "path": "assets/crowd_audio/knockdown_gasp_roar_03.wav",
+      "role": "runtime_asset",
+      "bytes": 564524,
+      "sha256": "3dcb8241e9d030ef2eae5e062016c91d1337a6a742d6e5f0d93c6e8e1b8d3665"
+    },
+    {
+      "path": "assets/crowd_audio/knockout_eruption.wav",
+      "role": "runtime_asset",
+      "bytes": 1058444,
+      "sha256": "c83b5653c675342f723482493f93c3df65004018e3bef523e79791ef4fac89bf"
+    },
+    {
+      "path": "assets/crowd_audio/knockout_eruption_02.wav",
+      "role": "runtime_asset",
+      "bytes": 1058444,
+      "sha256": "02b17cc561416f5d29247d468422457c6c2e77757dbaa54c3a819c763b4f3846"
+    },
+    {
+      "path": "assets/crowd_audio/knockout_eruption_03.wav",
+      "role": "runtime_asset",
+      "bytes": 1058444,
+      "sha256": "ddb546a8091ab5909f5ebad55a54d32abfd6bf1b788e88f0587da3ffdfb39cca"
+    },
+    {
+      "path": "assets/crowd_audio/LICENSES.md",
+      "role": "runtime_asset",
+      "bytes": 2771,
+      "sha256": "85f3582fee3dd549739114eff9b3d2c1eea00c454ac2329f2f3d337cf60f3bfb"
+    },
+    {
+      "path": "assets/crowd_audio/manifest.json",
+      "role": "runtime_asset",
+      "bytes": 18671,
+      "sha256": "0e957200bde450f0a5dc96fb3bb17c276ad193042ebebf7eab3e9c0094838bf8"
+    },
+    {
+      "path": "assets/crowd_audio/opening_bell_roar.wav",
+      "role": "runtime_asset",
+      "bytes": 617444,
+      "sha256": "b9d9c50373f754e7651526d107738fdfc33f3be65540ee507bf4617a38b3b64a"
+    },
+    {
+      "path": "assets/crowd_audio/opening_bell_roar_02.wav",
+      "role": "runtime_asset",
+      "bytes": 617444,
+      "sha256": "4878a7020475c4d08c1fe75af147225775b4eb1db161dcc273e2341785478300"
+    },
+    {
+      "path": "assets/crowd_audio/opening_bell_roar_03.wav",
+      "role": "runtime_asset",
+      "bytes": 617444,
+      "sha256": "f0322d155069694525d870b4f86304937d9b4257a415c2537a98f997fa242519"
+    },
+    {
+      "path": "assets/crowd_audio/pre_fight_arena_murmur.wav",
+      "role": "runtime_asset",
+      "bytes": 1764044,
+      "sha256": "64c07d67c388f6bd3b0d48f2066e8e830190e84fa644dbd5e18d86e32303fceb"
+    },
+    {
+      "path": "assets/crowd_audio/pre_fight_arena_murmur_02.wav",
+      "role": "runtime_asset",
+      "bytes": 1764044,
+      "sha256": "9d2743f581344fa43675295c51fb36842e335b43b26617628dff3dd849ce312e"
+    },
+    {
+      "path": "assets/crowd_audio/pre_fight_arena_murmur_03.wav",
+      "role": "runtime_asset",
+      "bytes": 1764044,
+      "sha256": "b31211c802b3136d10903ee87622ee26d3698b29ff09cc5dcb98a666b3198c66"
+    },
+    {
+      "path": "assets/crowd_audio/README.md",
+      "role": "runtime_asset",
+      "bytes": 2035,
+      "sha256": "6eccb4e0e64b89db8aafa628698b21099860908833d6776b30ba6e50910acb67"
+    },
+    {
+      "path": "assets/crowd_audio/respectful_postfight_applause.wav",
+      "role": "runtime_asset",
+      "bytes": 1058444,
+      "sha256": "f9f679b9f3b4d11c8103e76e1d94b87c89ea382d1ce58a69dbfc7bb80cfda7da"
+    },
+    {
+      "path": "assets/crowd_audio/respectful_postfight_applause_02.wav",
+      "role": "runtime_asset",
+      "bytes": 1058444,
+      "sha256": "4e130c7b3a288a8ed5e8b953f697551d8a856a1078f21eaa80ca4f3b67cb9e94"
+    },
+    {
+      "path": "assets/crowd_audio/respectful_postfight_applause_03.wav",
+      "role": "runtime_asset",
+      "bytes": 1058444,
+      "sha256": "b17c06e15ed5c51f18cd799293bacd942ac1b9be24563de597d63bec0343d874"
+    },
+    {
+      "path": "assets/crowd_audio/round_end_applause.wav",
+      "role": "runtime_asset",
+      "bytes": 705644,
+      "sha256": "7babfa4e9fc9050175c2d65fe1f1e369d71668ff6b9c5887cbf1bd8f60a35b18"
+    },
+    {
+      "path": "assets/crowd_audio/round_end_applause_02.wav",
+      "role": "runtime_asset",
+      "bytes": 705644,
+      "sha256": "1aec5067f6007912ab00221bf88a0a80b263de4568369db21ac7dc10acd2c642"
+    },
+    {
+      "path": "assets/crowd_audio/round_end_applause_03.wav",
+      "role": "runtime_asset",
+      "bytes": 705644,
+      "sha256": "83fae4c75fc97e52830f9e4bc4fa8c4aaa13e717ee928747d32e194b274f0e5f"
+    },
+    {
+      "path": "assets/crowd_audio/submission_attempt_swell.wav",
+      "role": "runtime_asset",
+      "bytes": 793844,
+      "sha256": "3adfd55dd3b3e15d359fc16972d85c181ef2d9ce551ac10933ba06732e3e986d"
+    },
+    {
+      "path": "assets/crowd_audio/submission_attempt_swell_02.wav",
+      "role": "runtime_asset",
+      "bytes": 793844,
+      "sha256": "2e2eb9a5a19cd32aec16442ad3cb196ff3cd70830f5d338da7b7c2e11ededc4e"
+    },
+    {
+      "path": "assets/crowd_audio/submission_attempt_swell_03.wav",
+      "role": "runtime_asset",
+      "bytes": 793844,
+      "sha256": "5c8be08bc390cd5c3b171bc39849ff7e92f843f6c8adc62cd908cc2d6de54bac"
+    },
+    {
+      "path": "assets/crowd_audio/walkout_crowd_swell.wav",
+      "role": "runtime_asset",
+      "bytes": 882044,
+      "sha256": "d94824ca82fee823e1ae587dd073d4f1492378fe90badad249f9790fd20462de"
+    },
+    {
+      "path": "assets/crowd_audio/walkout_crowd_swell_02.wav",
+      "role": "runtime_asset",
+      "bytes": 882044,
+      "sha256": "c4d991d4dd5b67439a6d6f04f36e8e69197508096e7bbed05f24191354927c17"
+    },
+    {
+      "path": "assets/crowd_audio/walkout_crowd_swell_03.wav",
+      "role": "runtime_asset",
+      "bytes": 882044,
+      "sha256": "d530fe834558b4835f50cf1b8925f3bacfb4a359b6a5a92cecd0f66a2ee3e9d7"
+    },
+    {
+      "path": "assets/database_editor_icon.ico",
+      "role": "runtime_asset",
+      "bytes": 111730,
+      "sha256": "ffc995a10721e973572c44d97bbfb47b7c30d09312edfba37d3b35d43158457a"
+    },
+    {
+      "path": "assets/database_editor_icon.png",
+      "role": "runtime_asset",
+      "bytes": 1819396,
+      "sha256": "eccbf75a97527ce5d07abe20f4a2b62f833dfde66610be40e143e535201c073c"
+    },
+    {
+      "path": "assets/eurasian_names.json",
+      "role": "runtime_asset",
+      "bytes": 113252,
+      "sha256": "40c4e34f8eb620269eb5930601c51cfd76ea8ea290dc39776282a36c1f7ea171"
+    },
+    {
+      "path": "assets/medical_cross.png",
+      "role": "runtime_asset",
+      "bytes": 1812685,
+      "sha256": "da30b9d5431a4444ea68792b87924319b9c53306fc2ca24abf01d72bf1d9d27a"
+    },
+    {
+      "path": "assets/real_fighter_birthplaces.json",
+      "role": "runtime_asset",
+      "bytes": 139037,
+      "sha256": "786c0d0a854afd722eb2f2b4a8047174325fc3af09db3906571624be370b919a"
+    },
+    {
+      "path": "assets/tutorial.html",
+      "role": "runtime_asset",
+      "bytes": 25714,
+      "sha256": "e942d01e76df72a57f53b9a5cca52380f14952a4d8cb821e66d57aed4efc3c2b"
+    },
+    {
+      "path": "assets/uk_first_names.json",
+      "role": "runtime_asset",
+      "bytes": 20705,
+      "sha256": "709de440969ea3089560696f3b038d7ffa19f53f3742f5ffff6c8c8f0503949e"
+    },
+    {
+      "path": "audio.py",
+      "role": "runtime_source",
+      "bytes": 36872,
+      "sha256": "cba706e5d16540ef7115194a7d404d574ddb3f894ea8db0e6fb36aff888fd490"
+    },
+    {
+      "path": "awards.py",
+      "role": "runtime_source",
+      "bytes": 134171,
+      "sha256": "ea9642747ccf8d8f34af7af579a311aef68dcbb4e80804db4b29352a55ca88e1"
+    },
+    {
+      "path": "booking_workbench.py",
+      "role": "runtime_source",
+      "bytes": 72439,
+      "sha256": "0ee3d1723db8c7129e018ce490b205d1e0b36e5157575c350ff0f0a83ce9c136"
+    },
+    {
+      "path": "booking_workbench_regression_test.py",
+      "role": "test",
+      "bytes": 21440,
+      "sha256": "7bd33ad51a43e396cf8614d2654a0ff22cb8d806d73914c444301808ee76d597"
+    },
+    {
+      "path": "Build Database Editor.bat",
+      "role": "build_configuration",
+      "bytes": 2089,
+      "sha256": "d38b644c44e1edffa99153869175a54b971f4c3d3fa23c5d6a9c633e187d2475"
+    },
+    {
+      "path": "Build Portable.bat",
+      "role": "build_configuration",
+      "bytes": 5576,
+      "sha256": "7ddb91b4f476e072c7a9e7e73fa57e90332ed84e5c63c9e648f921ecd1211234"
+    },
+    {
+      "path": "build-toolchain.json",
+      "role": "build_configuration",
+      "bytes": 276,
+      "sha256": "aa5cbac40a8697678d6311e396ced69cad8bee7be22a7c3a6eae2b13ced72da4"
+    },
+    {
+      "path": "cash_runway_regression_test.py",
+      "role": "test",
+      "bytes": 16550,
+      "sha256": "171320f84fded9b47f00154737abd99b6c5d70431f0378e40fc0ce2eb05f9b3a"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "role": "documentation",
+      "bytes": 355449,
+      "sha256": "23330e0ea66f05425d3a070d909fb0e187c3e4ac58ae068fe23375d882634ac7"
+    },
+    {
+      "path": "child_promotion_interactions_test.py",
+      "role": "test",
+      "bytes": 10322,
+      "sha256": "97fc62a037451420ccbc49bb7e0512fbec704f5c5630d325b6d5e46b4bd0cac1"
+    },
+    {
+      "path": "child_promotion_loan_return_regression_test.py",
+      "role": "test",
+      "bytes": 5470,
+      "sha256": "cc0f85e9e5fced0b005b90704ce7e3dcb4fc916a9421e1547551a8ed1884e13a"
+    },
+    {
+      "path": "child_promotion_long_run_test.py",
+      "role": "test",
+      "bytes": 5460,
+      "sha256": "f5e4cf517b5d47393aa380da6fa8b1d3fedf1115491cc886b1f7a5e1c0eef842"
+    },
+    {
+      "path": "combat_sports_regression_test.py",
+      "role": "test",
+      "bytes": 23262,
+      "sha256": "17107298489fe29dde05fcf7d4d846af225da8f12e906fc7d61a01e4b54ba1f0"
+    },
+    {
+      "path": "constants.py",
+      "role": "runtime_source",
+      "bytes": 87432,
+      "sha256": "d3ba92701733fd8d05cd35416948161fe8a4b8f60dd937dedcc5dcfd40af9921"
+    },
+    {
+      "path": "contract_batch_workbench.py",
+      "role": "runtime_source",
+      "bytes": 20134,
+      "sha256": "6313fb8abb7f28abd68668b79b80b3ade89fc20884e63ec5d023b0eaf29fbcb1"
+    },
+    {
+      "path": "contract_batch_workbench_regression_test.py",
+      "role": "test",
+      "bytes": 5034,
+      "sha256": "a5a71675765f9b056e910db92f0e8fcc4bc016175c9384d988a48b84a61d121d"
+    },
+    {
+      "path": "contracts_finance_regression_test.py",
+      "role": "test",
+      "bytes": 5048,
+      "sha256": "76f2c1efb3ea88bbb5510e810807ef3478e7852bf42f4496fe1252d362c40db0"
+    },
+    {
+      "path": "country_flags/afghanistan.png",
+      "role": "runtime_asset",
+      "bytes": 48973,
+      "sha256": "49069cc2701c56e9874bf1f3113a9bc852162e91cd88ddb6d387a64f98be0750"
+    },
+    {
+      "path": "country_flags/africa.png",
+      "role": "runtime_asset",
+      "bytes": 1536224,
+      "sha256": "6710b38d5111c61b0daae55243096e36af5960a5dc2197169063573adaefda80"
+    },
+    {
+      "path": "country_flags/albania.png",
+      "role": "runtime_asset",
+      "bytes": 10736,
+      "sha256": "3a3a1acb16909b8a4e73fc29b9789879fc237a7d54b8544202d0941faad158d1"
+    },
+    {
+      "path": "country_flags/algeria.png",
+      "role": "runtime_asset",
+      "bytes": 7951,
+      "sha256": "b61a0c0f6bf369bdfc44dd08f5d65a28a7177e06f540237402635491e64b4909"
+    },
+    {
+      "path": "country_flags/andorra.png",
+      "role": "runtime_asset",
+      "bytes": 16186,
+      "sha256": "f5b5f059d7fd51ed71348ebbcca0d822d4994d43b029f1611ce76be39fa1f111"
+    },
+    {
+      "path": "country_flags/angola.png",
+      "role": "runtime_asset",
+      "bytes": 10322,
+      "sha256": "e778b7d5bb793bd889c4b33b8032197ea7a460f4af22c5123f3c0a84cc57a2cd"
+    },
+    {
+      "path": "country_flags/antigua_and_barbuda.png",
+      "role": "runtime_asset",
+      "bytes": 13903,
+      "sha256": "8b762e8742c8d6263b45f428065f00dfc9469863d16e169d2badc0b95e5afed8"
+    },
+    {
+      "path": "country_flags/argentina.png",
+      "role": "runtime_asset",
+      "bytes": 7832,
+      "sha256": "2e67b0b293b49e9337c7c29ca433fa04c88d632516cf5acbc78f481f245ce47b"
+    },
+    {
+      "path": "country_flags/armenia.png",
+      "role": "runtime_asset",
+      "bytes": 602,
+      "sha256": "2242f76fda12708d03427d54cde24a586d2528ba34fb781d338ab8f12c078dbd"
+    },
+    {
+      "path": "country_flags/asia.png",
+      "role": "runtime_asset",
+      "bytes": 1336723,
+      "sha256": "4f3e0ad04ebcb3e4e14458d2ac73941e5444bf17469d182ece4ef7baeff54dce"
+    },
+    {
+      "path": "country_flags/australia.png",
+      "role": "runtime_asset",
+      "bytes": 17707,
+      "sha256": "07cec412f08a9c0dba278d3ea44bd4e0dd0ac9c4bf35d8e0520f4b0c35240f4d"
+    },
+    {
+      "path": "country_flags/austria.png",
+      "role": "runtime_asset",
+      "bytes": 646,
+      "sha256": "00b21979506e43e58bb4566b8e8874b24ed8719ca9bc2b8b6da935408bcf22f1"
+    },
+    {
+      "path": "country_flags/azerbaijan.png",
+      "role": "runtime_asset",
+      "bytes": 4204,
+      "sha256": "e96955e089e70250de58f11db63d7aefb04e9819e9c78703eeadfe1986c4b3e1"
+    },
+    {
+      "path": "country_flags/bahamas.png",
+      "role": "runtime_asset",
+      "bytes": 4228,
+      "sha256": "dcfe8642bd36c71392e24b4520cebd3dbb22ac2968b41b437060136ed512a25a"
+    },
+    {
+      "path": "country_flags/bahrain.png",
+      "role": "runtime_asset",
+      "bytes": 5814,
+      "sha256": "46c1d665cc73af9011dc50bc7f96924318fb0dd7dc4a4a0cd5c6afc20439d356"
+    },
+    {
+      "path": "country_flags/bangladesh.png",
+      "role": "runtime_asset",
+      "bytes": 5048,
+      "sha256": "6ceeccce5e5bfe0b8a4d52fdeadaa8e1850927cf7c90923697d1f8fd5783cdbe"
+    },
+    {
+      "path": "country_flags/barbados.png",
+      "role": "runtime_asset",
+      "bytes": 6186,
+      "sha256": "5c3f617c579dbf5114f9dd98f262c6b3637a6cdaf86e69f02b3b83691ac04437"
+    },
+    {
+      "path": "country_flags/belarus.png",
+      "role": "runtime_asset",
+      "bytes": 14854,
+      "sha256": "fb6ccdbf98459706f5f3dbca328c215de19ee28398f17fd075f136862c6e7a85"
+    },
+    {
+      "path": "country_flags/belgium.png",
+      "role": "runtime_asset",
+      "bytes": 634,
+      "sha256": "041bde2b6b1b61f9e1ab91701a7d392d9bdf81bef1776956119d48d63fdc99bc"
+    },
+    {
+      "path": "country_flags/belize.png",
+      "role": "runtime_asset",
+      "bytes": 26718,
+      "sha256": "eaab8078ceb0fe74e977cab2a486a09d8ba3d1132c26afac3346082fa504ea86"
+    },
+    {
+      "path": "country_flags/benin.png",
+      "role": "runtime_asset",
+      "bytes": 655,
+      "sha256": "7dcefde016e13892ca7f9f2ebd8959cb0bb5d7c9b1dae60eb01c85586f260e88"
+    },
+    {
+      "path": "country_flags/bhutan.png",
+      "role": "runtime_asset",
+      "bytes": 37323,
+      "sha256": "037f4c5a3f95529f290e82986837580ae1321b0ad94782d82c96da44b0158c34"
+    },
+    {
+      "path": "country_flags/bolivia.png",
+      "role": "runtime_asset",
+      "bytes": 13144,
+      "sha256": "436088e2daf9f595ad1a7f1de9960c2ebb1e198c0ae8bf0e410775670324fd65"
+    },
+    {
+      "path": "country_flags/bosnia_and_herzegovina.png",
+      "role": "runtime_asset",
+      "bytes": 11782,
+      "sha256": "afe0da31ba098b2af7db6eb83d5036247b6e58fb81033654c507a6f9cdddff34"
+    },
+    {
+      "path": "country_flags/botswana.png",
+      "role": "runtime_asset",
+      "bytes": 679,
+      "sha256": "33c79ea079590d3a79658cab94c6c2d1da1c904c18281194cb0b440243c5209a"
+    },
+    {
+      "path": "country_flags/brazil.png",
+      "role": "runtime_asset",
+      "bytes": 19560,
+      "sha256": "7de340177bdbdfa83c609a7c781416457413830190d2094027b6fc2ed8d88d14"
+    },
+    {
+      "path": "country_flags/brunei.png",
+      "role": "runtime_asset",
+      "bytes": 20467,
+      "sha256": "5a1409590a0e4d0fab4479374e64bfc206fe02fe9dd65f301b923994afec5d20"
+    },
+    {
+      "path": "country_flags/bulgaria.png",
+      "role": "runtime_asset",
+      "bytes": 598,
+      "sha256": "77d73a9942cea9ea7287588f23eb2e47d78d6de7b6130f4fd66846f4b4ad7902"
+    },
+    {
+      "path": "country_flags/burkina_faso.png",
+      "role": "runtime_asset",
+      "bytes": 3392,
+      "sha256": "91df93927b2aafe67596f029ca17ce10a793a5cf0b1133490646af42775d9cb7"
+    },
+    {
+      "path": "country_flags/burundi.png",
+      "role": "runtime_asset",
+      "bytes": 18789,
+      "sha256": "4444e0f957e981d2a38fd0161aa70a1c4ce0d4b73a1761d942b96b4878b68d4d"
+    },
+    {
+      "path": "country_flags/cabo_verde.png",
+      "role": "runtime_asset",
+      "bytes": 6514,
+      "sha256": "2e6e0230bc031951e19026ce04aac9c1d8813e7b28013e4cf06d105d0f66f7fc"
+    },
+    {
+      "path": "country_flags/cambodia.png",
+      "role": "runtime_asset",
+      "bytes": 14598,
+      "sha256": "2cc8e6d78e37a699b22686418d3bf7a37049c4688a904e3fa744002b69218ea8"
+    },
+    {
+      "path": "country_flags/cameroon.png",
+      "role": "runtime_asset",
+      "bytes": 2986,
+      "sha256": "d309f7b6409b4a348518f22298f4ffa634838e316f6cc014deca8009adaa69c4"
+    },
+    {
+      "path": "country_flags/canada.png",
+      "role": "runtime_asset",
+      "bytes": 5659,
+      "sha256": "052a44ab735414805898df68838aa121308826e30df771a64f7b8f14002fa009"
+    },
+    {
+      "path": "country_flags/central_african_republic.png",
+      "role": "runtime_asset",
+      "bytes": 3551,
+      "sha256": "11ac4cb92f1ae2d71e864824894c484f7aae4ba59b647cefda1177f9e61bce26"
+    },
+    {
+      "path": "country_flags/chad.png",
+      "role": "runtime_asset",
+      "bytes": 632,
+      "sha256": "17710aba12eaf5eda0f065f2455e8e7d84720271edef2526cf7e203a74de8379"
+    },
+    {
+      "path": "country_flags/chile.png",
+      "role": "runtime_asset",
+      "bytes": 3152,
+      "sha256": "4cc5dd2692266af7d94a9ecc99c73cbd8bc880c5541db3b65b9cf7f2ea52d92e"
+    },
+    {
+      "path": "country_flags/china.png",
+      "role": "runtime_asset",
+      "bytes": 5809,
+      "sha256": "b02606d424e0026d5bd022a4fc8c830ef0bb7993ba227b0cb7eeada5db6a1702"
+    },
+    {
+      "path": "country_flags/colombia.png",
+      "role": "runtime_asset",
+      "bytes": 660,
+      "sha256": "b5876fd29d2ba7a2bba65215a82bec0b3e1cd6b070216ba01470c16f24f6d010"
+    },
+    {
+      "path": "country_flags/comoros.png",
+      "role": "runtime_asset",
+      "bytes": 12211,
+      "sha256": "96c887b5d45e38025cc7d87f0f2adba8bd30f91a9cb7ca9233c16a976364dde8"
+    },
+    {
+      "path": "country_flags/costa_rica.png",
+      "role": "runtime_asset",
+      "bytes": 7154,
+      "sha256": "dfbc94bb807e03ef3a8444dfedad8c6d42b9b93692b9d35fef753a7712b187f9"
+    },
+    {
+      "path": "country_flags/cote_d_ivoire.png",
+      "role": "runtime_asset",
+      "bytes": 631,
+      "sha256": "5557ef7fa970edf25fe4eda3a959a727c82a0cf90bc020189e24faffd99b51a8"
+    },
+    {
+      "path": "country_flags/croatia.png",
+      "role": "runtime_asset",
+      "bytes": 8835,
+      "sha256": "90e79a31e38102238307f746efe94a01b9b65ad7676d76c158514826533b0ce4"
+    },
+    {
+      "path": "country_flags/cuba.png",
+      "role": "runtime_asset",
+      "bytes": 6908,
+      "sha256": "e130e0fb3afc1bc4fcfb3d5565de6b16de59cc26ffe5df35ff0ade0006f7b45c"
+    },
+    {
+      "path": "country_flags/cyprus.png",
+      "role": "runtime_asset",
+      "bytes": 14671,
+      "sha256": "41f1ba81168f00fb2a976be29a92cd7a25509712979e2277867306914a8c3be0"
+    },
+    {
+      "path": "country_flags/czechia.png",
+      "role": "runtime_asset",
+      "bytes": 6183,
+      "sha256": "718f1122e7c8e64d1213dc569ab01f89f997a8e57eb44967dd4556b2316aca2a"
+    },
+    {
+      "path": "country_flags/democratic_republic_of_the_congo.png",
+      "role": "runtime_asset",
+      "bytes": 19063,
+      "sha256": "34579dd8af893190c1016a5e74a68b5cde227569dd07eeee5eebe09b33971308"
+    },
+    {
+      "path": "country_flags/denmark.png",
+      "role": "runtime_asset",
+      "bytes": 893,
+      "sha256": "e3317deadf53a305e6d1867d024a6e8bd24f954bf57a3b0615669f0b16522e4e"
+    },
+    {
+      "path": "country_flags/djibouti.png",
+      "role": "runtime_asset",
+      "bytes": 8166,
+      "sha256": "3fd67118bf8fca3522ec24367ba28c6a033185fadaa150593dc9b0106bcfa9bd"
+    },
+    {
+      "path": "country_flags/dominica.png",
+      "role": "runtime_asset",
+      "bytes": 10502,
+      "sha256": "cc130e5f23c84157b8c73a73aa6573df7cfc52f1f42bd8760f5119c48c044232"
+    },
+    {
+      "path": "country_flags/dominican_republic.png",
+      "role": "runtime_asset",
+      "bytes": 6458,
+      "sha256": "159e13f338fd19f6088129bfc7d198a09a3cd9ff763f8cf0f6a23f428a229c4a"
+    },
+    {
+      "path": "country_flags/ecuador.png",
+      "role": "runtime_asset",
+      "bytes": 18580,
+      "sha256": "0009621d86c4d6eaee9204d7266f4bfc4b161e292672d3f04afc7b0588ef5a2d"
+    },
+    {
+      "path": "country_flags/egypt.png",
+      "role": "runtime_asset",
+      "bytes": 7641,
+      "sha256": "bd3c14e071831cbb345a088de09aa3ac33f43229af46b8b0233801c4604a92ba"
+    },
+    {
+      "path": "country_flags/el_salvador.png",
+      "role": "runtime_asset",
+      "bytes": 7629,
+      "sha256": "9000eccedfae65bc551be7cea800357cfdcce4823e83d42625068f310bf4f606"
+    },
+    {
+      "path": "country_flags/equatorial_guinea.png",
+      "role": "runtime_asset",
+      "bytes": 10087,
+      "sha256": "5d6c9ed9d05db713c24f29105132a968cef50483a2a48052b4c6869e5c7604d4"
+    },
+    {
+      "path": "country_flags/eritrea.png",
+      "role": "runtime_asset",
+      "bytes": 12914,
+      "sha256": "4c04211452770af5ef1b24444231ae31d20aad9ef53c69b38d1c1b004ac2faae"
+    },
+    {
+      "path": "country_flags/estonia.png",
+      "role": "runtime_asset",
+      "bytes": 624,
+      "sha256": "b8875ebf7ba08456a6e67809bf3e23a2c5864c6f6c18a766495909847e426282"
+    },
+    {
+      "path": "country_flags/eswatini.png",
+      "role": "runtime_asset",
+      "bytes": 17575,
+      "sha256": "4c7a821c2318869581c18ff7b1ecd027e4d0caea30530f1b20edd9a2eff36d69"
+    },
+    {
+      "path": "country_flags/ethiopia.png",
+      "role": "runtime_asset",
+      "bytes": 13932,
+      "sha256": "72393e6a46323844b3c8e02fa26b9265b2139285ae75d7e4314725730f266946"
+    },
+    {
+      "path": "country_flags/europe.png",
+      "role": "runtime_asset",
+      "bytes": 1325489,
+      "sha256": "6068a9b75cde74efd1f6e119480a2d0707b1f3948a4129f765612946391c109a"
+    },
+    {
+      "path": "country_flags/fiji.png",
+      "role": "runtime_asset",
+      "bytes": 20559,
+      "sha256": "2fc3c52e0e2de946634d7d37cb9df0aabf09e462cea5251a65501ce0490a43f9"
+    },
+    {
+      "path": "country_flags/finland.png",
+      "role": "runtime_asset",
+      "bytes": 1021,
+      "sha256": "61186ae13a334763d9c43b5777a1bd5d289db01b330a551449be07fc0db3424f"
+    },
+    {
+      "path": "country_flags/flags_manifest.json",
+      "role": "runtime_asset",
+      "bytes": 38190,
+      "sha256": "56b36432b1e0317786f958279f77aa0f34c086d5cf528eb34a308529d06be26e"
+    },
+    {
+      "path": "country_flags/france.png",
+      "role": "runtime_asset",
+      "bytes": 631,
+      "sha256": "8a93d6437da8fc4f598e24bf52b755b7f8a2e8f9a22c82b2b0e6e320f2f53060"
+    },
+    {
+      "path": "country_flags/gabon.png",
+      "role": "runtime_asset",
+      "bytes": 705,
+      "sha256": "b6a2de9f5a106f0a8ea81b1dae30574f63e247c4a9dbf65e7dd87695d2dded2a"
+    },
+    {
+      "path": "country_flags/gambia.png",
+      "role": "runtime_asset",
+      "bytes": 697,
+      "sha256": "e9e803a8cd352074bb9b4db9909c4812fcb59447f70cd722c8f3a18bb094face"
+    },
+    {
+      "path": "country_flags/georgia.png",
+      "role": "runtime_asset",
+      "bytes": 5364,
+      "sha256": "c45d8b39c29a55a2fbf29bebc88475c4d1f2dba99962f06d8051e22d8298bb1b"
+    },
+    {
+      "path": "country_flags/germany.png",
+      "role": "runtime_asset",
+      "bytes": 581,
+      "sha256": "afff47b9c4edb7baaf2e8289db8cf88ab9843870517ed3d8f99ce549a98ed791"
+    },
+    {
+      "path": "country_flags/ghana.png",
+      "role": "runtime_asset",
+      "bytes": 3718,
+      "sha256": "2ab859735357d85d63ed1e3d2e6f71c16f644a8024cc0b7aed11b4de85c9cf65"
+    },
+    {
+      "path": "country_flags/greece.png",
+      "role": "runtime_asset",
+      "bytes": 1570,
+      "sha256": "5af1615d8c3d0268ef6773434025f57bb4d92d9971726a014b8bdb49f5d5f7ce"
+    },
+    {
+      "path": "country_flags/grenada.png",
+      "role": "runtime_asset",
+      "bytes": 14366,
+      "sha256": "f0c15b9f8616be2c10e537d222be7dd378c80ddeaf11549043ca7df2f4ff1675"
+    },
+    {
+      "path": "country_flags/guatemala.png",
+      "role": "runtime_asset",
+      "bytes": 10733,
+      "sha256": "63145b833f25e39dcca5788d53f69ab1138b7bbdb80077d759a0f8d12464dd02"
+    },
+    {
+      "path": "country_flags/guinea.png",
+      "role": "runtime_asset",
+      "bytes": 630,
+      "sha256": "7ca9db563dbbb168cea2307c90292cb50c977b47fead937f22bc255777bc578c"
+    },
+    {
+      "path": "country_flags/guinea_bissau.png",
+      "role": "runtime_asset",
+      "bytes": 2624,
+      "sha256": "4707f221933cfb025d09ec0f09c873e082ef5145784887993d60e691be863ac3"
+    },
+    {
+      "path": "country_flags/guyana.png",
+      "role": "runtime_asset",
+      "bytes": 20544,
+      "sha256": "cf8c9c73f09c60a84a654dd5244f655c1da40c5a6042238177a6ba1af00cd825"
+    },
+    {
+      "path": "country_flags/haiti.png",
+      "role": "runtime_asset",
+      "bytes": 17915,
+      "sha256": "e336457a5dcfce8fe0a33d4f23cd99443be7ab130cfbf1fa6ee67999e1dc9df0"
+    },
+    {
+      "path": "country_flags/honduras.png",
+      "role": "runtime_asset",
+      "bytes": 3404,
+      "sha256": "2be4896f4542e55918581578327f936f2e88928553bb8a9ab1fa7c4502cdd4b0"
+    },
+    {
+      "path": "country_flags/hungary.png",
+      "role": "runtime_asset",
+      "bytes": 603,
+      "sha256": "d5b9389b5cf6f921bbe170197429e386c66c1ec126d1b7cf1c50ad42dc043e6b"
+    },
+    {
+      "path": "country_flags/iceland.png",
+      "role": "runtime_asset",
+      "bytes": 1558,
+      "sha256": "901d97b46e9a70b1f38380d00a28d7971d54349d23bec5590e57ac8fe5c1775a"
+    },
+    {
+      "path": "country_flags/india.png",
+      "role": "runtime_asset",
+      "bytes": 10195,
+      "sha256": "1b81f00c9d8de25d7048420989a0d5299970276503ef7b9f3ad074f811c2f36b"
+    },
+    {
+      "path": "country_flags/indonesia.png",
+      "role": "runtime_asset",
+      "bytes": 604,
+      "sha256": "506177dd30765889234941319cffce2b074362d4aec5f7c07dd4a701f6a8c942"
+    },
+    {
+      "path": "country_flags/iran.png",
+      "role": "runtime_asset",
+      "bytes": 16355,
+      "sha256": "30ca55ab01910765f430ab28623c947f15e1f0c9acd33a0ec29386a89906a37d"
+    },
+    {
+      "path": "country_flags/iraq.png",
+      "role": "runtime_asset",
+      "bytes": 5171,
+      "sha256": "743f922ddaea7d6f914d8177212ab8fb36897c34c4f6f76a764284efba47c927"
+    },
+    {
+      "path": "country_flags/ireland.png",
+      "role": "runtime_asset",
+      "bytes": 572,
+      "sha256": "762ca521a8651e9cccdca102ad7d51d9c944bd70e686fb1033ddfc62adb6533d"
+    },
+    {
+      "path": "country_flags/israel.png",
+      "role": "runtime_asset",
+      "bytes": 6869,
+      "sha256": "295c3ae75e679e5e238043969a8d565d0d10e21a689f596707789c17f84fbabc"
+    },
+    {
+      "path": "country_flags/italy.png",
+      "role": "runtime_asset",
+      "bytes": 633,
+      "sha256": "9e5e61c497c410f5a51e46e2bdc5bbc2c374b665006412a7ea95a5e7cbecf68c"
+    },
+    {
+      "path": "country_flags/jamaica.png",
+      "role": "runtime_asset",
+      "bytes": 6243,
+      "sha256": "d3ecf5307475abd39a4c53fba38a3a17a71a5252c021c0fec32b0ded152a3730"
+    },
+    {
+      "path": "country_flags/japan.png",
+      "role": "runtime_asset",
+      "bytes": 5621,
+      "sha256": "34f76e3862ec2d6d516b45064d9a34342b56da494a53557667d518d280d945f6"
+    },
+    {
+      "path": "country_flags/jordan.png",
+      "role": "runtime_asset",
+      "bytes": 4271,
+      "sha256": "fda386ea3aa8407980b0369ab2d2eeb237e314f0608f1b5e2e08c14d6d471a8c"
+    },
+    {
+      "path": "country_flags/kazakhstan.png",
+      "role": "runtime_asset",
+      "bytes": 22725,
+      "sha256": "432b36d5429410d1dfb242895cd58a35230a3865d18d9d592ac1a1c5d349069e"
+    },
+    {
+      "path": "country_flags/kenya.png",
+      "role": "runtime_asset",
+      "bytes": 11042,
+      "sha256": "cb3f8a55406af668b91d81555e354778c62f1826f352ecf5c25ac5a2ff63d950"
+    },
+    {
+      "path": "country_flags/kiribati.png",
+      "role": "runtime_asset",
+      "bytes": 23683,
+      "sha256": "8e4a9db51d79eab4bb7ec1027a704f9230898280082862eccadb47dbbb6313c3"
+    },
+    {
+      "path": "country_flags/kosovo.png",
+      "role": "runtime_asset",
+      "bytes": 12730,
+      "sha256": "123b620570b062fa040a20f6ae22d7e78d3515dc0c529983052eadf8f283da9a"
+    },
+    {
+      "path": "country_flags/kuwait.png",
+      "role": "runtime_asset",
+      "bytes": 2653,
+      "sha256": "a4a62bf88292893ebf6494769e328fbda58a6c8214c052e79dcb3d92b80130e9"
+    },
+    {
+      "path": "country_flags/kyrgyzstan.png",
+      "role": "runtime_asset",
+      "bytes": 12337,
+      "sha256": "ec88d29c4c75d1bb6543b57f58186020ff00c12f8d0fdd2c93fb8932b5e97631"
+    },
+    {
+      "path": "country_flags/laos.png",
+      "role": "runtime_asset",
+      "bytes": 4306,
+      "sha256": "6c711a281493359b3912789b1b9b43723101a14d4ed0c16379b4814675b5f04b"
+    },
+    {
+      "path": "country_flags/latvia.png",
+      "role": "runtime_asset",
+      "bytes": 555,
+      "sha256": "81c0916dac96f5ceef3d8869c9053537cc4761a9e1e0d513d176b89cbf094ad7"
+    },
+    {
+      "path": "country_flags/lebanon.png",
+      "role": "runtime_asset",
+      "bytes": 11824,
+      "sha256": "df2b01a731b917d4cb89580a1832aab8684e54e34a52d60bab6384350763d3c0"
+    },
+    {
+      "path": "country_flags/lesotho.png",
+      "role": "runtime_asset",
+      "bytes": 5858,
+      "sha256": "2a4e18a5cf98ecf2a9aecc74baea50d17ed14ad149d35c6c2e10204713f96214"
+    },
+    {
+      "path": "country_flags/liberia.png",
+      "role": "runtime_asset",
+      "bytes": 3488,
+      "sha256": "f75c97c3d6e6f3c26c287b2c404c1a2e45503cb3b40d8cff9c875a0247758901"
+    },
+    {
+      "path": "country_flags/libya.png",
+      "role": "runtime_asset",
+      "bytes": 2932,
+      "sha256": "399d6f1f15b79759eeb893def71587add45ea19002827ae357135f398c148254"
+    },
+    {
+      "path": "country_flags/liechtenstein.png",
+      "role": "runtime_asset",
+      "bytes": 8008,
+      "sha256": "5c841ed434bc05e69803f43a552e29190ab25c25a9adf6a41a6c199df53abeae"
+    },
+    {
+      "path": "country_flags/lithuania.png",
+      "role": "runtime_asset",
+      "bytes": 593,
+      "sha256": "6eba35e831ee467ed4f281a604e09e9f665d1d43c826bb53bbceb6c8281a61d2"
+    },
+    {
+      "path": "country_flags/luxembourg.png",
+      "role": "runtime_asset",
+      "bytes": 594,
+      "sha256": "ac76c8fc4b4c5ae413e171e2545791934849782aa8b0fe17e924a7db5510631e"
+    },
+    {
+      "path": "country_flags/madagascar.png",
+      "role": "runtime_asset",
+      "bytes": 707,
+      "sha256": "800548490c66fd944322e868e134aa45337b91ebe4ecac3108ca3467e61af57e"
+    },
+    {
+      "path": "country_flags/malawi.png",
+      "role": "runtime_asset",
+      "bytes": 10656,
+      "sha256": "b2bc5cd682c8305ea7e36b113ea0890bb97b3fcc903648140d91a733742f011c"
+    },
+    {
+      "path": "country_flags/malaysia.png",
+      "role": "runtime_asset",
+      "bytes": 9278,
+      "sha256": "ac70e18a773df79725c63a8cc90baf3be0183264e65ad1cf0f39f48b86e5f768"
+    },
+    {
+      "path": "country_flags/maldives.png",
+      "role": "runtime_asset",
+      "bytes": 4141,
+      "sha256": "bc69b3f32b691f039c3adbcc75bad4d601de4ebd03255fcdad44b1d1c2e19587"
+    },
+    {
+      "path": "country_flags/mali.png",
+      "role": "runtime_asset",
+      "bytes": 630,
+      "sha256": "5a313df53fd1cc939d1ba437a781561a1d435c9c2d73ca0fb7b22ac4a530b57c"
+    },
+    {
+      "path": "country_flags/malta.png",
+      "role": "runtime_asset",
+      "bytes": 4051,
+      "sha256": "dbd0de0fd5c3bd05f5465916ab3c82b7e154a1ddd30dca165154b302b12e9b39"
+    },
+    {
+      "path": "country_flags/marshall_islands.png",
+      "role": "runtime_asset",
+      "bytes": 22103,
+      "sha256": "174b596e6724216a3229cd706d666fc2186dbb736e98d18986dac77d38cf4be2"
+    },
+    {
+      "path": "country_flags/mauritania.png",
+      "role": "runtime_asset",
+      "bytes": 7680,
+      "sha256": "8267e655ada41da72a9da4a3152b09da081093e314d93284a138cc45315afdd9"
+    },
+    {
+      "path": "country_flags/mauritius.png",
+      "role": "runtime_asset",
+      "bytes": 691,
+      "sha256": "15435e22bc27805a9e512947e03b8bcb6fd0e1b9eddbc0b4d14d7fdd02f78137"
+    },
+    {
+      "path": "country_flags/mexico.png",
+      "role": "runtime_asset",
+      "bytes": 12853,
+      "sha256": "e0e2801a918238df3c328db2233ca43aa64cdbb9bc07516aa8e60045f0258646"
+    },
+    {
+      "path": "country_flags/micronesia.png",
+      "role": "runtime_asset",
+      "bytes": 5338,
+      "sha256": "91bec2cf92906901655022fc58ee53484d136f8e4fe74e310468286bfb431abd"
+    },
+    {
+      "path": "country_flags/moldova.png",
+      "role": "runtime_asset",
+      "bytes": 11871,
+      "sha256": "09ebd3757286b277e52c0212cae98dfdf66e6d039df5761d81e25059d29fac46"
+    },
+    {
+      "path": "country_flags/monaco.png",
+      "role": "runtime_asset",
+      "bytes": 640,
+      "sha256": "82e5ec62b7246c6fc410435652dd6700aa18e96bf233dd9673c7270454e3a298"
+    },
+    {
+      "path": "country_flags/mongolia.png",
+      "role": "runtime_asset",
+      "bytes": 6349,
+      "sha256": "9b60f67a60f5f1425dbb71819876765d2acd1a4635b488bf4776ae48d3df90c4"
+    },
+    {
+      "path": "country_flags/montenegro.png",
+      "role": "runtime_asset",
+      "bytes": 17383,
+      "sha256": "70742e475dd6f47896c57e6e1c775f5c87c5fc5d95ed9659720fd04860668568"
+    },
+    {
+      "path": "country_flags/morocco.png",
+      "role": "runtime_asset",
+      "bytes": 7352,
+      "sha256": "6e51861afcbd7db4ea0e5ec03de6c2b1cd61105a0c0a930173b9b218d63d2514"
+    },
+    {
+      "path": "country_flags/mozambique.png",
+      "role": "runtime_asset",
+      "bytes": 14030,
+      "sha256": "8889b9cf87e3517c2ef91fe7f87a880407f836b4ba541e792b597cc5e3d8b638"
+    },
+    {
+      "path": "country_flags/myanmar.png",
+      "role": "runtime_asset",
+      "bytes": 6821,
+      "sha256": "110998bb677dbee391ef20ab4130f6dc08f51081a28094e0edad3f3eb5175770"
+    },
+    {
+      "path": "country_flags/namibia.png",
+      "role": "runtime_asset",
+      "bytes": 23937,
+      "sha256": "ed465a8e41823798efa7280df7a26b3754015f1afca23640ae0f68b6ac560211"
+    },
+    {
+      "path": "country_flags/nauru.png",
+      "role": "runtime_asset",
+      "bytes": 4772,
+      "sha256": "4a4d11f344503245ee065371e9e68afff9aab3dcb1883c4e49ff4f9dbfe35cc5"
+    },
+    {
+      "path": "country_flags/nepal.png",
+      "role": "runtime_asset",
+      "bytes": 14310,
+      "sha256": "3ba9da2988c6619abf8593641cb5b0d421a55866a91e1e5a5ad250f377be7474"
+    },
+    {
+      "path": "country_flags/netherlands.png",
+      "role": "runtime_asset",
+      "bytes": 650,
+      "sha256": "ce177c38e7d1b911a838a9081ff1097854ba94c707ed5222f95e6170f133d724"
+    },
+    {
+      "path": "country_flags/new_zealand.png",
+      "role": "runtime_asset",
+      "bytes": 14949,
+      "sha256": "abb258eb3ad5c9dc09409260c901a5a64eed79ca7b4047a36632a7d7cd46b966"
+    },
+    {
+      "path": "country_flags/nicaragua.png",
+      "role": "runtime_asset",
+      "bytes": 6213,
+      "sha256": "3b9019752dd0186cf23fdfc2ea4df5fb80976a420949717bde41779d434beac2"
+    },
+    {
+      "path": "country_flags/niger.png",
+      "role": "runtime_asset",
+      "bytes": 3183,
+      "sha256": "15b61445b8f6b201930f8b1445260c5f4b42d7305ef6f314fb0671b73dd262f8"
+    },
+    {
+      "path": "country_flags/nigeria.png",
+      "role": "runtime_asset",
+      "bytes": 572,
+      "sha256": "ba24aa99f68b8d3fad9b458650065d870fccd0950798e1f74c0952791fb38563"
+    },
+    {
+      "path": "country_flags/north_korea.png",
+      "role": "runtime_asset",
+      "bytes": 5656,
+      "sha256": "0f3d71aaf7f66558acab4762f52648fcc02b5c8d580bfb25c755079d7d900e41"
+    },
+    {
+      "path": "country_flags/north_macedonia.png",
+      "role": "runtime_asset",
+      "bytes": 19477,
+      "sha256": "367b31f75443c0c0d56408ade7485f1c385ef31e9dc3577fa365412740c82e58"
+    },
+    {
+      "path": "country_flags/norway.png",
+      "role": "runtime_asset",
+      "bytes": 1528,
+      "sha256": "4c0d161f0f58360b1594783b952ca5d8f56eadbbf24536fb5f81b15e9ceef229"
+    },
+    {
+      "path": "country_flags/oman.png",
+      "role": "runtime_asset",
+      "bytes": 5314,
+      "sha256": "5a87a3367003f457212f5850c7fca449c492055cc2aad3bf8b9d1ebc282e33a6"
+    },
+    {
+      "path": "country_flags/pakistan.png",
+      "role": "runtime_asset",
+      "bytes": 8500,
+      "sha256": "3bdac85c4c3535645648b97fd04b31d95ea08f71cd4fafa9fd13952017a174bf"
+    },
+    {
+      "path": "country_flags/palau.png",
+      "role": "runtime_asset",
+      "bytes": 5431,
+      "sha256": "3a6b461ad2f3fa5e065b8f75f10075d69513a4dfb61d48aee9b7e8fb4d664a62"
+    },
+    {
+      "path": "country_flags/palestine.png",
+      "role": "runtime_asset",
+      "bytes": 4185,
+      "sha256": "37509fb5743d4b43153a0e312db2f4dfb6beb10236258762ccabdf5c3ce4d869"
+    },
+    {
+      "path": "country_flags/panama.png",
+      "role": "runtime_asset",
+      "bytes": 5658,
+      "sha256": "82c30c2d29c402aa0c5622c6648d444c30b51a6fd9fb4ae571f4d14754200572"
+    },
+    {
+      "path": "country_flags/papua_new_guinea.png",
+      "role": "runtime_asset",
+      "bytes": 16126,
+      "sha256": "2e4020dfe556ee63012345b4ad7a06c8d614f838065e9a610cb423ff7ecec315"
+    },
+    {
+      "path": "country_flags/paraguay.png",
+      "role": "runtime_asset",
+      "bytes": 6013,
+      "sha256": "23edbbfa9d5d03590b035480a38d1273e21eb94fe2ea8ae50c4e1249b002be8b"
+    },
+    {
+      "path": "country_flags/peru.png",
+      "role": "runtime_asset",
+      "bytes": 626,
+      "sha256": "567accce57e797e5ad30524865979f9f075aad6182089b8b9147549a8e040905"
+    },
+    {
+      "path": "country_flags/philippines.png",
+      "role": "runtime_asset",
+      "bytes": 10560,
+      "sha256": "8ad56c4f2131a794d7d7652b344e00def7873687d32849f5bd603a18e207c7f0"
+    },
+    {
+      "path": "country_flags/poland.png",
+      "role": "runtime_asset",
+      "bytes": 584,
+      "sha256": "24e5c084bdaa85a359f273e0fbc20c8745ba3ff68011de0fd41a08b3e927ef16"
+    },
+    {
+      "path": "country_flags/portugal.png",
+      "role": "runtime_asset",
+      "bytes": 18167,
+      "sha256": "f319561dcffaf91114a068c58c20c9bafd15d4ee7ee6aefb2e4dcd4ade605005"
+    },
+    {
+      "path": "country_flags/qatar.png",
+      "role": "runtime_asset",
+      "bytes": 4723,
+      "sha256": "469296e64d14993c4d2c48c2a7657aff15301cee9ec3c8406928f1d951bab809"
+    },
+    {
+      "path": "country_flags/republic_of_the_congo.png",
+      "role": "runtime_asset",
+      "bytes": 6522,
+      "sha256": "f5acf193f69f6458a1df1899844ed3aeb8626411baadafa3aa79df7a89e85bd1"
+    },
+    {
+      "path": "country_flags/romania.png",
+      "role": "runtime_asset",
+      "bytes": 633,
+      "sha256": "77a74f053c35904d55c0093242ed657d010a304850d17e9659c83615e9aaf5cd"
+    },
+    {
+      "path": "country_flags/russia.png",
+      "role": "runtime_asset",
+      "bytes": 651,
+      "sha256": "0bab6854c076dc07bc35f495af09e09d382138665fd28867c0f66e6b3f7c054c"
+    },
+    {
+      "path": "country_flags/rwanda.png",
+      "role": "runtime_asset",
+      "bytes": 8976,
+      "sha256": "4190d90a3524128e8b42af78a780ac7e3ee93cdc74b5c619cea6c555250a2390"
+    },
+    {
+      "path": "country_flags/saint_kitts_and_nevis.png",
+      "role": "runtime_asset",
+      "bytes": 19679,
+      "sha256": "2d4ea72ca48cc71f66e919d647ecc9cb3580b193594355f8c04e143790a81505"
+    },
+    {
+      "path": "country_flags/saint_lucia.png",
+      "role": "runtime_asset",
+      "bytes": 8029,
+      "sha256": "79619cd93c36523a416c65e7445119235632ccfa82e4413dd456844d22a504ac"
+    },
+    {
+      "path": "country_flags/saint_vincent_and_the_grenadines.png",
+      "role": "runtime_asset",
+      "bytes": 5263,
+      "sha256": "929feb05c65f8b8672f657a44236018722e131be96f2c87ee3905cad6fc09776"
+    },
+    {
+      "path": "country_flags/samoa.png",
+      "role": "runtime_asset",
+      "bytes": 4360,
+      "sha256": "69571de93d5b078c3df8feffedac6bb80ab512e5e015d67aae2f81c7d6ef7b32"
+    },
+    {
+      "path": "country_flags/san_marino.png",
+      "role": "runtime_asset",
+      "bytes": 26411,
+      "sha256": "0e18467b0cde0eba4523ef3ea47e8a623c4f5739937e1e2f23f0c762230e2ec3"
+    },
+    {
+      "path": "country_flags/sao_tome_and_principe.png",
+      "role": "runtime_asset",
+      "bytes": 4841,
+      "sha256": "55d91558c11feee3d1897adc2497cd3c57ef32ba05fe494b7c6e5029b0c0fe89"
+    },
+    {
+      "path": "country_flags/saudi_arabia.png",
+      "role": "runtime_asset",
+      "bytes": 23283,
+      "sha256": "8c61a35fd61230516639fb833d91d41e8dd13a7f8496080cc3ada4767901a6cd"
+    },
+    {
+      "path": "country_flags/senegal.png",
+      "role": "runtime_asset",
+      "bytes": 3372,
+      "sha256": "d999a53f6f10a538d3bad20f641b38ecdfee0c6d47ac70c484feeb0ddb2ffd96"
+    },
+    {
+      "path": "country_flags/serbia.png",
+      "role": "runtime_asset",
+      "bytes": 25101,
+      "sha256": "a9f639f0a5d7888c03792439a169b7f4483f1b11053ea37c150b76215fe56f84"
+    },
+    {
+      "path": "country_flags/seychelles.png",
+      "role": "runtime_asset",
+      "bytes": 11072,
+      "sha256": "9b6c80630d9d1c316043b23fc41bead59ac96a88f8fb17d3ff4da1aa5d22d091"
+    },
+    {
+      "path": "country_flags/sierra_leone.png",
+      "role": "runtime_asset",
+      "bytes": 650,
+      "sha256": "3011b1137b3a0c549b2727b93a17d5074cf38b70b78b7a0cd33656ecbfe9560f"
+    },
+    {
+      "path": "country_flags/singapore.png",
+      "role": "runtime_asset",
+      "bytes": 7058,
+      "sha256": "e8f8973e5d958eba3c539cb159c9a3dfbdecc3f7ecd59eae85d3af554570c88e"
+    },
+    {
+      "path": "country_flags/slovakia.png",
+      "role": "runtime_asset",
+      "bytes": 9172,
+      "sha256": "2dcc921d48e89ae91fba2d91ee773d8d3c041da99b447118f87c798e88bc6779"
+    },
+    {
+      "path": "country_flags/slovenia.png",
+      "role": "runtime_asset",
+      "bytes": 4277,
+      "sha256": "f739302961b7826cf62ad65ff4f483d01d0794b5310e03b65561a9f2e4ec8c1d"
+    },
+    {
+      "path": "country_flags/solomon_islands.png",
+      "role": "runtime_asset",
+      "bytes": 9855,
+      "sha256": "284c2cff2807d02a78a8fdfae7d5e424cf8103e161388e8192033d23228491a7"
+    },
+    {
+      "path": "country_flags/somalia.png",
+      "role": "runtime_asset",
+      "bytes": 4731,
+      "sha256": "be14eed4deba25269286a6f7d4b73ff76238f003e2340c5394c87f37be730c3b"
+    },
+    {
+      "path": "country_flags/south_africa.png",
+      "role": "runtime_asset",
+      "bytes": 14696,
+      "sha256": "9ff3afdd7019468ccfc346ab422bb7f54a7d41ce9c9049c283dfd7c1d61e2156"
+    },
+    {
+      "path": "country_flags/south_korea.png",
+      "role": "runtime_asset",
+      "bytes": 21037,
+      "sha256": "e460c832939c77da19a6cd320388304c0496f92d2d1a314a2805d21a5553beef"
+    },
+    {
+      "path": "country_flags/south_sudan.png",
+      "role": "runtime_asset",
+      "bytes": 7191,
+      "sha256": "38f819bd24a921b2c6a1785ea294f637ed1025d3a8ab7648d87c75f55013e712"
+    },
+    {
+      "path": "country_flags/spain.png",
+      "role": "runtime_asset",
+      "bytes": 13086,
+      "sha256": "70a80203791c5a297d57275d7c2b5a4727969e187e8da50d98407ccfc9d1fbbe"
+    },
+    {
+      "path": "country_flags/sri_lanka.png",
+      "role": "runtime_asset",
+      "bytes": 22918,
+      "sha256": "a2bfc7b1048abd52331f01accea1f4818e5fc3824ad02b5f6f688202c0bdac58"
+    },
+    {
+      "path": "country_flags/sudan.png",
+      "role": "runtime_asset",
+      "bytes": 4249,
+      "sha256": "3e9d1ec41a1c914f3298cb84952de82321d6f8a98829430405d15afdbdcc0b79"
+    },
+    {
+      "path": "country_flags/suriname.png",
+      "role": "runtime_asset",
+      "bytes": 4027,
+      "sha256": "01744a8fa65bfd91adf15be47bafa95a0fc9e4cfcb00588d37ac67b26bc2a9f9"
+    },
+    {
+      "path": "country_flags/sweden.png",
+      "role": "runtime_asset",
+      "bytes": 1009,
+      "sha256": "e927f717e5e3d4352d02f5bd2c972c90850970ce7196f7982df29c094b22ce7b"
+    },
+    {
+      "path": "country_flags/switzerland.png",
+      "role": "runtime_asset",
+      "bytes": 1177,
+      "sha256": "0a3753a5bd766e85429d0cb0e15cb41028ed38ea15527bdf583a8d1b6b102b2f"
+    },
+    {
+      "path": "country_flags/syria.png",
+      "role": "runtime_asset",
+      "bytes": 2119,
+      "sha256": "46ee4cf9fce4e8540f4fc5005cf5a0f2548fc385776f2874b04fcc3ff4dacbb5"
+    },
+    {
+      "path": "country_flags/taiwan.png",
+      "role": "runtime_asset",
+      "bytes": 7603,
+      "sha256": "505466f1a5bdc235f35203c9d953a78b810ee7676d5d113f20dd36aa980c9b37"
+    },
+    {
+      "path": "country_flags/tajikistan.png",
+      "role": "runtime_asset",
+      "bytes": 4885,
+      "sha256": "c0f0b85cd723e27c7a115fa8eb81363e4cd01f408db974818fd5b097a1f0e7f8"
+    },
+    {
+      "path": "country_flags/tanzania.png",
+      "role": "runtime_asset",
+      "bytes": 16175,
+      "sha256": "cd3eff4cf9ad2020eae3b738fccd7b3de240756aabe77ff07c80f29ae13f83bf"
+    },
+    {
+      "path": "country_flags/thailand.png",
+      "role": "runtime_asset",
+      "bytes": 720,
+      "sha256": "00b1ba8217839d60fc9bb2c4e1fc9d4cb6d02d476b131241e0c828137ede2337"
+    },
+    {
+      "path": "country_flags/timor_leste.png",
+      "role": "runtime_asset",
+      "bytes": 8437,
+      "sha256": "6fe6140f86ac0de8fc525e915b5bd1197117f8914b9bedc18f4654609d12c20e"
+    },
+    {
+      "path": "country_flags/togo.png",
+      "role": "runtime_asset",
+      "bytes": 4290,
+      "sha256": "4afc39cd3bbdeb25d4581bdfff68fa5b211faf443f69ec7fca26278b6228a6c2"
+    },
+    {
+      "path": "country_flags/tonga.png",
+      "role": "runtime_asset",
+      "bytes": 1274,
+      "sha256": "cf08c44b28880a47fc7f2c37ce7ef7f17c73afc71aa5eb6644a57fb152cde11e"
+    },
+    {
+      "path": "country_flags/trinidad_and_tobago.png",
+      "role": "runtime_asset",
+      "bytes": 15818,
+      "sha256": "c7f397f18ee27e10280602d0a5578ea5858760028662f9ce931a155d0bfbd7fd"
+    },
+    {
+      "path": "country_flags/tunisia.png",
+      "role": "runtime_asset",
+      "bytes": 10065,
+      "sha256": "13b0db1390ee1dee54e799e06c63c014557d001a4b6ba43317839b744f38adbc"
+    },
+    {
+      "path": "country_flags/turkiye.png",
+      "role": "runtime_asset",
+      "bytes": 7969,
+      "sha256": "ae775fd5aef7fa017868b8fdc2e4d87a9a699c23364086ac6f4263003714a742"
+    },
+    {
+      "path": "country_flags/turkmenistan.png",
+      "role": "runtime_asset",
+      "bytes": 32582,
+      "sha256": "7b4240239937c759bbe77fc4dd54a95b7eba34b9de39790417e95a7b615aa866"
+    },
+    {
+      "path": "country_flags/tuvalu.png",
+      "role": "runtime_asset",
+      "bytes": 19963,
+      "sha256": "49a3af40f8e0aaff20de1e204de648abcc17471fbc1751d6ba40b4aa3237372a"
+    },
+    {
+      "path": "country_flags/uganda.png",
+      "role": "runtime_asset",
+      "bytes": 7121,
+      "sha256": "7f576079d194187f689f151150749a6ca55098cbd0e7b58d412fe4b2d2608eee"
+    },
+    {
+      "path": "country_flags/ukraine.png",
+      "role": "runtime_asset",
+      "bytes": 618,
+      "sha256": "1620ff04c351599ed475b2de5dc4e854e03655c7d840b3a58fdf25430a10a8a3"
+    },
+    {
+      "path": "country_flags/united_arab_emirates.png",
+      "role": "runtime_asset",
+      "bytes": 670,
+      "sha256": "57c3836f9e46c8afa7368f7907a6c765c996481071adbb6bca9b7a76f7220d62"
+    },
+    {
+      "path": "country_flags/united_kingdom.png",
+      "role": "runtime_asset",
+      "bytes": 13013,
+      "sha256": "8f87490660f83172a3c867a6fde93aa51a16c6e26a7fce882d8f8e050537360c"
+    },
+    {
+      "path": "country_flags/united_states.png",
+      "role": "runtime_asset",
+      "bytes": 13144,
+      "sha256": "15310a2186fa3647e9e44c6f02cf65feb147afe1d70c196738261aa38debc832"
+    },
+    {
+      "path": "country_flags/uruguay.png",
+      "role": "runtime_asset",
+      "bytes": 13185,
+      "sha256": "50813ec30219c304cc920881a2e42f1995d3cbcc2d4207b3e74c32663ad5c666"
+    },
+    {
+      "path": "country_flags/uzbekistan.png",
+      "role": "runtime_asset",
+      "bytes": 4964,
+      "sha256": "48ae6eb07dc741e42adfd8d737268844bdbef2ec10e976ddf02adfa3cb2e45b0"
+    },
+    {
+      "path": "country_flags/vanuatu.png",
+      "role": "runtime_asset",
+      "bytes": 15978,
+      "sha256": "ef3b220dd3909e7998e4c0f30d9aa7505865dd363ba98c1e64efd07795c4b3f4"
+    },
+    {
+      "path": "country_flags/vatican_city.png",
+      "role": "runtime_asset",
+      "bytes": 15477,
+      "sha256": "132db0beca9d1241f0cec20aa8161efb00066bc5a92f33aba8a86f84ec541833"
+    },
+    {
+      "path": "country_flags/venezuela.png",
+      "role": "runtime_asset",
+      "bytes": 6880,
+      "sha256": "1084ebc66db0f372ad0dd9e940097b563d20e06739485cd0b27c43debcc6ed90"
+    },
+    {
+      "path": "country_flags/vietnam.png",
+      "role": "runtime_asset",
+      "bytes": 3897,
+      "sha256": "eb376c40e1b36b54078cbb797ca2c1454ee08c82873896be6f6eb5828c0b4b36"
+    },
+    {
+      "path": "country_flags/western_sahara.png",
+      "role": "runtime_asset",
+      "bytes": 6950,
+      "sha256": "cd3481da224ebc78b817dad36357d556965ecec732b63a3f0966d153b5eea4a8"
+    },
+    {
+      "path": "country_flags/yemen.png",
+      "role": "runtime_asset",
+      "bytes": 634,
+      "sha256": "b7c0e04ca73b17aaac0a63f8c6503bbbbbf838789ad676ff6fd47d43b2e7c8d0"
+    },
+    {
+      "path": "country_flags/zambia.png",
+      "role": "runtime_asset",
+      "bytes": 6396,
+      "sha256": "5ff84be6d2df4cfdd4b28729303610673ce0e3a6e065f5ddccc90346e5d120f7"
+    },
+    {
+      "path": "country_flags/zimbabwe.png",
+      "role": "runtime_asset",
+      "bytes": 10449,
+      "sha256": "2deff2de2ccf914e0a62ce20506de3ef27f1ea884654dbb16f7b4a42bcfc4fc8"
+    },
+    {
+      "path": "custom_promotion_division_integrity_test.py",
+      "role": "test",
+      "bytes": 2521,
+      "sha256": "d88f3956b019b7fd102dd9edf45c9ac0de64d935dee3d0f32730b3d9af5ffb4e"
+    },
+    {
+      "path": "database_editor.py",
+      "role": "runtime_source",
+      "bytes": 126926,
+      "sha256": "01f70e62c8a052478fccd93876cb6e6001cfc826868bf3eef4ddc0ca14524332"
+    },
+    {
+      "path": "database_editor_identity_regression_test.py",
+      "role": "test",
+      "bytes": 7197,
+      "sha256": "f1b81af3497abf27916c98c321ffceaa947539eaee780e2af51299d1567dc40b"
+    },
+    {
+      "path": "database_editor_save_as_test.py",
+      "role": "test",
+      "bytes": 7471,
+      "sha256": "f1d047657d79586314c467d3a62b1199abce0655300739f7beba9fa571018c02"
+    },
+    {
+      "path": "database_editor_ui_audit.py",
+      "role": "test",
+      "bytes": 7972,
+      "sha256": "e67cb7f170701129d3b5c3e3314ea7162341ca5eab61fc2fef95ebeab97cb4fc"
+    },
+    {
+      "path": "Databases/Default Universe.universe.json",
+      "role": "runtime_database",
+      "bytes": 6816860,
+      "sha256": "3690d95ee0e0820b77d581cc0245a50586c101a5babca3241e7ae7cda98530fb"
+    },
+    {
+      "path": "docs/AI_TALENT_ECOSYSTEM.md",
+      "role": "documentation",
+      "bytes": 3850,
+      "sha256": "ea353a47bd984448e8db393817a42387fcc8d34c0d24dd87401ed7fbb47fcfe1"
+    },
+    {
+      "path": "docs/ARCHITECTURE.md",
+      "role": "documentation",
+      "bytes": 6014,
+      "sha256": "691fb01422db9e6bce9c863a912ac26d370267bf4fcd51b15b7521b222149016"
+    },
+    {
+      "path": "docs/COMPANY_MILESTONES_AND_SUPER_EVENTS_DESIGN.md",
+      "role": "documentation",
+      "bytes": 20056,
+      "sha256": "b8125205133b4cfc511f9bb2e6645a7e1d29e5af5fdd5bd8b8037bc5bb41a1b2"
+    },
+    {
+      "path": "docs/CURRENT_STATE.md",
+      "role": "documentation",
+      "bytes": 2294,
+      "sha256": "7aa5631e1cb2b130e4264f0aca75b88358db80704c74222b7167a457526bae19"
+    },
+    {
+      "path": "docs/developer/context-migration.json",
+      "role": "documentation",
+      "bytes": 8238,
+      "sha256": "a8ba68f93563af366c476c684ae426e9486108e03c769b58f164888641ce8873"
+    },
+    {
+      "path": "docs/developer/contracts/01-documentation-navigation.md",
+      "role": "documentation",
+      "bytes": 465,
+      "sha256": "844b295e5bbd75fe606ee3f957f98886d240a6d5a11f1624a53fc9f7526848c6"
+    },
+    {
+      "path": "docs/developer/contracts/02-reader-and-presentation-rules.md",
+      "role": "documentation",
+      "bytes": 17750,
+      "sha256": "ee365bc601bd0e1c46b8956d92ea8c27d0939f316c9dea6d0c9e398d3bbf8e23"
+    },
+    {
+      "path": "docs/developer/contracts/03-fighter-traits.md",
+      "role": "documentation",
+      "bytes": 1507,
+      "sha256": "f3cd9adfe97e58a888d70a7e7dca4023d90fa8eed84dbace9ad0fa798ff4acc3"
+    },
+    {
+      "path": "docs/developer/contracts/04-spectator-controls.md",
+      "role": "documentation",
+      "bytes": 1404,
+      "sha256": "00c1a893a12406ab1794d899460b1bc8e55464778cc5302301d13a8af12c3596"
+    },
+    {
+      "path": "docs/developer/contracts/05-performance-and-domain-rules.md",
+      "role": "documentation",
+      "bytes": 23112,
+      "sha256": "9c010d145c2794d74d7ce62b1214ebb40eefb6f4b9171215db896d06ff283255"
+    },
+    {
+      "path": "docs/developer/contracts/06-portrait-catalogue.md",
+      "role": "documentation",
+      "bytes": 3274,
+      "sha256": "a8d08c67a6c558a11a9442d25d38a00c05538d5a3636e3452c84181aca3457e7"
+    },
+    {
+      "path": "docs/developer/contracts/07-native-release-and-experiments.md",
+      "role": "documentation",
+      "bytes": 44303,
+      "sha256": "cfbdd8caba3fe42dc25cc4ee5315fd0eb92c00263bf95e65da7b4fd9d898a1bd"
+    },
+    {
+      "path": "docs/developer/contracts/08-finish-balance-and-experiments.md",
+      "role": "documentation",
+      "bytes": 28993,
+      "sha256": "ab7be6e605fe47d59b7a2457f7b8429aa9425e32fa4e51f58dd38a9983806220"
+    },
+    {
+      "path": "docs/developer/contracts/09-working-agreement.md",
+      "role": "documentation",
+      "bytes": 5309,
+      "sha256": "242b1ca9e24cbad8614efbee20418af615acf53831baa1355aebe7ea51c9a44a"
+    },
+    {
+      "path": "docs/developer/contracts/10-product-principles.md",
+      "role": "documentation",
+      "bytes": 762,
+      "sha256": "ed30d52aab56443cfd345087636c9915946b9060d5aa321bc2bea19b1a571173"
+    },
+    {
+      "path": "docs/developer/contracts/11-architecture-reference.md",
+      "role": "documentation",
+      "bytes": 13795,
+      "sha256": "d9271bc63dfacfc39cd17a3d5607c2833f494082b9da8f58af60453b0ae2f761"
+    },
+    {
+      "path": "docs/developer/contracts/12-state-and-control-flow.md",
+      "role": "documentation",
+      "bytes": 6820,
+      "sha256": "c6f688d1c03aa15268f843d33d74fbdd1eba714ea05b5faa678eda4d5d636039"
+    },
+    {
+      "path": "docs/developer/contracts/13-persistence.md",
+      "role": "documentation",
+      "bytes": 6046,
+      "sha256": "260ecfec4dea2acc81bd4676a3e661cadbb9e503a8a58c663c5aa158767fc2c1"
+    },
+    {
+      "path": "docs/developer/contracts/14-world-and-promotions.md",
+      "role": "documentation",
+      "bytes": 28477,
+      "sha256": "feb89f40ff9c5bc4201945cca9fcf456cd7f0396edfbb82f585358c81396b796"
+    },
+    {
+      "path": "docs/developer/contracts/15-new-promotion-starts.md",
+      "role": "documentation",
+      "bytes": 1246,
+      "sha256": "54848fa81b3ada259aca15a33f803a33e4941527ef406bd9496e71b9fd5cabc0"
+    },
+    {
+      "path": "docs/developer/contracts/16-matchmaking.md",
+      "role": "documentation",
+      "bytes": 1064,
+      "sha256": "05f18876d67a69f2cefcf6edb5c43cbe078894004c72c6f50c4411bed537d38f"
+    },
+    {
+      "path": "docs/developer/contracts/17-fight-engine-and-commentary.md",
+      "role": "documentation",
+      "bytes": 48771,
+      "sha256": "0ff6f5c1348988fae0807f6c23f484703b832ad33dcdd0874f09df9bcfdb0eb6"
+    },
+    {
+      "path": "docs/developer/contracts/18-contracts-and-weigh-ins.md",
+      "role": "documentation",
+      "bytes": 1517,
+      "sha256": "c70b9a0710f56fc6d3bed9e50c6ce9c46a6c702c9687ae49bfd8b13784d3f2db"
+    },
+    {
+      "path": "docs/developer/contracts/19-development-and-staff.md",
+      "role": "documentation",
+      "bytes": 7589,
+      "sha256": "71bdada7428bb15bfd12de9ca08bce0b95f6d62d3e512cb2cfe5dd484deb6da8"
+    },
+    {
+      "path": "docs/developer/contracts/20-ui-and-accessibility.md",
+      "role": "documentation",
+      "bytes": 17193,
+      "sha256": "3a0fc7e507fe4544e3a687ae905c0879c662c0d61bf9a0fa7b50f10c3a291d31"
+    },
+    {
+      "path": "docs/developer/contracts/21-data-quality.md",
+      "role": "documentation",
+      "bytes": 2623,
+      "sha256": "aa218550e368093f58de4a3a72591556212e050404d834ad648e6e8974eb345e"
+    },
+    {
+      "path": "docs/developer/contracts/22-testing-and-shipping.md",
+      "role": "documentation",
+      "bytes": 6658,
+      "sha256": "17955eff8cd13e5a9172fa418ec17cf3f8e9f6cd9869d89aa41936da3f8a28d8"
+    },
+    {
+      "path": "docs/developer/contracts/23-change-recipes.md",
+      "role": "documentation",
+      "bytes": 1105,
+      "sha256": "150f0c7a4145af5aab5bf3b811d00b380f86a9314639be41bacbcdeebfe17d7d"
+    },
+    {
+      "path": "docs/developer/contracts/24-pitfalls-and-audio.md",
+      "role": "documentation",
+      "bytes": 3424,
+      "sha256": "984195937f595621a64395a108751b01f85b48a4fad31cfa910e76803efa4a74"
+    },
+    {
+      "path": "docs/developer/contracts/25-product-and-identity-rules.md",
+      "role": "documentation",
+      "bytes": 17973,
+      "sha256": "d323b2a8724da7988ff42094680e6127f01aa2c9d8a133a898c3107692a84b69"
+    },
+    {
+      "path": "docs/developer/contracts/README.md",
+      "role": "documentation",
+      "bytes": 4848,
+      "sha256": "14a8793bbbd2e07dce5286758e49817fbfab54629e0b3d5f7818766d6f559420"
+    },
+    {
+      "path": "docs/developer/DELIVERY_SNAPSHOT.md",
+      "role": "documentation",
+      "bytes": 1734,
+      "sha256": "01c3328f5f73040d88df0b9fb3b688831f53f3abf4c10c3239bdc5527a4db4fa"
+    },
+    {
+      "path": "docs/FIGHT_BOXING_COMBINATION_TRIAL.md",
+      "role": "documentation",
+      "bytes": 5840,
+      "sha256": "e34eb1c25aca157ec16465ef4877075293f2b67e90796b138759c86cc8b2cba8"
+    },
+    {
+      "path": "docs/FIGHT_CHAIN_SELECTION_AUDIT.md",
+      "role": "documentation",
+      "bytes": 3325,
+      "sha256": "1973a478d2339a9e602d17e6abccfdb5b3e1053a262a2e5b679419207634afd4"
+    },
+    {
+      "path": "docs/FIGHT_DAMAGE_AND_CLINCH_AUDIT.md",
+      "role": "documentation",
+      "bytes": 2704,
+      "sha256": "8b2eea1954f0eda5c4d96cd09345b9c29f244a4f7686f17729922c5b79875ee0"
+    },
+    {
+      "path": "docs/FIGHT_FINISH_SYSTEM_AUDIT.md",
+      "role": "documentation",
+      "bytes": 4128,
+      "sha256": "f3ad186e84681b4bcc0f6b17c31547ba78715d6c9da06f8c75a3724981610c3b"
+    },
+    {
+      "path": "docs/FIGHT_GIFT_WRAP_TRIAL.md",
+      "role": "documentation",
+      "bytes": 6596,
+      "sha256": "7382dbf1905a6a5f125c01dafecb4ac46f06e09cb2178bd8bfd5f9853540b291"
+    },
+    {
+      "path": "docs/FIGHT_HEAD_DAMAGE_TRIAL.md",
+      "role": "documentation",
+      "bytes": 999,
+      "sha256": "077801245a4d69b78d1f6464d450d2e71d6c4aee2ed677dc6100a289f05c41a6"
+    },
+    {
+      "path": "docs/FIGHT_JAB_TIMING_INVESTIGATION.md",
+      "role": "documentation",
+      "bytes": 5985,
+      "sha256": "21b09bbae425ddcd9bca4f0c9055a845df070dc03a78b2ea4a96817050a17760"
+    },
+    {
+      "path": "docs/FIGHT_KICK_POWER_TRIAL.md",
+      "role": "documentation",
+      "bytes": 1612,
+      "sha256": "73102d295905a0afc3fc65482ccccfad9a219b7343bd2613e0cd48eedf7230e9"
+    },
+    {
+      "path": "docs/FIGHT_MOVE_CONCENTRATION_PLAN.md",
+      "role": "documentation",
+      "bytes": 6763,
+      "sha256": "10cbce8c71303c51d680700001e708984f4ee1b85b638f92f75e4ecc044c0abc"
+    },
+    {
+      "path": "docs/FIGHT_MOVE_SCHEMA.md",
+      "role": "documentation",
+      "bytes": 8006,
+      "sha256": "0c1e4d433bbf41d7660a69a294842eaa8dcc97a32b8dec015095bc36c6757a8b"
+    },
+    {
+      "path": "docs/FIGHT_MOVE_SYSTEM_PLAN.md",
+      "role": "documentation",
+      "bytes": 122543,
+      "sha256": "adafa5484e45c50eab0fffa7a895912b9346b9f52d00b6b98b2557b712f6f764"
+    },
+    {
+      "path": "docs/FIGHT_NIGHT_PRESENTATION.md",
+      "role": "documentation",
+      "bytes": 3106,
+      "sha256": "e7105f1c93f61086c9efdeb9ecbafcefaa689172779d8fb0fef53801487cc62e"
+    },
+    {
+      "path": "docs/FIGHT_RELEASE_CHECKPOINT.md",
+      "role": "documentation",
+      "bytes": 21403,
+      "sha256": "09ca546d02b7d4e1587b20e0d7f78b840b5b6da7322cc10f07b3697bfd035773"
+    },
+    {
+      "path": "docs/FIGHT_REPERTOIRE_TRIAL.md",
+      "role": "documentation",
+      "bytes": 4452,
+      "sha256": "4e68edecb8c6074f8123005f78bfb928c6361378c6ccd3f0fb3669875b0a146c"
+    },
+    {
+      "path": "docs/FIGHT_SCARF_COVERAGE_INVESTIGATION.md",
+      "role": "documentation",
+      "bytes": 3593,
+      "sha256": "aac866a543bca1f02cfdc3cd049db561c8f46f2ed9717689d807224179810391"
+    },
+    {
+      "path": "docs/FIGHT_SPECIALIST_STATE_AUDIT.md",
+      "role": "documentation",
+      "bytes": 27529,
+      "sha256": "5f1a61e53ab021091741033871872abb3522e63457fc36aaea72262e0f321088"
+    },
+    {
+      "path": "docs/FIGHT_STANDING_OPPORTUNITY_AUDIT.md",
+      "role": "documentation",
+      "bytes": 12830,
+      "sha256": "dd4c131259ea95991cb1284c0aaf7f9d1cd263485863bacd9d1629a4632f1151"
+    },
+    {
+      "path": "docs/FIGHT_STANDUP_VS_GRAPPLING_FIX_GUIDE.md",
+      "role": "documentation",
+      "bytes": 83802,
+      "sha256": "1479db9d1eba1b1b484da8fe2b3f1c10dfb438e1fc39b4c2f98a03024b12d62d"
+    },
+    {
+      "path": "docs/FIGHT_SUBMISSION_DEVELOPMENT.md",
+      "role": "documentation",
+      "bytes": 5382,
+      "sha256": "550bdde4284fc390dd96fdbcfe19718086856cd9045a62d5cbaa976c477918bc"
+    },
+    {
+      "path": "docs/FIGHT_SURVIVAL_EXPANSION.md",
+      "role": "documentation",
+      "bytes": 8012,
+      "sha256": "7a641c2f010bf090aa63161d38f7a1105174dbe746404e847822058ca33abc3d"
+    },
+    {
+      "path": "docs/FIGHT_UNUSED_MOVE_REPAIR.md",
+      "role": "documentation",
+      "bytes": 4190,
+      "sha256": "890337fa64b839afd8ac6412d4aa7429c8638906c46b96400d75f79265081dd5"
+    },
+    {
+      "path": "docs/FIGHT_VARIETY_TARGET_REVIEW.md",
+      "role": "documentation",
+      "bytes": 4646,
+      "sha256": "0c1d31ffa91400b64ffc23adf4bde9bbaba3608a164b28720f1e9099b83b7858"
+    },
+    {
+      "path": "docs/FIGHTER_DEVELOPMENT_GUIDE.md",
+      "role": "documentation",
+      "bytes": 5253,
+      "sha256": "365cb19ce96c3a83661afd19ae6c10c508ef442520a517e15d6124aab0434013"
+    },
+    {
+      "path": "docs/FIGHTER_PORTRAIT_CURRENT_REVIEW.md",
+      "role": "documentation",
+      "bytes": 2040,
+      "sha256": "837078e4b9e1b4735d03b4d0f06389c403cdbf28e3c5715b65c51149c0a8eff4"
+    },
+    {
+      "path": "docs/FIGHTER_PORTRAIT_DIVERSITY_REVIEW.md",
+      "role": "documentation",
+      "bytes": 7043,
+      "sha256": "19b361f0c0ac56969572e30714a55cbf0cd1a4bae639817ff389469bf024e415"
+    },
+    {
+      "path": "docs/FIGHTER_PORTRAIT_EXPANSION.md",
+      "role": "documentation",
+      "bytes": 6475,
+      "sha256": "ad60a414c538f75e2e4bde117291048f650a2e65494fb84f622acccea2c70f90"
+    },
+    {
+      "path": "docs/FIGHTER_PORTRAIT_IMPLEMENTATION_SPEC.md",
+      "role": "documentation",
+      "bytes": 18030,
+      "sha256": "82a9b6d846ba6e17757aa4d46346297df112c388481b7bfb5d3ca52a68978410"
+    },
+    {
+      "path": "docs/FIGHTER_PORTRAIT_NAMED_CORRECTIONS.md",
+      "role": "documentation",
+      "bytes": 3551,
+      "sha256": "5117aac752b4844aed06f41e252a5708fac650f82df4fbc0f05b8fe06ea7fd41"
+    },
+    {
+      "path": "docs/FIGHTER_PORTRAIT_SYSTEM_DESIGN.md",
+      "role": "documentation",
+      "bytes": 25351,
+      "sha256": "f76e1003f6c48da80df4ffac35a7bf32a4ebf8476a4f547b50380721697fa15e"
+    },
+    {
+      "path": "docs/FIGHTER_PORTRAIT_TOP_100_REVIEW.md",
+      "role": "documentation",
+      "bytes": 13393,
+      "sha256": "1f85a6b83502c2ce435b07ea0b64b9648d7cea46c4de2d6a51f3a15f9ad2d782"
+    },
+    {
+      "path": "docs/FIGHTER_PORTRAIT_TOP_200_REVIEW.md",
+      "role": "documentation",
+      "bytes": 6971,
+      "sha256": "e9bde8d96996daa5244f22daff8289035631da0f9ac7e6ae43614f0aaaf9f9c7"
+    },
+    {
+      "path": "docs/FIGHTER_PORTRAIT_TOP_300_REVIEW.md",
+      "role": "documentation",
+      "bytes": 3165,
+      "sha256": "59e5192a45134b15c12246e335b607e12be9d2f62741fa278cfa61cbf8a8e788"
+    },
+    {
+      "path": "docs/FIGHTER_PORTRAIT_TOP_400_REVIEW.md",
+      "role": "documentation",
+      "bytes": 2175,
+      "sha256": "cde6727c3fbd30a69bba528286235e8dc431825e2e0abab5611a41bdd29c6bed"
+    },
+    {
+      "path": "docs/FIGHTER_TRAITS.md",
+      "role": "documentation",
+      "bytes": 5661,
+      "sha256": "251b269f5fb8166ef8e14ce048c6f97ef770b08496701880a23141d2d20d164e"
+    },
+    {
+      "path": "docs/LEGACY_AND_EXECUTIVES_GUIDE.md",
+      "role": "documentation",
+      "bytes": 1337,
+      "sha256": "d6c7c2b0e6fa70fbc111b99d8cf597c9c2af6cefa170ddab8b53338ded6253df"
+    },
+    {
+      "path": "docs/LUNA_MAX_NEXT_WORK_PLAN.md",
+      "role": "documentation",
+      "bytes": 53670,
+      "sha256": "10f3cb08224b221cbaafab043629d98591db7087533e37e42c3b1a7cec151479"
+    },
+    {
+      "path": "docs/PLAYER_GUIDE.md",
+      "role": "documentation",
+      "bytes": 225945,
+      "sha256": "60be5b28871ca02f094e64551ba77f4cd6bc434b4b7dd14324f5870f81adf41f"
+    },
+    {
+      "path": "docs/README.md",
+      "role": "documentation",
+      "bytes": 5558,
+      "sha256": "6b2611d879fb9e7b5ce399a4ec33fc0ec5b439da20441078f73049261a3bdaa8"
+    },
+    {
+      "path": "docs/REAL_FIGHTER_RATING_AUDIT.md",
+      "role": "documentation",
+      "bytes": 2189,
+      "sha256": "75b0eda4f67ed33925c8df3f4d760143280a3694fb63d7c3ae23debfed63d6ab"
+    },
+    {
+      "path": "docs/STATE_OWNERSHIP.md",
+      "role": "documentation",
+      "bytes": 6292,
+      "sha256": "d06ec12b1ee04fd5eab784c8c7a309432c660eec74cf9acd6db5bc96aa5c3420"
+    },
+    {
+      "path": "docs/TESTING.md",
+      "role": "documentation",
+      "bytes": 7076,
+      "sha256": "3a751de3e17d20d5de9d0bf6a85c1aae13f53f6363edb344b276b48e905110b6"
+    },
+    {
+      "path": "docs/WORLD_INTELLIGENCE_GUIDE.md",
+      "role": "documentation",
+      "bytes": 4174,
+      "sha256": "07991da0b98601c7b9b6a0a26f4f8a0d1de1ed9178325c5e2735e9fe02ae8c86"
+    },
+    {
+      "path": "drug_testing_catalogue.py",
+      "role": "runtime_source",
+      "bytes": 17382,
+      "sha256": "a10aa276fc1919f8fe0ca92b8c4b901aaadd25e2e6a1d704bea45c9118d1f745"
+    },
+    {
+      "path": "drug_testing_catalogue_regression_test.py",
+      "role": "test",
+      "bytes": 30656,
+      "sha256": "3d2dfb286541fd710fed5b092189d03d15d026ff95f94a08c1f4380182afb8a3"
+    },
+    {
+      "path": "drug_testing_regression_test.py",
+      "role": "test",
+      "bytes": 13204,
+      "sha256": "a955993d7299115e23b9ba93cb1ae4e664a03005ac7442281bf0d1ed76571f3f"
+    },
+    {
+      "path": "event_economics_regression_test.py",
+      "role": "test",
+      "bytes": 18147,
+      "sha256": "2ccd99f22a44893f35af11180f9c5bd3f7d22c80c34837ac37a42956eb9ad1db"
+    },
+    {
+      "path": "events.py",
+      "role": "runtime_source",
+      "bytes": 472187,
+      "sha256": "7fae7fc43270ff577723d6c0acac590a9eeac4495a5b25f80a2a27f9d33ce852"
+    },
+    {
+      "path": "FEATURE_DEVELOPMENT_BACKLOG.md",
+      "role": "documentation",
+      "bytes": 80568,
+      "sha256": "c3888592502b12746933a80d177bbedfc22028fba9b453e519b86c63b0ad2412"
+    },
+    {
+      "path": "feature_foundation.py",
+      "role": "runtime_source",
+      "bytes": 53902,
+      "sha256": "eb6edac9276ec103905ef1ac95557c0ccd6e74c5dacd763bc41844d191e9479d"
+    },
+    {
+      "path": "fight_audio_regression_test.py",
+      "role": "test",
+      "bytes": 8944,
+      "sha256": "a5bc337df4051726e50b9b186c9377a75fc337c70ebb5e4b086edf5c7bcd271b"
+    },
+    {
+      "path": "fight_bottom_leg_entry_regression_test.py",
+      "role": "test",
+      "bytes": 9472,
+      "sha256": "57884c5ae7b91470cfc5a02a0228e7099d5d1f524244d91d0787b69a136207ab"
+    },
+    {
+      "path": "fight_boxing_chain_pool_test.py",
+      "role": "test",
+      "bytes": 11680,
+      "sha256": "681367fc1a6de305f4d01b8ee25f439c7e41d24055d0274e6c3db22b61d821fa"
+    },
+    {
+      "path": "fight_candidate_context_regression_test.py",
+      "role": "test",
+      "bytes": 27820,
+      "sha256": "623d7c24849c44fda2b5c7bcfd994cfa64b97ea51036dfba41a2b21dd33c5ea2"
+    },
+    {
+      "path": "fight_candidate_striking_diagnostics_test.py",
+      "role": "test",
+      "bytes": 28876,
+      "sha256": "5c80ccb10cf105ef0ea1dda6f0bc03b84a5b61dd1072258a91c24478e1f4e8b6"
+    },
+    {
+      "path": "fight_chain_action_weighting_regression_test.py",
+      "role": "test",
+      "bytes": 12815,
+      "sha256": "689ab787813b48f3478d4dee6cb5fc64e81a7f455c0d4d77a2e9d5734fbde034"
+    },
+    {
+      "path": "fight_chain_initiative_regression_test.py",
+      "role": "test",
+      "bytes": 9959,
+      "sha256": "5fac4f1d4b3caff89b9d4150044e00e3e64a34dbbf72117452c97f085cc93b2f"
+    },
+    {
+      "path": "fight_chain_opportunity_regression_test.py",
+      "role": "test",
+      "bytes": 16596,
+      "sha256": "39828e238f744847c6276593561f15eaabdae543feadaf4ebc83b64738ac863e"
+    },
+    {
+      "path": "fight_chain_reaction_provenance_test.py",
+      "role": "test",
+      "bytes": 6903,
+      "sha256": "13ae023fa67820cab80eb0c5ceb7fc5222460567d8bdf987eb6bf814479f9857"
+    },
+    {
+      "path": "fight_chain_selection_diagnostics_test.py",
+      "role": "test",
+      "bytes": 4545,
+      "sha256": "3b73de437e846456682f624082ba3062c9a907cb829b2087fe36de61f28f3cc8"
+    },
+    {
+      "path": "fight_continuation_branch_candidate_test.py",
+      "role": "test",
+      "bytes": 4479,
+      "sha256": "6117fc8d7cd74566b5546c4a3400c3dd691d2d61367e8c9cc15234488a9cd315"
+    },
+    {
+      "path": "fight_continuation_commitment_test.py",
+      "role": "test",
+      "bytes": 4782,
+      "sha256": "fbdbffe8ec31e66aa0104669ebf489dc3b18270e10f69e919a8650baaff5785c"
+    },
+    {
+      "path": "fight_continuation_strength_regression_test.py",
+      "role": "test",
+      "bytes": 7937,
+      "sha256": "48d33b803f5e40968545272e1385841977450dbcd44cedb36b36b2e0a26885fe"
+    },
+    {
+      "path": "fight_counter_fallback_regression_test.py",
+      "role": "test",
+      "bytes": 5237,
+      "sha256": "02bd0f15f7a1d232a57118e992cea01e30267c5231c4a49c4d595fdda649bf3e"
+    },
+    {
+      "path": "fight_cradle_matchup_diagnostics_test.py",
+      "role": "test",
+      "bytes": 2617,
+      "sha256": "7ceb48a77fa3e51817b2fd34f48e2dedf7d134cbf27f7b805ed5047c5568bb43"
+    },
+    {
+      "path": "fight_cradle_setup_candidate_test.py",
+      "role": "test",
+      "bytes": 10705,
+      "sha256": "d3ce11e5f51141fe7537cc45994d1eb7aa4c17d781d303c3925cfc8bc1ced694"
+    },
+    {
+      "path": "fight_defense_wording_benchmark_test.py",
+      "role": "test",
+      "bytes": 2801,
+      "sha256": "cdbaacccbddeacf29fb95d1a8b2678484f0d3abb57db7f62365788eea7556f40"
+    },
+    {
+      "path": "fight_defense_wording_test.py",
+      "role": "test",
+      "bytes": 3022,
+      "sha256": "e39aa0085179eba1fd1db5b37551e6c15059a10e625426c8cea1b7e9fa49d8c1"
+    },
+    {
+      "path": "fight_dirty_boxing_preview_regression_test.py",
+      "role": "test",
+      "bytes": 7940,
+      "sha256": "b7d920793b31d69179a2859cc2b4f1c1d37cd32134c9345ec6fbb11a5d027150"
+    },
+    {
+      "path": "fight_engine.py",
+      "role": "runtime_source",
+      "bytes": 542329,
+      "sha256": "5684b3082c94362685c9c405485f356b02c56be38966dedaa854c6c631ab38fa"
+    },
+    {
+      "path": "fight_engine_audit.py",
+      "role": "runtime_source",
+      "bytes": 50997,
+      "sha256": "897422a062807f5fe0afe7b13c142d118d8047c9f917cd219aed2a928f733963"
+    },
+    {
+      "path": "FIGHT_ENGINE_DEVELOPMENT_PLAN.md",
+      "role": "documentation",
+      "bytes": 32503,
+      "sha256": "4f91aa233ab695da08eeb653a802d74956c729a79f00217f5e4cedf4bfdf4afa"
+    },
+    {
+      "path": "fight_engine_full_system_test.py",
+      "role": "test",
+      "bytes": 13683,
+      "sha256": "3a2cf6b40b06eae06cc1e02f11bba450c5b40ce8b25029534eb88c6a549ba9c4"
+    },
+    {
+      "path": "FIGHT_ENGINE_MOVES_AND_SKILLS_PLAN.md",
+      "role": "documentation",
+      "bytes": 33535,
+      "sha256": "7142f95cdd114e6e315aae2c3cbeaec384ea60b0abd3282d38c0f935d70d3243"
+    },
+    {
+      "path": "fight_engine_regression_test.py",
+      "role": "test",
+      "bytes": 165331,
+      "sha256": "88fab36c7a7b0a2ff3311f398f5bfd10a598d4b47c5013a29accc75755bfca38"
+    },
+    {
+      "path": "fight_failed_shot_escape_intent_test.py",
+      "role": "test",
+      "bytes": 9241,
+      "sha256": "91effa9c8094c948118a74c6c84e8842fd94649e9b91515daabef427b30fdcd1"
+    },
+    {
+      "path": "fight_gift_wrap_control_candidate_test.py",
+      "role": "test",
+      "bytes": 4087,
+      "sha256": "dcc4ff79384f424c479965a9089e7c8076430d0b4c0635cd1d4859651d41e743"
+    },
+    {
+      "path": "fight_gift_wrap_mount_candidate_test.py",
+      "role": "test",
+      "bytes": 4571,
+      "sha256": "eb7734ff21394df23459100335446f26b3000a94582bab6d41bf714d971851f7"
+    },
+    {
+      "path": "fight_ground_activity_regression_test.py",
+      "role": "test",
+      "bytes": 6020,
+      "sha256": "3d0c2c240048e8e1deaaee001632a1c97eac1e242f0947f33c28209891a6642f"
+    },
+    {
+      "path": "fight_guillotine_defense_regression_test.py",
+      "role": "test",
+      "bytes": 9890,
+      "sha256": "e66e1d41beac864b89f7c36a1005eb61f9ef08fcf3aea8bae4f10cccc2c31985"
+    },
+    {
+      "path": "fight_heel_hook_identity_test.py",
+      "role": "test",
+      "bytes": 6767,
+      "sha256": "b9df41b619b5b64cf9fc2e4e986c670192f69d1f0959ccd2fc71bbfbb9610e9c"
+    },
+    {
+      "path": "fight_jab_timing_diagnostics_test.py",
+      "role": "test",
+      "bytes": 4332,
+      "sha256": "a945276e79449c468ea3e7302a1f6f1490d6e312801719a223a809fee080fb53"
+    },
+    {
+      "path": "fight_jab_wording_test.py",
+      "role": "test",
+      "bytes": 5511,
+      "sha256": "219a4a063107c81e7e58ec2263b2885c047c0cdf22b7babcdc093f61822d2ba6"
+    },
+    {
+      "path": "fight_kick_power_test.py",
+      "role": "test",
+      "bytes": 2153,
+      "sha256": "b6e4f5a35bedf0377dd1ac699f755242f7333145bb868292e84183bc2e9ae834"
+    },
+    {
+      "path": "fight_leg_entry_regression_test.py",
+      "role": "test",
+      "bytes": 8378,
+      "sha256": "01809b6d68d9860e38ebdbd6d38c7b939317a9aedb5dbe248f8313a1c81a08ad"
+    },
+    {
+      "path": "fight_leg_escape_defense_regression_test.py",
+      "role": "test",
+      "bytes": 4454,
+      "sha256": "2acd132e8969badb4af89842f533b89375b9c6862d91c8bacb7d75b417f68df1"
+    },
+    {
+      "path": "fight_move_adaptability_regression_test.py",
+      "role": "test",
+      "bytes": 5549,
+      "sha256": "8e68aea34dbbee1cb73f9a1367afa8cc6a0d09e895e9ddcdc8050b12b62477ac"
+    },
+    {
+      "path": "fight_move_bottom_defense_regression_test.py",
+      "role": "test",
+      "bytes": 4502,
+      "sha256": "789e72624bb040de54992c6034dadf7ecc59b6580f29b8e6e9fb90ed29fb8ff0"
+    },
+    {
+      "path": "fight_move_bottom_submission_authoring_test.py",
+      "role": "test",
+      "bytes": 1804,
+      "sha256": "de1cb9522538fe83164dd1afc13643e589019b5f06e5e5b2d25085fc4b748a97"
+    },
+    {
+      "path": "fight_move_cache_regression_test.py",
+      "role": "test",
+      "bytes": 4607,
+      "sha256": "619b862f5fdcaf93a4a6db86afedb507c3eef809a84016ddb00da2c3ff2f9bd8"
+    },
+    {
+      "path": "fight_move_chain_regression_test.py",
+      "role": "test",
+      "bytes": 2831,
+      "sha256": "a28a6018da125d9c97ef7d2ab6b0bae90b230a402875ef0c3bb99665912442b3"
+    },
+    {
+      "path": "fight_move_clinch_authoring_test.py",
+      "role": "test",
+      "bytes": 4109,
+      "sha256": "c772a241771ba3b65983bc3d97a31057a7c3b76267994688ff41f016f3d0f191"
+    },
+    {
+      "path": "fight_move_coverage_regression_test.py",
+      "role": "test",
+      "bytes": 24342,
+      "sha256": "66fef96d0158f7ef2c81d3315ca067161d189dae00a72f3ad3ba8b073e440105"
+    },
+    {
+      "path": "fight_move_deprecation_regression_test.py",
+      "role": "test",
+      "bytes": 5028,
+      "sha256": "946e02e3135acf65ed8b6fa032ca7e5b923c5806202effe6327a0e05b332e3ce"
+    },
+    {
+      "path": "fight_move_expansion_regression_test.py",
+      "role": "test",
+      "bytes": 2512,
+      "sha256": "290b6808d9a9f3d76a3a4f37581a8d3d3f69c8db6ce9204fb4389d77b74b153c"
+    },
+    {
+      "path": "fight_move_failed_shot_authoring_test.py",
+      "role": "test",
+      "bytes": 6851,
+      "sha256": "a5e1c48538453793bb19290b31441e49653dfe71a11bac4217580dd98f80250d"
+    },
+    {
+      "path": "fight_move_followup_authoring_test.py",
+      "role": "test",
+      "bytes": 5477,
+      "sha256": "591927ef9e3a3bec152e5f5fc169e0a43138689a1c8d63c45730ef3d855b6480"
+    },
+    {
+      "path": "fight_move_followup_comparison_regression_test.py",
+      "role": "test",
+      "bytes": 2240,
+      "sha256": "928686ca565d58bde33ceab6389a057d5e0c1a3a9f14e00313e37b67bc8e18c3"
+    },
+    {
+      "path": "fight_move_followup_continuity_regression_test.py",
+      "role": "test",
+      "bytes": 6944,
+      "sha256": "fef7aa0ba21793e7edf439d72ccea37c92a54aa3deae12b8f8239957de347843"
+    },
+    {
+      "path": "fight_move_followup_defensive_continuity_regression_test.py",
+      "role": "test",
+      "bytes": 3627,
+      "sha256": "7a94769aa9a8aeda98e9da5e90486b950bf10a4a31ef90bd9bc761a4f6ed8258"
+    },
+    {
+      "path": "fight_move_followup_diversity_regression_test.py",
+      "role": "test",
+      "bytes": 6188,
+      "sha256": "bc2d9568443a869eadc68b9d03858fa78b1f4bb3db22205dbfd909b38d86c088"
+    },
+    {
+      "path": "fight_move_followup_parity_regression_test.py",
+      "role": "test",
+      "bytes": 7412,
+      "sha256": "2f9cbfbc93ff31ef57eb26e47dd8e32e89ed914030ded8ec954021e768099298"
+    },
+    {
+      "path": "fight_move_front_headlock_authoring_test.py",
+      "role": "test",
+      "bytes": 7499,
+      "sha256": "b03f583899ac97db9118b5f0336d9ae25a5b910a260d412491979a38dcdccc4e"
+    },
+    {
+      "path": "fight_move_ground_expansion_regression_test.py",
+      "role": "test",
+      "bytes": 2113,
+      "sha256": "cdbe8d1d4f89c40badde4ad8496a824f46990e70a765a7e759a297c7c4310cfe"
+    },
+    {
+      "path": "fight_move_ground_top_authoring_test.py",
+      "role": "test",
+      "bytes": 4951,
+      "sha256": "dd98f52363e541d5a842138b0f27ab2d8c8b76f5b342f7686ed751d230cf685b"
+    },
+    {
+      "path": "fight_move_kick_authoring_test.py",
+      "role": "test",
+      "bytes": 2906,
+      "sha256": "c7ed1955ce89b7a6456ca16824a20c92e8998189a5d6f69cce7156c8169c61dc"
+    },
+    {
+      "path": "fight_move_leg_entanglement_authoring_test.py",
+      "role": "test",
+      "bytes": 10420,
+      "sha256": "a1d72a13b3d0a481bfa59454451482fbd83190776b318c0fdf6276b15e55dd6c"
+    },
+    {
+      "path": "fight_move_parity_regression_test.py",
+      "role": "test",
+      "bytes": 4642,
+      "sha256": "ff7bc639ef27db6727571b311afcb45a8e378f1b63894a39e32348dcaf84a469"
+    },
+    {
+      "path": "fight_move_registry_regression_test.py",
+      "role": "test",
+      "bytes": 4947,
+      "sha256": "d6d0a69458a7a40d6b7a6d988be01badfa0521387e57b1384e7e2bdfbf1f150b"
+    },
+    {
+      "path": "fight_move_schema_parity_regression_test.py",
+      "role": "test",
+      "bytes": 5669,
+      "sha256": "d82b5a438f2aef1454451e8a1a4f89262343b6984b83f4d6260544df7045f3df"
+    },
+    {
+      "path": "fight_move_selection_parity_regression_test.py",
+      "role": "test",
+      "bytes": 17029,
+      "sha256": "65394cf57ada1b18af277cb006fb773462c1df2205c755b05facd1f27a6aec5d"
+    },
+    {
+      "path": "fight_move_selector_benchmark_regression_test.py",
+      "role": "test",
+      "bytes": 2312,
+      "sha256": "0deee457c9a6b72f6a5418998f5bd53f4f1e98f87bce9b4bb2a84786441599d3"
+    },
+    {
+      "path": "fight_move_sequence_regression_test.py",
+      "role": "test",
+      "bytes": 6726,
+      "sha256": "ea20dbe088034583ee35e2c888ae5e4238f11e8d9ca178191c6d20fb76a94171"
+    },
+    {
+      "path": "fight_move_specialist_entry_authoring_test.py",
+      "role": "test",
+      "bytes": 4330,
+      "sha256": "fbe49f5dbe856f66ea5c773943cf8319e5357607b08d41095867404b707983f7"
+    },
+    {
+      "path": "fight_move_standing_back_authoring_test.py",
+      "role": "test",
+      "bytes": 7886,
+      "sha256": "44d69c9bfdf685c039a06afffff3779b67761bdd80f589e2bcc458ec100a2313"
+    },
+    {
+      "path": "fight_move_striking_expansion_regression_test.py",
+      "role": "test",
+      "bytes": 4991,
+      "sha256": "8c34376795b35f8918c2add53a0fd6693ba650b00364b1689781e31a5f8ab017"
+    },
+    {
+      "path": "fight_move_turtle_authoring_test.py",
+      "role": "test",
+      "bytes": 7380,
+      "sha256": "d0de36c44099fc9e3d9e0f32e99bb92eaf6864cddb821c88913a666556a11659"
+    },
+    {
+      "path": "fight_move_wrestling_authoring_test.py",
+      "role": "test",
+      "bytes": 3003,
+      "sha256": "a9da3cfec2a3da61f143fc788117b8ddd1be085cd6b44d12d54b98614a1e70df"
+    },
+    {
+      "path": "fight_moves/__init__.py",
+      "role": "runtime_source",
+      "bytes": 931,
+      "sha256": "5815168c52dbe06cc595b4b0d4b5f56d41240e28c6eb886ded7667431f453235"
+    },
+    {
+      "path": "fight_moves/catalogue/__init__.py",
+      "role": "runtime_source",
+      "bytes": 3257,
+      "sha256": "484a3a81d8f94f8d877b85dbdc9c8091e57f2e8aaf68b21790513e517847d4ee"
+    },
+    {
+      "path": "fight_moves/catalogue/bottom_development.py",
+      "role": "runtime_source",
+      "bytes": 8176,
+      "sha256": "dca9f0a709151ad90a47569d4e1508c0f5aee6be7c0e410b100ba2a10e07c1d3"
+    },
+    {
+      "path": "fight_moves/catalogue/bottom_submission_development.py",
+      "role": "runtime_source",
+      "bytes": 3209,
+      "sha256": "6e212ba755dbc5b4c56603ab2b202fa2dce81e25f8bee265c4ad3f2c43f4ab5c"
+    },
+    {
+      "path": "fight_moves/catalogue/clinch.py",
+      "role": "runtime_source",
+      "bytes": 4948,
+      "sha256": "a89cf0a46f182fafed1d7b2aa0b507b39249d1742bb9e9e38a6273772a9574fe"
+    },
+    {
+      "path": "fight_moves/catalogue/clinch_development.py",
+      "role": "runtime_source",
+      "bytes": 8537,
+      "sha256": "d32c07ef0835516b53b519a64d19c5e2f40bb4939133c516588c4c4c3ca966b2"
+    },
+    {
+      "path": "fight_moves/catalogue/escapes.py",
+      "role": "runtime_source",
+      "bytes": 6282,
+      "sha256": "67cd27f431e17c8191e21059e15e69f445614dafcaf48f1f7e9b3a62195d95a5"
+    },
+    {
+      "path": "fight_moves/catalogue/failed_shot_development.py",
+      "role": "runtime_source",
+      "bytes": 3388,
+      "sha256": "00c1d7f63b36ff63ce43d4ba4f38c89314c875f1602bf2d10046d9694274cfeb"
+    },
+    {
+      "path": "fight_moves/catalogue/front_headlock_development.py",
+      "role": "runtime_source",
+      "bytes": 5081,
+      "sha256": "84b9a161f19c4d9afd75be8557536058ff0fa62dab2e8f85aac2e961770561fd"
+    },
+    {
+      "path": "fight_moves/catalogue/ground_control.py",
+      "role": "runtime_source",
+      "bytes": 8178,
+      "sha256": "ba2aec86a5d15b55fe5de7b207890722ea103823c75730c32974d1445c05f93b"
+    },
+    {
+      "path": "fight_moves/catalogue/ground_top_development.py",
+      "role": "runtime_source",
+      "bytes": 7649,
+      "sha256": "63731f3c97b26da7549c45ad40f6f774eb6e48d808403b2f0cc4f8ba2d89c5f6"
+    },
+    {
+      "path": "fight_moves/catalogue/jab_development.py",
+      "role": "runtime_source",
+      "bytes": 1883,
+      "sha256": "cd3375addc719c61573e0c048110475a8089afbe5b2091aaeb9eee7837561947"
+    },
+    {
+      "path": "fight_moves/catalogue/kick_development.py",
+      "role": "runtime_source",
+      "bytes": 3880,
+      "sha256": "8ceca24a93fc61c8963ca14f9a8bd9ab532eaa6f115b25ebb1afea5de0d74895"
+    },
+    {
+      "path": "fight_moves/catalogue/kicks.py",
+      "role": "runtime_source",
+      "bytes": 9995,
+      "sha256": "57bedd6dfa86f1a0efd38659094419d1c6bd4104a7b615d823e8156656d52522"
+    },
+    {
+      "path": "fight_moves/catalogue/leg_entanglement_development.py",
+      "role": "runtime_source",
+      "bytes": 6724,
+      "sha256": "de488eff5f3fbf4930624d4c415a5ed525be035bffca6b02992dcc8fd4391673"
+    },
+    {
+      "path": "fight_moves/catalogue/passes.py",
+      "role": "runtime_source",
+      "bytes": 4392,
+      "sha256": "1d5bbda640e0937dace2e4c4cdc5f4c1f2065fe7b3e4a82c7e3676fa87c0cbff"
+    },
+    {
+      "path": "fight_moves/catalogue/power_punch_development.py",
+      "role": "runtime_source",
+      "bytes": 3079,
+      "sha256": "19cdc9807ecd8e26ee75fbb186522667debe9de7e1f571387f547a44f4ae606d"
+    },
+    {
+      "path": "fight_moves/catalogue/punches.py",
+      "role": "runtime_source",
+      "bytes": 12089,
+      "sha256": "b846349c8087d8d7b9de3236165599861b2d0d8221ae05f68bb62fdbce45291f"
+    },
+    {
+      "path": "fight_moves/catalogue/scrambles.py",
+      "role": "runtime_source",
+      "bytes": 8585,
+      "sha256": "d1e44ed7cf664489f4c02e5b4188382a7b022daca24269a368367ea1db50fc67"
+    },
+    {
+      "path": "fight_moves/catalogue/specialist_entry_development.py",
+      "role": "runtime_source",
+      "bytes": 2624,
+      "sha256": "0e89cc1655589667352576009e1e02b23f4e7473ce80cdb2b189d404778388a0"
+    },
+    {
+      "path": "fight_moves/catalogue/standing_back_development.py",
+      "role": "runtime_source",
+      "bytes": 4072,
+      "sha256": "95fa0ee708c23756863789830faab4ca8d3791e51f9151a6f3f799bbe8708000"
+    },
+    {
+      "path": "fight_moves/catalogue/style_signatures.py",
+      "role": "runtime_source",
+      "bytes": 19927,
+      "sha256": "d64d5cc4bf09e06e970a84bdaf501164896eedd81dee1cf127a7e2327c3f2c24"
+    },
+    {
+      "path": "fight_moves/catalogue/submissions.py",
+      "role": "runtime_source",
+      "bytes": 5984,
+      "sha256": "7ba3e9f4d6d547884075a115d993d54a35015b0f9dcedf69a66b3a96e40f4b2e"
+    },
+    {
+      "path": "fight_moves/catalogue/survival_development.py",
+      "role": "runtime_source",
+      "bytes": 9439,
+      "sha256": "2455143be34f4903ae8ed161fecd11d6bc64a68e4fbe0824e9f23d38ca35daa7"
+    },
+    {
+      "path": "fight_moves/catalogue/takedowns.py",
+      "role": "runtime_source",
+      "bytes": 6561,
+      "sha256": "4b39f431e1e068d3af1d8769a18a93304973942c28b432c756835f83ecbb3031"
+    },
+    {
+      "path": "fight_moves/catalogue/top_submissions.py",
+      "role": "runtime_source",
+      "bytes": 6659,
+      "sha256": "034b6f5711dc37f1ccaaffc8508a4ee8a626440fcabe3731e39a547e2b53f109"
+    },
+    {
+      "path": "fight_moves/catalogue/turtle_development.py",
+      "role": "runtime_source",
+      "bytes": 4293,
+      "sha256": "819a39b7fa6c2f92d05a7c003189c76e784ac554b056ed13ec2eb37c445be876"
+    },
+    {
+      "path": "fight_moves/catalogue/wrestling_development.py",
+      "role": "runtime_source",
+      "bytes": 4828,
+      "sha256": "f8115411aa787fe83e87995cf23be7ecd12edbcbda599d5cd6411f53f956f30e"
+    },
+    {
+      "path": "fight_moves/chains.py",
+      "role": "runtime_source",
+      "bytes": 3590,
+      "sha256": "0868168a237b283663993bbcd1be9d8a29549944ea69f14a3675d0710438b691"
+    },
+    {
+      "path": "fight_moves/coverage.py",
+      "role": "runtime_source",
+      "bytes": 3135,
+      "sha256": "742866f75252710b55fe23efd786433d114f40d6d54b4f3bcbf470f06e474a8f"
+    },
+    {
+      "path": "fight_moves/defense_expansion.py",
+      "role": "runtime_source",
+      "bytes": 4217,
+      "sha256": "6e1f99b1684f31808bf198482d74ac19a6715f77a61d7fd0fd98e1e15bbdceec"
+    },
+    {
+      "path": "fight_moves/defenses.py",
+      "role": "runtime_source",
+      "bytes": 3489,
+      "sha256": "30a02bf257da47a119d1c9ed26214cbb38b35c96e9fd7ad70f97d7aa2864556a"
+    },
+    {
+      "path": "fight_moves/followup_continuity.py",
+      "role": "runtime_source",
+      "bytes": 3346,
+      "sha256": "bc0d6216c7a59e6a13e426d36696c7dc5c1a217c3807bf99551495680e9d978b"
+    },
+    {
+      "path": "fight_moves/followup_defensive_continuity.py",
+      "role": "runtime_source",
+      "bytes": 1756,
+      "sha256": "5ff35b5f378dc8ef96dec1442aa90c7bfb8ac7e01ec55b9b692af745e19a5cb4"
+    },
+    {
+      "path": "fight_moves/followup_diversity.py",
+      "role": "runtime_source",
+      "bytes": 3442,
+      "sha256": "8bdcd54cde448bfbdc8ef8fe598ffad8d4daa71bd47940af3fdcce5f5d44265d"
+    },
+    {
+      "path": "fight_moves/followup_expansion.py",
+      "role": "runtime_source",
+      "bytes": 10424,
+      "sha256": "58e63b055a25428c0cc7886556e2b6ab2ac6f5a0c021c50b4d751571a9adfb73"
+    },
+    {
+      "path": "fight_moves/index.py",
+      "role": "runtime_source",
+      "bytes": 2371,
+      "sha256": "97f0f52b83b14f8633b1d305d5441137ca05d5d1761c030bd6fd4f2b0f4fb92d"
+    },
+    {
+      "path": "fight_moves/legacy_ids.py",
+      "role": "runtime_source",
+      "bytes": 10661,
+      "sha256": "807763e71255c481baac2ec6412053769287572a4e3e6efd85ffd255e7a17064"
+    },
+    {
+      "path": "fight_moves/presets.py",
+      "role": "runtime_source",
+      "bytes": 2965,
+      "sha256": "628d990d522da6fb68193404af61ebcd76528a267dd59a4c701eb4bdf15c94ba"
+    },
+    {
+      "path": "fight_moves/registry.py",
+      "role": "runtime_source",
+      "bytes": 2217,
+      "sha256": "96cc6518879360b1b543415d9714b35f72224a10a33e46907f6eba6c778604ac"
+    },
+    {
+      "path": "fight_moves/release_registry.py",
+      "role": "runtime_source",
+      "bytes": 3804,
+      "sha256": "34c6b1ca9490bd73eb820e05d956d2df157644658ee906190a499b0163e78ae6"
+    },
+    {
+      "path": "fight_moves/schema.py",
+      "role": "runtime_source",
+      "bytes": 5142,
+      "sha256": "4ed368325f3b2c277541479124706eef9376cba17c290e88cb076a34c67ce5a5"
+    },
+    {
+      "path": "fight_moves/selection_pool.py",
+      "role": "runtime_source",
+      "bytes": 982,
+      "sha256": "74f96f3ac9e0eecc3c709b46e8b1cac88cf0edf3c90e09bdb40016da7bb0f3bc"
+    },
+    {
+      "path": "fight_moves/specialist_intent.py",
+      "role": "runtime_source",
+      "bytes": 3376,
+      "sha256": "b0f724b32c6d9fe710438380612d92b2bb5429ce19edccae2e0451ab0484ce9f"
+    },
+    {
+      "path": "fight_moves/submission_identity.py",
+      "role": "runtime_source",
+      "bytes": 4432,
+      "sha256": "5f36c0501b58031ee1164351113653c5b7ba20d05544192e15736a96298220fe"
+    },
+    {
+      "path": "fight_moves/submission_pool.py",
+      "role": "runtime_source",
+      "bytes": 2908,
+      "sha256": "b54759749a7c599a3653e6d2bac575739c5f6b0d9778a75aeb2bd155094e0808"
+    },
+    {
+      "path": "fight_moves/submission_transition.py",
+      "role": "runtime_source",
+      "bytes": 1718,
+      "sha256": "ebba604134abe5e89bd1b4fe7369d0ea0448f6cece6175559f5b7bf5f1dcb85f"
+    },
+    {
+      "path": "fight_moves/validation.py",
+      "role": "runtime_source",
+      "bytes": 6634,
+      "sha256": "51ec19e640c19a3f4f6f0934bbfef88cec5b315c2dd855b904998889dc3ca5be"
+    },
+    {
+      "path": "fight_night_archive.py",
+      "role": "runtime_source",
+      "bytes": 10250,
+      "sha256": "811433f9e6df2f9035712885779bc72e440a54380f81d59da634823a84fab2aa"
+    },
+    {
+      "path": "fight_night_archive_regression_test.py",
+      "role": "test",
+      "bytes": 6288,
+      "sha256": "8e2d1c57eeb235af7b1dee62e800430d85f111e74a17e3f9f593b89b51eef2f8"
+    },
+    {
+      "path": "fight_night_experience_regression_test.py",
+      "role": "test",
+      "bytes": 22278,
+      "sha256": "8d847dd0ad30c50120d1b1e8c66bdf92d797daacf76d63406ff800ee7bc0da67"
+    },
+    {
+      "path": "fight_night_layout.py",
+      "role": "runtime_source",
+      "bytes": 14285,
+      "sha256": "4ac820fa4b9a5993e4001670ab1572fd04d9168a9d1894083cb304254c53001d"
+    },
+    {
+      "path": "fight_night_layout_regression_test.py",
+      "role": "test",
+      "bytes": 12911,
+      "sha256": "7a4687485427f1ee8e79988b77c37d16de02bf879466b8c200ff423c12fb3182"
+    },
+    {
+      "path": "fight_night_presentation.py",
+      "role": "runtime_source",
+      "bytes": 8093,
+      "sha256": "919e2a471c1143b86e17b3a856c873e8d34019a7180f171547caf9e72b0bb277"
+    },
+    {
+      "path": "fight_night_presentation_test.py",
+      "role": "test",
+      "bytes": 4738,
+      "sha256": "5c693671df6121497726d5526f138b93dbf2e79432ce33dd4b8a4de3d09fb81f"
+    },
+    {
+      "path": "fight_pocket_distance_regression_test.py",
+      "role": "test",
+      "bytes": 10776,
+      "sha256": "cb0f274c017c9abc3cf9efb046cbbc4774f93ff693bb8e89b080dbf7f8fb4a0d"
+    },
+    {
+      "path": "fight_prepared_diagnostics_regression_test.py",
+      "role": "test",
+      "bytes": 11789,
+      "sha256": "e15d05cefdabd46dd6257dbcae626bf778ced5be8766ef9d821e9be1d505b9da"
+    },
+    {
+      "path": "fight_prepared_submission_regression_test.py",
+      "role": "test",
+      "bytes": 12071,
+      "sha256": "3241530b3716d92d20b6b4ca22e935a2cbd428219b7865c1e0688d10e611d554"
+    },
+    {
+      "path": "fight_release.py",
+      "role": "runtime_source",
+      "bytes": 3969,
+      "sha256": "936316ebb0d8c68837ee73f96c5002e4e2e7b5cb466bdb1083838e035371915f"
+    },
+    {
+      "path": "fight_release_acceptance_test.py",
+      "role": "test",
+      "bytes": 9667,
+      "sha256": "548683022c6c5c1279ee10819d80d24f0d5959066f8ede9e6ef78ffd154a799b"
+    },
+    {
+      "path": "fight_release_extensions.py",
+      "role": "runtime_source",
+      "bytes": 12800,
+      "sha256": "15675466446ef4705db8c4676b7543ef1e1be595a4c321b42b7fdf93cd96478e"
+    },
+    {
+      "path": "fight_release_extensions_test.py",
+      "role": "test",
+      "bytes": 6204,
+      "sha256": "758fa758b69c95717998aff46521deeae443fb8b55f24a036f8057ca4134b46c"
+    },
+    {
+      "path": "fight_release_integration_test.py",
+      "role": "test",
+      "bytes": 2432,
+      "sha256": "cd33564e9acb0edc0e252eaef087f8ce3e732ca8ae5aaa0a0802a210d28d09eb"
+    },
+    {
+      "path": "fight_release_persistence_test.py",
+      "role": "test",
+      "bytes": 6346,
+      "sha256": "f74dd6c5dcb4746cd17778b43078beada8c25c7a660858f6ce8d6548a8df9b7e"
+    },
+    {
+      "path": "fight_release_registry_test.py",
+      "role": "test",
+      "bytes": 5542,
+      "sha256": "a6b140bc275ba05d0300c45e69b52d7515141fb4998ce5eb3746cc700b68cb96"
+    },
+    {
+      "path": "fight_release_runtime_audit_test.py",
+      "role": "test",
+      "bytes": 3240,
+      "sha256": "5609767bbf14704f6c007301d5f7ec3e039878b3ae53360e1a5659b18a509a22"
+    },
+    {
+      "path": "fight_repertoire_cohorts_test.py",
+      "role": "test",
+      "bytes": 2577,
+      "sha256": "2e7217b2795b6ed0a427a8f929985d2dfca832c4d625afb1947e9ceb116e5fc6"
+    },
+    {
+      "path": "fight_repertoire_diagnostics_test.py",
+      "role": "test",
+      "bytes": 5276,
+      "sha256": "236756ecc94dca730551c68a9a378da51fb9a44b0e0fc64b288a83266ff7ca21"
+    },
+    {
+      "path": "fight_repertoire_pool_regression_test.py",
+      "role": "test",
+      "bytes": 2530,
+      "sha256": "4c89625d93fed28720cff6f3e06b9c2ddd32a649b086827c82c90d70ae4af5d7"
+    },
+    {
+      "path": "fight_repertoire_readaptation_regression_test.py",
+      "role": "test",
+      "bytes": 7672,
+      "sha256": "2eae1379010258abcae1299b68f396bebd5b05f39fbd63b712668b813d9132ef"
+    },
+    {
+      "path": "fight_round_counter_expiry_test.py",
+      "role": "test",
+      "bytes": 7737,
+      "sha256": "d318a39907fc84069f379f08e84fd1512e4db37d8424135b22acfd89e0c637ee"
+    },
+    {
+      "path": "fight_round_streak_reset_test.py",
+      "role": "test",
+      "bytes": 5879,
+      "sha256": "a49559576313d77769f4c28257b1bb992037440a934e90def30403d7593468f7"
+    },
+    {
+      "path": "fight_scarf_hold_setup_regression_test.py",
+      "role": "test",
+      "bytes": 21797,
+      "sha256": "a18c874d34664ba417f1efdb46f0fda1ec372141dea52fe99fb6feee4417d3f9"
+    },
+    {
+      "path": "fight_specialist_accounting_regression_test.py",
+      "role": "test",
+      "bytes": 11278,
+      "sha256": "6031918feecc16120c6e8b169cef03341b97f4e51d356edb6a2a0beb402ea906"
+    },
+    {
+      "path": "fight_specialist_entry_regression_test.py",
+      "role": "test",
+      "bytes": 12019,
+      "sha256": "e05b3875318ac3a9b4fd1fd0e3cafadbd42d161f1a2b9696ac716f36858a3f3c"
+    },
+    {
+      "path": "fight_specialist_plan_regression_test.py",
+      "role": "test",
+      "bytes": 7753,
+      "sha256": "886475c1ba04921407f706f83931ba60533ad9a4ef72c6adf9a5ed310ed545f9"
+    },
+    {
+      "path": "fight_specialist_style_regression_test.py",
+      "role": "test",
+      "bytes": 5675,
+      "sha256": "a948f05a4ec6bc32e482f058b3e78b706332dd9004318cfa83231b23650d9123"
+    },
+    {
+      "path": "fight_standing_back_entry_regression_test.py",
+      "role": "test",
+      "bytes": 14348,
+      "sha256": "01b9b732785dc15b7ea632a6d2a0e8a5ffb2bb76e474729282574877fd90f9dc"
+    },
+    {
+      "path": "fight_standing_counter_diagnostics_test.py",
+      "role": "test",
+      "bytes": 8027,
+      "sha256": "9e9b6d03727d53ace64579ebb7a8e1f4896f80ab5ebcbf317add5e3b27e2136f"
+    },
+    {
+      "path": "fight_standing_head_damage_test.py",
+      "role": "test",
+      "bytes": 5708,
+      "sha256": "45dfef2c86a4baa5b796fc2f035ae958be6194b348f58a4914751b6da757ac9d"
+    },
+    {
+      "path": "fight_submission_chain_candidate_test.py",
+      "role": "test",
+      "bytes": 7335,
+      "sha256": "a73a9b90bfd85d0d73a1841e1df1dca0c060e286fe159878d2b874cfaae4bd9f"
+    },
+    {
+      "path": "fight_submission_defense_regression_test.py",
+      "role": "test",
+      "bytes": 7852,
+      "sha256": "8647ca88ca746ab43d62971bc07e24be69a59ff50c0b4dda620d543132d4800b"
+    },
+    {
+      "path": "fight_submission_identity_regression_test.py",
+      "role": "test",
+      "bytes": 9680,
+      "sha256": "df3e295ab81bc87d4b849417f55b81084b49eb41b35a1fb43945d133a321bba9"
+    },
+    {
+      "path": "fight_submission_pool_regression_test.py",
+      "role": "test",
+      "bytes": 14751,
+      "sha256": "bd79d8649c7e02fe283f527b10fc1b82368585f587eea409c15c27a224a04225"
+    },
+    {
+      "path": "fight_submission_position_bonus_regression_test.py",
+      "role": "test",
+      "bytes": 6891,
+      "sha256": "ebca2e36b5a3e86072c69addb843f7220fc26ea5c64c68b2c0cb80602932ab97"
+    },
+    {
+      "path": "fight_survival_catalogue_test.py",
+      "role": "test",
+      "bytes": 3290,
+      "sha256": "2b27af45291decb7ad6bc41dded7bd9203fe35c4dbb0f2c1ca6a06491e24e49a"
+    },
+    {
+      "path": "fight_survival_commentary_test.py",
+      "role": "test",
+      "bytes": 1884,
+      "sha256": "bb7514a0d99526cc490e1a32439cab2b8651dbc7743a1baf2370635d5984223c"
+    },
+    {
+      "path": "fight_survival_expansion_test.py",
+      "role": "test",
+      "bytes": 5557,
+      "sha256": "da915d5e7d42b9c539c3921a1243e6bf0b108123369d38a3c3c5fdc36c623ca3"
+    },
+    {
+      "path": "fight_survival_unused_diagnostics_test.py",
+      "role": "test",
+      "bytes": 4217,
+      "sha256": "331254a087da58a78d9efbf6a929834b2a4e8e7787508e55b2543c4b5098d216"
+    },
+    {
+      "path": "fight_top_leg_entry_regression_test.py",
+      "role": "test",
+      "bytes": 8904,
+      "sha256": "34204ccc7974144f11637cdcd2be965b90c597fbba5f363ef399a3710d835c60"
+    },
+    {
+      "path": "fight_variety_opportunity_regression_test.py",
+      "role": "test",
+      "bytes": 9167,
+      "sha256": "e2865fea36ac5b5803fb406a7c9af796b57fd4ad656f81dc391e23e9e21b8cc9"
+    },
+    {
+      "path": "fight_von_flue_angle_provenance_test.py",
+      "role": "test",
+      "bytes": 8373,
+      "sha256": "7434875dc9f67c2a4dc3c0dedac8de5e4587db2f96fef4472d72fe57dc5fc6ad"
+    },
+    {
+      "path": "fight_von_flue_angle_regression_test.py",
+      "role": "test",
+      "bytes": 13594,
+      "sha256": "499dba685e6f88aaf10c07d42e9966095d4824a4475c2ff1ee7788cf974025f3"
+    },
+    {
+      "path": "fight_von_flue_setup_regression_test.py",
+      "role": "test",
+      "bytes": 14953,
+      "sha256": "004c2dbeb451c6d1cf491ca00ca177127492d322a1cca4de85fe965a867f46fb"
+    },
+    {
+      "path": "fighter_portrait_ranked_101_200_test.py",
+      "role": "test",
+      "bytes": 2320,
+      "sha256": "ec472945b9576b34f25355d1d1a5c924d792fad8b721fc098c67e0751db984ad"
+    },
+    {
+      "path": "fighter_portrait_regression_test.py",
+      "role": "test",
+      "bytes": 50818,
+      "sha256": "c4682277e6a2b413f407fd70ba554e22f68136d638146637de440c462d5db740"
+    },
+    {
+      "path": "fighter_portraits/__init__.py",
+      "role": "runtime_source",
+      "bytes": 862,
+      "sha256": "963563fbb5f20ad2b693da9f39c391d7933350c81f2bcfa03778dbc0fab07772"
+    },
+    {
+      "path": "fighter_portraits/expansion.py",
+      "role": "runtime_source",
+      "bytes": 5773,
+      "sha256": "3f2b8d97614b97bc9c70e629e74019cdd03d8e7fd327a9589ae90d2b350fd016"
+    },
+    {
+      "path": "fighter_portraits/hair.py",
+      "role": "runtime_source",
+      "bytes": 14162,
+      "sha256": "08e5351ee8ab1d8418c5a6cb6ee35482d38d4f55464e799494f5bec544e61070"
+    },
+    {
+      "path": "fighter_portraits/identity.py",
+      "role": "runtime_source",
+      "bytes": 5068,
+      "sha256": "d04d0b833d61ef91fbc5557dc3f9059c24ef0b72b232abe2c4078654e898f948"
+    },
+    {
+      "path": "fighter_portraits/overrides.py",
+      "role": "runtime_source",
+      "bytes": 26023,
+      "sha256": "de8c318f70ba997c107e4b8cad306ba2fadb63369df07357fb36bde197f59457"
+    },
+    {
+      "path": "fighter_portraits/ranked_101_200.py",
+      "role": "runtime_source",
+      "bytes": 13564,
+      "sha256": "5c0ea283683dc3decf00d764e965d0a5a59a8669a51c7bd47b3fb3c36582dd73"
+    },
+    {
+      "path": "fighter_portraits/ranked_201_300.py",
+      "role": "runtime_source",
+      "bytes": 12301,
+      "sha256": "acfc4b366c0aa0a51ba2607fe7530aa198865ded8da2ea318d02253087c1e8d4"
+    },
+    {
+      "path": "fighter_portraits/ranked_300_400.py",
+      "role": "runtime_source",
+      "bytes": 12246,
+      "sha256": "73e06a3183b08b421f876c3e4b91ad068f8d7a3e416c9197aa0d7e5a27c60643"
+    },
+    {
+      "path": "fighter_portraits/ranked_51_100.py",
+      "role": "runtime_source",
+      "bytes": 9786,
+      "sha256": "ed8d0f7c6d4d06b36fb0e26ffd4cb6cf657111e771505a45a78395794d7a1495"
+    },
+    {
+      "path": "fighter_portraits/regions.py",
+      "role": "runtime_source",
+      "bytes": 7815,
+      "sha256": "d556ca4a4af1f2f67c66def13c06320ee30892bcffb5a61f0e1cf2b78a55333e"
+    },
+    {
+      "path": "fighter_portraits/render.py",
+      "role": "runtime_source",
+      "bytes": 47469,
+      "sha256": "1091cf61d76a0f7991e746454da4514acdf43da38d06440eb591b5659ab39e2f"
+    },
+    {
+      "path": "fighter_portraits/state.py",
+      "role": "runtime_source",
+      "bytes": 3092,
+      "sha256": "d34984aefba3a40310ad0c04011a1a1375bb1b870a39ef0c38abce1767f539bd"
+    },
+    {
+      "path": "fighter_portraits/styles.py",
+      "role": "runtime_source",
+      "bytes": 10927,
+      "sha256": "de259951bfe5c8ff63a679a722f483460f4e23557f82c5edcd4811ec31f2795c"
+    },
+    {
+      "path": "fighter_portraits/tattoos.py",
+      "role": "runtime_source",
+      "bytes": 767,
+      "sha256": "7bf95890e74d18de6be1b43dd7d1c3c8c1210f14f319c7be269c11e82639d8d5"
+    },
+    {
+      "path": "fighter_profile_overview.py",
+      "role": "runtime_source",
+      "bytes": 23125,
+      "sha256": "0c13c9571a3d8854b4559308ed7a11aacd5ccfc425df72225a4dbc234cf4ebd0"
+    },
+    {
+      "path": "fighter_profile_regression_test.py",
+      "role": "test",
+      "bytes": 33824,
+      "sha256": "ff90c1f7891b9710f636db1f8d80213e6eeb2cb8ff8744476a08d3f01eace82d"
+    },
+    {
+      "path": "fighter_trait_ui.py",
+      "role": "runtime_source",
+      "bytes": 5117,
+      "sha256": "c788d9ac2a4df08266c14986f61872d946d2133d6d0a0f19559813f452d35ed2"
+    },
+    {
+      "path": "fighter_traits.py",
+      "role": "runtime_source",
+      "bytes": 14805,
+      "sha256": "153a7d91ecfca2140cb5226309f820f6f7b9e3ab1da2590d68e287611efa5881"
+    },
+    {
+      "path": "fighter_traits_regression_test.py",
+      "role": "test",
+      "bytes": 13647,
+      "sha256": "89d08db8031b368e2141534acc329a31d6f5ccd4ce156cdbdfec4ba84842fbef"
+    },
+    {
+      "path": "finance_audit_regression_test.py",
+      "role": "test",
+      "bytes": 3797,
+      "sha256": "5fa4e9c9f2f8d45e493408ca03516cc278f092eb9654e100c57600311d614350"
+    },
+    {
+      "path": "finance_ten_year_audit.py",
+      "role": "runtime_source",
+      "bytes": 6451,
+      "sha256": "fde5a05716b9aa1f99465c31f76751f000ccce56966a1181057afb5b7426106c"
+    },
+    {
+      "path": "foundation_regression_test.py",
+      "role": "test",
+      "bytes": 47012,
+      "sha256": "de44ee0bf053517e40e86f58ca7cd33c2a34fa3f8a89b7f682e1c7ace30fc89e"
+    },
+    {
+      "path": "g0_repair_regression_test.py",
+      "role": "test",
+      "bytes": 2642,
+      "sha256": "8a4c851504bf984c6d1a17b6065f31bb846d90e97c505d65e986b1e2a8fa562d"
+    },
+    {
+      "path": "grand_prix.py",
+      "role": "runtime_source",
+      "bytes": 25782,
+      "sha256": "30106769a7c5515bca722f7637ee73a81c2fba262967163212b195d5a95727f5"
+    },
+    {
+      "path": "grand_prix_regression_test.py",
+      "role": "test",
+      "bytes": 14884,
+      "sha256": "6d419f5762691ac3af44abb122cc3f5d7f51929c20e1b0aaecdaa336929cb6d6"
+    },
+    {
+      "path": "identity_persistence_regression_test.py",
+      "role": "test",
+      "bytes": 12934,
+      "sha256": "43ac79bdcb30246867f89a2043f6b2dc5542fc18ff6652e6a0745d7615e8a5ce"
+    },
+    {
+      "path": "j10_comparison_regression_test.py",
+      "role": "test",
+      "bytes": 2877,
+      "sha256": "3bbc850f0377a047fdfe6b475f2a710d5f83a27d9eff939e2901e14b9a029f5a"
+    },
+    {
+      "path": "j12_conversion_regression_test.py",
+      "role": "test",
+      "bytes": 9111,
+      "sha256": "6a2f1f3325d04425a76109b664675ea58b4e061a0336cf9906d83285e7b31138"
+    },
+    {
+      "path": "j2_event_preparation_regression_test.py",
+      "role": "test",
+      "bytes": 3728,
+      "sha256": "d30cc16f55404c18d930074a2212e52a1ced15af0248bd4d7e4883efe50b0f2f"
+    },
+    {
+      "path": "j8_tournament_history_regression_test.py",
+      "role": "test",
+      "bytes": 10972,
+      "sha256": "6f039308e35e78d3440f2f1808ec4bfec89a6676834f2534e5847fad957568be"
+    },
+    {
+      "path": "last_minute_replacement_regression_test.py",
+      "role": "test",
+      "bytes": 28346,
+      "sha256": "8053e7f19a0bdad001d32a149a542fb0ea45147a23a660cc46818f2df213b2bd"
+    },
+    {
+      "path": "Launch MMA Warriors.bat",
+      "role": "build_configuration",
+      "bytes": 769,
+      "sha256": "7c2c23dba27ed3cb9fdecf05d7fa4e3bd37f8db6e91bcb76291f75bd78eafc7a"
+    },
+    {
+      "path": "LICENSE",
+      "role": "project_configuration",
+      "bytes": 1069,
+      "sha256": "158ac8bcaedb0a51ad6a8bda6d0726c441bacc6869d68c54d814d7d428351f15"
+    },
+    {
+      "path": "main.py",
+      "role": "runtime_source",
+      "bytes": 19283,
+      "sha256": "47bf6a4500a72c017527b13e414a0b1ae0af1b9f8d9d7fbf8d4f62ee09d08003"
+    },
+    {
+      "path": "media.py",
+      "role": "runtime_source",
+      "bytes": 202477,
+      "sha256": "e13b2bdcf0e687d31e37fa2ff402d5d8be458f07a856458819d061e750b4e49f"
+    },
+    {
+      "path": "media_plan_regression_test.py",
+      "role": "test",
+      "bytes": 57656,
+      "sha256": "bf260cd27dcb9b49d8bbbaf960f63dd03dadd4d9753554ded1f2b8d438e2fcd4"
+    },
+    {
+      "path": "media_system_test.py",
+      "role": "test",
+      "bytes": 17566,
+      "sha256": "4988548db2cd6f7e39383e1b9ca1615ff629eb08778cbd556caee86d4fbd6bac"
+    },
+    {
+      "path": "MMA Warriors Database Editor.spec",
+      "role": "build_configuration",
+      "bytes": 939,
+      "sha256": "3d9f60377b7b3b7f13c880a6050a2e2a9c890bbc43d6a40445348108450fdec7"
+    },
+    {
+      "path": "MMA Warriors.spec",
+      "role": "build_configuration",
+      "bytes": 1470,
+      "sha256": "745b34e5480fbe78a9e0aba63d29ee5717d1ee33246e510958946829765a575b"
+    },
+    {
+      "path": "models.py",
+      "role": "runtime_source",
+      "bytes": 18061,
+      "sha256": "fcd460f1155ee26884a595444788d862b7013bceb00cab07479ddaef5b96eee0"
+    },
+    {
+      "path": "narrative_long_run_storage_regression_test.py",
+      "role": "test",
+      "bytes": 4300,
+      "sha256": "dd8f8cd7625a6cedb289bedf3ae925a51a7871b11c9e2c386851c7a4afb40804"
+    },
+    {
+      "path": "narrative_performance_regression_test.py",
+      "role": "test",
+      "bytes": 8749,
+      "sha256": "7c0c2ae96a9ac41985804df046501408ef237d1213d2cd001255024d8322d444"
+    },
+    {
+      "path": "narrative_presentation.py",
+      "role": "runtime_source",
+      "bytes": 9883,
+      "sha256": "ae3ab23e2be2ea7c9d6169c496887650ca5eabf2935aa6b86c9303f06ba6383c"
+    },
+    {
+      "path": "NARRATIVE_SYSTEM_DEVELOPMENT_PLAN.md",
+      "role": "documentation",
+      "bytes": 43649,
+      "sha256": "b6e933c4e87b4905ef44ad7e4f7e18e8545f4ccf3e78718d1f5d27d37afcf817"
+    },
+    {
+      "path": "narrative_system_regression_test.py",
+      "role": "test",
+      "bytes": 96239,
+      "sha256": "f1f82489fc4f90736fc27ba4b0f2cfac2212d3790143609588a08bb7b5c27452"
+    },
+    {
+      "path": "owned_schedule_regression_test.py",
+      "role": "test",
+      "bytes": 4412,
+      "sha256": "60162bc2e4ddbdaf0aca32ce57eb9b70b5e4fa6903600eb6d66ca7c22bcc4308"
+    },
+    {
+      "path": "owner_goal_regression_test.py",
+      "role": "test",
+      "bytes": 7237,
+      "sha256": "a28ba51be860e67c5189fb988e64e911e11d6777eb10701ee5e348fad71c4cfa"
+    },
+    {
+      "path": "persistence.py",
+      "role": "runtime_source",
+      "bytes": 280436,
+      "sha256": "cb038d91550dcafbd555b2b8f9a6370ec6fbaeb92c842a5c5f09087574056446"
+    },
+    {
+      "path": "persistence_regression_test.py",
+      "role": "test",
+      "bytes": 35605,
+      "sha256": "699f00ebd9dae13bf318da1371d82c83da433356a2c77aefd4b93d5dac4e2819"
+    },
+    {
+      "path": "pinned_checkpoint_regression_test.py",
+      "role": "test",
+      "bytes": 3626,
+      "sha256": "16e215d1bd087119f9096e14232f0f43ccc6d3c9e7097c3c3e8e83278034218c"
+    },
+    {
+      "path": "play_level_audit.py",
+      "role": "runtime_source",
+      "bytes": 72232,
+      "sha256": "ab0a72601f6d14c12a1137727f867a8b67e058ba318b33fe88f8e699b76e2738"
+    },
+    {
+      "path": "play_level_audit_regression_test.py",
+      "role": "test",
+      "bytes": 37139,
+      "sha256": "e66a76a7656faf2f9d7f8eb3c6aad199dab91efb0ef877ad548607f4760e70ef"
+    },
+    {
+      "path": "player_finance_progression_regression_test.py",
+      "role": "test",
+      "bytes": 7913,
+      "sha256": "0dce51ca17092585e67635fa6e35698981e0773441498636178116ac12727748"
+    },
+    {
+      "path": "Portable Check.bat",
+      "role": "build_configuration",
+      "bytes": 1068,
+      "sha256": "216b32bf6c796bc607f12376be2c7903589d7183e07829835c63ba951cc23e75"
+    },
+    {
+      "path": "portrait_authored_clone_regression_test.py",
+      "role": "test",
+      "bytes": 989,
+      "sha256": "0bc2fe580e9ba16e332b598b81092aab2d285bf40d2cf1f520efedfe05e75a45"
+    },
+    {
+      "path": "portrait_custom_style_regression_test.py",
+      "role": "test",
+      "bytes": 2622,
+      "sha256": "f2221acb0616f5dd78fb08e45fa6ff4c75aea002f0a0d643306a9771c77d40ae"
+    },
+    {
+      "path": "portrait_scalp_finish_regression_test.py",
+      "role": "test",
+      "bytes": 2515,
+      "sha256": "b1c051a1bcc5867f1c48404dabfb291bb286b33350a62f8609d1691ff7978265"
+    },
+    {
+      "path": "portrait_tattoo_regression_test.py",
+      "role": "test",
+      "bytes": 3815,
+      "sha256": "c183221d22b4eac8f8f4a7a81a584dc149e0da86d50c31d0c7037827e8591a36"
+    },
+    {
+      "path": "qa_tooling_regression_test.py",
+      "role": "test",
+      "bytes": 5695,
+      "sha256": "5303d6e5b3dff483dfa64f0e4030e44c44f620f080eebe20a3ad6921fa2465d7"
+    },
+    {
+      "path": "README.md",
+      "role": "documentation",
+      "bytes": 4829,
+      "sha256": "6100ee8926f3c0fdf76bb82839e0b8f003cc29eee045f2c1f9c3c578f9d4609c"
+    },
+    {
+      "path": "real_sport_profiles.py",
+      "role": "runtime_source",
+      "bytes": 21178,
+      "sha256": "09127091c8a2fec51378c7a4bbc1ebb6b14f546b7f9ccaa2620aa7b20f6623f6"
+    },
+    {
+      "path": "rebooking_regression_test.py",
+      "role": "test",
+      "bytes": 5662,
+      "sha256": "2be77472686fd2428556302f6486ef600620f11ea6782a91eff7762a00948a22"
+    },
+    {
+      "path": "recruitment_decision_pack_regression_test.py",
+      "role": "test",
+      "bytes": 6092,
+      "sha256": "bb8d98b523da77555dfc18f09b4712ecbc81bc98a87915f3fb2f051909b841ed"
+    },
+    {
+      "path": "regional_feasibility_regression_test.py",
+      "role": "test",
+      "bytes": 6079,
+      "sha256": "c1bd27db387cef3779306184c84aead9ef39f936296ee33f187105bbd395ad60"
+    },
+    {
+      "path": "regional_invitation_regression_test.py",
+      "role": "test",
+      "bytes": 9064,
+      "sha256": "75deab6e77ed3f0b25aaa696ad5d05d8352f5a383b1c55e58cb9ad1d59be9d4d"
+    },
+    {
+      "path": "regression_runner_regression_test.py",
+      "role": "test",
+      "bytes": 5704,
+      "sha256": "9b439592d6feca0c773e1da6c0b63e16a8abbf4d057c3186dbdedf221eca570f"
+    },
+    {
+      "path": "relationship_case_regression_test.py",
+      "role": "test",
+      "bytes": 7225,
+      "sha256": "8fe0fef73d0e134bda36d7c4319cf200d4490033b7f7f0466cd7a84fa00e9132"
+    },
+    {
+      "path": "replay_storage.py",
+      "role": "runtime_source",
+      "bytes": 10424,
+      "sha256": "b38e8d595074932ee8fc12a924e4288dcdc8c326fafe2617269ca109669544d7"
+    },
+    {
+      "path": "requirements-build.txt",
+      "role": "build_configuration",
+      "bytes": 236,
+      "sha256": "6d3377233f2c241c61d625c639a946cfe8f72f0e94a80437dc9161ed219a933f"
+    },
+    {
+      "path": "requirements.txt",
+      "role": "build_configuration",
+      "bytes": 531,
+      "sha256": "9c822e91bbeeab78e1de23a30c6c0d0a611cc34a57a77ef1d9e08f2bbc958273"
+    },
+    {
+      "path": "rules_help.py",
+      "role": "runtime_source",
+      "bytes": 9874,
+      "sha256": "6d754165738ecb3371165438843551fc0ed905b98cf7678494dea68b0999b49d"
+    },
+    {
+      "path": "rules_help_regression_test.py",
+      "role": "test",
+      "bytes": 3638,
+      "sha256": "6fbeeb27870477cb989f7c8557fba159832f8e9bdf115b79e74d7fc619d0540f"
+    },
+    {
+      "path": "Run Smoke Tests.bat",
+      "role": "build_configuration",
+      "bytes": 720,
+      "sha256": "1379c8b433798e3d395c790b4b31335feb5419618847bb0d853fb064e73285e8"
+    },
+    {
+      "path": "run_regression_suite.py",
+      "role": "runtime_source",
+      "bytes": 18431,
+      "sha256": "d8b5a16526c1900449d308b7f120dec6dfe6c0f0cc86549f4a51ef58873632b1"
+    },
+    {
+      "path": "scouting_regression_test.py",
+      "role": "test",
+      "bytes": 29638,
+      "sha256": "32ec04139f7d197253736c04da9a77d298899dbbda796904337e2f2dd2aa684a"
+    },
+    {
+      "path": "seeding.py",
+      "role": "runtime_source",
+      "bytes": 220377,
+      "sha256": "ffc4329aa1a6874ae61fd248bf089b8f074ee496f89d74503ef38ca99ff76fad"
+    },
+    {
+      "path": "simulation_pause_policy_regression_test.py",
+      "role": "test",
+      "bytes": 8286,
+      "sha256": "39176fde7787aadecdca28c0f2c419cc540eb67b1b08f4a3dd89f859c0a6d6d8"
+    },
+    {
+      "path": "simulation_performance_regression_test.py",
+      "role": "test",
+      "bytes": 8298,
+      "sha256": "b7386a746d1225eeabc449ac0dbba30f5c3aa1c4005d1ff7a7bb69ea9a93f24a"
+    },
+    {
+      "path": "smoke_test.py",
+      "role": "test",
+      "bytes": 207567,
+      "sha256": "a7415bc26a54f49ff66daacb393c8833217b47686864779344f281e23a426482"
+    },
+    {
+      "path": "stability_test.py",
+      "role": "test",
+      "bytes": 89890,
+      "sha256": "d09e4210c4aa98c01d45bb5326c17c3143685b03bea3b3eed4d3bd63ff9e6e21"
+    },
+    {
+      "path": "staff_employment_regression_test.py",
+      "role": "test",
+      "bytes": 26601,
+      "sha256": "f20b74bbc1d1a5d0287b58a14dfd81f54e6ed0d40a0b2b134df77df588542d5b"
+    },
+    {
+      "path": "staff_management.py",
+      "role": "runtime_source",
+      "bytes": 159169,
+      "sha256": "851838e711605832e8f02305d3f1d3d34405fa6aa8b5df686c4ceff0d79ebe1f"
+    },
+    {
+      "path": "staff_management_regression_test.py",
+      "role": "test",
+      "bytes": 76198,
+      "sha256": "0b1a8061ad7b85167eafc603c54ad1b6311ac646b9608b435986b9818c11e56a"
+    },
+    {
+      "path": "staff_specialties.py",
+      "role": "runtime_source",
+      "bytes": 15463,
+      "sha256": "b269ad783465109c69bd0cd2c81720787a89e9eb3251e4a5f99f7837bbb1992f"
+    },
+    {
+      "path": "staff_specialty_regression_test.py",
+      "role": "test",
+      "bytes": 2794,
+      "sha256": "2b4eacfbe162044afd6b7b4028b86f7aee78ebcd978e0918676eec12583c12c6"
+    },
+    {
+      "path": "story_briefing_regression_test.py",
+      "role": "test",
+      "bytes": 7745,
+      "sha256": "1f6888d4ca881ee4f647fdc7c6f3b169671f5aab3aece1efba9f3a742c53a576"
+    },
+    {
+      "path": "super_event_closeout_regression_test.py",
+      "role": "test",
+      "bytes": 18430,
+      "sha256": "f57766220b0576a4f527f9b1aabc84408df7a984ad95fb2d1001319d95afb319"
+    },
+    {
+      "path": "TAB_ACCESSIBILITY.md",
+      "role": "documentation",
+      "bytes": 5589,
+      "sha256": "1a1fba08ee3edb17ef554f54266b07b362dd2cd261241f924f53dddc91d2c20b"
+    },
+    {
+      "path": "test_support.py",
+      "role": "runtime_source",
+      "bytes": 3273,
+      "sha256": "45dc75fd7e18b6040ca7529bec85ba10759a8d1cf264908759080942882597b0"
+    },
+    {
+      "path": "title_decision_resume_regression_test.py",
+      "role": "test",
+      "bytes": 24790,
+      "sha256": "7628af379185c61e724122b2e61904fa5ee38f9cf56ee1b9ddb4e04db0a0b6fe"
+    },
+    {
+      "path": "tools/benchmark_move_lookup.py",
+      "role": "developer_tool",
+      "bytes": 1059,
+      "sha256": "bf63fcc46c6826d928eb912843f44cafd666787a7d77e20d8d7be6181e0644a6"
+    },
+    {
+      "path": "tools/benchmark_move_selector.py",
+      "role": "developer_tool",
+      "bytes": 10082,
+      "sha256": "a9d15f04c434526c593ce5c2f7e40e1e3decbd4f27126caad0af06612c439a34"
+    },
+    {
+      "path": "tools/build_crowd_audio_pack.py",
+      "role": "developer_tool",
+      "bytes": 19291,
+      "sha256": "20071c32912722f67893e197b47df91bcf5984a51788cfe9c6b81fabff48f378"
+    },
+    {
+      "path": "tools/move_registry_parity.py",
+      "role": "developer_tool",
+      "bytes": 14768,
+      "sha256": "15f5d2f389dbe4a1189874bcb1fbc97f14d63e18f6dbd958b6e91690533d3c81"
+    },
+    {
+      "path": "tools/move_selection_parity.py",
+      "role": "developer_tool",
+      "bytes": 15080,
+      "sha256": "9fc179d884a1e75276f472f5b6262f7c3e204f0e391cbafe28819a4820845d53"
+    },
+    {
+      "path": "tools/repair_default_universe_identity.py",
+      "role": "developer_tool",
+      "bytes": 5834,
+      "sha256": "16079cbf42aca0ad9912e684df4d8f6c377e7eeda7712d948ecee7218e2e93cc"
+    },
+    {
+      "path": "tools/update_delivery_manifest.py",
+      "role": "developer_tool",
+      "bytes": 8184,
+      "sha256": "6a9c0719a2e134f90caefb4cfa596f86d661fb4995e9e54b03fa05415f172b30"
+    },
+    {
+      "path": "tools/validate_delivery_manifest.py",
+      "role": "developer_tool",
+      "bytes": 8246,
+      "sha256": "ffda195ea99826d694596483e731e12cfd389a5c8c1b72ef0c2fb0b4fc0b3240"
+    },
+    {
+      "path": "tools/verify_build_toolchain.py",
+      "role": "developer_tool",
+      "bytes": 4775,
+      "sha256": "75fe81dda912ebdb7225b303a0b1cca4ca9220dda0cddffbaf272112e620092d"
+    },
+    {
+      "path": "ui.py",
+      "role": "runtime_source",
+      "bytes": 409261,
+      "sha256": "3cd00a84687ffa965bb93fcf694c7eeced7c37e19cdafde7a5317128d2fd6d01"
+    },
+    {
+      "path": "ui_data_regression_test.py",
+      "role": "test",
+      "bytes": 175527,
+      "sha256": "8037678dfebd73a8f9302be6711e79c68159f9a8953c25bd98e995a880bb2c88"
+    },
+    {
+      "path": "universe_validation.py",
+      "role": "runtime_source",
+      "bytes": 25483,
+      "sha256": "b8fbe870f06a60849eabeb125fbda2b64a2a13d31bb2962c8cb0cb690f90e988"
+    },
+    {
+      "path": "universe_validation_regression_test.py",
+      "role": "test",
+      "bytes": 9220,
+      "sha256": "8a9da4002d87f898436d3a4c8b7fc2b5ae8ad16e3cbfff690c0345986ffec012"
+    },
+    {
+      "path": "views.py",
+      "role": "runtime_source",
+      "bytes": 1571413,
+      "sha256": "624199a0f8fedaadd771573d18113c5afddb4a283fb190c189282407795813d6"
+    },
+    {
+      "path": "window_lifecycle_regression_test.py",
+      "role": "test",
+      "bytes": 1589,
+      "sha256": "882fd8ca6a0509aea62dd8e86107b8539fc7ee7c2f81e05ab9a7929fb6f3314d"
+    },
+    {
+      "path": "world.py",
+      "role": "runtime_source",
+      "bytes": 1480482,
+      "sha256": "6dadfd859b6ba5ef5be700cc45d04bda3075e6d480275a97dafbede0646ee74a"
+    }
+  ],
+  "exclusions": [
+    {
+      "pattern": "Saves/**",
+      "reason": "User careers and recovery snapshots are private mutable runtime data."
+    },
+    {
+      "pattern": "Logs/**",
+      "reason": "Runtime logs may contain local paths and are not source dependencies."
+    },
+    {
+      "pattern": "build*/**, dist/**, output*/**",
+      "reason": "Generated packaging outputs are reproducible from source configuration."
+    },
+    {
+      "pattern": "**/__pycache__/**, .pytest_cache/**, .venv/**",
+      "reason": "Generated caches and local environments are not portable inputs."
+    },
+    {
+      "pattern": ".git/**, .claude/**, .agents/**, .codex-remote-attachments/**",
+      "reason": "VCS internals and local tool metadata are outside the product delivery."
+    },
+    {
+      "pattern": "docs/archive/**",
+      "reason": "Byte-preserved migration history is retained in the working repository but is not required to review or run current source."
+    },
+    {
+      "pattern": "analysis/** except named source-bound fixtures",
+      "reason": "Generated and historical analysis outputs are retained evidence, not blanket delivery inputs; only fixtures named by maintained source plus current portrait review fixtures are included."
+    }
+  ],
+  "unresolved_ownership_decisions": []
+}

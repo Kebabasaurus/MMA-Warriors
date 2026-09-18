@@ -70,7 +70,10 @@ for %%D in (Saves Databases Logs) do (
 )
 set "RUNTIME_BACKUP_READY=1"
 
-"%PY%" -m PyInstaller --noconfirm --windowed --name "MMA Warriors" --icon "%APP_DIR%assets\app_icon.ico" --add-data "%APP_DIR%assets;assets" --add-data "%APP_DIR%country_flags;country_flags" --distpath "%APP_DIR%dist" --workpath "%APP_DIR%build" --specpath "%APP_DIR%build" "%APP_DIR%main.py"
+rem MMA Warriors.spec is the single authority for the game entry point, assets,
+rem optional dependency policy and output name. This command controls only the
+rem disposable build/output locations.
+"%PY%" -m PyInstaller --noconfirm --distpath "%APP_DIR%dist" --workpath "%APP_DIR%build" "%APP_DIR%MMA Warriors.spec"
 if errorlevel 1 (
     echo Build failed.
     goto build_failed

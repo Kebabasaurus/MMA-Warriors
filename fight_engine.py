@@ -3,6 +3,7 @@ import random
 import sys
 import traceback
 import zlib
+from math import ceil
 from copy import deepcopy
 from datetime import datetime
 import tkinter as tk
@@ -12,7 +13,21 @@ from tkinter import messagebox, ttk
 
 from constants import *
 from fight_moves import DEFENSE_REGISTRY, MOVE_REGISTRY, legal_defenses, legal_moves
+from fight_moves.chains import sequence_actor_role, sequence_role_allows
+from fight_moves.selection_pool import ordinary_selection_pool
+from fight_moves.specialist_intent import specialist_plan_weights, specialist_style_weights
+from fight_moves.submission_identity import SUBMISSION_PARENT_ACTIONS, compatible_submission_ids
+from fight_moves.submission_pool import SUBMISSION_VARIANTS, adapt_submission_tickets, submission_ticket_family
+from fight_moves.schema import (HIGH_RISK_TAG, FINISHER_TAG, STYLE_COMBINATION_TAG,
+                                STYLE_FINISHER_TAG, COUNTER_TAG)
 from models import Fighter, Gym, Promotion
+from fighter_traits import trait_attack_modifier, trait_defence_modifier
+
+
+SINGLE_JAB_DISPLAY_VARIANTS = (
+    "single jab", "lead-hand jab", "straight jab", "single lead jab",
+    "straight lead-hand jab", "lead jab", "single straight jab", "lead-hand straight",
+)
 
 
 FIGHT_SKILL_BUNDLES = {
@@ -119,6 +134,14 @@ class FightResult:
 
 
 class FightEngineMixin:
+    @property
+    def _fight_move_registry(self):
+        """Legacy audit profile; the application supplies an immutable release profile."""
+        return MOVE_REGISTRY
+
+    def _legal_fight_moves(self, action, position, target):
+        return legal_moves(action, position, target)
+
     # These profiles describe officiating process only. They deliberately keep
     # the pre-profile stoppage and stand-up values, so naming the tendencies
     # does not silently recalibrate KO/TKO/finish rates.
@@ -163,7 +186,7 @@ class FightEngineMixin:
     ALLOWED_FIGHT_TRANSITIONS = {
         "range": frozenset({"range", "pocket", "clinch", "cage", "failed shot", "guard", "half guard"}),
         "pocket": frozenset({"pocket", "range", "clinch", "cage", "failed shot", "guard", "half guard"}),
-        "clinch": frozenset({"clinch", "cage", "range", "standing back control", "failed shot", "guard", "half guard"}),
+        "clinch": frozenset({"clinch", "cage", "range", "standing back control", "failed shot", "front headlock", "guard", "half guard"}),
         "cage": frozenset({"cage", "clinch", "range", "standing back control", "failed shot", "guard", "half guard"}),
         "failed shot": frozenset({"failed shot", "range", "cage", "front headlock", "guard"}),
         "standing back control": frozenset({"standing back control", "range", "cage", "back control", "guard"}),
@@ -220,6 +243,19 @@ class FightEngineMixin:
         state["bottom"] = bottom
         state["clinch_controller"] = controller
         self.validate_fight_transition(previous, position, state)
+        pending = state.get("von_flue_pending_wrap")
+        if (getattr(self, "_experimental_specialist_entries", False) and pending
+                and (position, top, bottom) != (pending.get("position"), pending.get("top"), pending.get("bottom"))):
+            self._cancel_von_flue_pending(state, "position_or_ownership_changed")
+        setup = state.get("von_flue_setup")
+        if (getattr(self, "_experimental_specialist_entries", False) and setup
+                and (position, top, bottom) != (setup.get("position"), setup.get("top"), setup.get("bottom"))):
+            state.pop("von_flue_setup", None)
+
+        setup = state.get("scarf_hold_setup")
+        if (getattr(self, "_experimental_specialist_entries", False) and setup
+                and (position, top, bottom) != (setup.get("position"), setup.get("top"), setup.get("bottom"))):
+            state.pop("scarf_hold_setup", None)
 
     def record_intermediate_position(self, state, position, *, top=None, bottom=None, controller=None):
         """Record a legal within-exchange scramble state without changing its settled endpoint."""
@@ -236,12 +272,14 @@ class FightEngineMixin:
         cache_missing = object()
         previous_bundle_cache = getattr(self, "_fight_skill_bundle_cache", cache_missing)
         previous_conversion_cache = getattr(self, "_fight_finish_conversion_cache", cache_missing)
+        previous_move_score_cache = getattr(self, "_fight_move_score_cache", cache_missing)
         previous_mechanics_rng = getattr(self, "_fight_mechanics_rng", cache_missing)
         previous_officiating_rng = getattr(self, "_fight_officiating_rng", cache_missing)
         previous_judging_rng = getattr(self, "_fight_judging_rng", cache_missing)
         previous_presentation_rng = getattr(self, "_fight_presentation_rng", cache_missing)
         self._fight_skill_bundle_cache = {}
         self._fight_finish_conversion_cache = {}
+        self._fight_move_score_cache = {}
         source_rng_state = random.getstate()
         presentation_material = (
             repr(source_rng_state)
@@ -272,6 +310,10 @@ class FightEngineMixin:
                 self.__dict__.pop("_fight_finish_conversion_cache", None)
             else:
                 self._fight_finish_conversion_cache = previous_conversion_cache
+            if previous_move_score_cache is cache_missing:
+                self.__dict__.pop("_fight_move_score_cache", None)
+            else:
+                self._fight_move_score_cache = previous_move_score_cache
             if previous_mechanics_rng is cache_missing:
                 self.__dict__.pop("_fight_mechanics_rng", None)
             else:
@@ -448,12 +490,12 @@ class FightEngineMixin:
         return 1 + (multiplier - 1) * row["execution"]
 
     @staticmethod
-    def commentary_move_id_label(move_id):
+    def commentary_move_id_label(move_id, *, registry=None):
         """Translate a trace move ID without exposing internal placeholders."""
         normalized = str(move_id or "").strip()
         if normalized.casefold() == "composed_survival":
             return "defensive survival"
-        definition = MOVE_REGISTRY.get(normalized)
+        definition = (MOVE_REGISTRY if registry is None else registry).get(normalized)
         if definition is not None:
             return str(definition.name or normalized.replace("_", " ")).strip()
         return normalized.replace("_", " ").strip() or "last exchange"
@@ -837,14 +879,110 @@ class FightEngineMixin:
             lines.append(line.format(actor=actor, defender=defender, move=move, location=location))
         return lines
 
-    def select_exchange_move(self, actor, defender, action, position, target, state):
+    def select_exchange_move(self, actor, defender, action, position, target, state, ownership_before=None,
+                             resolved_technique=None):
         """Choose a legal named technique without consuming any RNG stream."""
         target = {"high": "head", "teep": "body"}.get(target, target or "")
-        candidates = list(legal_moves(action, position, target))
+        candidates, styles, identity, actor_key, active_counter = self._move_candidates(
+            actor, action, position, target, state,
+        )
+        bottom_entry = state.get("last_bottom_leg_entry") or {}
+        if (getattr(self, "_experimental_specialist_entries", False) and action == "sweep"
+                and bottom_entry.get("actor") == actor_key
+                and bottom_entry.get("round") == state.get("round")
+                and bottom_entry.get("tick") == state.get("tick")):
+            payload = self._move_payload(None, actor, defender, action, target, state,
+                                         actor_key, styles, active_counter, {}, (), ())
+            payload.update(move_id="generic_bottom_leg_entry", name="knee-line entry")
+            return payload
+        if (getattr(self, "_experimental_specialist_entries", False)
+                and action in SUBMISSION_PARENT_ACTIONS and resolved_technique is not None):
+            compatible = compatible_submission_ids(resolved_technique)
+            candidates = [definition for definition in candidates if definition.move_id in compatible]
+        setup_event = state.get("last_scarf_hold_setup_event") or {}
+        if (getattr(self, "_experimental_specialist_entries", False) and action == "ground_control"
+                and setup_event.get("status") in {"created", "cancelled"} and setup_event.get("top") == actor_key
+                and setup_event.get("round") == state.get("round")
+                and setup_event.get("created_tick") == state.get("tick")):
+            # Near-arm isolation does not prove a post-selected reverse-scarf,
+            # crucifix or signature control technique. Use the honest fallback.
+            candidates = []
+        angle_event = state.get("last_von_flue_angle") or {}
+        if (getattr(self, "_experimental_specialist_entries", False) and action == "ground_control"
+                and angle_event.get("attempted") and angle_event.get("top") == actor_key
+                and angle_event.get("round") == state.get("round") and angle_event.get("tick") == state.get("tick")):
+            candidates = []
+        boxing_specialists = {
+            "combination_punching": self.ds(actor, "combination_punching", actor.striking),
+            "body_punching": self.ds(actor, "body_punching", actor.striking),
+            "counter_timing": self.ds(actor, "counter_timing", actor.fight_iq),
+        }
+        signature_moves = set(getattr(actor, "signature_moves", []) or [])
+        signature_finisher_ids = {
+            definition.move_id for definition in candidates
+            if definition.move_id in signature_moves
+            and set(definition.tags).intersection({FINISHER_TAG, STYLE_FINISHER_TAG})
+        }
+        active_chain = (state.get("move_chains") or {}).get(actor_key, {}) or {}
+        ownership = state if ownership_before is None else ownership_before
+        chain_live = (
+            active_chain.get("round") == int(state.get("round", 1))
+            and 0 < int(state.get("tick", 1)) - int(active_chain.get("tick", 0)) <= 2
+            and (not active_chain.get("actor_role") or active_chain["actor_role"] ==
+                 sequence_actor_role(position, actor_key, ownership.get("top"), ownership.get("bottom")))
+        )
+        chain_options = set(active_chain.get("branch_options") or (active_chain.get("next_move_id"),))
+        chain_candidates = {d.move_id for d in candidates if chain_live and d.move_id in chain_options
+                            and sequence_role_allows(d.parent_action, position, actor_key,
+                                                     ownership.get("top"), ownership.get("bottom"))}
+
+        scored = []
+        context = None
+        fingerprint_prefix = (
+            f"{identity}|{state.get('round', 1)}|{state.get('tick', 1)}|"
+            f"{action}|{position}|{target}|"
+        )
+        for definition in candidates:
+            static = self._move_static_score(
+                actor, definition, styles, boxing_specialists, signature_moves, signature_finisher_ids,
+            )
+            if static is None:
+                value = -10_000
+            else:
+                proficiency, style_bonus, signature_bonus, mastery_bonus, definition_tags = static
+                if context is None:
+                    context = self._move_context_inputs(actor, defender, state, actor_key, styles)
+                context_bonus, _reasons = self._move_contextual_score(
+                    actor, defender, definition, state, actor_key, styles, active_counter,
+                    active_chain, chain_candidates, context=context, definition_tags=definition_tags,
+                )
+                material = fingerprint_prefix + definition.move_id
+                fingerprint = zlib.crc32(material.encode("utf-8"))
+                if not self._move_rarity_gate(
+                    actor, definition_tags, fingerprint, identity, action, position, target, state,
+                ):
+                    value = -10_000
+                else:
+                    variety = fingerprint % 901 / 100
+                    value = proficiency + style_bonus + signature_bonus + mastery_bonus + context_bonus + variety
+            scored.append((value, definition))
+        eligible = [row for row in scored if row[0] > -10_000]
+        definition = self._select_from_pool(
+            eligible, active_counter, signature_moves, chain_candidates, active_chain,
+            identity, action, position, target, state,
+        ) if eligible else None
+        return self._move_payload(
+            definition, actor, defender, action, target, state, actor_key, styles,
+            active_counter, active_chain, chain_candidates, signature_moves, context=context,
+        )
+
+    def _move_candidates(self, actor, action, position, target, state):
+        """Preserve ordered index, style and counter eligibility filtering."""
+        candidates = list(self._legal_fight_moves(action, position, target))
         styles = self.fighter_styles(actor)
         candidates = [
             definition for definition in candidates
-            if not set(definition.tags).intersection({"style-combination", "style-finisher"})
+            if not (STYLE_COMBINATION_TAG in definition.tags or STYLE_FINISHER_TAG in definition.tags)
             or set(styles).intersection(definition.preferred_styles)
         ]
         identity = str(getattr(actor, "fighter_id", "") or actor.name)
@@ -855,222 +993,230 @@ class FightEngineMixin:
         )
         candidates = [
             definition for definition in candidates
-            if ("counter" in definition.tags) == active_counter
-            or (active_counter and "counter" not in definition.tags)
+            if (COUNTER_TAG in definition.tags) == active_counter
+            or (active_counter and COUNTER_TAG not in definition.tags)
         ]
-        if active_counter:
+        if active_counter and not getattr(self, "_experimental_chain_action_weighting", False):
             candidates = [
                 definition for definition in candidates
-                if "style-combination" not in definition.tags or "counter" in definition.tags
+                if STYLE_COMBINATION_TAG not in definition.tags or COUNTER_TAG in definition.tags
             ]
-        boxing_specialists = {
-            "combination_punching": self.ds(actor, "combination_punching", actor.striking),
-            "body_punching": self.ds(actor, "body_punching", actor.striking),
+        # Candidate counter preference belongs after static and rarity gates.
+        # A window alone must not erase ordinary authored fallback when no
+        # counter survives. _select_from_pool still prefers eligible counters.
+        return candidates, styles, identity, actor_key, active_counter
+
+    _MOVE_STYLE_TAG_PREFERENCES = {
+        "Boxer": {"punch", "combination", COUNTER_TAG},
+        "Kickboxer": {"kick", "mixed-combination", COUNTER_TAG},
+        "Dutch Kickboxer": {"combination", "low-kick", "mixed-combination"},
+        "Muay Thai": {"knee", "elbow", "clinch"},
+        "Karate": {"kick", COUNTER_TAG, HIGH_RISK_TAG},
+        "Taekwondo": {"kick", "spinning", HIGH_RISK_TAG},
+        "Sanda": {"kick", "takedown", "trip"},
+        "Wrestler": {"wrestling", "takedown", "control"},
+        "Freestyle Wrestler": {"entry", "takedown", "scramble"},
+        "Catch Wrestler": {"ride", "front-headlock", "submission"},
+        "BJJ": {"submission", "guard", "transition"},
+        "Luta Livre": {"leg-lock", "submission", "scramble"},
+        "Sambo": {"takedown", "leg-lock", "trip"},
+        "Judo": {"throw", "trip", "clinch"},
+        "Grappler": {"transition", "control", "ground"},
+        "Submission Grappler": {"submission", "back-take", "choke"},
+        "Well-Rounded": {"mixed-combination", "transition", COUNTER_TAG},
+        "MMA Generalist": {"mixed-combination", "entry", "control"},
+    }
+
+    def _move_static_score(self, actor, definition, styles, boxing_specialists,
+                           signature_moves, signature_finisher_ids):
+        """Return uncombined skill/style/mastery factors without reading bout state.
+
+        Fighter factors are stable inside one bout only. Candidate-relative
+        signature-finisher exclusion stays dynamic, outside the cached factors.
+        """
+        if (STYLE_FINISHER_TAG in definition.tags and signature_finisher_ids
+                and definition.move_id not in signature_finisher_ids):
+            return None
+        cache = getattr(self, "_fight_move_score_cache", None)
+        cache_key = (id(actor), id(definition))
+        cached = cache.get(cache_key) if cache is not None else None
+        if cached is not None:
+            return cached[1]
+        attack = [boxing_specialists[key] if key in boxing_specialists else self.ds(actor, key, 50)
+                  for key in definition.attack_skills]
+        proficiency = sum(attack) / max(1, len(attack))
+        if definition.minimum_skill and proficiency < definition.minimum_skill:
+            if cache is not None:
+                cache[cache_key] = (definition, None)
+            return None
+        style_bonus = 8 if styles[0] in definition.preferred_styles else 0
+        if len(styles) > 1 and styles[1] in definition.preferred_styles:
+            style_bonus += 3
+        if definition.move_id in REPRESENTATIVE_SPECIALIST_MOVES and styles[0] in definition.preferred_styles:
+            style_bonus += 24
+        style_tag_preferences = self._MOVE_STYLE_TAG_PREFERENCES
+        definition_tags = frozenset(definition.tags)
+        if STYLE_COMBINATION_TAG in definition_tags:
+            style_bonus += 2 if styles[0] in definition.preferred_styles else 1
+        if STYLE_FINISHER_TAG in definition_tags:
+            style_bonus += 5 if styles[0] in definition.preferred_styles else 2
+        if definition_tags.intersection(style_tag_preferences.get(styles[0], set())):
+            style_bonus += 4
+        if len(styles) > 1 and definition_tags.intersection(style_tag_preferences.get(styles[1], set())):
+            style_bonus += 1.5
+        signature_bonus = 6 if definition.move_id in signature_moves else 0
+        mastery_bonus = float((getattr(actor, "move_mastery", {}) or {}).get(definition.move_id, 0) or 0) * 0.12
+        result = proficiency, style_bonus, signature_bonus, mastery_bonus, definition_tags
+        if cache is not None:
+            # Retain the definition itself so a replaced temporary registry's
+            # released object identity cannot be recycled into a false hit.
+            cache[cache_key] = (definition, result)
+        return result
+
+    def _move_context_inputs(self, actor, defender, state, actor_key, styles):
+        """Read exchange-wide inputs once; none are retained across exchanges."""
+        actor_reads = (state.get("move_reads") or {}).get(actor_key, {})
+        defender_key = self.fight_state_key(defender, state)
+        defender_reads = (state.get("move_reads") or {}).get(defender_key, {})
+        plan = self.fight_plan_for(actor, state)
+        actor_stance = str((state.get("current_stance") or {}).get(actor_key, getattr(actor, "stance", "Orthodox")) or "Orthodox")
+        defender_stance = str((state.get("current_stance") or {}).get(defender_key, getattr(defender, "stance", "Orthodox")) or "Orthodox")
+        stance_matchup = "switch" if "Switch" in (actor_stance, defender_stance) else (
+            "open" if {actor_stance, defender_stance} == {"Orthodox", "Southpaw"} else "closed")
+        grappling_styles = {
+            "Wrestler", "Freestyle Wrestler", "Catch Wrestler", "BJJ", "Luta Livre",
+            "Sambo", "Judo", "Grappler", "Submission Grappler",
+        }
+        plan_preferences = {
+            "Pressure and volume": ("combination",), "Counter striking": (COUNTER_TAG,),
+            "Wrestle early": ("wrestling", "entry"), "Cage grind": ("cage", "control"),
+            "Attack the body": ("body",), "Damage the lead leg": ("leg",),
+            "Submission hunt": ("submission",), "Chase a finish": ("power", "submission", HIGH_RISK_TAG),
+        }
+        return {
+            "actor_reads": actor_reads, "plan": plan, "stance_matchup": stance_matchup,
+            "strain": float((state.get("move_exertion") or {}).get(actor_key, 0.0) or 0.0),
+            "recent_misses": float((state.get("move_miss_pressure") or {}).get(actor_key, 0.0) or 0.0),
+            "defender_vulnerability": float((state.get("move_counter_vulnerability") or {}).get(defender_key, 0.0) or 0.0),
             "counter_timing": self.ds(actor, "counter_timing", actor.fight_iq),
+            "adaptability": self.ds(actor, "adaptability", actor.fight_iq),
+            "actor_grappler": bool(set(styles).intersection(grappling_styles)),
+            "defender_grappler": bool(set(self.fighter_styles(defender)).intersection(grappling_styles)),
+            "preferred": plan_preferences.get(plan["current"], ()),
+            "opponent_repeats": max(defender_reads.get("moves", {}).values(), default=0),
         }
-        signature_moves = set(getattr(actor, "signature_moves", []) or [])
-        signature_finisher_ids = {
-            definition.move_id for definition in candidates
-            if definition.move_id in signature_moves
-            and set(definition.tags).intersection({"finisher", "style-finisher"})
-        }
-        active_chain = (state.get("move_chains") or {}).get(actor_key, {}) or {}
-        chain_live = (
-            active_chain.get("round") == int(state.get("round", 1))
-            and 0 < int(state.get("tick", 1)) - int(active_chain.get("tick", 0)) <= 2
-        )
 
-        def contextual_score(definition):
-            actor_reads = (state.get("move_reads") or {}).get(actor_key, {})
-            defender_key = self.fight_state_key(defender, state)
-            defender_reads = (state.get("move_reads") or {}).get(defender_key, {})
-            plan = self.fight_plan_for(actor, state)
-            tags = set(definition.tags)
-            bonus = 0.0
-            reasons = []
-            if chain_live and definition.move_id == active_chain.get("next_move_id"):
-                bonus += 10
-                reasons.append(f"sequence-follow-up:{active_chain.get('source_move_id', '')}")
-            strain = float((state.get("move_exertion") or {}).get(actor_key, 0.0) or 0.0)
-            if definition.energy > 1.0 and strain > 0:
-                bonus -= min(6.0, (definition.energy - 1.0) * strain * 2.2)
-                reasons.append("move-exertion-management")
-            recent_misses = float((state.get("move_miss_pressure") or {}).get(actor_key, 0.0) or 0.0)
-            if definition.miss_risk > 1.0 and recent_misses > 0:
-                bonus -= min(5.0, (definition.miss_risk - 1.0) * recent_misses * 2.5)
-                reasons.append("miss-risk-management")
-            defender_vulnerability = float(
-                (state.get("move_counter_vulnerability") or {}).get(defender_key, 0.0) or 0.0
+    def _move_contextual_score(self, actor, defender, definition, state, actor_key,
+                               styles, active_counter, active_chain, chain_candidates, context=None,
+                               definition_tags=None):
+        """Score current reads, stance, plan and sequence in the original order."""
+        context = context if context is not None else self._move_context_inputs(actor, defender, state, actor_key, styles)
+        actor_reads = context["actor_reads"]
+        plan = context["plan"]
+        tags = frozenset(definition.tags) if definition_tags is None else definition_tags
+        bonus = 0.0
+        reasons = []
+        if definition.move_id in chain_candidates:
+            bonus += 10
+            reasons.append(f"sequence-follow-up:{active_chain.get('source_move_id', '')}")
+        strain = context["strain"]
+        if definition.energy > 1.0 and strain > 0:
+            bonus -= min(6.0, (definition.energy - 1.0) * strain * 2.2)
+            reasons.append("move-exertion-management")
+        recent_misses = context["recent_misses"]
+        if definition.miss_risk > 1.0 and recent_misses > 0:
+            bonus -= min(5.0, (definition.miss_risk - 1.0) * recent_misses * 2.5)
+            reasons.append("miss-risk-management")
+        defender_vulnerability = context["defender_vulnerability"]
+        if active_counter and COUNTER_TAG in tags and defender_vulnerability > 0:
+            bonus += min(6.0, defender_vulnerability * context["counter_timing"] / 100)
+            reasons.append("technique-counter-risk")
+        stance_matchup = context["stance_matchup"]
+        if stance_matchup == "open" and (definition.side == "rear" or not tags.isdisjoint({"body", COUNTER_TAG})):
+            bonus += 3
+            reasons.append("open-stance-rear-lane")
+        elif stance_matchup == "closed" and (definition.side == "lead" or not tags.isdisjoint({"setup", "low-kick"})):
+            bonus += 2
+            reasons.append("closed-stance-lead-lane")
+        elif stance_matchup == "switch" and not tags.isdisjoint({"creative", "spinning", HIGH_RISK_TAG}):
+            bonus += 2.5
+            reasons.append("switch-stance-angle")
+        actor_grappler = context["actor_grappler"]
+        defender_grappler = context["defender_grappler"]
+        if actor_grappler and not defender_grappler and not tags.isdisjoint({"entry", "takedown", "clinch"}):
+            bonus += 2.5
+            reasons.append("grappler-vs-striker-entry")
+        elif not actor_grappler and defender_grappler and not tags.isdisjoint({"setup", COUNTER_TAG, "kick"}):
+            bonus += 2
+            reasons.append("striker-vs-grappler-range")
+        elif actor_grappler and defender_grappler and not tags.isdisjoint({"scramble", "transition", "submission"}):
+            bonus += 1.5
+            reasons.append("grappling-matchup-chain")
+        preferred = context["preferred"]
+        if not tags.isdisjoint(preferred):
+            bonus += 5 * plan["execution"]
+            reasons.append(f"plan:{plan['current']}")
+        targets_seen = actor_reads.get("targets", {})
+        if targets_seen.get("body", 0) >= 2 and ("head" in tags or definition.parent_action == "power_punch"):
+            bonus += min(4.5, targets_seen["body"] * 0.7)
+            reasons.append("body-work-opened-head")
+        if targets_seen.get("leg", 0) >= 2 and not tags.isdisjoint({"head", "entry", "takedown"}):
+            bonus += min(4.0, targets_seen["leg"] * 0.6)
+            reasons.append("low-kick-read")
+        if actor_reads.get("setups", {}).get("feint", 0) >= 2 and "entry" in tags:
+            bonus += min(3.5, actor_reads["setups"]["feint"] * 0.5)
+            reasons.append("feint-established-entry")
+        repeats = actor_reads.get("moves", {}).get(definition.move_id, 0)
+        if repeats >= 2:
+            adaptability = context["adaptability"]
+            # Adaptive fighters vary their own repeated choices more readily.
+            # Keep the historical arithmetic outside the audit-only candidate.
+            adjustment = (adaptability - 65 if getattr(self, "_experimental_chain_action_weighting", False)
+                          else 65 - adaptability)
+            penalty = min(14.0, (repeats - 1) * (2.6 + max(0, adjustment) / 55))
+            bonus -= penalty
+            reasons.append("pattern-repetition-penalty")
+        opponent_repeats = context["opponent_repeats"]
+        if active_counter and COUNTER_TAG in tags and opponent_repeats >= 3:
+            bonus += min(5.0, opponent_repeats * context["adaptability"] / 150)
+            reasons.append("opponent-pattern-counter")
+        return bonus, tuple(reasons)
+
+    def _move_rarity_gate(self, actor, definition_tags, fingerprint, identity,
+                          action, position, target, state):
+        """Apply the existing deterministic authored-rarity thresholds."""
+        # Authored rarity is a property of the fighter, not a global constant.
+        # Flat gates of 14/12/18 suppressed spinning attacks to four uses per
+        # 300 fights and left eight of eighteen style finishers unreachable,
+        # so the thresholds now scale with the attributes that should decide
+        # whether a fighter reaches for a flashy or fight-ending technique.
+        if HIGH_RISK_TAG in definition_tags:
+            creativity = (
+                self.ds(actor, "creative_kicks", 50)
+                if definition_tags.intersection({"kick", "spinning"})
+                else self.ds(actor, "creative_punches", 50)
             )
-            if active_counter and "counter" in tags and defender_vulnerability > 0:
-                bonus += min(6.0, defender_vulnerability * self.ds(actor, "counter_timing", actor.fight_iq) / 100)
-                reasons.append("technique-counter-risk")
-            actor_stance = str((state.get("current_stance") or {}).get(actor_key, getattr(actor, "stance", "Orthodox")) or "Orthodox")
-            defender_key = self.fight_state_key(defender, state)
-            defender_stance = str((state.get("current_stance") or {}).get(defender_key, getattr(defender, "stance", "Orthodox")) or "Orthodox")
-            if "Switch" in (actor_stance, defender_stance):
-                stance_matchup = "switch"
-            elif {actor_stance, defender_stance} == {"Orthodox", "Southpaw"}:
-                stance_matchup = "open"
-            else:
-                stance_matchup = "closed"
-            if stance_matchup == "open" and (definition.side == "rear" or tags.intersection({"body", "counter"})):
-                bonus += 3
-                reasons.append("open-stance-rear-lane")
-            elif stance_matchup == "closed" and (definition.side == "lead" or tags.intersection({"setup", "low-kick"})):
-                bonus += 2
-                reasons.append("closed-stance-lead-lane")
-            elif stance_matchup == "switch" and tags.intersection({"creative", "spinning", "high-risk"}):
-                bonus += 2.5
-                reasons.append("switch-stance-angle")
-            grappling_styles = {
-                "Wrestler", "Freestyle Wrestler", "Catch Wrestler", "BJJ", "Luta Livre",
-                "Sambo", "Judo", "Grappler", "Submission Grappler",
-            }
-            actor_grappler = bool(set(styles).intersection(grappling_styles))
-            defender_grappler = bool(set(self.fighter_styles(defender)).intersection(grappling_styles))
-            if actor_grappler and not defender_grappler and tags.intersection({"entry", "takedown", "clinch"}):
-                bonus += 2.5
-                reasons.append("grappler-vs-striker-entry")
-            elif not actor_grappler and defender_grappler and tags.intersection({"setup", "counter", "kick"}):
-                bonus += 2
-                reasons.append("striker-vs-grappler-range")
-            elif actor_grappler and defender_grappler and tags.intersection({"scramble", "transition", "submission"}):
-                bonus += 1.5
-                reasons.append("grappling-matchup-chain")
-            plan_preferences = {
-                "Pressure and volume": ("combination",),
-                "Counter striking": ("counter",),
-                "Wrestle early": ("wrestling", "entry"),
-                "Cage grind": ("cage", "control"),
-                "Attack the body": ("body",),
-                "Damage the lead leg": ("leg",),
-                "Submission hunt": ("submission",),
-                "Chase a finish": ("power", "submission", "high-risk"),
-            }
-            preferred = plan_preferences.get(plan["current"], ())
-            if tags.intersection(preferred):
-                bonus += 5 * plan["execution"]
-                reasons.append(f"plan:{plan['current']}")
-            targets_seen = actor_reads.get("targets", {})
-            if targets_seen.get("body", 0) >= 2 and ("head" in tags or definition.parent_action == "power_punch"):
-                bonus += min(4.5, targets_seen["body"] * 0.7)
-                reasons.append("body-work-opened-head")
-            if targets_seen.get("leg", 0) >= 2 and tags.intersection({"head", "entry", "takedown"}):
-                bonus += min(4.0, targets_seen["leg"] * 0.6)
-                reasons.append("low-kick-read")
-            if actor_reads.get("setups", {}).get("feint", 0) >= 2 and "entry" in tags:
-                bonus += min(3.5, actor_reads["setups"]["feint"] * 0.5)
-                reasons.append("feint-established-entry")
-            repeats = actor_reads.get("moves", {}).get(definition.move_id, 0)
-            if repeats >= 2:
-                adaptability = self.ds(actor, "adaptability", actor.fight_iq)
-                penalty = min(14.0, (repeats - 1) * (2.6 + max(0, 65 - adaptability) / 55))
-                bonus -= penalty
-                reasons.append("pattern-repetition-penalty")
-            opponent_repeats = max(defender_reads.get("moves", {}).values(), default=0)
-            if active_counter and "counter" in tags and opponent_repeats >= 3:
-                bonus += min(5.0, opponent_repeats * self.ds(actor, "adaptability", actor.fight_iq) / 150)
-                reasons.append("opponent-pattern-counter")
-            return bonus, tuple(reasons)
-
-        def score(definition):
-            attack = [boxing_specialists.get(key, self.ds(actor, key, 50)) for key in definition.attack_skills]
-            proficiency = sum(attack) / max(1, len(attack))
-            if definition.minimum_skill and proficiency < definition.minimum_skill:
-                return -10_000
-            style_bonus = 8 if styles[0] in definition.preferred_styles else 0
-            if len(styles) > 1 and styles[1] in definition.preferred_styles:
-                style_bonus += 3
-            if definition.move_id in REPRESENTATIVE_SPECIALIST_MOVES and styles[0] in definition.preferred_styles:
-                style_bonus += 24
-            style_tag_preferences = {
-                "Boxer": {"punch", "combination", "counter"},
-                "Kickboxer": {"kick", "mixed-combination", "counter"},
-                "Dutch Kickboxer": {"combination", "low-kick", "mixed-combination"},
-                "Muay Thai": {"knee", "elbow", "clinch"},
-                "Karate": {"kick", "counter", "high-risk"},
-                "Taekwondo": {"kick", "spinning", "high-risk"},
-                "Sanda": {"kick", "takedown", "trip"},
-                "Wrestler": {"wrestling", "takedown", "control"},
-                "Freestyle Wrestler": {"entry", "takedown", "scramble"},
-                "Catch Wrestler": {"ride", "front-headlock", "submission"},
-                "BJJ": {"submission", "guard", "transition"},
-                "Luta Livre": {"leg-lock", "submission", "scramble"},
-                "Sambo": {"takedown", "leg-lock", "trip"},
-                "Judo": {"throw", "trip", "clinch"},
-                "Grappler": {"transition", "control", "ground"},
-                "Submission Grappler": {"submission", "back-take", "choke"},
-                "Well-Rounded": {"mixed-combination", "transition", "counter"},
-                "MMA Generalist": {"mixed-combination", "entry", "control"},
-            }
-            definition_tags = set(definition.tags)
-            if ("style-finisher" in definition_tags
-                    and signature_finisher_ids
-                    and definition.move_id not in signature_finisher_ids):
-                return -10_000
-            if "style-combination" in definition_tags:
-                style_bonus += 2 if styles[0] in definition.preferred_styles else 1
-            if "style-finisher" in definition_tags:
-                style_bonus += 5 if styles[0] in definition.preferred_styles else 2
-            if definition_tags.intersection(style_tag_preferences.get(styles[0], set())):
-                style_bonus += 4
-            if len(styles) > 1 and definition_tags.intersection(style_tag_preferences.get(styles[1], set())):
-                style_bonus += 1.5
-            signature_bonus = 6 if definition.move_id in signature_moves else 0
-            mastery_bonus = float((getattr(actor, "move_mastery", {}) or {}).get(definition.move_id, 0) or 0) * 0.12
-            context_bonus, _reasons = contextual_score(definition)
-            material = (
+            high_risk_frequency = 30 + max(-12, min(26, (creativity - 50) * 0.52))
+            if fingerprint % 100 >= high_risk_frequency:
+                return False
+        if definition_tags.intersection({FINISHER_TAG, STYLE_FINISHER_TAG}):
+            finisher_material = (
                 f"{identity}|{state.get('round', 1)}|{state.get('tick', 1)}|"
-                f"{action}|{position}|{target}|{definition.move_id}"
+                f"{action}|{position}|{target}|authored-finisher"
             )
-            fingerprint = zlib.crc32(material.encode("utf-8"))
-            # Authored rarity is a property of the fighter, not a global constant.
-            # Flat gates of 14/12/18 suppressed spinning attacks to four uses per
-            # 300 fights and left eight of eighteen style finishers unreachable,
-            # so the thresholds now scale with the attributes that should decide
-            # whether a fighter reaches for a flashy or fight-ending technique.
-            if "high-risk" in definition_tags:
-                creativity = (
-                    self.ds(actor, "creative_kicks", 50)
-                    if definition_tags.intersection({"kick", "spinning"})
-                    else self.ds(actor, "creative_punches", 50)
-                )
-                high_risk_frequency = 30 + max(-12, min(26, (creativity - 50) * 0.52))
-                if fingerprint % 100 >= high_risk_frequency:
-                    return -10_000
-            if definition_tags.intersection({"finisher", "style-finisher"}):
-                finisher_material = (
-                    f"{identity}|{state.get('round', 1)}|{state.get('tick', 1)}|"
-                    f"{action}|{position}|{target}|authored-finisher"
-                )
-                instinct = max(
-                    self.ds(actor, "killer_instinct", 50),
-                    getattr(actor, "finishing_instinct", 50) or 50,
-                )
-                authored_frequency = 35 if "style-finisher" in definition_tags else 28
-                authored_frequency += max(-14, min(22, (instinct - 50) * 0.48))
-                if zlib.crc32(finisher_material.encode("utf-8")) % 100 >= authored_frequency:
-                    return -10_000
-            variety = fingerprint % 901 / 100
-            return proficiency + style_bonus + signature_bonus + mastery_bonus + context_bonus + variety
+            instinct = max(
+                self.ds(actor, "killer_instinct", 50),
+                getattr(actor, "finishing_instinct", 50) or 50,
+            )
+            authored_frequency = 35 if STYLE_FINISHER_TAG in definition_tags else 28
+            authored_frequency += max(-14, min(22, (instinct - 50) * 0.48))
+            if zlib.crc32(finisher_material.encode("utf-8")) % 100 >= authored_frequency:
+                return False
+        return True
 
-        scored = [(score(definition), definition) for definition in candidates]
-        eligible = [row for row in scored if row[0] > -10_000]
-        if not eligible:
-            return {
-                "move_id": f"generic_{action}", "name": action.replace("_", " "),
-                "parent_action": action, "target": target or "", "attack_skills": (),
-                "defense_skills": (), "energy": 1.0, "miss_risk": 1.0,
-                "counter_risk": 1.0, "follow_up_id": "", "tags": ("generic",),
-                "follow_up_ids": (),
-                "side": "", "range_band": "", "defense_families": (),
-                "entry_family": "", "finish_positions": (),
-                "attack_path": "", "failure_outcomes": (), "components": (),
-                "signature": False, "selection_reasons": (),
-                "sequence_source_id": "", "sequence_step": 0,
-                "generic": True,
-            }
+    def _select_from_pool(self, eligible, active_counter, signature_moves, chain_candidates,
+                          active_chain, identity, action, position, target, state):
+        """Choose from ranked legal rows using the unchanged deterministic draw."""
         # A plain argmax over scores made the highest-proficiency technique win
         # every time the spread exceeded the 0-9 variety term, which drove a 21%
         # consecutive-repeat rate. Draw from the strongest handful instead,
@@ -1081,7 +1227,7 @@ class FightEngineMixin:
         # the weighted draw below is allowed to vary which counter, never
         # whether one is thrown at all.
         if active_counter:
-            counter_rows = [row for row in eligible if "counter" in row[1].tags]
+            counter_rows = [row for row in eligible if COUNTER_TAG in row[1].tags]
             if counter_rows:
                 eligible = counter_rows
         # Authored style content -- combinations, style finishers and a fighter's
@@ -1089,13 +1235,19 @@ class FightEngineMixin:
         # on score it is taken as-is rather than diluted by the variety draw. The
         # draw exists to break up ordinary technique repetition, not to suppress
         # the moments that give a style its identity.
-        authored_tags = {"style-combination", "style-finisher"}
+        authored_tags = {STYLE_COMBINATION_TAG, STYLE_FINISHER_TAG}
         top_definition = eligible[0][1]
         authored_top = (
             bool(set(top_definition.tags).intersection(authored_tags))
             or top_definition.move_id in signature_moves
         )
-        pool = eligible[:1] if authored_top else eligible[:5]
+        if authored_top:
+            pool = eligible[:1]
+        else:
+            pool, _kind = ordinary_selection_pool(
+                eligible, chain_candidates, active_chain,
+                expanded=getattr(self, "_experimental_chain_action_weighting", False),
+            )
         best = pool[0][0]
         weights = [max(0.02, 0.5 ** ((best - value) / 2.2)) for value, _definition in pool]
         weight_total = sum(weights)
@@ -1111,7 +1263,29 @@ class FightEngineMixin:
             if selector <= cursor:
                 definition = candidate
                 break
-        _context_bonus, selection_reasons = contextual_score(definition)
+        return definition
+
+    def _move_payload(self, definition, actor, defender, action, target, state, actor_key,
+                       styles, active_counter, active_chain, chain_candidates, signature_moves, context=None):
+        """Build the selected or generic payload with unchanged field semantics."""
+        if definition is None:
+            return {
+                "move_id": f"generic_{action}", "name": action.replace("_", " "),
+                "parent_action": action, "target": target or "", "attack_skills": (),
+                "defense_skills": (), "energy": 1.0, "miss_risk": 1.0,
+                "counter_risk": 1.0, "follow_up_id": "", "tags": ("generic",),
+                "follow_up_ids": (),
+                "side": "", "range_band": "", "defense_families": (),
+                "entry_family": "", "finish_positions": (),
+                "attack_path": "", "failure_outcomes": (), "components": (),
+                "signature": False, "selection_reasons": (),
+                "sequence_source_id": "", "sequence_step": 0,
+                "generic": True,
+            }
+        _context_bonus, selection_reasons = self._move_contextual_score(
+            actor, defender, definition, state, actor_key, styles, active_counter,
+            active_chain, chain_candidates, context=context,
+        )
         return {
             "move_id": definition.move_id, "name": definition.name,
             "parent_action": definition.parent_action, "target": target or "",
@@ -1133,11 +1307,14 @@ class FightEngineMixin:
             "selection_reasons": selection_reasons,
             "sequence_source_id": (
                 str(active_chain.get("source_move_id", ""))
-                if chain_live and definition.move_id == active_chain.get("next_move_id") else ""
+                if definition.move_id in chain_candidates else ""
             ),
             "sequence_step": (
                 int(active_chain.get("step", 1)) + 1
-                if chain_live and definition.move_id == active_chain.get("next_move_id") else 0
+                if definition.move_id in chain_candidates else 0
+            ),
+            "sequence_occurrence_id": (
+                str(active_chain.get("occurrence_id", "")) if definition.move_id in chain_candidates else ""
             ),
             "stance_matchup": (
                 "switch" if "Switch" in (
@@ -1186,10 +1363,33 @@ class FightEngineMixin:
             })
         return state["current_stance"][key]
 
-    def select_exchange_defense(self, defender, move_payload, position, state):
+    def select_exchange_defense(self, defender, move_payload, position, state, resolved_technique=None):
         """Name the legal defense attempted against a selected technique."""
         families = move_payload.get("defense_families", ()) or self.default_defense_families(move_payload)
+        resolved_leg = None
+        if (getattr(self, "_experimental_specialist_entries", False)
+                and move_payload.get("parent_action") in SUBMISSION_PARENT_ACTIONS
+                and isinstance(resolved_technique, dict)
+                and isinstance(resolved_technique.get("name"), str)
+                and resolved_technique["name"].strip()):
+            # Explicit current resolution outranks authored tags/families. Never
+            # infer this from last_submission_technique during isolated previews.
+            resolved_leg = any(term in resolved_technique["name"].casefold() for term in (
+                "heel", "knee", "ankle", "toe hold", "slicer", "cloverleaf",
+            ))
+            families = ("leg escape", "stack") if resolved_leg else ("submission defense", "stack")
         candidates = legal_defenses(families, position)
+        move_tags = set(move_payload.get("tags", ()))
+        # Broad power-punch actions also resolve knees and elbows. Only infer
+        # boxing from that action when explicit weapon metadata agrees.
+        punch_attack = not move_tags.intersection({"kick", "knee", "elbow"}) and (
+            "punch" in move_tags
+            or move_payload.get("parent_action") in {"jab", "power_punch", "dirty_boxing"}
+        )
+        candidates = tuple(definition for definition in candidates
+                           if ("body" not in definition.tags or move_payload.get("target") == "body")
+                           and ("punch" not in definition.tags or punch_attack)
+                           and (resolved_leg is not False or "leg-lock" not in definition.tags))
         if not candidates:
             fallback = DEFENSE_REGISTRY["technical_scramble"]
             return {
@@ -1225,11 +1425,12 @@ class FightEngineMixin:
         return ("block", "parry", "evade")
 
     @staticmethod
-    def fighter_signature_move_labels(fighter):
+    def fighter_signature_move_labels(fighter, *, registry=None):
+        registry = MOVE_REGISTRY if registry is None else registry
         return [
-            MOVE_REGISTRY[move_id].name
+            registry[move_id].name
             for move_id in (getattr(fighter, "signature_moves", []) or [])
-            if move_id in MOVE_REGISTRY
+            if move_id in registry
         ]
 
     @staticmethod
@@ -1289,44 +1490,81 @@ class FightEngineMixin:
         }
 
     @staticmethod
-    def update_move_sequence(state, event):
+    def update_move_sequence(state, event, *, independent_alternatives=False, registry=None):
         """Carry a successful registry follow-up across at most two ticks."""
+        registry = MOVE_REGISTRY if registry is None else registry
         actor = event.get("actor")
         if actor not in ("a", "b"):
             return
         chains = state.setdefault("move_chains", {"a": {}, "b": {}})
         move = event.get("move", {}) or {}
+        neutral_reset = bool(event.get("neutral_scramble_reset"))
+        if neutral_reset:
+            # Automatic separation is not a completed fighter continuation.
+            chains["a"] = {}
+            chains["b"] = {}
+            move["sequence_source_id"] = ""
+            move["sequence_step"] = 0
+            move.pop("sequence_occurrence_id", None)
+            event["sequence_source_id"] = ""
+            event["sequence_step"] = 0
         selected_source = str(move.get("sequence_source_id", "") or "")
         selected_step = int(move.get("sequence_step", 0) or 0)
         prior_chain = dict(chains.get(actor, {}) or {})
+        occurrence = str(move.get("sequence_occurrence_id") or "") if selected_source else ""
+        occurrence = occurrence or f"{actor}:{event.get('round', 1)}:{event.get('tick', 1)}"
+        depth = selected_step or 1
+        event["chain_depth"] = depth
+        event["sequence_occurrence_id"] = occurrence
         event["move_sequence"] = {
             "source_move_id": selected_source,
             "step": selected_step,
             "completed_follow_up": bool(selected_source),
             "branch_options": list(prior_chain.get("branch_options", [])),
             "branch_reason": str(prior_chain.get("branch_reason", "") or ""),
+            "chain_depth": depth,
+            "occurrence_id": occurrence,
         }
         effective = event.get("outcome") in {
             "landed", "knockdown", "takedown", "submission_attempt", "position_change",
         } or (event.get("outcome") == "control" and "control" in set(move.get("tags", ())))
+        effective = effective or (event.get("top_after") == actor and event.get("top_before") in {"a", "b"}
+                                  and event["top_before"] != actor)
+        if neutral_reset or (event.get("referee_ground_action") or {}).get("type") == "standup":
+            effective = False
         raw_follow_ups = move.get("follow_up_ids", ()) or ((move.get("follow_up_id"),) if move.get("follow_up_id") else ())
-        follow_up_ids = [str(value) for value in raw_follow_ups if value in MOVE_REGISTRY]
+        follow_up_ids = [str(value) for value in raw_follow_ups if value in registry]
         position_after = str(event.get("position_after", "") or "")
         legal_branches = [
             move_id for move_id in follow_up_ids
-            if not position_after or position_after in MOVE_REGISTRY[move_id].positions
+            if not registry[move_id].deprecated
+            and (not position_after or position_after in registry[move_id].positions)
+            and sequence_role_allows(registry[move_id].parent_action, position_after, actor,
+                                     event.get("top_after"), event.get("bottom_after"))
         ]
-        defense_tags = set((event.get("defense") or {}).get("tags", ()))
-        branch_index = 1 if len(legal_branches) > 1 and defense_tags.intersection({"evasion", "escape", "frame"}) else 0
-        follow_up_id = legal_branches[branch_index] if legal_branches else ""
-        if effective and follow_up_id:
+        if independent_alternatives:
+            # A selected defense may have been breached. Neither its tags nor
+            # the order of an alternatives tuple proves a tactical reaction.
+            # Let the existing eligible-move draw choose among multiple options.
+            follow_up_id = legal_branches[0] if len(legal_branches) == 1 else ""
+            branch_reason = "sole-legal-continuation" if follow_up_id else "legal-alternatives"
+        else:
+            defense_tags = set((event.get("defense") or {}).get("tags", ()))
+            branch_index = 1 if len(legal_branches) > 1 and defense_tags.intersection({"evasion", "escape", "frame"}) else 0
+            follow_up_id = legal_branches[branch_index] if legal_branches else ""
+            branch_reason = "defensive-reaction" if branch_index else "primary-continuation"
+        event["move_sequence"]["continuation_available"] = bool(effective and legal_branches)
+        if effective and legal_branches:
             chains[actor] = {
                 "source_move_id": selected_source or str(event.get("move_id", "") or ""),
                 "previous_move_id": str(event.get("move_id", "") or ""),
                 "next_move_id": follow_up_id,
                 "branch_options": legal_branches,
-                "branch_reason": "defensive-reaction" if branch_index else "primary-continuation",
+                "branch_reason": branch_reason,
                 "step": selected_step or 1,
+                "occurrence_id": occurrence,
+                "actor_role": sequence_actor_role(position_after, actor,
+                                                  event.get("top_after"), event.get("bottom_after")),
                 "round": int(event.get("round", 1)),
                 "tick": int(event.get("tick", 1)),
             }
@@ -1408,13 +1646,14 @@ class FightEngineMixin:
         return "block"
 
     @staticmethod
-    def exchange_combination_components(action, attempts, landed, target, move_id=""):
+    def exchange_combination_components(action, attempts, landed, target, move_id="", *, registry=None):
         """Expand aggregate strike volume into bounded, internally consistent evidence."""
+        registry = MOVE_REGISTRY if registry is None else registry
         if attempts <= 0:
             return []
         authored_components = (
-            tuple(MOVE_REGISTRY[move_id].components)
-            if move_id in MOVE_REGISTRY and MOVE_REGISTRY[move_id].components else ()
+            tuple(registry[move_id].components)
+            if move_id in registry and registry[move_id].components else ()
         )
         move_templates = {
             "single_jab": ("jab",),
@@ -1503,7 +1742,16 @@ class FightEngineMixin:
         td_att_delta = after["stats"][actor_key]["td_att"] - before["stats"][actor_key]["td_att"]
         sub_att_delta = after["stats"][actor_key]["sub_att"] - before["stats"][actor_key]["sub_att"]
         knockdown_delta = {key: after["knockdowns"][key] - before["knockdowns"][key] for key in ("a", "b")}
-        if knockdown_delta[actor_key] > 0:
+        if state.get("last_neutral_scramble_reset"):
+            # Keep the real positional path and control points, but never call
+            # a neutral reset a successful fighter transition in downstream
+            # plans, judging, signature statistics or commentary evidence.
+            outcome = "neutral_reset"
+        elif state.get("last_top_leg_entry"):
+            outcome = "position_change" if state["last_top_leg_entry"]["success"] else "defended"
+        elif state.get("last_bottom_leg_entry"):
+            outcome = "position_change" if state["last_bottom_leg_entry"]["success"] else "defended"
+        elif knockdown_delta[actor_key] > 0:
             outcome = "knockdown"
         elif sub_att_delta > 0:
             outcome = "submission_attempt"
@@ -1532,10 +1780,13 @@ class FightEngineMixin:
         }
         move_payload = state.get("last_move_payload") or self.select_exchange_move(
             actor, defender, action, before["position"], state.get("last_strike_target"), state,
+            ownership_before=before,
+            resolved_technique=state.get("last_submission_technique") or {},
         )
         defense_move_payload = move_payload
         submission_technique = state.get("last_submission_technique") or {}
-        if submission_technique:
+        if submission_technique and (not getattr(self, "_experimental_specialist_entries", False)
+                                     or action in SUBMISSION_PARENT_ACTIONS):
             technique_name = str(submission_technique.get("name") or "").casefold()
             leg_attack = any(term in technique_name for term in (
                 "heel", "knee", "ankle", "toe hold", "slicer", "cloverleaf",
@@ -1546,6 +1797,7 @@ class FightEngineMixin:
             )
         defense_payload = self.select_exchange_defense(
             defender, defense_move_payload, before["position"], state,
+            resolved_technique=submission_technique if action in SUBMISSION_PARENT_ACTIONS else None,
         )
         plan_row = self.fight_plan_for(actor, state)
         plan_change = {}
@@ -1560,6 +1812,8 @@ class FightEngineMixin:
         try:
             move_mastery = int(round(float(mastery.get(move_payload["move_id"], 0) or 0)))
         except (TypeError, ValueError):
+            move_mastery = 0
+        if getattr(self, "_experimental_specialist_entries", False) and move_payload.get("generic"):
             move_mastery = 0
         corner_identity = self.commentary_corner_identity(actor)
         event = {
@@ -1663,6 +1917,24 @@ class FightEngineMixin:
             },
             "stoppage": None,
         }
+        if state.get("last_neutral_scramble_reset"):
+            event["neutral_scramble_reset"] = deepcopy(state["last_neutral_scramble_reset"])
+        if state.get("last_top_leg_entry"):
+            event["top_leg_entry"] = deepcopy(state["last_top_leg_entry"])
+        if state.get("last_bottom_leg_entry"):
+            event["bottom_leg_entry"] = deepcopy(state["last_bottom_leg_entry"])
+        if state.get("last_von_flue_setup_event"):
+            event["von_flue_setup"] = deepcopy(state["last_von_flue_setup_event"])
+        if state.get("last_guillotine_defense"):
+            event["guillotine_defense"] = deepcopy(state["last_guillotine_defense"])
+        if state.get("last_von_flue_angle"):
+            event["von_flue_angle"] = deepcopy(state["last_von_flue_angle"])
+        if state.get("last_control_award"):
+            event["control_award"] = dict(state["last_control_award"])
+        if state.get("last_scarf_hold_setup_event"):
+            event["scarf_hold_setup"] = deepcopy(state["last_scarf_hold_setup_event"])
+        if state.get("last_distance_transition"):
+            event["distance_transition"] = dict(state["last_distance_transition"])
         exchange = event["exchange"]
         exchange["beats"] = [
             {"phase": "setup", "detail": exchange["setup"]},
@@ -1703,7 +1975,8 @@ class FightEngineMixin:
         state["trace"].append(event)
         self.update_move_reads(state, event)
         self.update_move_mechanics(state, event)
-        self.update_move_sequence(state, event)
+        self.update_move_sequence(state, event, independent_alternatives=bool(
+            getattr(self, "_experimental_chain_action_weighting", False)))
         return event
 
     def commentary_personality(self, value=None):
@@ -1766,6 +2039,8 @@ class FightEngineMixin:
 
     def camp_exchange_commentary(self, event, kind):
         """Connect recorded camp specialties to completed exchange evidence."""
+        if kind in {"referee_standup", "neutral_reset"} or event.get("neutral_scramble_reset") or (event.get("referee_ground_action") or {}).get("type") == "standup":
+            return ""
         actor = str(event.get("actor_name") or "The attacker")
         camp = str(event.get("actor_camp") or "").strip()
         coach = str(event.get("actor_coach") or "").strip()
@@ -1895,6 +2170,8 @@ class FightEngineMixin:
         This is presentation over recorded facts. It cannot add an action,
         damage, score, position change, or finish opportunity.
         """
+        if kind in {"referee_standup", "neutral_reset"} or event.get("neutral_scramble_reset") or (event.get("referee_ground_action") or {}).get("type") == "standup":
+            return ""
         actor = str(event.get("actor_name") or "The attacker")
         actor_profile = event.get("actor_commentary_profile", {}) or {}
         trait = str(actor_profile.get("trait") or "").strip()
@@ -2235,6 +2512,8 @@ class FightEngineMixin:
     @staticmethod
     def exchange_commentary_kind(event):
         """Classify an exchange from recorded outcome and defense facts only."""
+        if (event.get("neutral_scramble_reset") or {}).get("reason") in {"stalled_failed_shot", "stalled_standing_back", "stalled_pocket"}:
+            return "neutral_reset"
         if (event.get("referee_ground_action") or {}).get("type") == "standup":
             return "referee_standup"
         outcome = str(event.get("outcome") or "control")
@@ -2310,6 +2589,12 @@ class FightEngineMixin:
         action = str(event.get("action") or "").casefold()
         before = str(event.get("position_before") or "")
         after = str(event.get("position_after") or before)
+        if move_id == "single_jab" and action in {"", "jab"}:
+            # Wording only: retain the canonical ID, target, outcome and move reads.
+            # No speed, power, stepping or feint claim without recorded evidence.
+            material = (f"{event.get('round', 1)}|{event.get('tick', 1)}|"
+                        f"{event.get('actor', '')}|{before}|{move.get('target', '')}|jab-wording")
+            return SINGLE_JAB_DISPLAY_VARIANTS[zlib.crc32(material.encode('utf-8')) % len(SINGLE_JAB_DISPLAY_VARIANTS)]
         tags = {str(tag).casefold() for tag in (move.get("tags", ()) or ())}
         if action == "advance_position" and before != after:
             explicit_target = (
@@ -2436,7 +2721,38 @@ class FightEngineMixin:
             "anti-wrestling": f"{defender}'s anti-wrestling base and {defense} hold up",
             "submission defense": f"{defender}'s submission awareness and {defense} solve the first attack",
         }
-        return clauses.get(identity, f"{defender}'s {defense} stops it")
+        first = clauses.get(identity, f"{defender}'s {defense} stops it")
+        variants = {
+            "movement": (f"{defender} uses the {defense} to move off the attack line",
+                         f"{defender} takes the opening away with the {defense}"),
+            "guard": (f"{defender} closes the opening with the {defense}",
+                      f"{defender}'s {defense} keeps the attack out"),
+            "kick defense": (f"{defender} reads the kick and answers with the {defense}",
+                             f"{defender} meets the kick with the {defense}"),
+            "anti-wrestling": (f"{defender} meets the entry with the {defense}",
+                               f"{defender}'s {defense} denies the entry"),
+            "submission defense": (f"{defender} answers the submission threat with the {defense}",
+                                    f"{defender} finds the {defense} against the hold"),
+        }
+        options = (first, *variants.get(identity, (
+            f"{defender} shuts the opening with the {defense}",
+            f"{defender} answers with the {defense}")),
+            # These alternatives describe the recorded defense alone. They add no
+            # assumed counter, escape, damage, timing or change of position.
+            f"{defender} responds with the {defense}",
+            f"{defender} brings the {defense} into play",
+            f"{defender} turns to the {defense}",
+            f"{defender}'s response is the {defense}",
+            f"{defender} works the {defense} against the attack",
+            f"{defender} puts the {defense} to use",
+            f"{defender} meets the threat with the {defense}",
+            f"{defender} uses the {defense} in response",
+            f"{defender} deals with the attempt using the {defense}",
+            f"{defender} applies the {defense}",
+            f"{defender} employs the {defense}",
+            f"{defender} answers the attack using the {defense}",
+            f"{defender} relies on the {defense}")
+        return FightEngineMixin.stable_commentary_choice(event, "named-defense-clause", options)
 
     def evidence_driven_exchange_pool(self, event, kind, facts):
         """Build style/stat/position-specific calls from completed trace facts."""
@@ -2551,6 +2867,23 @@ class FightEngineMixin:
                     "The pressure pauses as {actor} uses the {move} and reclaims the distance.",
                     "{actor} reads the moment, uses the {move} and refuses to be drawn out of position.",
                     "Behind the {move}, {actor} slows {defender}'s momentum and resets at {after}.",
+                    "{actor} settles behind the {move} and lets the rush pass.",
+                    "The {move} keeps {actor} upright and makes {defender} reset the attack.",
+                    "{actor} gives ground carefully behind the {move}, preserving a safe lane.",
+                    "{actor}'s measured {move} takes the urgency out of {defender}'s pressure.",
+                    "{actor} keeps the hands home with the {move} and waits for the opening.",
+                    "The {move} absorbs the moment while {actor} finds their breathing room.",
+                    "{actor} stays balanced behind the {move}, denying a clean second shot.",
+                    "The defensive shape of the {move} keeps {actor} out of immediate danger.",
+                    "{actor} catches the beat with the {move} and steadies the exchange.",
+                    "The {move} gives {actor} a disciplined pause before they re-engage.",
+                    "{actor} protects the centre line with the {move} and slows the pursuit.",
+                    "The rush meets {actor}'s {move}, and the pressure loses its edge.",
+                    "{actor} keeps the {move} compact while {defender} searches for another route.",
+                    "A calm {move} lets {actor} recover without surrendering the moment.",
+                    "{actor} absorbs the danger with the {move} and keeps the next beat manageable.",
+                    "The {move} gives {actor} a safe structure as the exchange settles.",
+                    "{actor} closes the gaps behind the {move}, making {defender} work again.",
                 ),
             }
         else:
@@ -2611,6 +2944,23 @@ class FightEngineMixin:
                     "{actor} stays connected to the {move}, using the {identity} to limit the danger in {after}.{position_tail}",
                     "From {after}, {actor}'s {move} interrupts {defender}'s progress without conceding more position.{position_tail}",
                     "{actor} uses the {move} to keep the ground exchange competitive in {after}.{position_tail}",
+                    "{actor} builds a safe frame with the {move} and keeps the position honest.{position_tail}",
+                    "The {move} gives {actor} a moment to settle their base in {after}.{position_tail}",
+                    "{actor} protects the inside space with the {move} while {defender} recalculates.{position_tail}",
+                    "The pressure stalls against {actor}'s {move} in {after}.{position_tail}",
+                    "{actor} keeps the {move} tight and denies an easy advance.{position_tail}",
+                    "A controlled {move} lets {actor} breathe without abandoning {after}.{position_tail}",
+                    "{actor} uses the {move} to make the next ground beat less dangerous.{position_tail}",
+                    "The {move} keeps {actor} connected enough to weather the pressure in {after}.{position_tail}",
+                    "{actor} finds a stable defensive shape with the {move}.{position_tail}",
+                    "The {move} slows the exchange and gives {actor} time to rebuild their base.{position_tail}",
+                    "{actor} protects the exposed space with the {move} and stays in the fight.{position_tail}",
+                    "{actor}'s patient {move} stops {defender} from turning the position into a finish.{position_tail}",
+                    "{actor} keeps their structure under pressure with the {move}.{position_tail}",
+                    "The {move} buys {actor} another safe breath at {after}.{position_tail}",
+                    "{actor} makes the position stubborn with the {move}, forcing a slower attack.{position_tail}",
+                    "The {move} holds the danger at bay while {actor} looks for the next safe beat.{position_tail}",
+                    "{actor} keeps the ground work measured with the {move} and waits for space.{position_tail}",
                 ),
                 "countered": (
                     "{style_setup}, {actor} counters into the {move} from {before} and reaches {after}.{position_tail}{escape_tail}",
@@ -2632,6 +2982,82 @@ class FightEngineMixin:
         referee_ground_action = event.get("referee_ground_action") or {}
         if referee_ground_action.get("type") == "standup":
             return str(referee_ground_action.get("text") or "The referee stands the fighters up.")
+        if event.get("guillotine_defense"):
+            return self.guillotine_defense_text(
+                event["guillotine_defense"], str(event.get("actor_name") or "The attacker"),
+                str(event.get("defender_name") or "The defender"),
+            )
+        angle = event.get("von_flue_angle") or {}
+        if angle.get("attempted") and angle.get("status") in {"ready", "cleared"}:
+            actor = str(event.get("actor_name") or "The attacker")
+            defender = str(event.get("defender_name") or "the opponent")
+            if angle["status"] == "ready":
+                return (f"{actor} shifts the shoulder into position against the retained guillotine wrap. "
+                        f"{defender} remains underneath in half guard; the Von Flue choke has not yet been applied.")
+            return (f"{defender} frames against {actor}'s shoulder movement and withdraws the wrapping arm. "
+                    f"The neck wrap is cleared; {actor} remains on top in half guard.")
+        scarf = event.get("scarf_hold_setup") or {}
+        if scarf.get("status") == "created":
+            actor = str(event.get("actor_name") or "The attacker")
+            defender = str(event.get("defender_name") or "the opponent")
+            return (f"{actor} settles into scarf hold from side control and isolates the near arm. "
+                    f"{defender} keeps framing underneath; the armbar has not been applied.")
+        if scarf.get("status") == "used":
+            remainder = dict(event)
+            remainder.pop("scarf_hold_setup", None)
+            return "The isolated near arm provides the opening. " + self.render_exchange_trace_event(remainder, personality, technical)
+        retained_wrap = event.get("von_flue_setup") or {}
+        if retained_wrap.get("status") == "created":
+            actor = str(event.get("actor_name") or "The attacker")
+            defender = str(event.get("defender_name") or "the opponent")
+            return (f"{defender} relieves the pressure of {actor}'s guillotine choke in half guard, "
+                    f"but {actor} keeps the neck wrap. {defender} remains on top; the wrap has not been cleared.")
+        if retained_wrap.get("status") == "used":
+            remainder = dict(event)
+            remainder.pop("von_flue_setup", None)
+            actor = str(event.get("actor_name") or "The attacker")
+            return (f"{actor} works against the retained guillotine wrap. "
+                    + self.render_exchange_trace_event(remainder, personality, technical))
+        bottom_entry = event.get("bottom_leg_entry") or {}
+        if bottom_entry:
+            actor = str(event.get("actor_name") or "The attacker")
+            defender = str(event.get("defender_name") or "the opponent")
+            if bottom_entry.get("success"):
+                return (f"{actor} threads underneath from guard and secures the knee line. "
+                        f"{defender} remains in the leg entanglement; neither fighter has physical top control.")
+            return (f"{actor} threads underneath for a knee-line entry, but {defender} withdraws the leg. "
+                    f"{actor} remains underneath in guard.")
+        entry = event.get("top_leg_entry") or {}
+        if entry:
+            actor = str(event.get("actor_name") or "The attacker")
+            defender = str(event.get("defender_name") or "the opponent")
+            if entry.get("success"):
+                return (f"{actor} sits back from top guard for a straight ankle lock, securing the knee line. "
+                        f"{defender} remains caught in the leg entanglement; the finishing grip is not yet set.")
+            return (f"{actor} reaches for a straight ankle lock from top guard, but {defender} withdraws the leg "
+                    f"before the knee line is secured. {actor} remains on top in guard.")
+        if (event.get("neutral_scramble_reset") or {}).get("reason") == "stalled_failed_shot":
+            return "The failed-shot scramble stalls; both fighters release the grips and reset at range."
+        if (event.get("neutral_scramble_reset") or {}).get("reason") == "stalled_standing_back":
+            return "With no progress from the rear body lock, the referee separates them and restarts at range."
+        if (event.get("neutral_scramble_reset") or {}).get("reason") == "stalled_pocket":
+            return "Both fighters pause in the pocket, then disengage to reset at range."
+        distance = event.get("distance_transition") or {}
+        if distance:
+            # Preserve the ordinary strike/defence call, then describe who
+            # actually changed distance. The defender's pivot is not an
+            # attacking transition or an additional successful technique.
+            strike_event = dict(event)
+            strike_event.pop("distance_transition", None)
+            call = self.render_exchange_trace_event(strike_event, personality, technical)
+            responsible = distance.get("fighter")
+            name = event.get("actor_name", "The attacker") if responsible == event.get("actor") else event.get("defender_name", "The defender")
+            detail = {
+                "pressure_entry": f"{name} follows the punch inside and closes into the pocket.",
+                "defender_pivot": f"{name} pivots away from the missed punch and restores long range.",
+                "jab_exit": f"{name} steps back behind the jab and restores long range.",
+            }.get(distance.get("reason"), "")
+            return " ".join(part for part in (call, detail) if part)
         voice = self.commentary_personality(personality)
         move = event.get("move", {}) or {}
         exchange = event.get("exchange", {}) or {}
@@ -2888,6 +3314,10 @@ class FightEngineMixin:
         return " ".join((line, *context))
 
     def finalize_fight_result(self, a, b, winner, loser, method, round_no, lines, state):
+        if getattr(self, "_experimental_specialist_entries", False):
+            self._cancel_von_flue_pending(state, "fight_finished")
+            state.pop("von_flue_setup", None)
+            state.pop("scarf_hold_setup", None)
         no_winner = method in ("Draw", "No Contest")
         if not no_winner and not state.get("stoppage_review"):
             state["stoppage_review"] = self.stoppage_review_from_evidence(loser, method, state)
@@ -2913,7 +3343,9 @@ class FightEngineMixin:
             signature_ids = set(getattr(fighter, "signature_moves", []) or [])
             rows = {}
             for move_id in signature_ids:
-                attempts = [event for event in exchange_events if event.get("actor") == key and event.get("move_id") == move_id]
+                attempts = [event for event in exchange_events if event.get("actor") == key and event.get("move_id") == move_id
+                            and not (getattr(self, "_experimental_specialist_entries", False)
+                                     and (event.get("move") or {}).get("generic"))]
                 if not attempts:
                     continue
                 landed = sum(event.get("outcome") in ("landed", "knockdown", "takedown", "submission_attempt", "position_change") for event in attempts)
@@ -3005,7 +3437,7 @@ class FightEngineMixin:
             rules={
                 "rounds": self.rules.get("rounds", 3),
                 "title_rounds": self.rules.get("title_rounds", 5),
-                "round_length": self.rules.get("round_length", 5),
+                "round_length": state.get("round_length", self.rules.get("round_length", 5)),
             },
         )
         return self._last_fight_result
@@ -3058,8 +3490,10 @@ class FightEngineMixin:
 
     def _simulate_fight_with_caches(self, a, b, fight):
         self.ensure_rule_defaults()
-        max_rounds = self.rules["title_rounds"] if fight.get("main", False) or fight.get("title", False) else self.rules["rounds"]
-        round_length_factor = self.rules["round_length"] / 5
+        tournament_decider = bool(fight.get("tournament_decider"))
+        round_length = 15 if tournament_decider else self.rules["round_length"]
+        max_rounds = 1 if tournament_decider else (self.rules["title_rounds"] if fight.get("main", False) or fight.get("title", False) else self.rules["rounds"])
+        round_length_factor = round_length / 5
         ticks_per_round = max(10, round(18 * round_length_factor))
         a_key, b_key = "a", "b"
         referee_name = self.fight_officiating_rng().choice(["cautious", "standard", "permissive", "late"])
@@ -3129,6 +3563,8 @@ class FightEngineMixin:
             "actor_streak": 0,
             "ticks_per_round": ticks_per_round,
             "max_rounds": max_rounds,
+            "round_length": round_length,
+            "tournament_decider": tournament_decider,
             "fighters": {a_key: a, b_key: b},
             "commentary_salt": zlib.crc32(
                 repr(self.fight_presentation_rng().getstate()).encode("utf-8")
@@ -3172,7 +3608,10 @@ class FightEngineMixin:
         b_scale = f"{b.scale_weight} lb" if b.scale_weight else "not recorded"
         a_signatures = ", ".join(self.fighter_signature_move_labels(a)) or "none declared"
         b_signatures = ", ".join(self.fighter_signature_move_labels(b)) or "none declared"
-        lines = [f"Tale of the tape: {a.style_label} / {a.stance} / {a.behaviour} / {a.trait} (signatures: {a_signatures}) vs {b.style_label} / {b.stance} / {b.behaviour} / {b.trait} (signatures: {b_signatures}). Rules: {max_rounds}x{self.rules['round_length']}. Scale: {a_scale} vs {b_scale}."]
+        rules_label = f"{max_rounds}x{round_length}"
+        if tournament_decider:
+            rules_label += " tournament decider"
+        lines = [f"Tale of the tape: {a.style_label} / {a.stance} / {a.behaviour} / {a.trait} (signatures: {a_signatures}) vs {b.style_label} / {b.stance} / {b.behaviour} / {b.trait} (signatures: {b_signatures}). Rules: {rules_label}. Scale: {a_scale} vs {b_scale}."]
         for fighter in (a, b):
             trait_intro = self.commentary_trait_intro(fighter)
             if trait_intro:
@@ -3198,11 +3637,24 @@ class FightEngineMixin:
         for round_no in range(1, max_rounds + 1):
             # Commentary beats are not evenly spaced in a real round.  Use a
             # local, stable RNG so clock variety never changes combat rolls.
-            state["round_clock_seconds"] = self.fight_clock_schedule(a, b, round_no, ticks_per_round)
+            state["round_clock_seconds"] = self.fight_clock_schedule(a, b, round_no, ticks_per_round, round_length=round_length)
             round_stats = {a_key: {"impact": 0, "control": 0, "danger": 0}, b_key: {"impact": 0, "control": 0, "danger": 0}}
             # Every scored round begins standing. Ground and clinch control cannot
             # leak through the horn into the next round.
             state["position"] = "range"
+            state.pop("last_top_leg_entry", None)
+            state.pop("last_bottom_leg_entry", None)
+            state.pop("von_flue_setup", None)
+            state.pop("last_von_flue_setup_event", None)
+            state.pop("last_guillotine_defense", None)
+            state.pop("von_flue_pending_wrap", None)
+            state.pop("last_von_flue_angle", None)
+            state.pop("last_control_award", None)
+            state.pop("scarf_hold_setup", None)
+            state.pop("last_scarf_hold_setup_event", None)
+            state["failed_shot_stall_ticks"] = 0
+            state["standing_back_stall_ticks"] = 0
+            state["pocket_idle_ticks"] = 0
             if state["position"] in ("range", "pocket", "clinch", "cage"):
                 state["top"] = None
                 state["bottom"] = None
@@ -3213,6 +3665,11 @@ class FightEngineMixin:
             # fighters had received a full corner break.
             state["unanswered"][a_key] = 0
             state["unanswered"][b_key] = 0
+            if getattr(self, "_experimental_chain_action_weighting", False):
+                # A corner break ends the exchange streak as well as named
+                # continuations. Do not penalize a new round for an old flurry.
+                state["last_actor"] = None
+                state["actor_streak"] = 0
             if round_no > 1:
                 transition = self.commentary_round_transition(a, b, state)
                 if transition:
@@ -3222,7 +3679,7 @@ class FightEngineMixin:
             for tick in range(1, ticks_per_round + 1):
                 state["round"] = round_no
                 state["tick"] = tick
-                state["official_time"] = self.elapsed_round_time(tick, ticks_per_round, state["round_clock_seconds"])
+                state["official_time"] = self.elapsed_round_time(tick, ticks_per_round, state["round_clock_seconds"], round_length=round_length)
                 state["early_round"] = tick <= max(3, ticks_per_round // 3)
                 a_init = self.initiative(a, b, state)
                 b_init = self.initiative(b, a, state)
@@ -3253,6 +3710,8 @@ class FightEngineMixin:
                 self.update_dynamic_stance(actor, defender, state)
                 state["last_move_payload"] = self.select_exchange_move(
                     actor, defender, action, trace_before["position"], state.get("last_strike_target"), state,
+                    ownership_before=trace_before,
+                    resolved_technique=state.get("last_submission_technique") or {},
                 )
                 state["last_move_actor"] = self.fight_state_key(actor, state)
                 state["last_visible_damage_events"] = self.record_visible_damage_events(
@@ -3264,7 +3723,14 @@ class FightEngineMixin:
                     counter_window["source_move_id"] = state["last_move_payload"]["move_id"]
                     counter_window["source_counter_risk"] = state["last_move_payload"]["counter_risk"]
                 self.apply_exchange_fatigue(actor, defender, action, state)
-                control_fighter = state["top"] if state["position"] in ("guard", "half guard", "side control", "mount", "back control") else state["clinch_controller"]
+                control_fighter = self._fight_control_owner(state)
+                if getattr(self, "_experimental_specialist_entries", False):
+                    # Preserve the actual award point: a referee reset later
+                    # in this exchange may legitimately clear these owners.
+                    state["last_control_award"] = {
+                        "position": state["position"], "top": state["top"], "bottom": state["bottom"],
+                        "clinch_controller": state["clinch_controller"], "controller": control_fighter,
+                    }
                 if control_fighter:
                     state["stats"][control_fighter]["control_ticks"] += 1
                 ground_note = self.update_ground_inactivity(state, action)
@@ -3272,7 +3738,7 @@ class FightEngineMixin:
                 trace_event = self.record_fight_trace_exchange(
                     a, b, actor, defender, action, result, trace_before, round_before, state, round_stats,
                 )
-                clock = self.round_clock(tick, ticks_per_round, state["round_clock_seconds"])
+                clock = self.round_clock(tick, ticks_per_round, state["round_clock_seconds"], round_length=round_length)
                 exchange_call = self.render_exchange_trace_event(trace_event)
                 if exchange_call:
                     rendered = f"  [{clock}] {exchange_call}"
@@ -3597,7 +4063,7 @@ class FightEngineMixin:
         def metric(value):
             return max(0, int(round(float(value or 0))))
 
-        seconds_per_tick = (self.rules.get("round_length", 5) * 60) / max(1, state.get("ticks_per_round", 18))
+        seconds_per_tick = (state.get("round_length", self.rules.get("round_length", 5)) * 60) / max(1, state.get("ticks_per_round", 18))
         for fighter in (a, b):
             s = state["stats"][self.fight_state_key(fighter, state)]
             plan_row = self.fight_plan_for(fighter, state)
@@ -3687,13 +4153,34 @@ class FightEngineMixin:
         penalty = fighter.fatigue * 0.48 + fighter.weight_cut_penalty * 1.35 + getattr(fighter, "division_size_penalty", 0) * 0.32
         return max(18, min(100, round(cap + trait - penalty)))
 
+    def _fight_control_owner(self, state):
+        """Physical control owner, distinct from a leg-entanglement knee line."""
+        common_ground = {"guard", "half guard", "side control", "mount", "back control"}
+        position = state["position"]
+        if not getattr(self, "_experimental_specialist_entries", False):
+            return state["top"] if position in common_ground else state["clinch_controller"]
+        if position in common_ground | {"front headlock", "turtle"}:
+            top, bottom = state.get("top"), state.get("bottom")
+            return top if top in ("a", "b") and bottom in ("a", "b") and top != bottom and state.get("clinch_controller") is None else None
+        if position in {"clinch", "cage", "failed shot", "standing back control"}:
+            controller = state.get("clinch_controller")
+            return controller if controller in ("a", "b") and state.get("top") is None and state.get("bottom") is None else None
+        return None
+
     def update_ground_inactivity(self, state, action):
         state["last_referee_ground_action"] = None
         if state["position"] not in self.GROUND_POSITIONS:
             state["ground_inactivity"] = 0
             state["ground_warning"] = False
             return ""
-        active = {"ground_strikes", "advance_position", "recover_guard", "submission", "bottom_submission", "sweep", "stand_up"}
+        # Attempts count as activity even when defended, just like the common
+        # submission/pass/escape actions. Static rides and knee-line holds do not.
+        active = {
+            "ground_strikes", "advance_position", "recover_guard", "submission",
+            "bottom_submission", "sweep", "stand_up", "front_headlock_submission",
+            "leg_attack", "take_back", "front_headlock_escape", "turtle_escape",
+            "leg_escape", "counter_leg_lock",
+        }
         if action in active:
             state["ground_inactivity"] = 0
             state["ground_warning"] = False
@@ -3717,6 +4204,20 @@ class FightEngineMixin:
         threshold = self.referee_profile(state)["standup_threshold"]
         if state["ground_warning"] and state["ground_inactivity"] >= threshold:
             prior_position = state["position"]
+            if getattr(self, "_experimental_specialist_entries", False):
+                self._cancel_von_flue_pending(state, "referee_standup")
+                angle_setup = state.get("last_von_flue_setup_event") or {}
+                if angle_setup.get("source") == "angle_work" and angle_setup.get("status") == "created":
+                    state["last_von_flue_setup_event"] = dict(angle_setup, status="cancelled", reason="referee_standup")
+                state.pop("von_flue_setup", None)
+                state.pop("scarf_hold_setup", None)
+                setup = state.get("last_scarf_hold_setup_event") or {}
+                if setup.get("status") == "created":
+                    # Retain truthful generic control evidence, but never expose
+                    # a next-tick armbar after the referee has separated them.
+                    state["last_scarf_hold_setup_event"] = dict(
+                        setup, status="cancelled", reason="referee_standup",
+                    )
             state["position"] = "range"
             state["top"] = None
             state["bottom"] = None
@@ -3882,7 +4383,7 @@ class FightEngineMixin:
 
     def check_corner_stoppage(self, a, b, state, round_no):
         state["round"] = round_no
-        state["official_time"] = f"{self.rules.get('round_length', 5)}:00"
+        state["official_time"] = f"{state.get('round_length', self.rules.get('round_length', 5))}:00"
         for fighter, opponent in ((a, b), (b, a)):
             damage = state["hurt"][self.fight_state_key(fighter, state)]
             body = state["body"][self.fight_state_key(fighter, state)]
@@ -3936,17 +4437,46 @@ class FightEngineMixin:
         else:
             winner = None
         tied_cards = 3 - votes[a_key] - votes[b_key]
-        if winner is not None:
-            loser_key = b_key if winner is a else a_key
-            winner_key = a_key if winner is a else b_key
-            if votes[winner_key] == 3:
-                verdict = "Unanimous Decision"
-            elif tied_cards:
-                verdict = "Majority Decision"
-            elif votes[loser_key]:
-                verdict = "Split Decision"
+        if winner is None and state.get("tournament_decider"):
+            # A tournament-only 15-minute decider cannot return a draw.  The
+            # judges use the same recorded round evidence first, then the
+            # engine's visible impact/control/danger totals as the tie-break
+            # evidence.  This branch is unreachable for ordinary fights.
+            def decider_score(key, fighter):
+                rounds = sum(sum(judge.get(key, [])) for judge in state.get("judge_scores", []))
+                stats = state.get("stats", {}).get(key, {})
+                evidence = (
+                    state.get("impact", {}).get(key, 0) * 2
+                    + state.get("danger", {}).get(key, 0) * 2
+                    + stats.get("control_ticks", 0)
+                    + state.get("knockdowns", {}).get(key, 0) * 12
+                )
+                return rounds, evidence, getattr(fighter, "fight_iq", 0), getattr(fighter, "overall", 0), str(getattr(fighter, "fighter_id", ""))
+
+            if decider_score(a_key, a) >= decider_score(b_key, b):
+                winner = a
+                loser = b
+                votes[a_key], votes[b_key] = 2, 1
             else:
-                verdict = "Unanimous Decision"
+                winner = b
+                loser = a
+                votes[a_key], votes[b_key] = 1, 2
+            tied_cards = 1
+            verdict = "Decider Judges' Decision"
+        else:
+            verdict = ""
+        if winner is not None:
+            if not verdict:
+                loser_key = b_key if winner is a else a_key
+                winner_key = a_key if winner is a else b_key
+                if votes[winner_key] == 3:
+                    verdict = "Unanimous Decision"
+                elif tied_cards:
+                    verdict = "Majority Decision"
+                elif votes[loser_key]:
+                    verdict = "Split Decision"
+                else:
+                    verdict = "Unanimous Decision"
         elif tied_cards == 3:
             verdict = "Unanimous Draw"
         elif tied_cards == 2:
@@ -3975,14 +4505,14 @@ class FightEngineMixin:
         lines.append(f"  Judges' vote: {a.name} {decision['votes'][self.fight_state_key(a, state)]}, {b.name} {decision['votes'][self.fight_state_key(b, state)]}")
         return lines
 
-    def fight_clock_schedule(self, a, b, round_no, ticks_per_round):
+    def fight_clock_schedule(self, a, b, round_no, ticks_per_round, round_length=None):
         """Return deterministic, naturally irregular commentary times.
 
         The engine still resolves the same number of exchanges.  This only
         spaces the broadcast calls, using a local RNG so simulation outcomes
         remain exactly independent of presentation timing.
         """
-        total_seconds = max(1, int(self.rules.get("round_length", 5) * 60))
+        total_seconds = max(1, int((round_length if round_length is not None else self.rules.get("round_length", 5)) * 60))
         seed_text = f"{getattr(a, 'fighter_id', a.name)}|{getattr(b, 'fighter_id', b.name)}|{round_no}|{ticks_per_round}|{total_seconds}"
         rng = random.Random(zlib.crc32(seed_text.encode("utf-8")))
         weights = [rng.triangular(0.48, 1.72, 0.96) for _ in range(max(1, ticks_per_round))]
@@ -3999,16 +4529,16 @@ class FightEngineMixin:
             previous = seconds_left
         return schedule
 
-    def round_clock(self, tick, ticks_per_round, clock_seconds=None):
-        total_seconds = self.rules.get("round_length", 5) * 60
+    def round_clock(self, tick, ticks_per_round, clock_seconds=None, round_length=None):
+        total_seconds = (round_length if round_length is not None else self.rules.get("round_length", 5)) * 60
         if clock_seconds:
             seconds_left = clock_seconds[min(len(clock_seconds) - 1, max(0, tick - 1))]
         else:
             seconds_left = max(0, round(total_seconds * (ticks_per_round - tick) / max(1, ticks_per_round)))
         return f"{seconds_left // 60}:{seconds_left % 60:02d}"
 
-    def elapsed_round_time(self, tick, ticks_per_round, clock_seconds=None):
-        total_seconds = self.rules.get("round_length", 5) * 60
+    def elapsed_round_time(self, tick, ticks_per_round, clock_seconds=None, round_length=None):
+        total_seconds = (round_length if round_length is not None else self.rules.get("round_length", 5)) * 60
         if clock_seconds:
             seconds_left = clock_seconds[min(len(clock_seconds) - 1, max(0, tick - 1))]
             elapsed = total_seconds - seconds_left
@@ -4266,7 +4796,32 @@ class FightEngineMixin:
         window = state.get("counter_window") or {}
         if plan_row["current"] == "Counter striking" and window.get("fighter") == self.fight_state_key(fighter, state):
             plan_bonus += 5.0 * plan_row["execution"]
-        return freshness + mental + mobility + aggression + fighter.momentum * 0.95 + night_form * 0.78 + fighter.camp_boost * 1.3 - fighter.weight_cut_penalty * 0.9 - getattr(fighter, "division_size_penalty", 0) * 0.55 + pressure + caution + context + plan_bonus + self.fight_mechanics_rng().randint(-10, 10)
+        value = freshness + mental + mobility + aggression + fighter.momentum * 0.95 + night_form * 0.78 + fighter.camp_boost * 1.3 - fighter.weight_cut_penalty * 0.9 - getattr(fighter, "division_size_penalty", 0) * 0.55 + pressure + caution + context + plan_bonus
+        if getattr(self, "_experimental_chain_action_weighting", False):
+            value += self._chain_initiative_bonus(fighter, opponent, state)
+        return value + self.fight_mechanics_rng().randint(-10, 10)
+
+    def _chain_initiative_bonus(self, fighter, opponent, state):
+        """Small standing continuation cadence, never a guaranteed next actor."""
+        if (not getattr(self, "_experimental_chain_action_weighting", False)
+                or state.get("position") not in {"range", "pocket"}):
+            return 0.0
+        actor_key = self.fight_state_key(fighter, state)
+        gas = state.get("gas", {}).get(actor_key, 0)
+        if (gas < 22 or state.get("hurt", {}).get(actor_key, 0) > fighter.toughness * 0.65
+                or (state.get("counter_window") or {}).get("fighter") == self.fight_state_key(opponent, state)):
+            return 0.0
+        readiness = max(0.0, min(1.0, (gas - 22) / 38))
+        if not readiness:
+            return 0.0
+        # These are the unchanged standing menu's action keys. Style, plan and
+        # fatigue biases change their weights, not their presence. The shared
+        # preview enforces live chain, role, target, skill and rarity legality.
+        bonuses = self._chain_action_bonuses(
+            fighter, opponent, state, dict.fromkeys(("jab", "power_punch", "kick", "shoot", "clinch"), 1),
+            state.get("round", 1), state.get("tick", 1),
+        )
+        return min(2.0, max(bonuses.values(), default=0.0) * readiness)
 
     STYLE_BIAS = {
         "range": {
@@ -4350,6 +4905,12 @@ class FightEngineMixin:
         return weights
 
     def choose_action(self, fighter, opponent, state, round_no, tick):
+        def choose(weights):
+            weights = specialist_style_weights(self, fighter, state, weights)
+            weights = specialist_plan_weights(self, fighter, opponent, state, weights, round_no)
+            adjusted = self._chain_action_weights(fighter, opponent, state, weights, round_no, tick)
+            return self.weighted_choice(adjusted)
+
         position = state["position"]
         gas = state["gas"][self.fight_state_key(fighter, state)]
         tired = gas < 42
@@ -4367,57 +4928,66 @@ class FightEngineMixin:
         controller = state.get("clinch_controller")
         if position == "failed shot":
             if controller == fighter_key:
-                return self.weighted_choice({
-                    "front_headlock": self.ds_avg(fighter, ("sprawl", "front_headlock", "clinch_control"), fighter.wrestling),
+                return choose({
+                    "front_headlock": self.ds_avg(fighter, (
+                        "sprawl", "submission_attack" if getattr(self, "_experimental_specialist_entries", False)
+                        else "front_headlock", "clinch_control",
+                    ), fighter.wrestling),
                     "force_cage": self.ds_avg(fighter, ("cage_wrestling", "clinch_control", "strength"), fighter.wrestling),
-                    "disengage": self.ds_avg(fighter, ("discipline", "footwork", "fight_iq"), fighter.fight_iq),
+                    "disengage": (round((self.ds(fighter, "discipline", fighter.fight_iq)
+                                          + self.ds(fighter, "footwork", fighter.fight_iq) + fighter.fight_iq) / 3)
+                                  if getattr(self, "_experimental_specialist_entries", False) else
+                                  self.ds_avg(fighter, ("discipline", "footwork", "fight_iq"), fighter.fight_iq)),
                 })
-            return self.weighted_choice({
+            return choose({
                 "re_shot": self.ds_avg(fighter, ("chain_wrestling", "takedown_speed", "conditioning"), fighter.wrestling),
                 "recover_shot": self.ds_avg(fighter, ("get_ups", "scrambles", "clinch_defence"), fighter.takedown_defence),
             })
         if position == "standing back control":
             if controller == fighter_key:
-                return self.weighted_choice({
+                return choose({
                     "mat_return": self.ds_avg(fighter, ("cage_wrestling", "throws", "back_control", "strength"), fighter.wrestling),
                     "dirty_boxing": self.ds_avg(fighter, ("dirty_boxing", "knees", "clinch_control"), fighter.striking),
                     "standing_back_ride": self.ds_avg(fighter, ("back_control", "ride_control", "cage_pressure"), fighter.ground_control),
                 })
-            return self.weighted_choice({
-                "standing_escape": self.ds_avg(fighter, ("clinch_defence", "scrambles", "balance"), fighter.takedown_defence),
+            return choose({
+                "standing_escape": self.ds_avg(fighter, ("clinch_defence", "scrambles",
+                    "mobility" if getattr(self, "_experimental_specialist_entries", False) else "balance"), fighter.takedown_defence),
                 "recover_shot": self.ds_avg(fighter, ("get_ups", "cage_wrestling", "strength"), fighter.wrestling),
             })
         if position == "front headlock":
             if state.get("top") == fighter_key:
-                return self.weighted_choice({
-                    "front_headlock_submission": self.ds_avg(fighter, ("submission_attack", "front_headlock", "killer_instinct"), fighter.submissions),
+                return choose({
+                    "front_headlock_submission": self.ds_avg(fighter, ("submission_attack",
+                        "positional_ability" if getattr(self, "_experimental_specialist_entries", False) else "front_headlock",
+                        "killer_instinct"), fighter.submissions),
                     "take_back": self.ds_avg(fighter, ("back_control", "transitions", "scrambles"), fighter.grappling),
                     "turtle_ride": self.ds_avg(fighter, ("ride_control", "top_control", "positional_ability"), fighter.ground_control),
                 })
-            return self.weighted_choice({
+            return choose({
                 "front_headlock_escape": self.ds_avg(fighter, ("submission_defence_detail", "scrambles", "guard_work"), fighter.submission_defence),
                 "recover_guard": self.skill_bundle(fighter, "bottom_game"),
             })
         if position == "turtle":
             if state.get("top") == fighter_key:
-                return self.weighted_choice({
+                return choose({
                     "take_back": self.ds_avg(fighter, ("back_control", "ride_control", "transitions"), fighter.grappling),
                     "ground_strikes": self.ds_avg(fighter, ("ground_striking", "ride_control", "elbows"), fighter.ground_control),
                     "turtle_ride": self.ds_avg(fighter, ("ride_control", "top_control", "cage_wrestling"), fighter.ground_control),
                 })
-            return self.weighted_choice({
+            return choose({
                 "turtle_escape": self.ds_avg(fighter, ("scrambles", "get_ups", "guard_work"), fighter.grappling),
                 "recover_guard": self.skill_bundle(fighter, "bottom_game"),
                 "stand_up": self.ds_avg(fighter, ("get_ups", "scrambles", "conditioning"), fighter.takedown_defence),
             })
         if position == "leg entanglement":
             if state.get("top") == fighter_key:
-                return self.weighted_choice({
+                return choose({
                     "leg_attack": self.ds_avg(fighter, ("leg_locks", "submission_attack", "positional_ability"), fighter.submissions),
                     "leg_control": self.ds_avg(fighter, ("leg_locks", "top_control", "discipline"), fighter.grappling),
                     "disengage_leg": self.ds_avg(fighter, ("discipline", "scrambles", "get_ups"), fighter.fight_iq),
                 })
-            return self.weighted_choice({
+            return choose({
                 "leg_escape": self.ds_avg(fighter, ("submission_defence_detail", "scrambles", "flexibility"), fighter.submission_defence),
                 "counter_leg_lock": self.ds_avg(fighter, ("leg_locks", "scrambles", "submission_attack"), fighter.submissions),
             })
@@ -4474,7 +5044,12 @@ class FightEngineMixin:
             if opponent.wrestling > fighter.takedown_defence + 8 and fighter.fight_iq > 58:
                 weights["kick"] *= 0.45
             self.apply_fight_plan_weights(fighter, opponent, state, "range", weights, round_no)
-            return self.weighted_choice(weights)
+            if (position == "pocket" and getattr(self, "_experimental_specialist_entries", False)
+                    and getattr(self, "_experimental_pocket_action_bias", True)):
+                weights["power_punch"] *= 1.10
+                weights["kick"] *= 0.85
+                weights["clinch"] *= 1.05
+            return choose(weights)
         if position in ("clinch", "cage"):
             weights = {
                 "dirty_boxing": self.skill_bundle(fighter, "clinch_attack") + self.ds(fighter, "dirty_boxing", fighter.striking) * 0.45,
@@ -4482,6 +5057,12 @@ class FightEngineMixin:
                 "cage_control": self.ds_avg(fighter, ("cage_pressure", "clinch_control", "cage_wrestling", "strength"), fighter.wrestling),
                 "break_clinch": self.skill_bundle(fighter, "clinch_defence") + mental * 0.25,
             }
+            if position == "clinch" and getattr(self, "_experimental_specialist_entries", False):
+                # A snapdown is a contested open-clinch option, not a free
+                # transition from range or a guaranteed escape off the fence.
+                weights["front_headlock"] = self.ds_avg(
+                    fighter, ("sprawl", "clinch_control", "submission_attack"), fighter.wrestling,
+                ) * 0.18
             if state.get("clinch_controller") == self.fight_state_key(fighter, state):
                 weights["dirty_boxing"] *= 1.22
                 weights["takedown"] *= 1.16
@@ -4499,7 +5080,7 @@ class FightEngineMixin:
                 weights["takedown"] *= 1.35
             self.apply_style_bias(fighter, weights, "clinch")
             self.apply_fight_plan_weights(fighter, opponent, state, "clinch", weights, round_no)
-            return self.weighted_choice(weights)
+            return choose(weights)
         if state["top"] == self.fight_state_key(fighter, state):
             sub_multiplier = 1.52 if fighter.behaviour == "Submission Hunter" else 0.94
             # From a dominant, finish-friendly position a good grappler hunts the tap.
@@ -4518,7 +5099,7 @@ class FightEngineMixin:
                 weights["submission"] *= 0.7
             self.apply_style_bias(fighter, weights, "top")
             self.apply_fight_plan_weights(fighter, opponent, state, "top", weights, round_no)
-            return self.weighted_choice(weights)
+            return choose(weights)
         weights = {
             "recover_guard": self.ds_avg(fighter, ("guard_work", "bottom_control", "flexibility", "submission_defence_detail"), fighter.grappling),
             "sweep": self.ds_avg(fighter, ("scrambles", "bottom_control", "transitions", "strength"), fighter.grappling),
@@ -4528,7 +5109,169 @@ class FightEngineMixin:
         }
         self.apply_style_bias(fighter, weights, "bottom")
         self.apply_fight_plan_weights(fighter, opponent, state, "bottom", weights, round_no)
-        return self.weighted_choice(weights)
+        return choose(weights)
+
+    def _chain_action_bonuses(self, fighter, opponent, state, weights, round_no, tick):
+        """Audit-only continuation opportunities; no extra actions or RNG draws.
+
+        Eligibility is a preview, not a promised named selection: resolution and
+        stance updates still precede the ordinary named-move selector. Preserve
+        its independent gates and the existing finite chain lifecycle.
+        """
+        if not getattr(self, "_experimental_chain_action_weighting", False):
+            return {}
+        actor_key = self.fight_state_key(fighter, state)
+        chain = (state.get("move_chains") or {}).get(actor_key) or {}
+        position = state["position"]
+        if (chain.get("round") != round_no or not 0 < tick - int(chain.get("tick", 0)) <= 2
+                or (chain.get("actor_role") and chain["actor_role"] != sequence_actor_role(
+                    position, actor_key, state.get("top"), state.get("bottom")))):
+            return {}
+        options = set(chain.get("branch_options") or (chain.get("next_move_id"),))
+        registry = self._fight_move_registry
+        actions = {registry[key].parent_action for key in options
+                   if key in registry and not registry[key].deprecated
+                   and position in registry[key].positions
+                   and sequence_role_allows(registry[key].parent_action, position,
+                                           actor_key, state.get("top"), state.get("bottom"))}
+        # The prior exchange flag is stale here; resolve_exchange has not yet
+        # set it for the incoming actor. Never mutate the real bout state.
+        preview = dict(state, round=round_no, tick=tick,
+                       last_exchange_counter=(state.get("counter_window") or {}).get("fighter") == actor_key)
+        identity = str(getattr(fighter, "fighter_id", "") or fighter.name)
+        signature_moves = set(getattr(fighter, "signature_moves", []) or [])
+        boxing = {"combination_punching": self.ds(fighter, "combination_punching", fighter.striking),
+                  "body_punching": self.ds(fighter, "body_punching", fighter.striking),
+                  "counter_timing": self.ds(fighter, "counter_timing", fighter.fight_iq)}
+        opportunity = {}
+        for action in weights:
+            if action not in actions:
+                continue
+            if action in {"jab", "power_punch"}:
+                material = f"{identity}|{round_no}|{tick}|{action}|punch-target"
+                body = zlib.crc32(material.encode("utf-8")) % 10_000 / 10_000 < self.punch_target_shares(fighter, preview)["body"]
+                lanes = {"body" if body else "head": 1.0}
+            elif action == "kick":
+                shares = self.kick_target_shares(fighter, preview)
+                lanes = {"head": shares["high"], "body": shares["body"] + shares["teep"], "leg": shares["leg"]}
+            elif action == "dirty_boxing":
+                lanes = self.dirty_boxing_target_shares(fighter, opponent, preview)
+            else:
+                lanes = {"head" if action in {"dirty_boxing", "ground_strikes"} else "": 1.0}
+            available = 0.0
+            submission_tickets = (
+                self.submission_technique_tickets(fighter, action, preview)
+                if getattr(self, "_experimental_specialist_entries", False) and action in SUBMISSION_PARENT_ACTIONS
+                else None
+            )
+            for target, probability in lanes.items():
+                candidates, styles, _, _, active_counter = self._move_candidates(fighter, action, position, target, preview)
+                if submission_tickets is not None:
+                    # A submission draw may resolve a different exact hold.
+                    # Count the union of compatible ticket indices, never one
+                    # full bonus per branch or stale prior-exchange evidence.
+                    reachable_names, reviewed_names = set(), set()
+                    for name, _choke in submission_tickets:
+                        if name in reviewed_names:
+                            continue
+                        reviewed_names.add(name)
+                        compatible = compatible_submission_ids({"name": name})
+                        matching = [move for move in candidates if move.move_id in compatible]
+                        finishers = {move.move_id for move in matching if move.move_id in signature_moves
+                                     and set(move.tags).intersection({FINISHER_TAG, STYLE_FINISHER_TAG})}
+                        for move in matching:
+                            if move.move_id not in options:
+                                continue
+                            static = self._move_static_score(fighter, move, styles, boxing, signature_moves, finishers)
+                            material = f"{identity}|{round_no}|{tick}|{action}|{position}|{target}|{move.move_id}"
+                            if static is not None and self._move_rarity_gate(
+                                    fighter, static[-1], zlib.crc32(material.encode("utf-8")),
+                                    identity, action, position, target, preview):
+                                reachable_names.add(name)
+                                break
+                    available += probability * sum(name in reachable_names for name, _ in submission_tickets) / max(1, len(submission_tickets))
+                    continue
+                finishers = {m.move_id for m in candidates if m.move_id in signature_moves
+                             and set(m.tags).intersection({FINISHER_TAG, STYLE_FINISHER_TAG})}
+                eligible = []
+                for move in candidates:
+                    # The final selector prefers counter rows only when one
+                    # survives all upstream eligibility gates. Inspect those
+                    # alternatives even when they are not planned successors.
+                    if move.move_id not in options and not (active_counter and COUNTER_TAG in move.tags):
+                        continue
+                    static = self._move_static_score(fighter, move, styles, boxing, signature_moves, finishers)
+                    material = f"{identity}|{round_no}|{tick}|{action}|{position}|{target}|{move.move_id}"
+                    if static is not None and self._move_rarity_gate(
+                            fighter, static[-1], zlib.crc32(material.encode("utf-8")),
+                            identity, action, position, target, preview):
+                        eligible.append(move)
+                counter_only = active_counter and any(COUNTER_TAG in move.tags for move in eligible)
+                if any(move.move_id in options and (not counter_only or COUNTER_TAG in move.tags)
+                       for move in eligible):
+                    available += probability  # Several branches in one lane are not several bonuses.
+            if available:
+                opportunity[action] = min(1.0, available)
+        return {key: self._chain_commitment(fighter, key, state, actor_key) * value
+                for key, value in opportunity.items()}
+
+    def _chain_action_weights(self, fighter, opponent, state, weights, round_no, tick):
+        """Apportion chain/prepared preferences once; overlapping intent never stacks."""
+        if not (getattr(self, "_experimental_chain_action_weighting", False)
+                or getattr(self, "_experimental_specialist_entries", False)):
+            return weights
+        bonuses = self._chain_action_bonuses(fighter, opponent, state, weights, round_no, tick)
+        if "submission" in weights:
+            prepared = self._prepared_submission_opportunity(
+                fighter, "submission", dict(state, round=round_no, tick=tick),
+            )
+            if prepared and prepared["readiness"] > 0:
+                bonuses["submission"] = max(bonuses.get("submission", 0), prepared["readiness"])
+        if not bonuses:
+            return weights
+        cleaned = {key: max(1, int(value)) for key, value in weights.items()}
+        # Keep weighted_choice's exact integer draw range. Reserve one ticket
+        # per original action, then apportion the remainder in stable key order.
+        budget = sum(cleaned.values()) - len(cleaned)
+        demand = {key: value * (1.0 + bonuses.get(key, 0.0)) - 1.0
+                  for key, value in cleaned.items()}
+        total = sum(demand.values())
+        if not budget or not total:
+            return cleaned
+        quotas = {key: budget * value / total for key, value in demand.items()}
+        result = {key: 1 + int(quotas[key]) for key in cleaned}
+        remainder = sum(cleaned.values()) - sum(result.values())
+        ranked = sorted(cleaned, key=lambda key: -(quotas[key] - int(quotas[key])))
+        for key in ranked[:remainder]:
+            result[key] += 1
+        return result
+
+    def _chain_commitment(self, fighter, action, state, actor_key):
+        """Bounded intent to continue a live sequence, not guaranteed execution.
+
+        Coordination and tactical discipline support follow-through; low gas
+        weakens it. Survival overrides and every named-move gate remain earlier
+        authorities. This helper is used only by the opt-in action preview.
+        """
+        if action in {"jab", "power_punch", "dirty_boxing"}:
+            technical = "combination_punching"
+        elif action == "kick":
+            technical = "footwork"
+        elif action in {"shoot", "takedown", "re_shot", "mat_return", "force_cage", "cage_control"}:
+            technical = "chain_wrestling"
+        elif action in {"leg_attack", "leg_control", "leg_escape", "counter_leg_lock", "disengage_leg"}:
+            technical = "leg_locks"
+        elif action in {"submission", "bottom_submission", "front_headlock_submission"}:
+            technical = "submission_attack"
+        elif action in {"stand_up", "recover_guard", "standing_escape", "recover_shot", "turtle_escape", "front_headlock_escape"}:
+            technical = "scrambles"
+        elif action == "ground_strikes":
+            technical = "ground_striking"
+        else:
+            technical = "transitions"
+        coordination = self.ds_avg(fighter, (technical, "adaptability", "discipline"), fighter.fight_iq)
+        readiness = max(0.25, min(1.0, state.get("gas", {}).get(actor_key, 100) / 60))
+        return max(0.25, min(2.0, (coordination - 35) / 25)) * readiness
 
     def weighted_choice(self, weights):
         cleaned = {key: max(1, int(value)) for key, value in weights.items()}
@@ -5688,6 +6431,24 @@ class FightEngineMixin:
         active_window = state.get("counter_window") or {}
         state["last_exchange_counter"] = active_window.get("fighter") == actor_key
         state["last_strike_target"] = None
+        state.pop("last_neutral_scramble_reset", None)
+        state.pop("last_distance_transition", None)
+        state.pop("last_top_leg_entry", None)
+        state.pop("last_bottom_leg_entry", None)
+        state.pop("last_von_flue_setup_event", None)
+        state.pop("last_guillotine_defense", None)
+        state.pop("last_von_flue_angle", None)
+        if (getattr(self, "_experimental_specialist_entries", False)
+                and not self._valid_von_flue_pending(actor, action, state)):
+            self._cancel_von_flue_pending(state, "next_action_or_context_changed")
+        state.pop("last_control_award", None)
+        if (getattr(self, "_experimental_specialist_entries", False)
+                and not self._valid_von_flue_setup(actor, action, state)):
+            state.pop("von_flue_setup", None)
+        state.pop("last_scarf_hold_setup_event", None)
+        if (getattr(self, "_experimental_specialist_entries", False)
+                and not self._valid_scarf_hold_setup(actor, action, state)):
+            state.pop("scarf_hold_setup", None)
         state["last_move_payload"] = None
         state["last_submission_escape"] = None
         state["last_submission_technique"] = None
@@ -5695,13 +6456,75 @@ class FightEngineMixin:
 
         result = self._resolve_exchange_action(actor, defender, action, state, round_stats)
 
+        if (getattr(self, "_experimental_specialist_entries", False)
+                and position_before[0] == state["position"] == "pocket" and action == "survive"):
+            state["pocket_idle_ticks"] = state.get("pocket_idle_ticks", 0) + 1
+            if state["pocket_idle_ticks"] >= 3:
+                self.set_fight_position(state, "range")
+                state["pocket_idle_ticks"] = 0
+                state["last_distance_transition"] = {
+                    "from": "pocket", "to": "range", "fighter": None, "reason": "inactive_disengagement",
+                }
+                state["last_neutral_scramble_reset"] = {
+                    "reason": "stalled_pocket", "position_before": "pocket",
+                    "position_after": "range", "controller_before": None,
+                }
+                result = "Both fighters pause in the pocket, then disengage to reset at range."
+        else:
+            state["pocket_idle_ticks"] = 0
+
+        # Distinguish actor-earned movement from the automatic separations
+        # below. Actual control work still counts as a meaningful response.
+        action_position_after = (
+            state.get("position"), state.get("top"), state.get("bottom"),
+            state.get("clinch_controller"),
+        )
+
+        # Every purposeful failed-shot action already exits this transient
+        # state. Only repeated survival can otherwise leave both fighters
+        # stationary on the knees indefinitely; after three such beats the
+        # disconnected grips produce a neutral reset, without another roll.
+        if (getattr(self, "_experimental_specialist_entries", False)
+                and position_before[0] == state["position"] == "failed shot"):
+            state["failed_shot_stall_ticks"] = state.get("failed_shot_stall_ticks", 0) + 1
+            if state["failed_shot_stall_ticks"] >= 3:
+                self.set_fight_position(state, "range")
+                state["failed_shot_stall_ticks"] = 0
+                state["last_neutral_scramble_reset"] = {
+                    "reason": "stalled_failed_shot", "position_before": "failed shot",
+                    "position_after": "range", "controller_before": position_before[3],
+                }
+                result = "The failed-shot scramble stalls; both fighters release the grips and reset at range."
+        else:
+            state["failed_shot_stall_ticks"] = 0
+
+        # A rear lock may be held while the opponent hand-fights, but four
+        # stationary beats (roughly a minute) without an attack warrant a
+        # standing separation. Attempts to return, escape or strike reset it.
+        if (getattr(self, "_experimental_specialist_entries", False)
+                and position_before[0] == state["position"] == "standing back control"
+                and position_before[3] == state.get("clinch_controller")
+                and action in {"standing_back_ride", "survive"}):
+            state["standing_back_stall_ticks"] = state.get("standing_back_stall_ticks", 0) + 1
+            if state["standing_back_stall_ticks"] >= 4:
+                self.set_fight_position(state, "range")
+                state["standing_back_stall_ticks"] = 0
+                state["last_neutral_scramble_reset"] = {
+                    "reason": "stalled_standing_back", "position_before": "standing back control",
+                    "position_after": "range", "controller_before": position_before[3],
+                }
+                result = "With no progress from the rear body lock, the referee separates them and restarts at range."
+        else:
+            state["standing_back_stall_ticks"] = 0
+
         landed_strikes = actor_stats.get("sig", 0) > sig_before
         response_after = tuple(actor_round.get(key, 0) for key in ("impact", "control", "danger"))
         position_after = (
             state.get("position"), state.get("top"), state.get("bottom"),
             state.get("clinch_controller"),
         )
-        meaningful_response = landed_strikes or response_after != response_before or position_after != position_before
+        meaningful_response = (landed_strikes or response_after != response_before
+                               or (action_position_after != position_before and not state.get("last_distance_transition")))
         if landed_strikes:
             state["unanswered"][defender_key] = state["unanswered"].get(defender_key, 0) + 1
         if meaningful_response:
@@ -5709,7 +6532,8 @@ class FightEngineMixin:
             if state.get("hurt", {}).get(actor_key, 0) > 0:
                 composure_recovery = 0.15 + self.ds(actor, "stun_recovery", actor.recovery) / 600
                 state["hurt"][actor_key] = max(0, state["hurt"][actor_key] - composure_recovery)
-        failed_attack = (not landed_strikes and response_after == response_before and position_after == position_before
+        failed_attack = (not landed_strikes and response_after == response_before
+                         and (position_after == position_before or state.get("last_distance_transition"))
                          and action not in ("survive", "cling", "ground_control", "cage_control"))
         if failed_attack:
             state["counter_window"] = {
@@ -5720,8 +6544,70 @@ class FightEngineMixin:
             state["counter_window"] = None
         return result
 
+    def _update_punch_distance(self, actor, defender, action, margin, state, landed):
+        """Resolve distance from an existing punch contest, never another roll."""
+        position = state["position"]
+        pressure = self.ds_avg(actor, ("footwork", "aggression", "cage_pressure"), actor.striking)
+        movement = self.ds_avg(defender, ("footwork", "mobility", "head_movement"), defender.striking)
+        reach_gap = self.ds(defender, "reach", 50) - self.ds(actor, "reach", 50)
+        reason, responsible, destination = "", None, position
+        if (position == "range" and landed and margin >= 6
+                and margin * 0.35 + (pressure - movement) * 0.25 + max(0, reach_gap) * 0.12 >= 5):
+            reason, responsible, destination = "pressure_entry", actor, "pocket"
+        elif position == "pocket":
+            if not landed and margin < -12 and -margin * 0.35 + (movement - pressure) * 0.25 >= 6:
+                reason, responsible, destination = "defender_pivot", defender, "range"
+            elif landed and action == "jab":
+                preference = max(0, -reach_gap) * 0.12 - max(0, self.ds(actor, "aggression", 50) - 60) * 0.08
+                if actor.behaviour == "Counter" or self.fight_plan_for(actor, state)["current"] == "Counter striking":
+                    preference += 5
+                exit_edge = self.ds_avg(actor, ("footwork", "mobility"), actor.striking) - self.ds_avg(
+                    defender, ("footwork", "cage_pressure"), defender.striking,
+                )
+                if preference > 0 and margin * 0.35 + exit_edge * 0.25 + preference >= 8:
+                    reason, responsible, destination = "jab_exit", actor, "range"
+        if reason:
+            self.set_fight_position(state, destination)
+            state["last_distance_transition"] = {
+                "from": position, "to": destination,
+                "fighter": self.fight_state_key(responsible, state), "reason": reason,
+            }
+
+    def _side_control_intent(self, actor, state):
+        """Choose control purpose from current ability and plan, without RNG.
+
+        Familiarity is a preference, never a style-exclusive technique gate.
+        A neutral tie keeps ordinary riding/pinning rather than creating a setup.
+        """
+        isolation = self.ds_avg(actor, ("submission_attack", "throws", "positional_ability"), actor.grappling)
+        riding = self.ds_avg(actor, ("ride_control", "top_control", "strength"), actor.ground_control)
+        styles = set(self.fighter_styles(actor))
+        isolation += 4 if styles.intersection({"Judo", "Sambo"}) else 0
+        riding += 4 if styles.intersection({"Wrestler", "Freestyle Wrestler", "Catch Wrestler"}) else 0
+        plan = self.fight_plan_for(actor, state)
+        if plan.get("enabled"):
+            influence = 4 * max(0.0, min(1.1, float(plan.get("execution", 0) or 0)))
+            if plan.get("current") == "Submission hunt":
+                isolation += influence
+            elif plan.get("current") in {"Protect a lead", "Conserve energy"}:
+                riding += influence
+        return "arm_isolation" if isolation > riding else "ride_pin"
+
+    def _bottom_leg_entry_intent(self, actor, action, state):
+        """Pure pre-contest choice between knee-line entry and ordinary sweep."""
+        if (not getattr(self, "_experimental_specialist_entries", False) or action != "sweep"
+                or state.get("position") != "guard"
+                or state.get("bottom") != self.fight_state_key(actor, state)
+                or self.ds(actor, "leg_locks", 50) < 62):
+            return None
+        entry = self.ds_avg(actor, ("leg_locks", "scrambles", "flexibility"), actor.grappling)
+        sweep = self.ds_avg(actor, ("bottom_control", "transitions", "strength"), actor.grappling)
+        edge = entry - sweep
+        return edge if edge > 0 else None
+
     def _resolve_exchange_action(self, actor, defender, action, state, round_stats):
         position = state["position"]
+        bottom_entry_edge = self._bottom_leg_entry_intent(actor, action, state)
         attack = self.action_attack_value(actor, action, state)
         defence = self.action_defence_value(defender, action, state)
         margin = attack - defence + self.fight_mechanics_rng().randint(-18, 18)
@@ -5732,6 +6618,8 @@ class FightEngineMixin:
             if margin > -5:
                 self.set_fight_position(state, "front headlock", top=actor_key, bottom=defender_key)
                 round_stats[actor_key]["control"] += 3
+                if position == "clinch":
+                    return f"{actor.name} snaps {defender.name} down from the clinch, draws the head below the hips and settles a front headlock on the mat."
                 return f"{actor.name} sprawls, circles to the head and locks a front headlock as {defender.name} remains grounded."
             self.set_fight_position(state, "range")
             return f"{defender.name} clears the head and recovers to open space before {actor.name} can consolidate."
@@ -5842,6 +6730,17 @@ class FightEngineMixin:
             return f"{defender.name} keeps the stronger leg position and denies the counter-lock."
 
         if action in ("jab", "power_punch", "kick", "dirty_boxing", "ground_strikes"):
+            if (getattr(self, "_experimental_specialist_entries", False)
+                    and action in {"jab", "power_punch"} and position in {"range", "pocket"}):
+                landed_before = state["stats"][actor_key].get("sig", 0)
+                knockdowns_before = state["knockdowns"][actor_key]
+                result = self.resolve_strike(actor, defender, action, margin, state, round_stats)
+                if (state["position"] == position and not state.get("instant_finish")
+                        and not state.get("submission_finish")
+                        and state["knockdowns"][actor_key] == knockdowns_before):
+                    self._update_punch_distance(actor, defender, action, margin, state,
+                                                state["stats"][actor_key].get("sig", 0) > landed_before)
+                return result
             return self.resolve_strike(actor, defender, action, margin, state, round_stats)
         if action in ("shoot", "takedown"):
             return self.resolve_takedown(actor, defender, margin, state, round_stats)
@@ -5864,6 +6763,20 @@ class FightEngineMixin:
             return self.fight_phrase("clinch_denied", actor, defender)
         if action == "cage_control":
             controller = state.get("clinch_controller")
+            if (getattr(self, "_experimental_specialist_entries", False)
+                    and position == "cage" and margin > 7):
+                rear_control_edge = self.ds_avg(
+                    actor, ("back_control", "clinch_control", "footwork"), actor.grappling,
+                ) - self.ds_avg(
+                    defender, ("clinch_defence", "scrambles", "strength"), defender.takedown_defence,
+                )
+                if margin + rear_control_edge * 0.5 >= 18:
+                    self.set_fight_position(state, "standing back control", controller=actor_key)
+                    state["clinch_ticks"] = 0
+                    round_stats[actor_key]["control"] += 3
+                    if controller and controller != actor_key:
+                        return f"{actor.name} peels the controlling arm, turns off the fence and circles behind {defender.name} into a standing rear body lock."
+                    return f"{actor.name} draws the near arm across, steps behind {defender.name} and secures a standing rear body lock against the fence."
             if controller and controller != self.fight_state_key(actor, state):
                 if margin > 7:
                     state["clinch_controller"] = self.fight_state_key(actor, state)
@@ -5875,7 +6788,8 @@ class FightEngineMixin:
             if margin > -3:
                 was_cage = state["position"] == "cage"
                 standing_back_note = ""
-                if (was_cage and margin > 32
+                if (not getattr(self, "_experimental_specialist_entries", False)
+                        and was_cage and margin > 32
                         and self.ds(actor, "back_control", actor.grappling)
                         >= self.ds(defender, "clinch_defence", defender.takedown_defence) + 45):
                     self.set_fight_position(
@@ -5918,8 +6832,60 @@ class FightEngineMixin:
             return self.resolve_submission(actor, defender, action, margin, state, round_stats)
         if action == "ground_control":
             round_stats[self.fight_state_key(actor, state)]["control"] += 3
+            if self._valid_von_flue_pending(actor, action, state):
+                pending = state.pop("von_flue_pending_wrap")
+                shoulder_margin = (
+                    self.ds_avg(actor, ("top_control", "positional_ability", "strength"), actor.grappling)
+                    - self.ds_avg(defender, ("bottom_control", "mobility", "guard_work"), defender.grappling)
+                )
+                angle_margin = margin + 0.2 * shoulder_margin
+                ready = angle_margin > 8
+                state["last_von_flue_angle"] = dict(
+                    pending, status="ready" if ready else "cleared", tick=state.get("tick", 1),
+                    attempted=True, raw_margin=margin, shoulder_margin=shoulder_margin, adjusted_margin=angle_margin,
+                )
+                if ready:
+                    setup = dict(pending, created_tick=state.get("tick", 1),
+                                 origin_tick=pending["created_tick"], source="angle_work")
+                    state["von_flue_setup"] = setup
+                    state["last_von_flue_setup_event"] = dict(setup, status="created")
+                    return f"{actor.name} establishes the shoulder angle against the retained neck wrap, without applying the choke yet."
+                return f"{defender.name} frames and withdraws the wrapping arm, denying {actor.name}'s shoulder-angle work."
+            if (getattr(self, "_experimental_specialist_entries", False)
+                    and position == "side control" and state.get("top") == actor_key
+                    and state.get("bottom") == defender_key
+                    and self._side_control_intent(actor, state) == "arm_isolation"):
+                isolation_margin = margin + 0.2 * (
+                    self.ds_avg(actor, ("top_control", "positional_ability", "strength"), actor.ground_control)
+                    - self.ds_avg(defender, ("bottom_control", "scrambles", "flexibility"), defender.grappling)
+                )
+                if isolation_margin > 8:
+                    setup = {"top": actor_key, "bottom": defender_key, "position": "side control",
+                             "round": state.get("round", 1), "created_tick": state.get("tick", 1)}
+                    state["scarf_hold_setup"] = setup
+                    state["last_scarf_hold_setup_event"] = dict(setup, status="created")
+                    return (f"{actor.name} establishes scarf hold and isolates the near arm; "
+                            f"{defender.name} frames underneath without conceding an armbar yet.")
             return self.fight_phrase("top_control", actor, defender)
         if action == "sweep":
+            if bottom_entry_edge is not None:
+                # Same contest and threshold as the sweep, with at most two
+                # points of coordination benefit (0.2 times a capped ten-point edge).
+                entry_margin = margin + 0.2 * min(10, bottom_entry_edge)
+                success = entry_margin > 10
+                if success:
+                    self.set_fight_position(state, "leg entanglement", top=actor_key, bottom=defender_key)
+                else:
+                    round_stats[defender_key]["control"] += 1
+                state["last_bottom_leg_entry"] = {
+                    "source": "bottom_guard_sweep_intent", "actor": actor_key,
+                    "controller": actor_key if success else None,
+                    "position_before": "guard", "position_after": state["position"],
+                    "round": state.get("round", 1), "tick": state.get("tick", 1),
+                    "success": success, "intent_edge": bottom_entry_edge, "entry_margin": entry_margin,
+                }
+                return (f"{actor.name} threads underneath from guard and secures the knee line in a leg entanglement."
+                        if success else f"{defender.name} withdraws the leg and denies the knee-line entry; {actor.name} remains underneath in guard.")
             if margin > 10:
                 state["top"] = self.fight_state_key(actor, state)
                 state["bottom"] = self.fight_state_key(defender, state)
@@ -5968,7 +6934,7 @@ class FightEngineMixin:
             return self.fight_phrase("survive", actor, defender)
         return None
 
-    def action_attack_value(self, fighter, action, state):
+    def action_attack_value(self, fighter, action, state, *, erratic_roll=None):
         gas = state["gas"][self.fight_state_key(fighter, state)]
         damage = state["hurt"][self.fight_state_key(fighter, state)]
         leg_damage = state.get("leg", {}).get(self.fight_state_key(fighter, state), 0)
@@ -6013,6 +6979,15 @@ class FightEngineMixin:
             base = self.ds_avg(fighter, ("scrambles", "bottom_control", "transitions", "strength"), fighter.grappling) * 0.78 + fighter.wrestling * 0.18
         elif action == "stand_up":
             base = self.ds_avg(fighter, ("get_ups", "scrambles", "sprawl", "conditioning"), fighter.takedown_defence) * 0.82 + fighter.cardio * 0.15
+        elif action == "front_headlock" and getattr(self, "_experimental_specialist_entries", False):
+            base = self.ds_avg(fighter, ("sprawl", "clinch_control", "submission_attack", "strength"), fighter.wrestling) * 0.82 + fighter.ground_control * 0.16
+        elif getattr(self, "_experimental_specialist_entries", False) and action in ("force_cage", "standing_back_ride", "turtle_ride"):
+            skills = {
+                "force_cage": ("cage_wrestling", "clinch_control", "cage_pressure", "strength"),
+                "standing_back_ride": ("back_control", "clinch_control", "ride_control", "strength"),
+                "turtle_ride": ("top_control", "positional_ability", "ride_control", "strength"),
+            }[action]
+            base = self.ds_avg(fighter, skills, fighter.wrestling) * 0.82 + fighter.ground_control * 0.16
         elif action in ("front_headlock", "force_cage", "standing_back_ride", "turtle_ride"):
             base = self.ds_avg(fighter, ("front_headlock", "clinch_control", "ride_control", "strength"), fighter.wrestling) * 0.82 + fighter.ground_control * 0.16
         elif action in ("re_shot", "mat_return", "take_back"):
@@ -6020,7 +6995,9 @@ class FightEngineMixin:
         elif action in ("recover_shot", "standing_escape", "front_headlock_escape", "turtle_escape"):
             base = self.ds_avg(fighter, ("scrambles", "get_ups", "clinch_defence", "guard_work"), fighter.takedown_defence) * 0.82 + fighter.cardio * 0.14
         elif action == "front_headlock_submission":
-            base = self.ds_avg(fighter, ("submission_attack", "front_headlock", "killer_instinct"), fighter.submissions) * 0.82 + fighter.fight_iq * 0.15
+            base = self.ds_avg(fighter, ("submission_attack",
+                "positional_ability" if getattr(self, "_experimental_specialist_entries", False) else "front_headlock",
+                "killer_instinct"), fighter.submissions) * 0.82 + fighter.fight_iq * 0.15
         elif action in ("leg_attack", "counter_leg_lock"):
             base = self.ds_avg(fighter, ("leg_locks", "submission_attack", "scrambles"), fighter.submissions) * 0.84 + fighter.fight_iq * 0.12
         elif action == "leg_control":
@@ -6050,13 +7027,15 @@ class FightEngineMixin:
             trait += 4
         if fighter.trait == "Scramble Artist" and action in ("sweep", "recover_guard", "stand_up"):
             trait += 5
-        if fighter.trait == "Fight Finisher" and action in ("power_punch", "kick", "ground_strikes", "submission", "bottom_submission") and damage > fighter.toughness * 0.3:
-            trait += 4
+        trait += trait_attack_modifier(fighter, action, state, self.fight_state_key(fighter, state))
         if fighter.trait == "Front Runner" and damage > fighter.toughness * 0.35:
             trait -= 6
         if fighter.trait == "Bad Weight Cut":
             trait -= max(2, fighter.weight_cut_penalty // 2)
-        erratic = self.fight_mechanics_rng().randint(-7, 7) if fighter.trait == "Erratic" else 0
+        # Explicit evidence is used only by pure opportunity previews. Ordinary
+        # resolution keeps its original Erratic draw and arithmetic order.
+        erratic = ((self.fight_mechanics_rng().randint(-7, 7) if erratic_roll is None else erratic_roll)
+                   if fighter.trait == "Erratic" else 0)
         consistency = (self.ds(fighter, "consistency", 50) - 50) * 0.07
         action_drag = low_gas_penalty * (1.35 if action in burst_actions else 0.65)
         context = self.context_edge(fighter, state, "prime", "experience", "pressure", "rivalry", "morale")
@@ -6079,6 +7058,7 @@ class FightEngineMixin:
         head_damage = state.get("head", {}).get(self.fight_state_key(fighter, state), 0)
         gas_drag = max(0, 34 - gas) * 0.38 + max(0, 12 - gas) * 0.72
         base = self.skill_bundle(fighter, "mental") * 0.1 + fighter.recovery * 0.08
+        base += trait_defence_modifier(fighter, action)
         if action in ("jab", "power_punch", "kick", "dirty_boxing", "ground_strikes"):
             if action == "kick":
                 base += self.skill_bundle(fighter, "kick_defence") * 0.48 + fighter.chin * 0.2 + fighter.toughness * 0.24
@@ -6092,6 +7072,12 @@ class FightEngineMixin:
             base += self.skill_bundle(fighter, "submission_defence") * 0.82 + fighter.grappling * 0.2
         elif action in ("recover_shot", "standing_escape", "front_headlock_escape", "turtle_escape"):
             base += self.skill_bundle(fighter, "clinch_attack") * 0.36 + self.skill_bundle(fighter, "anti_wrestling") * 0.42
+        elif (getattr(self, "_experimental_specialist_entries", False)
+                and action == "leg_escape" and state.get("position") == "leg entanglement"
+                and state.get("top") == self.fight_state_key(fighter, state)):
+            # The defender owns the knee line, not physical top position. Retain
+            # the ordinary coefficient budget but contest escape with leg control.
+            base += self.ds_avg(fighter, ("leg_locks", "positional_ability", "discipline"), fighter.grappling) * 0.45 + fighter.grappling * 0.2
         else:
             base += self.skill_bundle(fighter, "bottom_game") * 0.45 + fighter.wrestling * 0.2
         context = self.context_edge(fighter, state, "prime", "experience", "pressure", "morale")
@@ -6401,6 +7387,31 @@ class FightEngineMixin:
         body_share = max(0.05, min(0.55, body_share))
         return {"head": 1 - body_share, "body": body_share}
 
+    def dirty_boxing_target_shares(self, actor, defender, state):
+        """Exact pre-contest target probability, without drawing the contest.
+
+        Misses retain head; only a landed knee changes target to body. Average
+        the existing discrete contest (and Erratic trait) before applying the
+        same cleaned weapon tickets used by weighted_choice. This is a lane
+        opportunity, not a promise of landing or named chain completion.
+        """
+        defence = self.action_defence_value(defender, "dirty_boxing", state)
+        erratic_rolls = range(-7, 8) if actor.trait == "Erratic" else (0,)
+        landed = 0
+        for erratic in erratic_rolls:
+            attack = self.action_attack_value(actor, "dirty_boxing", state, erratic_roll=erratic)
+            first_landed_roll = ceil(-12 - (attack - defence))
+            landed += max(0, min(37, 19 - first_landed_roll))
+        weights = self._dirty_boxing_weapon_weights(actor)
+        cleaned = {key: max(1, int(value)) for key, value in weights.items()}
+        body = landed / (37 * len(erratic_rolls)) * cleaned["knee"] / sum(cleaned.values())
+        return {"head": 1.0 - body, "body": body}
+
+    def _dirty_boxing_weapon_weights(self, actor):
+        """Shared raw ticket inputs; only the real resolver draws a weapon."""
+        return {"elbow": self.ds(actor, "elbows", 50), "knee": self.ds(actor, "knees", 50),
+                "punch": self.ds(actor, "dirty_boxing", actor.striking)}
+
     def resolve_strike(self, actor, defender, action, margin, state, round_stats):
         attempts, _ = self.strike_volume(action, margin, landed=False, actor=actor)
         state["stats"][self.fight_state_key(actor, state)]["sig_att"] += attempts
@@ -6485,6 +7496,10 @@ class FightEngineMixin:
                 state["gas"][self.fight_state_key(defender, state)] = max(3, state["gas"][self.fight_state_key(defender, state)] - max(1, leg_gain // 2))
             else:
                 impact += 1
+            if (getattr(self, "_release_head_damage", False)
+                    and state.get("position") in {"range", "pocket"}
+                    and state.get("last_strike_target") in {"head", "high"}):
+                impact *= 1.02
             state["damage"][self.fight_state_key(defender, state)] += impact
             if kick_type == "high":
                 head_trauma = state.setdefault("head_trauma", {key: 0 for key in state["head"]})
@@ -6538,10 +7553,9 @@ class FightEngineMixin:
             round_stats[self.fight_state_key(actor, state)]["control"] += 1
         clinch_detail = ""
         if action == "dirty_boxing":
-            elbow = self.ds(actor, "elbows", 50)
-            knee = self.ds(actor, "knees", 50)
-            dirty = self.ds(actor, "dirty_boxing", actor.striking)
-            weapon = self.weighted_choice({"elbow": elbow, "knee": knee, "punch": dirty})
+            weapon_weights = self._dirty_boxing_weapon_weights(actor)
+            elbow, knee = weapon_weights["elbow"], weapon_weights["knee"]
+            weapon = self.weighted_choice(weapon_weights)
             if weapon == "elbow":
                 impact += 1
                 cut_chance = max(0.04, (elbow + impact * 3 - self.ds(defender, "cut_immunity", 50)) / 180)
@@ -6587,6 +7601,11 @@ class FightEngineMixin:
                 ])
         if action == "kick":
             state["body"][self.fight_state_key(defender, state)] += self.fight_mechanics_rng().randint(1, 4)
+        if (getattr(self, "_release_head_damage", False)
+                and state.get("position") in {"range", "pocket"}
+                and action in {"jab", "power_punch", "kick"}
+                and state.get("last_strike_target") in {"head", "high"}):
+            impact *= 1.02
         state["damage"][self.fight_state_key(defender, state)] += impact
         # Body punching is currently a targeting and presentation feature only:
         # the damage channels stay exactly as calibrated. Routing full punch
@@ -6662,13 +7681,22 @@ class FightEngineMixin:
             state["clinch_controller"] = self.fight_state_key(actor, state)
             round_stats[self.fight_state_key(actor, state)]["control"] += 2
             return self.fight_phrase("takedown_cage", actor, defender)
-        extended_shot = (
-            margin <= -35
-            and self.ds(defender, "front_headlock", defender.wrestling)
-            >= self.ds(actor, "takedown_setup", actor.wrestling) + 45
-            and self.ds(defender, "sprawl", defender.takedown_defence)
-            >= self.ds(actor, "chain_wrestling", actor.wrestling) + 35
-        )
+        # A clearly stuffed entry may remain connected even between matched
+        # fighters. Reuse the existing contest margin: head/hip control versus
+        # recovery skills decides whether this is a scramble or a clean reset.
+        if getattr(self, "_experimental_specialist_entries", False):
+            connection_edge = self.ds_avg(
+                defender, ("sprawl", "clinch_control", "strength"), defender.wrestling,
+            ) - self.ds_avg(actor, ("scrambles", "takedown_setup", "get_ups"), actor.wrestling)
+            extended_shot = margin <= -18 and connection_edge + (-margin - 18) * 0.35 >= 2
+        else:
+            extended_shot = (
+                margin <= -35
+                and self.ds(defender, "front_headlock", defender.wrestling)
+                >= self.ds(actor, "takedown_setup", actor.wrestling) + 45
+                and self.ds(defender, "sprawl", defender.takedown_defence)
+                >= self.ds(actor, "chain_wrestling", actor.wrestling) + 35
+            )
         if not extended_shot:
             self.set_fight_position(state, "range")
             round_stats[self.fight_state_key(defender, state)]["control"] += 2
@@ -6713,18 +7741,42 @@ class FightEngineMixin:
         sub_def = self.skill_bundle(defender, "submission_defence")
         technique = self.submission_technique(actor, action, state)
         state["last_submission_technique"] = dict(technique)
+        if (getattr(self, "_experimental_specialist_entries", False)
+                and action == "submission" and state["position"] == "guard"
+                and state.get("top") == actor_key
+                and technique["name"] == "straight ankle lock"
+                and self.ds(actor, "leg_locks", 50) > 62):
+            # An entry is not an immediate finishing hold. Use the existing raw
+            # contest once, before any submission danger/finish bonuses.
+            entry_margin = margin + 0.2 * (
+                self.ds_avg(actor, ("leg_locks", "transitions", "positional_ability"), actor.grappling)
+                - self.ds_avg(defender, ("guard_work", "scrambles", "submission_defence_detail"), defender.grappling)
+            )
+            success = entry_margin > 8
+            if success:
+                self.set_fight_position(state, "leg entanglement", top=actor_key, bottom=defender_key)
+            state["last_top_leg_entry"] = {
+                "success": success, "position_before": "guard", "position_after": state["position"],
+                "controller": actor_key if success else None, "technique": "straight ankle lock",
+            }
+            return (f"{actor.name} enters a leg entanglement for a straight ankle lock; the finishing grip is not yet set."
+                    if success else f"{defender.name} denies the straight ankle lock entry; {actor.name} remains on top in guard.")
         leg_technique = any(token in technique["name"].lower() for token in (
             "heel", "knee", "ankle", "toe hold", "slicer", "cloverleaf",
         ))
-        danger_bonus = 9 if state["position"] in ("mount", "back control", "side control") else 0
-        if state["position"] == "back control":
+        experimental = getattr(self, "_experimental_specialist_entries", False)
+        dominant_owner = (state["position"] in ("mount", "back control", "side control")
+                          and (not experimental or state.get("top") == actor_key))
+        danger_bonus = 9 if dominant_owner else 0
+        if state["position"] == "back control" and dominant_owner:
             danger_bonus += max(0, self.ds(actor, "back_control", actor.grappling) - 55) * 0.26
-        if state["position"] == "mount":
+        if state["position"] == "mount" and dominant_owner:
             danger_bonus += max(0, self.ds(actor, "mount_control", actor.grappling) - 55) * 0.2
         if state["position"] in ("guard", "half guard"):
             # Elite submission artists threaten from guard/half guard (triangles, armbars, guillotines).
             danger_bonus += 5 + max(0, sub_attack - 55) * 0.24
-        if action == "bottom_submission":
+        if action == "bottom_submission" and (not experimental or (
+                state["position"] in ("guard", "half guard") and state.get("bottom") == actor_key)):
             danger_bonus += max(0, self.ds(actor, "guard_work", actor.grappling) - 55) * 0.17
         margin += (sub_attack - sub_def) * 0.12 + (self.ds(actor, "killer_instinct", 50) - self.ds(defender, "composure", 50)) * 0.07
         if margin + danger_bonus > 8:
@@ -6732,7 +7784,8 @@ class FightEngineMixin:
             state["danger"][self.fight_state_key(actor, state)] += 14
             finish_boost = 1 + (self.ds(actor, "leg_locks", 50) - 50) / 750 if action == "bottom_submission" else 1
             hunter_boost = 1.12 if actor.behaviour == "Submission Hunter" else 1.0
-            position_finish = 1.2 if state["position"] in ("mount", "back control") else 1.08 if state["position"] == "side control" else 0.92
+            position_finish = (1.2 if dominant_owner and state["position"] in ("mount", "back control")
+                               else 1.08 if dominant_owner and state["position"] == "side control" else 0.92)
             exhaustion_finish = 1 + max(0, 18 - state["gas"][self.fight_state_key(defender, state)]) / 100
             finish_chance = ((0.085 + max(0, margin + danger_bonus) / 240)
                              * finish_boost * hunter_boost * position_finish * exhaustion_finish
@@ -6743,13 +7796,26 @@ class FightEngineMixin:
                 state["submission_finish"] = (self.fight_state_key(actor, state), self.fight_state_key(defender, state), self.submission_finish_text(actor, defender, technique, technical), "Technical Submission" if technical else "Submission")
                 return None
             state["gas"][self.fight_state_key(defender, state)] = max(5, state["gas"][self.fight_state_key(defender, state)] - 10)
-            if (action == "bottom_submission" and leg_technique
-                    and actor.trait == "Submission Ace"
-                    and self.ds(actor, "leg_locks", 50) >= 88
-                    and self.ds(actor, "leg_locks", 50)
-                    >= self.ds(defender, "submission_defence_detail", defender.submission_defence) + 45
-                    and margin + danger_bonus > 38
-                    and state["position"] in ("guard", "half guard")):
+            if getattr(self, "_experimental_specialist_entries", False):
+                retain_knee_line = False
+                if (action == "bottom_submission" and leg_technique
+                        and state["position"] in ("guard", "half guard")
+                        and self.ds(actor, "leg_locks", 50) >= 65):
+                    retention_edge = self.ds_avg(
+                        actor, ("leg_locks", "guard_work", "positional_ability"), actor.grappling,
+                    ) - self.ds_avg(
+                        defender, ("submission_defence_detail", "scrambles", "get_ups"), defender.submission_defence,
+                    )
+                    retain_knee_line = retention_edge + 0.25 * (margin + danger_bonus) >= 0
+            else:
+                retain_knee_line = (action == "bottom_submission" and leg_technique
+                        and actor.trait == "Submission Ace"
+                        and self.ds(actor, "leg_locks", 50) >= 88
+                        and self.ds(actor, "leg_locks", 50)
+                        >= self.ds(defender, "submission_defence_detail", defender.submission_defence) + 45
+                        and margin + danger_bonus > 38
+                        and state["position"] in ("guard", "half guard"))
+            if retain_knee_line:
                 settled_position = state["position"]
                 self.set_fight_position(
                     state, "leg entanglement", top=actor_key, bottom=defender_key,
@@ -6772,12 +7838,52 @@ class FightEngineMixin:
             }
             return self.fight_phrase("submission_threat", actor, defender)
         if action == "bottom_submission" and margin < -10:
+            assess_wrap = (experimental and state["position"] == "half guard"
+                           and state.get("bottom") == actor_key and state.get("top") == defender_key
+                           and technique.get("name") == "guillotine choke" and technique.get("choke") is True)
             state["top"] = defender_key
             state["bottom"] = actor_key
             round_stats[self.fight_state_key(defender, state)]["control"] += 2
             state["last_submission_escape"] = {
                 "consequence": "top control consolidated", "position": state["position"],
             }
+            if assess_wrap:
+                # Choke pressure has already failed. Grip retention and the
+                # top fighter's shoulder angle are separate technical facts,
+                # assessed from this contest without another random draw.
+                retention = self.ds_avg(actor, ("guard_work", "strength", "submission_attack"), actor.grappling) - self.ds_avg(
+                    defender, ("submission_defence_detail", "hand_speed", "composure"), defender.grappling,
+                ) - 0.10 * max(0, -margin - 10)
+                shoulder = self.ds_avg(defender, ("top_control", "positional_ability", "strength"), defender.grappling) - self.ds_avg(
+                    actor, ("bottom_control", "mobility", "guard_work"), actor.grappling,
+                )
+                retained = retention > 0
+                positioned = retained and shoulder >= 0
+                fact = {
+                    "top": defender_key, "bottom": actor_key, "position": "half guard",
+                    "round": state.get("round", 1), "tick": state.get("tick", 1),
+                    "adjusted_margin": margin, "retention_margin": retention, "shoulder_margin": shoulder,
+                    "pressure_stopped": True, "neck_wrap_retained": retained,
+                    "shoulder_angle_established": positioned, "top_control_consolidated": True,
+                }
+                state["last_guillotine_defense"] = fact
+                if retained and not positioned:
+                    pending = {"top": defender_key, "bottom": actor_key, "position": "half guard",
+                               "round": fact["round"], "created_tick": fact["tick"]}
+                    state["von_flue_pending_wrap"] = pending
+                    state["last_von_flue_angle"] = dict(pending, status="pending", tick=fact["tick"], attempted=False)
+                if positioned:
+                    setup = {"top": defender_key, "bottom": actor_key, "position": "half guard",
+                             "round": fact["round"], "created_tick": fact["tick"]}
+                    state["von_flue_setup"] = setup
+                    state["last_von_flue_setup_event"] = dict(setup, status="created")
+                state["last_submission_escape"] = {
+                    "consequence": ("top consolidated; neck wrap retained with shoulder angle" if positioned
+                                    else "top consolidated; neck wrap retained without shoulder angle" if retained
+                                    else "top consolidated; neck wrap cleared"),
+                    "position": "half guard",
+                }
+                return self.guillotine_defense_text(fact, actor.name, defender.name)
             return f"{defender.name} shrugs off the submission attempt and settles back on top."
         if state["position"] in self.GROUND_POSITIONS:
             reversal = (
@@ -6805,6 +7911,22 @@ class FightEngineMixin:
                     "consequence": "guard recovered", "position": state["position"],
                 }
                 return f"{defender.name} escapes the submission and recovers guard, conceding position but removing the danger."
+            if (getattr(self, "_experimental_specialist_entries", False)
+                    and action == "bottom_submission" and state["position"] == "half guard"
+                    and state.get("bottom") == actor_key and state.get("top") == defender_key
+                    and technique.get("name") == "guillotine choke" and technique.get("choke") is True
+                    and -10 <= margin <= 0
+                    and self.ds_avg(defender, ("submission_defence_detail", "top_control", "positional_ability"), defender.grappling)
+                    >= self.ds_avg(actor, ("guard_work", "positional_ability", "submission_attack"), actor.grappling)):
+                setup = {"top": defender_key, "bottom": actor_key, "position": "half guard",
+                         "round": state.get("round", 1), "created_tick": state.get("tick", 1)}
+                state["von_flue_setup"] = setup
+                state["last_von_flue_setup_event"] = dict(setup, status="created")
+                state["last_submission_escape"] = {
+                    "consequence": "pressure relieved; guillotine neck wrap retained", "position": "half guard",
+                }
+                return (f"{defender.name} relieves the guillotine pressure, but {actor.name} retains the neck wrap "
+                        f"from bottom half guard; {defender.name} remains on top.")
             state["last_submission_escape"] = {
                 "consequence": "grips cleared; position retained", "position": state["position"],
             }
@@ -6814,7 +7936,130 @@ class FightEngineMixin:
         }
         return self.fight_phrase("submission_defended", actor, defender)
 
+    @staticmethod
+    def guillotine_defense_text(fact, actor, defender):
+        """Render resolved grip facts, never infer retention from a failed choke."""
+        opening = f"{defender} stops {actor}'s guillotine pressure and consolidates top half guard. "
+        if not fact.get("neck_wrap_retained"):
+            return opening + f"{defender} clears the neck wrap."
+        if not fact.get("shoulder_angle_established"):
+            return opening + f"{actor} retains the neck wrap, but {defender} has no shoulder angle to attack it."
+        return opening + (f"{actor} retains the neck wrap while {defender} establishes a shoulder angle; "
+                          "a counter-choke has not been applied.")
+
     def submission_technique(self, actor, action, state):
+        expanded = self.submission_technique_tickets(actor, action, state)
+        technique, choke = self.fight_mechanics_rng().choice(expanded)
+        if getattr(self, "_experimental_specialist_entries", False):
+            setup = state.pop("von_flue_setup", None)
+            if setup and technique == "Von Flue choke":
+                state["last_von_flue_setup_event"] = dict(setup, status="used")
+            setup = state.pop("scarf_hold_setup", None)
+            if setup and technique == "scarf-hold straight armbar":
+                state["last_scarf_hold_setup_event"] = dict(setup, status="used")
+        return {"name": technique, "choke": choke}
+
+    def _valid_von_flue_setup(self, actor, action, state):
+        """Pure immediate-next-exchange retained-wrap eligibility, never a prediction."""
+        return self._valid_submission_setup(actor, action, state, "von_flue_setup", "half guard")
+
+    def _valid_von_flue_pending(self, actor, action, state):
+        if action != "ground_control":
+            return False
+        return self._valid_submission_setup(actor, "submission", state, "von_flue_pending_wrap", "half guard")
+
+    @staticmethod
+    def _cancel_von_flue_pending(state, reason):
+        pending = state.pop("von_flue_pending_wrap", None)
+        fact = state.get("last_von_flue_angle") or {}
+        if pending or fact.get("status") in {"pending", "ready", "cleared"}:
+            state["last_von_flue_angle"] = dict(
+                fact or pending, status="cancelled", reason=reason,
+                tick=state.get("tick", (pending or {}).get("created_tick", 1)),
+            )
+
+    def _valid_scarf_hold_setup(self, actor, action, state):
+        return self._valid_submission_setup(actor, action, state, "scarf_hold_setup", "side control")
+
+    def _valid_submission_setup(self, actor, action, state, key, position):
+        """Pure one-exchange setup ownership/expiry boundary shared by both holds."""
+        setup = state.get(key)
+        return bool(
+            getattr(self, "_experimental_specialist_entries", False)
+            and isinstance(setup, dict) and action == "submission"
+            and state.get("position") == setup.get("position") == position
+            and state.get("top") == setup.get("top") == self.fight_state_key(actor, state)
+            and state.get("bottom") == setup.get("bottom") and setup.get("bottom") in ("a", "b")
+            and setup.get("top") != setup.get("bottom")
+            and state.get("round") == setup.get("round")
+            and type(setup.get("created_tick")) is int
+            and state.get("tick") == setup["created_tick"] + 1
+            and not any(state.get(key) for key in (
+                "submission_finish", "instant_finish", "technical_foul_stoppage", "technical_outcome",
+            ))
+        )
+
+    def _prepared_submission_opportunity(self, actor, action, state):
+        """Pure exact-setup eligibility and readiness, independent of named chains."""
+        if self._valid_von_flue_setup(actor, action, state):
+            ticket = ("Von Flue choke", True)
+        elif self._valid_scarf_hold_setup(actor, action, state):
+            ticket = ("scarf-hold straight armbar", False)
+        else:
+            return None
+        actor_key = self.fight_state_key(actor, state)
+        preview = dict(state, last_exchange_counter=(state.get("counter_window") or {}).get("fighter") == actor_key)
+        position = state["position"]
+        candidates, styles, identity, _, _ = self._move_candidates(actor, action, position, "", preview)
+        compatible = compatible_submission_ids({"name": ticket[0], "choke": ticket[1]})
+        candidates = [move for move in candidates if move.move_id in compatible]
+        signatures = set(getattr(actor, "signature_moves", []) or [])
+        finishers = {move.move_id for move in candidates if move.move_id in signatures
+                     and set(move.tags).intersection({FINISHER_TAG, STYLE_FINISHER_TAG})}
+        boxing = {"combination_punching": self.ds(actor, "combination_punching", actor.striking),
+                  "body_punching": self.ds(actor, "body_punching", actor.striking),
+                  "counter_timing": self.ds(actor, "counter_timing", actor.fight_iq)}
+        eligible = False
+        for move in candidates:
+            static = self._move_static_score(actor, move, styles, boxing, signatures, finishers)
+            material = f"{identity}|{state.get('round', 1)}|{state.get('tick', 1)}|{action}|{position}||{move.move_id}"
+            if static is not None and self._move_rarity_gate(
+                    actor, static[-1], zlib.crc32(material.encode("utf-8")), identity, action, position, "", preview):
+                eligible = True
+                break
+        if not eligible:
+            return None
+        coordination = self.ds_avg(actor, ("submission_attack", "adaptability", "discipline"), actor.fight_iq)
+        readiness = max(0.0, min(1.0, (coordination - 40) / 40))
+        readiness *= max(0.0, min(1.0, state.get("gas", {}).get(actor_key, 100) / 60))
+        plan = self.fight_plan_for(actor, state)
+        if plan.get("enabled"):
+            execution = max(0.0, min(1.1, float(plan.get("execution", 0) or 0)))
+            if plan.get("current") == "Submission hunt":
+                readiness *= 1 + 0.15 * execution
+            elif plan.get("current") in {"Protect a lead", "Conserve energy"}:
+                readiness *= 1 - 0.4 * execution
+        return {"ticket": ticket, "readiness": max(0.0, min(1.0, readiness))}
+
+    def _prepared_submission_tickets(self, actor, action, state, tickets):
+        """Reallocate only duplicate, same-family tickets; retain every alternative."""
+        prepared = self._prepared_submission_opportunity(actor, action, state)
+        if not prepared or prepared["ticket"] not in tickets:
+            return tickets
+        remaining = int(4 * prepared["readiness"])
+        target = prepared["ticket"]
+        family = submission_ticket_family(target)
+        result, seen = list(tickets), set()
+        for index, ticket in enumerate(tickets):
+            if (remaining and ticket in seen and ticket != target
+                    and submission_ticket_family(ticket) == family):
+                result[index] = target
+                remaining -= 1
+            seen.add(ticket)
+        return result
+
+    def submission_technique_tickets(self, actor, action, state):
+        """Pure current-context pool; the caller alone owns the technique draw."""
         position = state["position"]
         options = []
 
@@ -6861,11 +8106,118 @@ class FightEngineMixin:
                 ("guillotine choke", True, 2), ("ninja choke", True, 2), ("front headlock choke", True, 2),
                 ("Americana", False, 2), ("armbar", False, 2), ("wrist lock", False, 1),
             ]
+        if getattr(self, "_experimental_specialist_entries", False):
+            role_options = self._role_submission_options(actor, action, state)
+            if role_options is not None:
+                options = role_options
         expanded = []
         for technique, choke, weight in options:
             expanded.extend([(technique, choke)] * weight)
-        technique, choke = self.fight_mechanics_rng().choice(expanded)
-        return {"name": technique, "choke": choke}
+        if getattr(self, "_experimental_specialist_entries", False):
+            expanded = self._experimental_submission_tickets(actor, action, state, expanded)
+            expanded = self._prepared_submission_tickets(actor, action, state, expanded)
+        return expanded
+
+    def _role_submission_options(self, actor, action, state):
+        """Candidate geometry only, not final frequency or finish calibration.
+
+        Wrist isolation remains a narrow bottom mount/back possibility. The
+        chooser's frequency remains a separate unresolved balance question;
+        submission bonuses separately require actual positional ownership.
+        """
+        position = state["position"]
+        actor_key = self.fight_state_key(actor, state)
+        if action not in SUBMISSION_PARENT_ACTIONS:
+            return None
+        bottom = action == "bottom_submission"
+        if actor_key != state.get("bottom" if bottom else "top"):
+            return None  # Invalid direct callers are not new live action routes.
+        if bottom:
+            if position in {"mount", "back control"}:
+                return [("wrist lock", False, 1)]
+            if position == "side control":
+                options = [("kimura", False, 3), ("wrist lock", False, 1)]
+                if min(self.ds(actor, "guard_work", actor.grappling), self.ds(actor, "flexibility", 50)) >= 65:
+                    options.append(("buggy choke", True, 2))
+                return options
+            if position not in {"guard", "half guard"}:
+                return None
+            options = [("guillotine choke", True, 4), ("high-elbow guillotine", True, 2),
+                       ("arm-in guillotine", True, 2), ("armbar", False, 4),
+                       ("kimura", False, 3), ("wrist lock", False, 2)]
+            if position == "guard":
+                options.extend([("triangle choke", True, 4), ("reverse triangle", True, 2),
+                                ("belly-down armbar", False, 2), ("omoplata", False, 2)])
+            if self.ds(actor, "leg_locks", 50) > 62:
+                options.extend([("heel hook", False, 3), ("inside heel hook", False, 3),
+                                ("outside heel hook", False, 2), ("kneebar", False, 2),
+                                ("straight ankle lock", False, 2), ("toe hold", False, 2)])
+            return options
+        if position == "guard":
+            options = [("guillotine choke", True, 4), ("arm-in guillotine", True, 2),
+                    ("kimura", False, 3), ("wrist lock", False, 2), ("arm-triangle choke", True, 2),
+                    ("Ezekiel choke", True, 1)]
+            if self.ds(actor, "leg_locks", 50) > 62:
+                options.append(("straight ankle lock", False, 1))
+            return options
+        if position == "half guard":
+            options = [("kimura", False, 3), ("Americana", False, 3), ("arm-triangle choke", True, 5),
+                    ("guillotine choke", True, 2), ("wrist lock", False, 2),
+                    ("D'Arce choke", True, 3), ("Brabo choke", True, 2)]
+            if self._valid_von_flue_setup(actor, action, state):
+                options.append(("Von Flue choke", True, 1))
+            return options
+        if position == "mount":
+            return [("arm-triangle choke", True, 5), ("mounted arm-triangle", True, 3),
+                    ("Americana", False, 3), ("kimura", False, 3), ("straight armbar", False, 3),
+                    ("mounted triangle", True, 2)]
+        if position == "side control":
+            options = [("arm-triangle choke", True, 5), ("Americana", False, 3),
+                    ("kimura", False, 3), ("straight armbar", False, 3), ("north-south choke", True, 2)]
+            if self._valid_scarf_hold_setup(actor, action, state):
+                options.append(("scarf-hold straight armbar", False, 1))
+            return options
+        if position == "back control":
+            return [("rear-naked choke", True, 8), ("short choke", True, 3),
+                    ("body-triangle rear-naked choke", True, 3), ("face-crank rear-naked choke", True, 2),
+                    ("back-control armbar", False, 2)]
+        if position in {"front headlock", "turtle"}:
+            return [("guillotine choke", True, 4), ("D'Arce choke", True, 3), ("Brabo choke", True, 2),
+                    ("anaconda choke", True, 2), ("front headlock choke", True, 2)]
+        return None  # Existing dedicated knee-line pool remains unchanged.
+
+    def _experimental_submission_tickets(self, actor, action, state, expanded):
+        """Resolve legal variants before the existing single technique draw."""
+        position = state["position"]
+        actor_key = self.fight_state_key(actor, state)
+        parent = action
+        # Specialist action resolvers intentionally delegate to submission;
+        # recover the real parent only from its unambiguous live position.
+        if action == "submission" and position in {"front headlock", "leg entanglement"}:
+            parent = "front_headlock_submission" if position == "front headlock" else "leg_attack"
+        if parent not in SUBMISSION_PARENT_ACTIONS:
+            return expanded
+        if actor_key != state.get("bottom" if parent == "bottom_submission" else "top"):
+            return expanded
+        styles = self.fighter_styles(actor)
+        eligible = set()
+        for move_id, _name, _choke in SUBMISSION_VARIANTS:
+            move = self._fight_move_registry.get(move_id)
+            if (move is None or move.deprecated or move.parent_action != parent
+                    or position not in move.positions):
+                continue
+            # Rear-triangle geometry is not proved merely by mount control.
+            if move_id == "submission_grappler_rear_triangle_finisher" and position != "back control":
+                continue
+            if ((STYLE_FINISHER_TAG in move.tags or STYLE_COMBINATION_TAG in move.tags)
+                    and not set(styles).intersection(move.preferred_styles)):
+                continue
+            proficiency = sum(self.ds(actor, key, 50) for key in move.attack_skills) / max(1, len(move.attack_skills))
+            if move.minimum_skill and proficiency < move.minimum_skill:
+                continue
+            if sequence_role_allows(parent, position, actor_key, state.get("top"), state.get("bottom")):
+                eligible.add(move_id)
+        return adapt_submission_tickets(expanded, eligible)
 
     def submission_finish_text(self, actor, defender, technique, technical=False):
         name = technique["name"]
@@ -6980,6 +8332,10 @@ class FightEngineMixin:
     def check_fight_stoppage(self, actor, defender, state):
         technical = self.technical_foul_outcome(actor, defender, state)
         if technical:
+            if getattr(self, "_experimental_specialist_entries", False):
+                self._cancel_von_flue_pending(state, "fight_finished")
+                state.pop("von_flue_setup", None)
+                state.pop("scarf_hold_setup", None)
             return technical
         if "instant_finish" in state:
             winner_name, loser_name, method, detail = state.pop("instant_finish")
@@ -7123,6 +8479,8 @@ class FightEngineMixin:
         causal_event = self.causal_finish_event(winner, state)
         payload = (causal_event or {}).get("move", {}) or {}
         move_name = str(payload.get("name") or "").strip()
+        if (causal_event or {}).get("move_id") == "single_jab":
+            move_name = self.exchange_display_move(causal_event)
         target = str(payload.get("target") or "").strip()
         if move_name:
             target_copy = f" to the {target}" if target and target.casefold() not in move_name.casefold() else ""
@@ -7136,12 +8494,18 @@ class FightEngineMixin:
 
     def finish_sequence(self, winner, loser, method, detail, state):
         """Build one continuous finish from the current move and position."""
+        if getattr(self, "_experimental_specialist_entries", False):
+            self._cancel_von_flue_pending(state, "fight_finished")
+            state.pop("von_flue_setup", None)
+            state.pop("scarf_hold_setup", None)
         causal_event = self.causal_finish_event(winner, state) if method in ("KO", "TKO") else None
         if method in ("KO", "TKO"):
             payload = (causal_event or {}).get("move", {}) or {}
         else:
             payload = state.get("last_move_payload") or {}
         move_name = str(payload.get("name") or "").strip()
+        if (causal_event or {}).get("move_id") == "single_jab":
+            move_name = self.exchange_display_move(causal_event)
         target = str(payload.get("target") or "").strip()
         position = self.position_label(state.get("position", "range")).lower()
         target_copy = f" to the {target}" if target and target.casefold() not in move_name.casefold() else ""

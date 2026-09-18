@@ -1,9 +1,11 @@
 """Focused regressions for player-owned combat-sport promotion operations."""
 
 import unittest
+from copy import deepcopy
 from pathlib import Path
 from unittest.mock import patch
 
+from feature_foundation import FoundationMixin
 from models import Fighter
 from world import WorldMixin
 
@@ -67,6 +69,9 @@ class CombatSportsHarness(WorldMixin):
     def record_world_story(self, *_args, **_kwargs):
         return None
 
+    def record_combat_sport_story(self, *_args, **_kwargs):
+        return None
+
     def refresh_promotion_rankings(self):
         return None
 
@@ -86,6 +91,19 @@ class CombatSportsHarness(WorldMixin):
 
     def combat_sport_card_strategy(self, *_args, **_kwargs):
         return "Balanced"
+
+
+class CombatSportsMembershipHarness(CombatSportsHarness, FoundationMixin):
+    """The same world stubs with the authoritative membership ledger enabled."""
+
+    def __init__(self):
+        super().__init__()
+        self.promotions = []
+        self.roster = []
+        self.ensure_foundation_state()
+
+    def rank_value(self, fighter):
+        return float(getattr(fighter, "overall", 0) or 0)
 
 
 class CombatSportsOperationsTest(unittest.TestCase):
@@ -118,6 +136,47 @@ class CombatSportsOperationsTest(unittest.TestCase):
         self.assertEqual(repaired["roster_ids"], ["box-a", "box-b"])
         self.assertEqual(repaired["booked_bouts"][0]["a_id"], "box-a")
         self.assertEqual(repaired["booked_bouts"][0]["b_id"], "box-b")
+
+    def test_circuit_reader_projects_legacy_state_without_repairing_saved_world(self):
+        before_world = deepcopy(self.world)
+        before_fighters = {
+            fighter.fighter_id: (fighter.sport_weight_class, fighter.weight, fighter.champion)
+            for fighter in self.world["roster"]
+        }
+        state = WorldMixin.ensure_combat_sport_circuit_state(
+            self.app, "Boxing", self.world, self.flagship, False, repair=False,
+        )
+        self.assertIn("rankings_by_division", state)
+        self.assertIn("titles", state)
+        self.assertEqual(self.world.keys(), before_world.keys())
+        self.assertEqual(self.world.get("titles"), before_world.get("titles"))
+        self.assertEqual(self.world.get("rankings_by_division"), before_world.get("rankings_by_division"))
+        for fighter in self.world["roster"]:
+            self.assertEqual(
+                (fighter.sport_weight_class, fighter.weight, fighter.champion),
+                before_fighters[fighter.fighter_id],
+            )
+
+    def test_contract_reader_projects_membership_without_repairing_saved_division(self):
+        self.division["roster_ids"] = []
+        self.division["roster"] = [self.a.name]
+        before = deepcopy(self.division)
+        rows = self.app.player_combat_contract_rows(repair=False)
+        self.assertEqual({row["fighter"].fighter_id for row in rows}, {self.a.fighter_id, self.b.fighter_id})
+        self.assertEqual(self.division, before)
+
+    def test_contract_reader_fails_closed_for_malformed_containers(self):
+        before_divisions = self.app.player_combat_divisions
+        self.app.player_combat_divisions = "malformed"
+        self.assertEqual(self.app.player_combat_contract_rows(repair=False), [])
+        self.app.player_combat_divisions = before_divisions
+        self.app.combat_sport_worlds["Boxing"] = {"roster": ["malformed", self.a]}
+        self.assertEqual(
+            {row["fighter"].fighter_id for row in self.app.player_combat_contract_rows(repair=False)},
+            {self.a.fighter_id},
+        )
+        self.app.combat_sport_worlds["Boxing"] = "malformed"
+        self.assertEqual(self.app.player_combat_contract_rows(repair=False), [])
 
     def test_duplicate_name_bout_telemetry_keeps_both_corners(self):
         result = self.app.simulate_combat_sport_bout("Boxing", self.a, self.b)
@@ -191,6 +250,64 @@ class CombatSportsOperationsTest(unittest.TestCase):
         self.assertIn(signed.fighter_id, self.division["roster_ids"])
         self.assertEqual(self.app.finance_rows[-1]["source"], "Flagship buyout")
 
+    def test_flagship_buyout_records_leave_and_child_join(self):
+        app, athlete, world, division = self.membership_setup()
+        athlete.sport_employer = world["promotion"]
+        terms = app.combat_sport_contract_terms("Boxing", athlete)
+        ok, _note, signed = app.sign_player_combat_flagship(
+            "Boxing", athlete.fighter_id, terms["purse"], terms["months"],
+        )
+        self.assertTrue(ok)
+        self.assertIs(signed, athlete)
+        rows = app.foundation_membership_events(fighter_id=athlete.fighter_id)
+        self.assertEqual([row["action"] for row in rows], ["leave", "join"])
+        self.assertEqual(rows[0]["promotion_name"], world["promotion"])
+        self.assertEqual(rows[1]["promotion_name"], division["promotion_name"])
+        self.assertEqual(rows[0]["source_transaction"], rows[1]["source_transaction"])
+
+    def test_private_market_signing_records_child_join(self):
+        app, _athlete, world, division = self.membership_setup()
+        recruit = fighter("Youth Recruit", "box-youth", "")
+        recruit.age = 18
+        division["signable_youth"] = [recruit]
+        terms = app.combat_sport_contract_terms("Boxing", recruit)
+        ok, _note, signed = app.sign_player_combat_youth(
+            "Boxing", recruit.fighter_id, terms["purse"], terms["months"],
+        )
+        self.assertTrue(ok)
+        self.assertEqual(signed.fighter_id, recruit.fighter_id)
+        self.assertIn(signed, world["roster"])
+        rows = app.foundation_membership_events(fighter_id=recruit.fighter_id)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["action"], "join")
+        self.assertEqual(rows[0]["promotion_name"], division["promotion_name"])
+
+    def test_academy_graduation_into_child_division_records_join(self):
+        app = CombatSportsMembershipHarness()
+        app.player_region = "North America"
+        app.academy = {}
+        graduate = fighter("Academy Graduate", "box-academy", "")
+        world = {"promotion": "World Boxing", "roster": []}
+        division = {
+            "sport": "Boxing", "promotion_name": "Player Co Boxing",
+            "roster": [], "roster_ids": [], "booked_bouts": [],
+        }
+        app.combat_sport_worlds["Boxing"] = world
+        app.player_combat_divisions["Boxing"] = division
+        prospect = {"prospect_id": "academy-prospect-1", "name": graduate.name, "region": app.player_region}
+        with patch.object(app, "academy_prospect_to_fighter", return_value=graduate), \
+             patch.object(app, "open_player_combat_division", return_value=(True, division)), \
+             patch.object(app, "add_player_combat_member"), \
+             patch.object(app, "fulfill_academy_promise"), \
+             patch.object(app, "record_academy_graduate"):
+            ok, _note, signed = app._promote_academy_prospect_to_sport(prospect, "Boxing")
+        self.assertTrue(ok)
+        self.assertIs(signed, graduate)
+        rows = app.foundation_membership_events(fighter_id=graduate.fighter_id)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["action"], "join")
+        self.assertEqual(rows[0]["promotion_name"], division["promotion_name"])
+
     def test_expired_contract_leaves_after_grace_month(self):
         self.a.contract_months = 0
         self.app.tick_player_combat_contracts()
@@ -257,6 +374,80 @@ class CombatSportsOperationsTest(unittest.TestCase):
         self.assertIn('"UPCOMING SCHEDULED CARDS"', source)
         self.assertIn('text="Production"', source)
         self.assertIn('text="Marketing $"', source)
+
+    @staticmethod
+    def membership_setup():
+        app = CombatSportsMembershipHarness()
+        athlete = fighter("Crossover Athlete", "box-membership", app.player_company_name)
+        world = {
+            "promotion": "World Boxing", "roster": [athlete], "prospects": [],
+            "titles": {}, "events": [],
+        }
+        division = {
+            "sport": "Boxing", "promotion_name": "Player Co Boxing",
+            "roster": [athlete.name], "roster_ids": [athlete.fighter_id],
+            "booked_bouts": [], "titles": {}, "title_ids": {},
+            "title_history": {}, "rankings_by_division": {},
+        }
+        app.combat_sport_worlds["Boxing"] = world
+        app.player_combat_divisions["Boxing"] = division
+        return app, athlete, world, division
+
+    def test_player_crossover_records_leave_and_join_facts_before_roster_change(self):
+        app, athlete, _world, _division = self.membership_setup()
+        ok, _note = app.move_player_combat_athlete_to_mma("Boxing", athlete)
+        self.assertTrue(ok)
+        rows = app.foundation_membership_events(fighter_id=athlete.fighter_id)
+        self.assertEqual([row["action"] for row in rows], ["leave", "join"])
+        self.assertEqual(rows[0]["promotion_name"], "Player Co Boxing")
+        self.assertEqual(rows[1]["promotion_name"], app.player_company_name)
+        self.assertEqual(rows[0]["source_transaction"], rows[1]["source_transaction"])
+
+    def test_player_combat_release_records_both_sides_of_transition(self):
+        app, athlete, _world, division = self.membership_setup()
+        observed = []
+        original_membership = app.record_membership_event
+
+        def observe_membership(*args, **kwargs):
+            observed.append((list(division.get("roster_ids", [])), list(division.get("roster", []))))
+            return original_membership(*args, **kwargs)
+
+        app.record_membership_event = observe_membership
+        ok, _note = app.release_player_combat_athlete("Boxing", athlete)
+        self.assertTrue(ok)
+        self.assertEqual(
+            observed,
+            [([athlete.fighter_id], [athlete.name]), ([athlete.fighter_id], [athlete.name])],
+        )
+        rows = app.foundation_membership_events(fighter_id=athlete.fighter_id)
+        self.assertEqual([row["action"] for row in rows], ["leave", "join"])
+        self.assertEqual(rows[0]["promotion_name"], "Player Co Boxing")
+        self.assertEqual(rows[1]["promotion_name"], "World Boxing")
+        self.assertEqual(rows[0]["source_transaction"], rows[1]["source_transaction"])
+
+    def test_ai_combat_sport_replenishment_records_the_new_membership(self):
+        app = CombatSportsMembershipHarness()
+        prospect = fighter("Generated Prospect", "box-generated", "World Boxing")
+        world = {"promotion": "World Boxing", "roster": [], "prospects": []}
+        app.combat_sport_roster = lambda _sport, _promotion=None: []
+        app.combat_sport_roster_target = lambda _sport, _world: 1
+        app.generate_combat_sport_prospect = lambda _sport, _world: prospect
+        self.assertEqual(app.replenish_combat_sport_world("Boxing", world), 1)
+        rows = app.foundation_membership_events(fighter_id=prospect.fighter_id)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["action"], "join")
+        self.assertEqual(rows[0]["promotion_name"], "World Boxing")
+
+    def test_combat_sport_retirement_records_departure_before_retired_flag(self):
+        app, athlete, world, _division = self.membership_setup()
+        athlete.retirement_pending = True
+        state = {"titles": {}, "title_ids": {}, "title_history": {}}
+        self.assertTrue(app.retire_combat_sport_after_final_fight("Boxing", world, athlete, state))
+        rows = app.foundation_membership_events(fighter_id=athlete.fighter_id)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["action"], "leave")
+        self.assertEqual(rows[0]["promotion_name"], app.player_company_name)
+        self.assertTrue(athlete.retired)
 
 
 if __name__ == "__main__":
